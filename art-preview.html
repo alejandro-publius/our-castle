@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#101c22"><title>Our House — Art Starter</title>
+  <link rel="icon" href="data:,"><link rel="stylesheet" href="art-preview.css">
+  <script type="importmap">{"imports":{"three":"./vendor/three/three.module.js"}}</script>
+</head>
+<body>
+  <main>
+    <header>
+      <img src="assets/brand/tiny-castle/red-army-crest.webp" width="66" height="72" alt="Original heraldic crest reference">
+      <div><p class="eyebrow">A HOUSEHOLD ADVENTURE · ART STARTER</p><h1>Our House</h1></div>
+      <a href="references/images/color-and-heraldry.png">View the original art ↗</a>
+    </header>
+    <section class="scene-shell" aria-label="Woodland board and house tier preview">
+      <div class="scene-heading"><div><p class="eyebrow">ONE HOUSE. A SHARED JOURNEY.</p><h2 id="tier-name">The first cottage</h2></div><button id="pixel" aria-pressed="true" type="button">Pixel art</button></div>
+      <div id="world" aria-busy="true"></div>
+      <p id="fallback" hidden>3D preview is unavailable in this browser. <a href="references/images/pixel-battlefield.png">View the original world reference.</a></p>
+      <p class="scene-caption">Through the woods, toward a home of your own.</p>
+    </section>
+    <section class="preview-controls" aria-label="Preview castle tiers">
+      <div><p class="eyebrow">PREVIEW THE HOUSE TIERS</p><p>These buttons explore the art. They do not represent earned rewards or payments.</p></div>
+      <div class="tier-buttons" role="group" aria-label="House tier">
+        <button type="button" data-tier="0" aria-pressed="true">I · Cottage</button>
+        <button type="button" data-tier="1" aria-pressed="false">II · Manor</button>
+        <button type="button" data-tier="2" aria-pressed="false">III · Keep</button>
+        <button type="button" data-tier="3" aria-pressed="false">IV · Castle</button>
+      </div>
+    </section>
+    <footer><p id="status" role="status">Art preview only. PayPal and runtime AI are not connected.</p><p>Original native 3D · 90-color palette · Tiny Castle art family</p></footer>
+  </main>
+  <script type="module" src="src/art-preview.js"></script>
+</body>
+</html>

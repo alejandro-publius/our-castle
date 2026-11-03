@@ -1,0 +1,13 @@
+{
+  "name": "our-house",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Claude handoff and original pixel-art starter for a cooperative household goals adventure",
+  "type": "module",
+  "license": "MIT",
+  "scripts": {
+    "start": "node scripts/serve.mjs",
+    "check": "node scripts/check.mjs"
+  },
+  "engines": { "node": ">=20" }
+}

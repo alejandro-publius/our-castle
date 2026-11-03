@@ -1,0 +1,144 @@
+{
+  "version": 1,
+  "name": "Tiny Castle \u2014 Crown & Dust",
+  "reference": "Tiny Castle approved brand kit and knight/parchment concept references",
+  "style": {
+    "characters": "Chunky toy-like knights and creatures, broad armor, big helmets, colored plumes",
+    "proportions": "Rounded heads, broad shoulders, sturdy boots and simple expressive faces",
+    "surfaces": "Brushed steel and gold trim with matte cloth and painted details",
+    "base": "Shared circular pedestal with a gold rim",
+    "silhouette": "One readable signature per character: crown, helmet, hat, staff, stone body or wings"
+  },
+  "model": {
+    "rootScale": 0.13,
+    "roughness": 0.74,
+    "metallic": 0.65,
+    "metalNames": [
+      "gold",
+      "steel",
+      "darksteel",
+      "copper"
+    ],
+    "palette": {
+      "gold": "DDBA79",
+      "steel": "B7C2CB",
+      "darksteel": "536979",
+      "skin": "BF8569",
+      "pale": "E2B69C",
+      "brown": "65402E",
+      "black": "1D3030",
+      "cream": "EDDCB4",
+      "red": "9D3E46",
+      "blue": "355F93",
+      "purple": "777099",
+      "green": "527557",
+      "moss": "425B47",
+      "stone": "7E8E86",
+      "lightstone": "ACB7A2",
+      "copper": "B47A4C",
+      "orange": "D47346",
+      "leaf": "86A56C"
+    },
+    "colorSpace": "srgb",
+    "metalRoughness": 0.38
+  },
+  "portrait": {
+    "width": 480,
+    "height": 560,
+    "transparent": true,
+    "orthographicScale": 0.4
+  },
+  "cards": {
+    "background": "#101c22",
+    "text": "#f6eddb",
+    "line": "#7d6c4e",
+    "muted": "#b9bda9",
+    "accent": "#e3ba72",
+    "classes": {
+      "rock": "#365567",
+      "paper": "#775a2a",
+      "scissors": "#944c3f"
+    },
+    "typefaceRoles": {
+      "display": "Uncial Antiqua, Georgia, serif",
+      "supporting": "Alegreya Sans, Arial, sans-serif"
+    },
+    "paper": "#ecdfbd",
+    "paperInk": "#382f25"
+  },
+  "factions": {
+    "camelot": {
+      "motifs": [
+        "crown",
+        "shield",
+        "sword",
+        "cloak"
+      ],
+      "materialNames": [
+        "steel",
+        "blue",
+        "red",
+        "gold"
+      ]
+    },
+    "frontier": {
+      "motifs": [
+        "wide-brim hat",
+        "bandana",
+        "boots",
+        "badge"
+      ],
+      "materialNames": [
+        "brown",
+        "copper",
+        "red",
+        "purple"
+      ]
+    },
+    "creatures": {
+      "motifs": [
+        "stone plates",
+        "leaf shapes",
+        "antlers",
+        "dragon wings"
+      ],
+      "materialNames": [
+        "stone",
+        "moss",
+        "leaf",
+        "red",
+        "orange"
+      ]
+    }
+  },
+  "references": {
+    "desktop": "docs/reference/tiny-castle-card-desktop.png",
+    "mobile": "docs/reference/tiny-castle-card-mobile.png",
+    "arthur": "assets/portraits/arthur.png",
+    "cowboy": "assets/portraits/sheriff.png",
+    "dragon": "assets/portraits/dragon.png",
+    "knights": "docs/reference/tiny-castle/knight-concept.png",
+    "parchment": "docs/reference/tiny-castle/parchment-concept.png",
+    "logo": "assets/brand/tiny-castle/tiny-castle-logo.webp"
+  },
+  "sourceProject": {
+    "repository": "alejandro-publius/tiny-castle",
+    "commit": "8476eb8c2dbebdf94c332a1e8ae2137ae81de1cd",
+    "brandAssets": "assets/brand/tiny-castle/provenance.json"
+  },
+  "board": {
+    "type": "Rectangular miniature field",
+    "border": "Two courses of alternating ivory and muted burgundy stone with brass edging",
+    "lawn": "#426b4f",
+    "ivory": "#eadbb9",
+    "burgundy": "#743a42"
+  },
+  "cardPresentation": {
+    "reference": "User-requested brighter cards and armor separation; preserve the Tiny Castle miniature family",
+    "paintAndInk": "src/graphics/miniature-style.js",
+    "portraitStudio": "src/deployment/portraits.js",
+    "heraldry": "src/deployment/heraldry.js",
+    "geometry": "Original GLBs remain unchanged; vivid enamel and armor seam lines are applied to the active rendered figures.",
+    "regenerate": "npm run assets:portraits"
+  }
+}

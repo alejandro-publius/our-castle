@@ -1,0 +1,336 @@
+{
+  "sourceRepository": "crown-and-dust",
+  "sourceCommit": "ca5d7c1a765a45593a3738af7481753278378b92",
+  "originalBrandRepository": "alejandro-publius/tiny-castle",
+  "files": [
+    {
+      "path": "assets/brand/tiny-castle/README.md",
+      "sourcePath": "assets/brand/tiny-castle/README.md",
+      "sha256": "6560199388724f21cb96f6d380e48f7e99f6110575b1e33c1ed42872329fc26d",
+      "bytes": 1034,
+      "role": "original brand/font/runtime"
+    },
+    {
+      "path": "assets/brand/tiny-castle/blue-army-crest.webp",
+      "sourcePath": "assets/brand/tiny-castle/blue-army-crest.webp",
+      "sha256": "9361c8b80b3458b47a5f699265299db56b3505d6c1bd1a5d605319cc1de07731",
+      "bytes": 990506,
+      "role": "original brand/font/runtime"
+    },
+    {
+      "path": "assets/brand/tiny-castle/legendary-dragon-badge.webp",
+      "sourcePath": "assets/brand/tiny-castle/legendary-dragon-badge.webp",
+      "sha256": "eb692a9297779fa0433f95a764648bea2c84b78a292d825deebe170def45ab35",
+      "bytes": 1000028,
+      "role": "original brand/font/runtime"
+    },
+    {
+      "path": "assets/brand/tiny-castle/provenance.json",
+      "sourcePath": "assets/brand/tiny-castle/provenance.json",
+      "sha256": "bd3fb31b3d4596a9ed8e6aa4a1918e05b99e3a955327c4e702bc6b8cf135f6fc",
+      "bytes": 2643,
+      "role": "original brand/font/runtime"
+    },
+    {
+      "path": "assets/brand/tiny-castle/red-army-crest.webp",
+      "sourcePath": "assets/brand/tiny-castle/red-army-crest.webp",
+      "sha256": "ef580ea5034098d9393c04ed824de749d05dfa07f66f1f95b32e19ced5eec96b",
+      "bytes": 1082096,
+      "role": "original brand/font/runtime"
+    },
+    {
+      "path": "assets/brand/tiny-castle/tiny-castle-logo.webp",
+      "sourcePath": "assets/brand/tiny-castle/tiny-castle-logo.webp",
+      "sha256": "43115d4ffa2812ca987fd67efd3540243bbbfc9a637e5f3f36314a7cdfcf6d25",
+      "bytes": 746406,
+      "role": "original brand/font/runtime"
+    },
+    {
+      "path": "assets/brand/tiny-castle/victory-banner.webp",
+      "sourcePath": "assets/brand/tiny-castle/victory-banner.webp",
+      "sha256": "fd660ebef2c531266c80124a7a1d19f7ab17ad0cc51ad4a681ec26809cd28480",
+      "bytes": 683578,
+      "role": "original brand/font/runtime"
+    },
+    {
+      "path": "assets/fonts/AlegreyaSans-400.ttf",
+      "sourcePath": "assets/fonts/AlegreyaSans-400.ttf",
+      "sha256": "a94abe0d90d3851cd4854e5d5e9ed6e2f69442f0636b05e1771593aa82500c73",
+      "bytes": 163460,
+      "role": "original brand/font/runtime"
+    },
+    {
+      "path": "assets/fonts/AlegreyaSans-500.ttf",
+      "sourcePath": "assets/fonts/AlegreyaSans-500.ttf",
+      "sha256": "9062eb42daabd93e6071ba60f76162b9c52402cef71b305e352956241ade1dd9",
+      "bytes": 165188,
+      "role": "original brand/font/runtime"
+    },
+    {
+      "path": "assets/fonts/AlegreyaSans-700.ttf",
+      "sourcePath": "assets/fonts/AlegreyaSans-700.ttf",
+      "sha256": "5bd81a6704bdd6f8da8b0eceba723b384311e008fefdd92e782674f70a7d3ab7",
+      "bytes": 166900,
+      "role": "original brand/font/runtime"
+    },
+    {
+      "path": "assets/fonts/UncialAntiqua-400.ttf",
+      "sourcePath": "assets/fonts/UncialAntiqua-400.ttf",
+      "sha256": "54e842f2e54e3c07b3cb901ac008d92922c69506c0db669a0e5aa6d15987f29b",
+      "bytes": 61044,
+      "role": "original brand/font/runtime"
+    },
+    {
+      "path": "assets/fonts/alegreyasans-OFL.txt",
+      "sourcePath": "assets/fonts/alegreyasans-OFL.txt",
+      "sha256": "0677891e6a143f297350d260ad766ad33bfc18ed5fa4f213acf648d6b597ec1a",
+      "bytes": 4405,
+      "role": "original brand/font/runtime"
+    },
+    {
+      "path": "assets/fonts/uncialantiqua-OFL.txt",
+      "sourcePath": "assets/fonts/uncialantiqua-OFL.txt",
+      "sha256": "244ca4ef7b106d8c660e9a00cecf5d581b6a222f447d7d59a8f61711b2ad3400",
+      "bytes": 4437,
+      "role": "original brand/font/runtime"
+    },
+    {
+      "path": "vendor/three/LICENSE",
+      "sourcePath": "vendor/three/LICENSE",
+      "sha256": "4c40a1ef62450b857c3b2aaf294936304cd552d965fbcd9d32d4c5bcf4ba4454",
+      "bytes": 1081,
+      "role": "original brand/font/runtime"
+    },
+    {
+      "path": "vendor/three/addons/controls/OrbitControls.js",
+      "sourcePath": "vendor/three/addons/controls/OrbitControls.js",
+      "sha256": "80efaadea4f8a636a65fb0bd08bfef62f3d93a0bb94e2e7500f23176c5c07f4e",
+      "bytes": 32134,
+      "role": "original brand/font/runtime"
+    },
+    {
+      "path": "vendor/three/addons/environments/RoomEnvironment.js",
+      "sourcePath": "vendor/three/addons/environments/RoomEnvironment.js",
+      "sha256": "85869bdd22f7cf0b22e68dcefe6cb710480af0f5c901a76f7a7764fd07fc8014",
+      "bytes": 3606,
+      "role": "original brand/font/runtime"
+    },
+    {
+      "path": "vendor/three/addons/loaders/GLTFLoader.js",
+      "sourcePath": "vendor/three/addons/loaders/GLTFLoader.js",
+      "sha256": "45139faddd5aaf48ed2d62203d976e5cbd703db1a592de40527f9f6cf58abd44",
+      "bytes": 110273,
+      "role": "original brand/font/runtime"
+    },
+    {
+      "path": "vendor/three/addons/utils/BufferGeometryUtils.js",
+      "sourcePath": "vendor/three/addons/utils/BufferGeometryUtils.js",
+      "sha256": "c25b7930e570e9ec56173cd3b866ec8d2e10016630db3937efb439daf1cedbf6",
+      "bytes": 31768,
+      "role": "original brand/font/runtime"
+    },
+    {
+      "path": "vendor/three/three.module.js",
+      "sourcePath": "vendor/three/three.module.js",
+      "sha256": "ce1fa418de16a19495a9f72495580e3015d7745c296d3ce0485897f902ddedfb",
+      "bytes": 1314681,
+      "role": "original brand/font/runtime"
+    },
+    {
+      "path": "assets/portraits/arthur.png",
+      "sourcePath": "assets/portraits/arthur.png",
+      "sha256": "2dbca4fe29a7cfc698f9d4a2d83b680aa427281a93dd5acab912134d3ee5b277",
+      "bytes": 81665,
+      "role": "miniature family reference"
+    },
+    {
+      "path": "assets/models/arthur.glb",
+      "sourcePath": "assets/models/arthur.glb",
+      "sha256": "6c9bbd18d6176abccd1f1200bc7532fb2433034d9caa6e97f92fb809f0afd758",
+      "bytes": 168596,
+      "role": "original reusable miniature"
+    },
+    {
+      "path": "assets/portraits/lancelot.png",
+      "sourcePath": "assets/portraits/lancelot.png",
+      "sha256": "8d85f6b9cb9153b3b881a2c418a7710f9be94444d649d801df3f7fb0e1677483",
+      "bytes": 82187,
+      "role": "miniature family reference"
+    },
+    {
+      "path": "assets/models/lancelot.glb",
+      "sourcePath": "assets/models/lancelot.glb",
+      "sha256": "6f90af982ed29273ecb12354cbc4158004236ba6f1362e8c2f12d369b690dd18",
+      "bytes": 162312,
+      "role": "original reusable miniature"
+    },
+    {
+      "path": "assets/portraits/guinevere.png",
+      "sourcePath": "assets/portraits/guinevere.png",
+      "sha256": "b8722837c4ef6428d511dabc0726cc7684c20ee5aac03be1fc4d356bb1adadd9",
+      "bytes": 61430,
+      "role": "miniature family reference"
+    },
+    {
+      "path": "assets/models/guinevere.glb",
+      "sourcePath": "assets/models/guinevere.glb",
+      "sha256": "8b070ec3f3c5112e75aa871419f7b02f444b2062158574875518af09702f8e43",
+      "bytes": 145064,
+      "role": "original reusable miniature"
+    },
+    {
+      "path": "assets/portraits/gawain.png",
+      "sourcePath": "assets/portraits/gawain.png",
+      "sha256": "e293b1a918564acae97d8e1c11f8b67b6220efde85a50017e3d15ba62551c7b6",
+      "bytes": 33403,
+      "role": "miniature family reference"
+    },
+    {
+      "path": "assets/portraits/merlin.png",
+      "sourcePath": "assets/portraits/merlin.png",
+      "sha256": "32f212be34730ba723b66bf58770f6fc93034c89b6341b11eb6c12decc52fdd5",
+      "bytes": 38544,
+      "role": "miniature family reference"
+    },
+    {
+      "path": "assets/portraits/golem.png",
+      "sourcePath": "assets/portraits/golem.png",
+      "sha256": "8228b1dbd7f964a3845fb4beea8bb276d1fbfb632e8d0fb29a32de49b746cb49",
+      "bytes": 88949,
+      "role": "miniature family reference"
+    },
+    {
+      "path": "assets/models/golem.glb",
+      "sourcePath": "assets/models/golem.glb",
+      "sha256": "34ba470484a2c9d0ada9e94882614bd0c6628c3431e1deff34f7324b1a965413",
+      "bytes": 131616,
+      "role": "original reusable miniature"
+    },
+    {
+      "path": "assets/portraits/fae.png",
+      "sourcePath": "assets/portraits/fae.png",
+      "sha256": "26c5138957a03b8cb8b0e5b1119555e72d8eceedbf4c0495604d08df2f0af45b",
+      "bytes": 61202,
+      "role": "miniature family reference"
+    },
+    {
+      "path": "assets/models/fae.glb",
+      "sourcePath": "assets/models/fae.glb",
+      "sha256": "7cfb226337687c1b0561d3b744dd86dd139858a920d6584219341b11cbe23dff",
+      "bytes": 147296,
+      "role": "original reusable miniature"
+    },
+    {
+      "path": "assets/portraits/dragon.png",
+      "sourcePath": "assets/portraits/dragon.png",
+      "sha256": "11f9345a81839b10e2321d43765f6b4155b72533400c2fdefcb72608e1f53868",
+      "bytes": 68191,
+      "role": "miniature family reference"
+    },
+    {
+      "path": "assets/models/dragon.glb",
+      "sourcePath": "assets/models/dragon.glb",
+      "sha256": "10132acfbe2cfbf063915c774119534136eedb2722a9f65c82a62afe237acf08",
+      "bytes": 171308,
+      "role": "original reusable miniature"
+    },
+    {
+      "path": "src/graphics/palette.js",
+      "sourcePath": "src/graphics/palette.js",
+      "sha256": "e369a00e71f3765fbcda47e54e09490d3523210a676252e554466de565a04b06",
+      "bytes": 1474,
+      "role": "reusable pixel/paint renderer"
+    },
+    {
+      "path": "src/graphics/pixel-renderer.js",
+      "sourcePath": "src/graphics/pixel-renderer.js",
+      "sha256": "a9db4189e63820353acf3b6068186977a1c3970e3230f92b1d854d76e11ef0b2",
+      "bytes": 6890,
+      "role": "reusable pixel/paint renderer"
+    },
+    {
+      "path": "src/graphics/miniature-style.js",
+      "sourcePath": "src/graphics/miniature-style.js",
+      "sha256": "4ef878b61ba6b169499a25884a513985424ef8227b17dc834a8e0aa2a45e5e8a",
+      "bytes": 3135,
+      "role": "reusable pixel/paint renderer"
+    },
+    {
+      "path": "references/source/world.reference.js",
+      "sourcePath": "src/battle/world.js",
+      "sha256": "014338ca6b50b4e54944b367452c1da8cd95be10f85b7bef7a3eb26a5b8c4f11",
+      "bytes": 39366,
+      "role": "original landscape and procedural figure vocabulary; reference only"
+    },
+    {
+      "path": "references/source/heraldry.reference.js",
+      "sourcePath": "src/deployment/heraldry.js",
+      "sha256": "19b4329205ccd2945c80e00f9066df516b6db76497ec5a28d378bbbf4c6a4926",
+      "bytes": 3498,
+      "role": "original heraldic vector vocabulary; reference only"
+    },
+    {
+      "path": "references/source/generate-models.py",
+      "sourcePath": "scripts/generate-models.py",
+      "sha256": "8aec5d102c8e3d220d6370c206fc8cde6e676f36a525eb48bb4e748d4140fcac",
+      "bytes": 15562,
+      "role": "reproducible original GLB generation source"
+    },
+    {
+      "path": "references/source/crown-and-dust-art-direction.json",
+      "sourcePath": "assets/art-direction.json",
+      "sha256": "3c1fd41e6f4edd8129319274584cc5340e35846a8db867a287de9a349e6633bf",
+      "bytes": 3950,
+      "role": "original material/art direction"
+    },
+    {
+      "path": "references/images/pixel-battlefield.png",
+      "sourcePath": "docs/reference/equipment-desktop.png",
+      "sha256": "351156967974d074e0fe165062304790b2f749dc2a83a017eeebb7d89fbfd58c",
+      "bytes": 714504,
+      "role": "approved full scene/board reference"
+    },
+    {
+      "path": "references/images/color-and-heraldry.png",
+      "sourcePath": "docs/reference/equipment-hand.png",
+      "sha256": "763a1a51c42f7d6d37d39c1b0f03880e1bb93e6da9b7bb2aef504427f3fd1fa0",
+      "bytes": 516991,
+      "role": "approved color, outlines and ornamental card treatment"
+    },
+    {
+      "path": "references/images/phone-reference.png",
+      "sourcePath": "docs/reference/equipment-mobile.png",
+      "sha256": "fc959141ff04ca587dfb0b4f41d184646819632999d2dc191a8d1412c20c0e58",
+      "bytes": 252086,
+      "role": "existing phone scale/brand reference"
+    },
+    {
+      "path": "references/images/mountain-world.png",
+      "sourcePath": "docs/reference/deployment-medieval.png",
+      "sha256": "744984b4f4ab2cb2bd918406d67463f9f84a8d5fbb392252702f515288b71259",
+      "bytes": 249148,
+      "role": "original native 3D scenery reference"
+    },
+    {
+      "path": "references/images/knight-concept.png",
+      "sourcePath": "docs/reference/tiny-castle/knight-concept.png",
+      "sha256": "dcb343c4a843d7023ec4f32c492da3a9c2e3dac50cd51400d5afe8ee03c92516",
+      "bytes": 1285667,
+      "role": "user-owned original miniature direction"
+    },
+    {
+      "path": "references/images/parchment-concept.png",
+      "sourcePath": "docs/reference/tiny-castle/parchment-concept.png",
+      "sha256": "a4ab094d9ef4e0323c559110eaeb90fe339eb1d875366d5e414b29598c207287",
+      "bytes": 1253715,
+      "role": "user-owned original parchment treatment"
+    },
+    {
+      "path": "references/pixel-rendering-study.html",
+      "sourcePath": "release/crown-and-dust-pixel-lab.html",
+      "sha256": "8010e39001599872ca1c38747784268144b797a78eb09b439f82f84707d4398a",
+      "bytes": 3435218,
+      "role": "self-contained runnable rendering reference; not the financial product"
+    }
+  ]
+}

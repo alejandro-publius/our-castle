@@ -1,0 +1,75 @@
+{
+  "repository": "alejandro-publius/tiny-castle",
+  "sourceCommit": "8476eb8c2dbebdf94c332a1e8ae2137ae81de1cd",
+  "retrieved": "2026-11-03",
+  "retrieval": "Published rehearsal assets, verified byte-for-byte against GitHub Git blob hashes",
+  "usage": "Brand artwork and licensed fonts only; no previous game code copied",
+  "files": [
+    {
+      "file": "tiny-castle-logo.webp",
+      "bytes": 746406,
+      "gitBlobSha": "30f3265fa0acd9aad4112ea468e91182262b3760",
+      "sourcePath": "design/brand-kit/web/tiny-castle-logo.webp"
+    },
+    {
+      "file": "red-army-crest.webp",
+      "bytes": 1082096,
+      "gitBlobSha": "6ed4e4e4130f30ebedc732977214335bfbd5f642",
+      "sourcePath": "design/brand-kit/web/red-army-crest.webp"
+    },
+    {
+      "file": "blue-army-crest.webp",
+      "bytes": 990506,
+      "gitBlobSha": "dfde09505f5f2ccd750148debdcc276c81b92c99",
+      "sourcePath": "design/brand-kit/web/blue-army-crest.webp"
+    },
+    {
+      "file": "legendary-dragon-badge.webp",
+      "bytes": 1000028,
+      "gitBlobSha": "4ff3c6299c4a9ceee2d6fc38c4268a1f62ca03d0",
+      "sourcePath": "design/brand-kit/web/legendary-dragon-badge.webp"
+    },
+    {
+      "file": "victory-banner.webp",
+      "bytes": 683578,
+      "gitBlobSha": "f2b86302c281581a74fe103f99cd563c5fa57f9f",
+      "sourcePath": "design/brand-kit/web/victory-banner.webp"
+    },
+    {
+      "file": "../../fonts/AlegreyaSans-400.ttf",
+      "bytes": 163460,
+      "gitBlobSha": "1799f51c3814f59b53781bdb0bab78ca0292bfdd",
+      "sourcePath": "public/assets/fonts/AlegreyaSans-400.ttf"
+    },
+    {
+      "file": "../../fonts/AlegreyaSans-500.ttf",
+      "bytes": 165188,
+      "gitBlobSha": "cff1f473e0b23930333afdf21d3eb9d6ad05ee5c",
+      "sourcePath": "public/assets/fonts/AlegreyaSans-500.ttf"
+    },
+    {
+      "file": "../../fonts/AlegreyaSans-700.ttf",
+      "bytes": 166900,
+      "gitBlobSha": "451f5c2515cdc7115f4e0d3d8086b00c37d709ea",
+      "sourcePath": "public/assets/fonts/AlegreyaSans-700.ttf"
+    },
+    {
+      "file": "../../fonts/UncialAntiqua-400.ttf",
+      "bytes": 61044,
+      "gitBlobSha": "05ded2146f69c877b2d2a8f59e1fc63e77afec81",
+      "sourcePath": "public/assets/fonts/UncialAntiqua-400.ttf"
+    },
+    {
+      "file": "../../fonts/alegreyasans-OFL.txt",
+      "bytes": 4405,
+      "gitBlobSha": "93a573fab019d94171bad70205a71d5de9e843e8",
+      "sourcePath": "public/assets/fonts/alegreyasans-OFL.txt"
+    },
+    {
+      "file": "../../fonts/uncialantiqua-OFL.txt",
+      "bytes": 4437,
+      "gitBlobSha": "4171fd7daad5cc50d032d6a11ec2503917561e36",
+      "sourcePath": "public/assets/fonts/uncialantiqua-OFL.txt"
+    }
+  ]
+}
