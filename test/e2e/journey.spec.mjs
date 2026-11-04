@@ -269,6 +269,47 @@ test('layout: no horizontal overflow in any step and amounts stay readable', asy
   expect(box.width).toBeGreaterThan(300);
 });
 
+test('the world keeps living, and board events drive synthesized sound through the bus', async ({ page }) => {
+  const errors = trackErrors(page);
+  await ready(page);
+  const first = await scene(page);
+  expect(first).toMatchObject({ ambient: true, grazers: 4, butterflies: 4 });
+  await expect.poll(async () => (await scene(page)).ambientFrames, { timeout: 5000 }).toBeGreaterThan(first.ambientFrames + 3);
+  const toggle = page.locator('#sound-toggle');
+  await expect(toggle).toHaveAttribute('aria-pressed', 'false');
+  await toggle.click();
+  await expect(toggle).toHaveAttribute('aria-pressed', 'true');
+  await expect(toggle).toHaveText('Sound on');
+  expect((await page.evaluate(() => window.__ourHouse.sound())).enabled).toBe(true);
+  await page.evaluate(() => { window.__ourHouse.bus.log = []; });
+  await foundHouse(page);
+  await acceptExamplePlan(page);
+  await contribute(page);
+  await expect(page.locator('#progress-amount')).toHaveText('$75.00');
+  await settled(page);
+  const types = await page.evaluate(() => window.__ourHouse.bus.log.map((e) => e.type));
+  expect(types).toContain('scene:hop');
+  expect(types).toContain('scene:rise');
+  expect(types).toContain('contribution:result');
+  const played = (await page.evaluate(() => window.__ourHouse.sound())).played;
+  expect(played).toEqual(expect.arrayContaining(['chime', 'hop', 'fanfare']));
+  expect(errors).toEqual([]);
+});
+
+test.describe('reduced motion', () => {
+  test.use({ reducedMotion: 'reduce' });
+  test('no ambient loop, and the board updates instantly', async ({ page }) => {
+    await ready(page);
+    expect(await scene(page)).toMatchObject({ ambient: false, position: 4 });
+    await foundHouse(page);
+    await acceptExamplePlan(page);
+    await contribute(page);
+    await expect(page.locator('#progress-amount')).toHaveText('$75.00');
+    await settled(page);
+    expect(await scene(page)).toMatchObject({ ambient: false, position: 5, tier: 1 });
+  });
+});
+
 test('the original art preview is preserved and still renders', async ({ page }) => {
   const errors = trackErrors(page);
   await page.goto('/art-preview.html');

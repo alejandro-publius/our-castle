@@ -69,7 +69,7 @@ const disposeGroup = (group) => {
 const easeInOut = (t) => (t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2);
 const easeOutBack = (t) => 1 + 2.2 * (t - 1) ** 3 + 1.2 * (t - 1) ** 2;
 
-export function createBoardScene(container, { reducedMotion = false } = {}) {
+export function createBoardScene(container, { reducedMotion = false, onEvent = () => {} } = {}) {
   let renderer; let pipeline; let scene; let camera; let builder; let observer;
   const part = (...args) => builder.part(...args);
   const groups = {};
@@ -78,6 +78,13 @@ export function createBoardScene(container, { reducedMotion = false } = {}) {
   let queue = Promise.resolve();
   let animating = false;
   let frames = 0;
+  // Ambient life (Hollybrook-style principle: the world keeps living at a low, cheap frame rate).
+  const grazers = [];
+  const flutterers = [];
+  let flutterGeo = null;
+  let ambientFrames = 0;
+  let ambientTimer = null;
+  const emit = (type, detail) => { try { onEvent(type, detail); } catch (error) { console.error('[board] event listener failed', error); } };
 
   // ---------- Static woodland ----------
   function tree(group, x, z, size, pine = false) {
@@ -90,11 +97,29 @@ export function createBoardScene(container, { reducedMotion = false } = {}) {
   function deer(group, x, z, angle = 0, scale = 1) {
     const d = new THREE.Group();
     d.position.set(x, 0.16, z); d.rotation.y = angle; d.scale.setScalar(scale); group.add(d);
-    part(d, 'box', 0, 0.68, 0, 0.9, 0.48, 0.36, colours.wood); part(d, 'box', 0.43, 1.0, 0, 0.25, 0.58, 0.26, colours.wood); part(d, 'box', 0.56, 1.23, 0, 0.38, 0.26, 0.26, colours.wood);
+    part(d, 'box', 0, 0.68, 0, 0.9, 0.48, 0.36, colours.wood);
     for (const lx of [-0.29, 0.29]) for (const lz of [-0.12, 0.12]) part(d, 'box', lx, 0.28, lz, 0.08, 0.55, 0.08, colours.soil);
-    if (scale >= 1) for (const az of [-0.1, 0.1]) { part(d, 'box', 0.47, 1.5, az, 0.04, 0.4, 0.04, colours.cream, 0, -0.2); part(d, 'box', 0.55, 1.6, az, 0.17, 0.04, 0.04, colours.cream, 0, 0.5); }
-    part(d, 'box', 0.71, 1.25, 0.14, 0.045, 0.045, 0.025, colours.dark);
     part(d, 'box', -0.47, 0.82, 0, 0.1, 0.16, 0.14, colours.cream);
+    // Neck, head, antlers and eye pivot at the shoulder so the deer can lower its head to graze.
+    const head = new THREE.Group(); head.position.set(0.36, 0.78, 0); d.add(head);
+    part(head, 'box', 0.07, 0.22, 0, 0.25, 0.58, 0.26, colours.wood); part(head, 'box', 0.2, 0.45, 0, 0.38, 0.26, 0.26, colours.wood);
+    if (scale >= 1) for (const az of [-0.1, 0.1]) { part(head, 'box', 0.11, 0.72, az, 0.04, 0.4, 0.04, colours.cream, 0, -0.2); part(head, 'box', 0.19, 0.82, az, 0.17, 0.04, 0.04, colours.cream, 0, 0.5); }
+    part(head, 'box', 0.35, 0.47, 0.14, 0.045, 0.045, 0.025, colours.dark);
+    grazers.push({ head, phase: grazers.length * 2.3 + x });
+  }
+  // A few butterflies over the wildflowers.
+  function butterflies(group) {
+    const wingGeo = new THREE.BoxGeometry(0.2, 0.03, 0.16);
+    const tints = [colours.cream, colours.gold, colours.cream, colours.red];
+    [[-2.6, 3.6], [5.6, 1.6], [-6.2, 0.2], [2.4, -3.4]].forEach(([x, z], i) => {
+      const b = new THREE.Group(); b.position.set(x, 1.1, z);
+      const material = builder.material(tints[i]);
+      const left = new THREE.Mesh(wingGeo, material); left.position.x = -0.1;
+      const right = new THREE.Mesh(wingGeo, material); right.position.x = 0.1;
+      b.add(left, right); group.add(b);
+      flutterers.push({ b, left, right, x, z, phase: i * 1.7 });
+    });
+    flutterGeo = wingGeo;
   }
   function hut(group, x, z, roof, angle = 0) {
     const h = new THREE.Group(); h.position.set(x, 0, z); h.rotation.y = angle; group.add(h);
@@ -123,6 +148,7 @@ export function createBoardScene(container, { reducedMotion = false } = {}) {
     for (const dz of [-0.55, 0.55]) { part(land, 'box', -8, 0.55, -2.12 + dz, 1.5, 0.08, 0.08, colours.soil); for (const dx of [-0.65, 0.65]) part(land, 'box', -8 + dx, 0.45, -2.12 + dz, 0.09, 0.32, 0.09, colours.soil); }
     for (let i = 0; i < 3; i++) part(land, 'box', -8.55 + i * 0.55, 0.37, -2.12, 0.06, 0.03, 1.12, colours.soil);
     deer(land, -5.4, 1.4, -0.4); deer(land, -4.6, 2.2, -0.9, 0.7); deer(land, 5.5, -2.6, 2.6); deer(land, 3.2, 6.7, 0.25);
+    butterflies(land);
     hut(land, -2.9, 7.1, colours.red, 0.2); hut(land, -0.9, 7.5, colours.blue, -0.15);
     for (let i = 0; i < 22; i++) {
       const x = Math.sin(i * 2.17) * 5.4; const z = Math.cos(i * 3.13) * 3.4;
@@ -272,10 +298,12 @@ export function createBoardScene(container, { reducedMotion = false } = {}) {
       const homeward = Math.max(p, p + dir) === ROUTE_LENGTH;
       await run(homeward ? 750 : dir > 0 ? 300 : 220, (t) => { const e = easeInOut(t); placeToken(p + dir * e, Math.sin(Math.PI * t) * (homeward ? 6.5 : 0.55)); });
       shownPosition = p + dir;
+      emit('hop', { position: shownPosition, direction: dir, home: shownPosition === ROUTE_LENGTH });
     }
     placeToken(to, 0);
   }
   async function rise() {
+    emit('rise', { tier: state.builtTier });
     const sparkGeo = new THREE.BoxGeometry(0.16, 0.16, 0.16);
     const sparkMat = new THREE.MeshStandardMaterial({ color: colours.gold, roughness: 0.5, flatShading: true });
     const sparks = Array.from({ length: 28 }, (_, i) => {
@@ -293,6 +321,32 @@ export function createBoardScene(container, { reducedMotion = false } = {}) {
   }
 
   function draw() { if (renderer && pipeline) { pipeline.render(scene, camera); frames++; } }
+
+  function ambientStep(seconds) {
+    for (const g of grazers) {
+      const cycle = (seconds * 0.35 + g.phase) % 6; // graze for ~2 of every ~17 seconds
+      const down = cycle < 2 ? Math.sin((cycle / 2) * Math.PI) : 0;
+      g.head.rotation.z = -1.05 * down;
+    }
+    for (const f of flutterers) {
+      const t = seconds * 0.6 + f.phase;
+      f.b.position.set(f.x + Math.sin(t) * 0.9, 1.0 + Math.sin(t * 2.3) * 0.25, f.z + Math.cos(t * 0.8) * 0.7);
+      f.b.rotation.y = -t;
+      const flap = 0.25 + 0.75 * Math.abs(Math.sin(seconds * 9 + f.phase));
+      f.left.rotation.z = flap; f.right.rotation.z = -flap;
+    }
+  }
+  function startAmbient() {
+    if (reducedMotion || ambientTimer) return;
+    const start = performance.now();
+    // About 8 frames per second while idle; the pixel look hides the low rate and it stays cheap.
+    ambientTimer = setInterval(() => {
+      if (document.hidden) return;
+      ambientStep((performance.now() - start) / 1000);
+      ambientFrames++;
+      if (!animating) draw();
+    }, 125);
+  }
   function resize() {
     const width = container.clientWidth; const height = container.clientHeight;
     if (!width || !height) return;
@@ -323,6 +377,7 @@ export function createBoardScene(container, { reducedMotion = false } = {}) {
   groups.castle = new THREE.Group(); groups.castle.position.z = 0.15; scene.add(groups.castle);
   buildRoute(); buildGardens(); buildCastle(); buildToken();
   observer = new ResizeObserver(resize); observer.observe(container); resize();
+  startAmbient();
 
   return {
     /** Apply server state. Returns a promise that resolves when movement/upgrade animation ends. */
@@ -356,7 +411,7 @@ export function createBoardScene(container, { reducedMotion = false } = {}) {
       return queue;
     },
     setPixelMode(on) { pipeline.configure({ pixelMode: on }); draw(); },
-    debug: () => ({ tier: state.builtTier, position: state.position, shownPosition, gardens: state.gardens, crest: { ...state.crest }, playMode: state.playMode, animating, frames }),
-    dispose() { observer?.disconnect(); for (const g of Object.values(groups)) disposeGroup(g); builder?.dispose(); pipeline?.dispose(); renderer?.dispose(); },
+    debug: () => ({ tier: state.builtTier, position: state.position, shownPosition, gardens: state.gardens, crest: { ...state.crest }, playMode: state.playMode, animating, frames, ambient: Boolean(ambientTimer), ambientFrames, grazers: grazers.length, butterflies: flutterers.length }),
+    dispose() { clearInterval(ambientTimer); observer?.disconnect(); for (const g of Object.values(groups)) disposeGroup(g); flutterGeo?.dispose(); builder?.dispose(); pipeline?.dispose(); renderer?.dispose(); },
   };
 }

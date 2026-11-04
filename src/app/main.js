@@ -5,6 +5,7 @@ import { chargeIcon, crestChoices, crestSvg } from './crest.js';
 import { TIERS, formatCents, formatPercent, parseAmountToCents, ROUTE_LENGTH } from '../core/rules.js';
 import { mountPayPalButton } from './paypal-checkout.js';
 import { createLedgerGrid } from './ledger-grid.js';
+import { sound } from './sound.js';
 
 // ---------- small helpers ----------
 const $ = (selector, root = document) => root.querySelector(selector);
@@ -73,12 +74,17 @@ const ownership = () => ({ householdId: state.household.id, goalId: state.goal.i
 // ---------- boot ----------
 async function boot() {
   try {
-    scene = createBoardScene($('#world'), { reducedMotion: matchMedia('(prefers-reduced-motion: reduce)').matches });
+    // The board announces hops and tier rises on the bus; sound (and tests) listen. Nothing calls audio directly.
+    scene = createBoardScene($('#world'), {
+      reducedMotion: matchMedia('(prefers-reduced-motion: reduce)').matches,
+      onEvent: (type, detail) => bus.emit(`scene:${type}`, detail),
+    });
   } catch (error) {
     console.warn('[our-house] 3D board unavailable', error);
     $('#world').hidden = true;
     $('#world-fallback').hidden = false;
     $('#pixel-toggle').hidden = true;
+    $('#sound-toggle').hidden = true;
   }
   $('#world').setAttribute('aria-busy', 'false');
   buildCrestPickers();
@@ -90,7 +96,7 @@ async function boot() {
     $('#honesty').textContent = `Could not load the household: ${error.message}`;
   }
   document.body.dataset.ready = 'true';
-  window.__ourHouse = { get state() { return state; }, scene: () => scene?.debug() ?? null, bus };
+  window.__ourHouse = { get state() { return state; }, scene: () => scene?.debug() ?? null, bus, sound: () => ({ enabled: sound.enabled, played: sound.played() }) };
   window.__booted = true;
 }
 
@@ -559,6 +565,8 @@ function handleContributionResult(res) {
   }
   if (res.outcome === 'completed') { $('#give-approve').checked = false; ui.amountTouched = false; }
   setStatus('#give-status', kind, text);
+  if (res.outcome === 'completed') sound.cue('chime');
+  else if (['declined', 'rejected_mismatch', 'not_credited'].includes(res.outcome)) sound.cue('soft');
   bus.emit('contribution:result', res);
   applyState(res.state, { animate: true, result: res });
   if (ui.receipt && ['completed', 'pending'].includes(res.outcome)) $('#receipt').focus({ preventScroll: false });
@@ -766,6 +774,7 @@ async function logEntry(event, kind) {
   try {
     const res = await api.post('/api/entries', { kind, label, amountCents: cents, memberId: persona()?.id });
     form.reset();
+    if (res.awarded?.some((a) => String(a).startsWith('garden:'))) sound.cue('sprout');
     applyState(res.state, { animate: true, result: { awarded: res.awarded } });
     setStatus('#ledger-status', 'ok', kind === 'bill_paid'
       ? `Logged “${label}”. Bills are tracked as habits and do not count toward the goal.` : `Logged “${label}”. Gifts are tracked separately and do not count toward the goal.`);
@@ -812,6 +821,13 @@ function bindEvents() {
     e.preventDefault();
     selectTab(TABS[next]);
   });
+  $('#sound-toggle').addEventListener('click', (e) => {
+    const on = sound.setEnabled(e.currentTarget.getAttribute('aria-pressed') !== 'true');
+    e.currentTarget.setAttribute('aria-pressed', String(on));
+    e.currentTarget.textContent = on ? 'Sound on' : 'Sound off';
+  });
+  bus.on('scene:hop', (detail) => sound.cue('hop', detail));
+  bus.on('scene:rise', (detail) => sound.cue('fanfare', detail));
   $('#pixel-toggle').addEventListener('click', (e) => {
     const on = e.currentTarget.getAttribute('aria-pressed') !== 'true';
     e.currentTarget.setAttribute('aria-pressed', String(on));
