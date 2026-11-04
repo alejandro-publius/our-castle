@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { transaction } from './db.mjs';
 import { CREST_CHARGES, CREST_FIELDS, CURRENCY, TIERS, formatCents, milestoneCents } from '../src/core/rules.js';
+import { ESTATE_MILESTONES } from '../src/core/rewards.js';
 
 export const DEMO_HOUSEHOLD_ID = 'hh_demo';
 export const DEMO_GOAL_ID = 'goal_demo';
@@ -104,7 +105,12 @@ export function getActiveGoal(db, householdId) {
 
 /** Create the single local example household on first run. Idempotent. */
 export function ensureDemoHousehold(db, clock) {
-  if (getHousehold(db, DEMO_HOUSEHOLD_ID)) return;
+  if (getHousehold(db, DEMO_HOUSEHOLD_ID)) {
+    // Backfill cosmetic additions for an existing goal, without changing financial records.
+    const goal = getActiveGoal(db, DEMO_HOUSEHOLD_ID);
+    if (goal) awardTierMilestones(db, goal, clock.iso());
+    return;
+  }
   transaction(db, () => {
     const at = clock.iso();
     const d = EXAMPLE_DEFAULTS;
@@ -240,6 +246,12 @@ export function awardTierMilestones(db, goal, at) {
       const result = insert.run(goal.householdId, goal.id, `tier:${tier.index}`, `${tier.name} raised`,
         `${tier.percent}% of ${goal.name} reached (${formatCents(threshold, goal.currency)} tracked).`, at);
       if (result.changes) awarded.push(tier.index);
+    }
+  }
+  for (const reward of ESTATE_MILESTONES) {
+    if (progressCents >= milestoneCents(goal.targetCents, reward.percent)) {
+      insert.run(goal.householdId, goal.id, `estate:${reward.key}`, reward.name,
+        `${reward.percent}% of the tracked goal reached. ${reward.detail} Goal progress may include reported starting savings.`, at);
     }
   }
   return awarded;

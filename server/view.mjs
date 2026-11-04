@@ -6,6 +6,7 @@ import {
 } from './household.mjs';
 import { publicModes } from './config.mjs';
 import { MAX_CONTRIBUTION_CENTS, MIN_CONTRIBUTION_CENTS } from './payments/contributions.mjs';
+import { buildRewards } from '../src/core/rewards.js';
 
 const GOAL_KINDS = new Set(['starting_progress', 'contribution', 'refund', 'simulated_contribution', 'simulated_refund']);
 
@@ -35,6 +36,10 @@ export function buildState({ db, householdId, planner, contributions, config, st
   const position = positionForProgress(progress.progressCents, goal.targetCents);
   const currentTier = tierForProgress(progress.progressCents, goal.targetCents);
   const built = builtTier(achievements);
+  const rewards = buildRewards({
+    progress, targetCents: goal.targetCents, currency: goal.currency, achievements, builtTier: built,
+    gardenCount: gardenCount(achievements), paymentsMode: config.payments.mode,
+  });
   return {
     modes: publicModes(config),
     steward: steward ?? { available: false, paypalTools: false, model: null, paypalImplementation: null },
@@ -56,6 +61,7 @@ export function buildState({ db, householdId, planner, contributions, config, st
       builtTier: built,
       builtTierCommemorative: built > currentTier,
       gardens: gardenCount(achievements),
+      estateLevel: rewards.estateLevel,
       tiers: milestoneTargets(goal.targetCents).map((t) => ({ ...t, reachedNow: progress.progressCents >= t.targetCents, built: t.index <= built })),
       nextMilestone: nextMilestone(progress.progressCents, goal.targetCents),
       tierTitle: TIERS[built].title,
@@ -68,6 +74,7 @@ export function buildState({ db, householdId, planner, contributions, config, st
     contributions: contributions.contributions(goal.id),
     contributionLimits: { minCents: MIN_CONTRIBUTION_CENTS, maxCents: MAX_CONTRIBUTION_CENTS },
     achievements,
+    rewards,
     plan,
     acceptedPlanId: planner.accepted(goal.id)?.id ?? null,
     nextStep: planNextStep(planner.accepted(goal.id), entries),

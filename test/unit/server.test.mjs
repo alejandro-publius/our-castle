@@ -143,6 +143,29 @@ test('client-token domains follow PayPal\'s format: bare domain names only, none
   } finally { await s.close(); }
 });
 
+test('the public API cannot mark a bill provider-verified: extra flags are ignored and no verify route exists', async () => {
+  const s = await startServer();
+  try {
+    await setup(s);
+    const before = (await s.call('GET', '/api/state')).json;
+    assert.equal(before.rewards.billVerification.status, 'not_connected');
+    const posted = await s.call('POST', '/api/entries', {
+      kind: 'bill_paid', amountCents: 14200, label: 'SDG&E electricity bill',
+      verified: true, providerVerified: true, source: 'provider', provider: 'sdge', status: 'unlocked',
+    });
+    assert.equal(posted.status, 200);
+    const after = posted.json.state;
+    assert.equal(after.progress.progressCents, before.progress.progressCents, 'a bill never changes saved progress');
+    assert.equal(after.ledger.bills.at(-1).source, 'user-reported', 'the server records the bill as user-reported regardless of the request');
+    assert.equal(after.rewards.entries.find((r) => r.id === 'habit:garden').status, 'unlocked');
+    for (const id of ['bill:electricity', 'bill:water']) assert.equal(after.rewards.entries.find((r) => r.id === id).status, 'connection_required');
+    assert.ok(after.rewards.entries.every((r) => r.providerVerified === false));
+    for (const path of ['/api/rewards/bill:electricity/verify', '/api/bills/verify', '/api/rewards']) {
+      assert.equal((await s.call('POST', path, { verified: true })).status, 404, `${path} does not exist`);
+    }
+  } finally { await s.close(); }
+});
+
 test('webhook route skips the browser origin check but requires PayPal signature verification', async () => {
   const s = await startServer({ sandbox: true, paypalOptions: { webhookVerification: 'FAILURE' } });
   try {
