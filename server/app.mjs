@@ -9,6 +9,7 @@ import {
 import { PlanInputError } from './planner/basis.mjs';
 import { createPlanner } from './planner/index.mjs';
 import { createContributionService } from './payments/contributions.mjs';
+import { createSteward } from './steward/index.mjs';
 import { buildState } from './view.mjs';
 import { publicModes } from './config.mjs';
 
@@ -20,6 +21,11 @@ const MIME = {
 };
 const STATIC_FILES = new Set(['index.html', 'app.css', 'art-preview.html', 'art-preview.css']);
 const STATIC_PREFIXES = ['src/', 'assets/', 'vendor/', 'references/'];
+// Installed browser libraries served from node_modules by exact path (nothing else there is reachable).
+const PACKAGE_FILES = new Map([
+  ['vendor/ag-grid/ag-grid-community.min.js', 'node_modules/ag-grid-community/dist/ag-grid-community.min.js'],
+  ['vendor/ag-grid/LICENSE.txt', 'node_modules/ag-grid-community/LICENSE.txt'],
+]);
 const LOCAL_HOSTS = new Set(['localhost', '127.0.0.1', '[::1]']);
 const MAX_BODY = 64 * 1024;
 const PAYPAL_SOURCES = 'https://*.paypal.com https://*.paypalobjects.com https://*.braintreegateway.com https://*.braintree-api.com https://*.venmo.com';
@@ -83,14 +89,21 @@ function checkHostAndOrigin(req, { write }) {
 
 const str = (v) => (typeof v === 'string' ? v : undefined);
 
-export function createApp({ config, db, clock, paypal = null, aiProvider = null, root }) {
+export function createApp({ config, db, clock, paypal = null, aiProvider = null, stewardAi = null, paypalTools = null, stewardFetch, root }) {
   ensureDemoHousehold(db, clock);
   const planner = createPlanner({ db, clock, provider: aiProvider });
   const contributions = createContributionService({ db, clock, mode: config.payments.mode, paypal, webhookId: config.payments.webhookId });
   const householdId = DEMO_HOUSEHOLD_ID;
+  const steward = createSteward({ db, contributions, householdId, ai: stewardAi, paypalTools, fetch: stewardFetch, clock });
   const indexHtml = readFileSync(path.join(root, 'index.html'), 'utf8');
   const csp = contentSecurityPolicy(inlineScriptHashes(indexHtml), config.payments.mode);
-  const state = () => buildState({ db, householdId, planner, contributions, config });
+  const stewardInfo = {
+    available: steward.available,
+    paypalTools: steward.paypalToolsAvailable,
+    model: stewardAi?.model ?? null,
+    paypalImplementation: paypal?.implementation ?? null,
+  };
+  const state = () => buildState({ db, householdId, planner, contributions, config, steward: stewardInfo });
   const goalId = () => getActiveGoal(db, householdId).id;
 
   // Each route returns a JSON body. Mutations return the fresh state so the board can update at once.
@@ -127,6 +140,7 @@ export function createApp({ config, db, clock, paypal = null, aiProvider = null,
       const plan = planner.accept({ householdId, goalId: goalId(), planId: params[0] });
       return { status: 'ok', plan, state: state() };
     }],
+    ['POST', '/api/steward', async ({ body }) => steward.ask({ question: body.question, memberId: str(body.memberId), focusOrderId: str(body.focusOrderId) })],
     ['POST', '/api/entries', ({ body }) => {
       const result = addSelfReportedEntry(db, { householdId, goalId: goalId(), kind: body.kind, amountCents: body.amountCents, label: body.label, memberId: str(body.memberId) }, clock);
       return { ...result, state: state() };
@@ -143,7 +157,7 @@ export function createApp({ config, db, clock, paypal = null, aiProvider = null,
     }],
     ['POST', '/api/paypal/orders', async ({ body }) => {
       const created = await contributions.createPayPalOrder(contributionInput(body));
-      return { orderId: created.orderId, contribution: created.contribution };
+      return { orderId: created.orderId, approveUrl: created.approveUrl, contribution: created.contribution };
     }],
     ['POST', /^\/api\/paypal\/orders\/([\w-]+)\/capture$/, async ({ body, params }) => {
       const result = await contributions.capturePayPalOrder({ providerOrderId: params[0], householdId: str(body.householdId), goalId: str(body.goalId) });
@@ -205,8 +219,9 @@ export function createApp({ config, db, clock, paypal = null, aiProvider = null,
   async function serveStatic(req, res, pathname) {
     let relative;
     try { relative = decodeURIComponent(pathname === '/' ? '/index.html' : pathname).slice(1); } catch { relative = ''; }
-    const allowed = STATIC_FILES.has(relative) || STATIC_PREFIXES.some((p) => relative.startsWith(p));
-    const file = path.resolve(root, relative);
+    const packaged = PACKAGE_FILES.get(relative);
+    const allowed = Boolean(packaged) || STATIC_FILES.has(relative) || STATIC_PREFIXES.some((p) => relative.startsWith(p));
+    const file = path.resolve(root, packaged ?? relative);
     if (!allowed || relative.split('/').some((part) => part.startsWith('.') || part === '') || !file.startsWith(root)) {
       return sendJson(res, 404, { error: { code: 'not_found', message: 'Not found' } });
     }
@@ -267,5 +282,5 @@ export function createApp({ config, db, clock, paypal = null, aiProvider = null,
     }
   }
 
-  return { handler, planner, contributions, state };
+  return { handler, planner, contributions, steward, state };
 }

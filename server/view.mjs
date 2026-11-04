@@ -25,7 +25,7 @@ function planNextStep(plan, entries) {
   return { week: null, date: null, plannedCents: 0, dueCents: 0, contributedSinceCents: since, complete: true };
 }
 
-export function buildState({ db, householdId, planner, contributions, config }) {
+export function buildState({ db, householdId, planner, contributions, config, steward = null }) {
   const household = getHousehold(db, householdId);
   const goal = getActiveGoal(db, householdId);
   const progress = progressFor(db, goal.id);
@@ -37,6 +37,7 @@ export function buildState({ db, householdId, planner, contributions, config }) 
   const built = builtTier(achievements);
   return {
     modes: publicModes(config),
+    steward: steward ?? { available: false, paypalTools: false, model: null, paypalImplementation: null },
     household,
     members: getMembers(db, householdId),
     goal,

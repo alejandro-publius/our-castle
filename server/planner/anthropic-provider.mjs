@@ -10,6 +10,18 @@ export class PlannerProviderError extends Error {
   }
 }
 
+/** Translate SDK errors (most specific first) into typed, user-presentable provider errors. */
+export function mapAnthropicError(error) {
+  if (error instanceof Anthropic.AuthenticationError || error instanceof Anthropic.PermissionDeniedError) {
+    return new PlannerProviderError('auth', 'The AI provider rejected the API key in the server .env file.', { status: error.status });
+  }
+  if (error instanceof Anthropic.RateLimitError) return new PlannerProviderError('rate_limited', 'The AI provider is rate limiting requests. Try again shortly.', { status: 429 });
+  if (error instanceof Anthropic.BadRequestError) return new PlannerProviderError('bad_request', `The AI provider rejected the request: ${error.message}`, { status: 400 });
+  if (error instanceof Anthropic.APIConnectionError) return new PlannerProviderError('network', 'Could not reach the AI provider.', {});
+  if (error instanceof Anthropic.APIError) return new PlannerProviderError('provider_error', `The AI provider returned an error (${error.status ?? 'unknown'}).`, { status: error.status });
+  return error;
+}
+
 /** JSON schema for structured output. Only keywords the structured-outputs feature supports. */
 export const PLAN_SCHEMA = Object.freeze({
   type: 'object',
@@ -118,14 +130,7 @@ export function createAnthropicPlanner({ apiKey, model, fetch, timeoutMs = 120_0
           messages: [{ role: 'user', content: buildUserPrompt(basis) }],
         });
       } catch (error) {
-        if (error instanceof Anthropic.AuthenticationError || error instanceof Anthropic.PermissionDeniedError) {
-          throw new PlannerProviderError('auth', 'The AI provider rejected the API key in the server .env file.', { status: error.status });
-        }
-        if (error instanceof Anthropic.RateLimitError) throw new PlannerProviderError('rate_limited', 'The AI provider is rate limiting requests. Try again shortly.', { status: 429 });
-        if (error instanceof Anthropic.BadRequestError) throw new PlannerProviderError('bad_request', `The AI provider rejected the request: ${error.message}`, { status: 400 });
-        if (error instanceof Anthropic.APIConnectionError) throw new PlannerProviderError('network', 'Could not reach the AI provider.', {});
-        if (error instanceof Anthropic.APIError) throw new PlannerProviderError('provider_error', `The AI provider returned an error (${error.status ?? 'unknown'}).`, { status: error.status });
-        throw error;
+        throw mapAnthropicError(error);
       }
       if (response.stop_reason === 'refusal') throw new PlannerProviderError('refusal', 'The AI provider declined to write this plan.');
       if (response.stop_reason === 'max_tokens') throw new PlannerProviderError('truncated', 'The AI plan was cut off before it finished.');
