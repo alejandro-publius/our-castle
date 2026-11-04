@@ -43,7 +43,6 @@
             <button type="button" id="pixel-toggle" class="chip" aria-pressed="true">Pixel art</button>
           </div>
         </div>
-        <p id="world-preview" class="world-preview" hidden><strong id="preview-title"></strong><span id="preview-note"></span><button type="button" id="end-preview" aria-describedby="preview-title preview-note">Return to your realm</button></p>
         <div class="world-navigation" role="group" aria-label="Explore the estate" aria-describedby="view-hint">
           <button type="button" class="chip" data-view="out" aria-label="Zoom out">−</button>
           <button type="button" class="chip" data-view="in" aria-label="Zoom in">+</button>
@@ -51,6 +50,7 @@
           <button type="button" class="chip" data-view="right" aria-label="Turn the estate right">↷</button>
           <button type="button" class="chip" data-view="reset">Reset view</button>
           <button type="button" class="chip" data-view="overview">Whole realm</button>
+          <button type="button" class="chip" id="view-deed" aria-describedby="realm-focus-status" hidden>View deed</button>
           <span id="view-hint">Drag to turn · Shift-drag or two fingers to pan · scroll or pinch to zoom</span>
         </div>
         <!-- Cosmetic light and weather for the world only. Nothing here touches money, progress or the server. -->
@@ -126,7 +126,6 @@
           <button type="button" role="tab" id="tab-plan" aria-controls="panel-plan" aria-selected="false" tabindex="-1"><span class="step-n">2</span> Plan</button>
           <button type="button" role="tab" id="tab-give" aria-controls="panel-give" aria-selected="false" tabindex="-1"><span class="step-n">3</span> Contribute</button>
           <button type="button" role="tab" id="tab-ledger" aria-controls="panel-ledger" aria-selected="false" tabindex="-1"><span class="step-n">4</span> Ledger</button>
-          <button type="button" role="tab" id="tab-rewards" aria-controls="panel-rewards" aria-selected="false" tabindex="-1"><span class="step-n">5</span> Rewards</button>
         </div>
 
         <!-- 1. House: solo or family, name and crest -->
@@ -290,23 +289,7 @@
             <button type="button" class="link-button" id="reset-demo">Reset the example household</button>
           </div>
         </section>
-        <section class="panel parchment" id="panel-rewards" role="tabpanel" aria-labelledby="tab-rewards" hidden>
-          <p class="eyebrow ink">An estate built together</p>
-          <h3 id="rewards-heading" tabindex="-1">Every milestone adds something</h3>
-          <p class="lede">Grow from a timber cottage to a castle and a living village. Each addition shows its condition and where the progress comes from.</p>
-          <p class="reward-evidence-note" id="reward-evidence-note"></p>
-          <section class="deed-collection" aria-labelledby="deeds-title">
-            <h4 id="deeds-title">District deeds</h4>
-            <p class="fine">A deed card marks each area your household has opened. Open one to see what stands there, who lives there and what earned it.</p>
-            <ul class="deed-list" id="deed-list"></ul>
-          </section>
-          <div id="reward-list" class="reward-list"></div>
-          <details class="reward-proof">
-            <summary>What counts as a confirmed bill?</summary>
-            <p>A connected bill provider must confirm the right household bill and its payment status. A bill you type here is recorded by you. Paying a bill never adds to your savings total.</p>
-            <p>SDG&amp;E accepts PayPal through My Energy Center. Our Castle does not yet have a connection to confirm your SDG&amp;E bills.</p>
-          </details>
-        </section>
+
       </aside>
     </main>
 
@@ -316,7 +299,7 @@
     </footer>
   </div>
   <script type="module" src="src/app/main.js"></script>
-  <!-- A district deed: shown when the server newly opens an area, and reopened from Rewards. It never writes anything. -->
+  <!-- A district deed: shown when the server newly opens an area, and reopened from the map. It never writes anything. -->
   <dialog id="deed-dialog" class="deed-dialog" aria-labelledby="deed-name" aria-describedby="deed-earned">
     <article class="deed" id="deed">
       <div class="deed-paper">

@@ -3,6 +3,7 @@
 Start here to run, evaluate or present Our Castle. State as of **November 4, 2026**, on the local branch `expansion/wider-estate`:
 
 - **App:** the woodland realm is `ce43a0f`; the clearer family journey is `2a18bc5`, with the lazy-Ledger focus follow-up at `ecc7cc5`. District-deed cards are `da602b8`; time, rain and optional city weather are `feada574`; destination exploration language is `78033cc`. All are promoted to the primary local branch. The earlier `7468b57` island layout and preserved clips are historical.
+- **Interface:** four journey steps (House, Plan, Contribute, Ledger). The owner removed the Rewards catalogue and future-tier tour banners. Unlock cards remain automatic; select an earned district and use View deed to reopen its card. A completed goal points directly to the castle.
 - **Not pushed:** the GitHub `main` branch still holds only the original concept handoff (`5cf8363`), so **cloning GitHub does not give you this prototype**. Review it from the owner's checkout or from the private offline review kit (section 1).
 - **Status:** the repository is private, everything runs against the PayPal **sandbox**, and no hackathon entry has been submitted.
 
@@ -10,7 +11,7 @@ Start here to run, evaluate or present Our Castle. State as of **November 4, 202
 | --- | --- |
 | The running app (owner's Mac) | http://localhost:3010 |
 | Current woodland/family review draft, 2:51 | [MP4](demos/woodland-review/our-castle-family-woodland-review-draft.mp4), [local player](demos/woodland-review/review.html), [editable kit](demos/woodland-review/README.md). The approved 24-second sandbox insert at 2:17–2:41 remains unfilmed; private, not submitted |
-| Current gameplay demo, 17.60 s | [MP4](demos/gameplay/our-castle-gameplay-demo.mp4), [cut list and source notes](demos/gameplay/README.md). Actual isolated example UI with current destination language, court, night and rain |
+| Recorded gameplay demo, 17.60 s | [MP4](demos/gameplay/our-castle-gameplay-demo.mp4), [cut list and source notes](demos/gameplay/README.md). Actual isolated example UI at `78033cc`, before the Rewards catalogue was deleted; court, night and rain |
 | New time/weather preview, 18.04 s | [MP4](demos/atmosphere/our-castle-time-weather-preview.mp4), [source notes and timeline](demos/atmosphere/README.md). Actual example UI; manual lighting/rain, no payment or live-weather footage |
 | Earlier review draft, historical visuals | [2:36.36 kit](demos/judge-review/README.md), preserved unchanged |
 | Historical 36-second world clip (silent, example mode) | [`docs/demos/our-castle-connected-realm.mp4`](demos/our-castle-connected-realm.mp4) ([provenance](demos/README.md)). Tracked in this private branch; not uploaded or published |
@@ -108,10 +109,10 @@ The kit also contains the finished clip at `docs/demos/our-castle-connected-real
 | Steward `get_order` reconciliation of a household order ("PayPal and the ledger agree.") | **Not verified live**; covered by unit tests with doubles | Needs one in-app payment |
 | Ledger tab's "Refund in sandbox" button | **Not verified live** | The same in-app payment can test it |
 | Webhooks | **Not verified live**; signature verification is implemented | Needs a public tunnel and `PAYPAL_WEBHOOK_ID` |
-| Connected realm, rewards, court, previews, keepsakes | **Working**, in example mode and against test doubles | At `7468b57`: 104 unit tests passed, 1 skipped; 43 browser cases passed, 1 skipped ([VALIDATION.md](VALIDATION.md)). Not rerun for this documentation change |
+| Connected realm, rewards, court, keepsakes | **Working**, in example mode and against test doubles | At `7468b57`: 104 unit tests passed, 1 skipped; 43 browser cases passed, 1 skipped ([VALIDATION.md](VALIDATION.md)). Not rerun for this documentation change |
 | Bill-provider verification (e.g. SDG&E) | **Not built.** No provider is connected; bill rewards stay "Needs a provider connection" | [BILL-VERIFICATION-RESEARCH.md](BILL-VERIFICATION-RESEARCH.md) |
 
-**Three kinds of money, never mixed.** The Rewards tab's evidence line names the source of every dollar:
+**Three kinds of money, never mixed.** Payment records, the goal summary and district deeds name the source of every dollar:
 
 - **Confirmed by PayPal sandbox captures:** test money. It counts only after the server captures the order and checks amount, currency, household and goal with PayPal. A redirect or click alone never counts.
 - **Simulated example payments:** example mode only, labeled "simulated" on every badge, receipt and ledger line. This is what the finished clip shows.

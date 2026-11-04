@@ -12,7 +12,7 @@ import { contributionProjection, isCounted, nextAction } from '../core/journey.j
 import { districtDeed, newlyOpenedDistricts } from '../core/deeds.js';
 import { TIME_MODES, WEATHER_MODES, resolveAtmosphere } from '../core/atmosphere.js';
 import { WEATHER_TTL_MS, createWeatherClient } from './local-weather.js';
-import { REALM_DISTRICTS, realmAccess, districtById, homeDistrict } from '../core/realm.js';
+import { REALM_DISTRICTS, realmAccess, districtById } from '../core/realm.js';
 
 // ---------- small helpers ----------
 const $ = (selector, root = document) => root.querySelector(selector);
@@ -79,7 +79,6 @@ const ui = {
   celebrationTimer: null,
   ledgerFilter: 'all',
   stewardBusy: false,
-  preview: null,
   receiptReviewed: null,
   next: null,
   navigation: 0,
@@ -262,7 +261,7 @@ async function boot() {
 function resumeTab() {
   const chosen = sessionTab.get();
   if (!state.household.setupComplete) return 'house';
-  return TABS.includes(chosen) ? chosen : ui.next?.step ?? 'house';
+  return TABS.includes(chosen) ? chosen : TABS.includes(ui.next?.step) ? ui.next.step : 'ledger';
 }
 
 // Announce only additions earned between two authoritative server states for the same goal (see rewards.js).
@@ -274,7 +273,6 @@ function applyState(next, { animate = true, result = null } = {}) {
   const opened = newlyOpenedDistricts(state, next);
   const scope = { householdId: next.household.id, goalId: next.goal.id };
   state = next;
-  ui.preview = null;
   if (!persona()) ui.personaId = state.members.find((m) => m.role === 'adult')?.id ?? state.members[0]?.id;
   renderHeader();
   renderQuest();
@@ -285,7 +283,6 @@ function applyState(next, { animate = true, result = null } = {}) {
   renderPlan();
   renderGive();
   renderLedger();
-  renderRewards();
   renderTabs();
   renderFooter();
   bus.emit('state:applied', { result, added: added.map((r) => r.id) });
@@ -360,6 +357,13 @@ function revealFocus(target, keyboard) {
 function openNextStep(e) {
   const next = ui.next;
   if (!next) return;
+  if (next.step === 'realm') {
+    ui.navigation++;
+    const district = $(next.target);
+    district?.focus({ preventScroll: true });
+    district?.click();
+    return;
+  }
   selectTab(next.step, { focus: false });
   let target = $(next.target);
   if (!target || target.hidden || target.closest('[hidden]')) target = $(`#panel-${next.step} h3`);
@@ -414,8 +418,6 @@ function renderBoard({ animate, result, added = [] }) {
   const built = TIERS[board.builtTier];
   $('#board-title').textContent = 'Your connected realm';
   $('#realm-progress-summary').textContent = `${goal.name} · ${money(progress.progressCents)} of ${money(goal.targetCents)} tracked`;
-  $('#world-preview').hidden = true;
-  $('#world').dataset.preview = 'false';
   let status = board.position >= ROUTE_LENGTH
     ? `Travelers are home at the castle gate (space ${ROUTE_LENGTH} of ${ROUTE_LENGTH}). `
     : `Travelers on space ${board.position} of ${ROUTE_LENGTH} · ${board.spaceName}. `;
@@ -446,42 +448,6 @@ function renderBoard({ animate, result, added = [] }) {
   });
 }
 
-// ---------- Rewards and destination exploration ----------
-const REWARD_LABELS = { unlocked: 'Unlocked', keepsake: 'Keepsake', locked: 'Locked', connection_required: 'Needs a provider connection' };
-function renderDeedList() {
-  const labels = { earned: 'Earned', keepsake: 'Keepsake', locked: 'Locked' };
-  $('#deed-list').replaceChildren(...state.rewards.realm.districts.map((district) => {
-    const deed = districtDeed(state, district.id);
-    if (!deed) return null;
-    return h('li', { class: `deed-entry deed-${deed.status}`, style: `--deed:var(--${deed.colour})` },
-      h('span', { class: 'deed-entry-name' }, h('strong', {}, deed.name), h('small', {}, labels[deed.status])),
-      deed.status === 'locked'
-        ? h('span', { class: 'deed-entry-condition' }, deed.condition)
-        : h('button', { type: 'button', 'data-deed': deed.id, onclick: (e) => openDeedFromCollection(deed.id, e.currentTarget) }, 'View deed'));
-  }));
-}
-function renderRewards() {
-  if (!state.rewards) { $('#reward-list').replaceChildren(h('p', { class: 'fine' }, 'Restart the server to load rewards.')); return; }
-  renderDeedList();
-  $('#reward-evidence-note').textContent = `${state.rewards.billVerification.note} ${state.rewards.paymentEvidenceLabel}`;
-  $('#reward-list').replaceChildren(...state.rewards.entries.map((reward) => {
-    const card = h('article', { class: `reward-card reward-${reward.status}`, 'data-reward': reward.id, 'data-status': reward.status },
-      h('div', { class: 'reward-heading' }, h('h4', {}, reward.name), h('span', { class: 'reward-state' }, REWARD_LABELS[reward.status] ?? reward.status)),
-      h('p', { class: 'reward-detail' }, reward.detail),
-      h('p', { class: 'reward-condition' }, `Unlocks when: ${reward.condition}`));
-    if (reward.court) card.append(h('p', { class: 'reward-court' }, h('strong', {}, `${reward.court.capacity} wandering guests. `), reward.court.description));
-    if (reward.source === 'goal_progress' && reward.requiredCents > 0) {
-      card.append(h('p', { class: 'reward-progress' }, 'Progress: ', h('strong', {}, money(reward.progressCents)), ` of ${money(reward.requiredCents)}`,
-        reward.remainingCents > 0 ? ` · ${money(reward.remainingCents)} to go` : ' · reached'));
-    }
-    if (reward.source === 'self_reported') card.append(h('p', { class: 'reward-progress' }, `${reward.count} of 4 garden beds planted`));
-    card.append(h('p', { class: 'reward-source' }, `Evidence: ${reward.sourceLabel}`));
-    if (reward.status === 'keepsake') card.append(h('p', { class: 'fine' }, 'Reached earlier and kept after a refund. Current goal progress is shown above and in the ledger.'));
-    card.append(h('button', { type: 'button', class: 'reward-preview', onclick: (e) => previewReward(reward, { keyboard: e.detail === 0 }) },
-      ['unlocked', 'keepsake'].includes(reward.status) ? 'Visit' : 'Explore'));
-    return card;
-  }));
-}
 // Bring the realm into view (as before: the top of the board) without stranding keyboard focus. `keep` is the control
 // that has focus afterwards; the scroll is limited so that it stays fully inside the viewport. A keyboard activation
 // (`instant`) jumps straight there: focus has already moved, so the focused control must be on screen at once, even when
@@ -491,39 +457,6 @@ function revealRealm(keep, { instant = false } = {}) {
   let delta = $('.board-shell').getBoundingClientRect().top - margin;
   if (r) delta = Math.min(Math.max(delta, r.bottom + margin - innerHeight), r.top - margin);
   if (Math.abs(delta) >= 1) window.scrollBy({ top: delta, behavior: instant || matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' });
-}
-
-// Exploration only redraws the board. Access and progress stay authoritative; no server writes.
-function previewReward(reward, { keyboard = false } = {}) {
-  if (!scene) return;
-  ui.preview = reward.id;
-  $('#world-preview').hidden = false;
-  const previewTier = reward.previewTier ?? state.board.builtTier;
-  const previewCourt = courtForTier(previewTier);
-  const districtId = reward.id === 'estate:market' ? 'market'
-    : ['water', 'habit-garden'].includes(reward.previewFeature) ? 'garden' : homeDistrict(previewTier).id;
-  const district = state.rewards.realm.districts.find((d) => d.id === districtId);
-  const destination = reward.id.startsWith('home:') ? district.name : reward.name;
-  const access = reward.status === 'unlocked' ? 'Open' : reward.status === 'keepsake' ? 'Keepsake' : 'Locked';
-  $('#preview-title').textContent = `${destination} · ${previewCourt.capacity} guests`;
-  $('#preview-note').textContent = reward.status === 'keepsake'
-    ? 'Keepsake · A milestone your household reached earlier.'
-    : `${access} · ${reward.condition}${reward.remainingCents > 0 ? ` · ${money(reward.remainingCents)} to go` : ''}.`;
-  const royals = previewCourt.princesses.length;
-  $('#board-status').textContent = `Court · ${previewCourt.capacity} wandering guests${royals ? `, including ${royals} princess${royals === 1 ? '' : 'es'}` : ''}.`;
-  $('#world').dataset.preview = 'true';
-  $('#board-title').textContent = ['unlocked', 'keepsake'].includes(reward.status) ? destination : `Explore ${destination}`;
-  scene.update({
-    builtTier: previewTier,
-    estateLevel: reward.previewEstateLevel ?? state.board.estateLevel,
-    gardens: reward.previewFeature === 'habit-garden' ? 4 : state.board.gardens,
-    previewFeature: reward.previewFeature ?? null,
-  }, { animate: false }).then(()=>{
-    scene.focusDistrict(districtId);
-  });
-  // The reward card is far below the board: move focus to the preview's own exit so it is visible and one key away.
-  $('#end-preview').focus({ preventScroll: true });
-  revealRealm($('#end-preview'), { instant: keyboard });
 }
 
 function districtCondition(district) {
@@ -549,6 +482,12 @@ function syncRealmMarkers({focus,points}){
   if(!state)return;
   const regions=realmAccess({builtTier:state.board.builtTier,estateLevel:state.board.estateLevel,gardens:state.board.gardens});
   const d=regions.find(d=>d.id===focus);
+  const deedButton = $('#view-deed');
+  deedButton.hidden = !d?.open;
+  if (d?.open) {
+    deedButton.dataset.district = d.id;
+    deedButton.setAttribute('aria-label', `View deed for ${d.name}`);
+  } else delete deedButton.dataset.district;
   const message=focus?`${d.name} · ${d.open?'Open district':'Locked'} · ${districtCondition(d)}`:`Whole realm · ${regions.filter(d=>d.open).length}/6 districts earned. Select a locked district to inspect its condition.`;
   if($('#realm-focus-status').textContent!==message)$('#realm-focus-status').textContent=message;
 }
@@ -578,7 +517,7 @@ function celebrate(awarded, added = []) {
 // Queue newly opened districts after the board animation. Each is re-checked against the current household, goal and
 // access, so a later state (a reset, another goal) cannot show a stale card.
 // An open dialog is never closed and reopened here: its close event arrives later and would clear the new deeds. New
-// deeds join an open queue, or replace a deed opened from the collection, in place; focus later returns to the origin
+// deeds join an open queue, or replace a deed opened from the map, in place; focus later returns to the origin
 // that opened the dialog first.
 function queueDeeds(ids, scope) {
   if (state.household.id !== scope.householdId || state.goal.id !== scope.goalId) return;
@@ -591,9 +530,10 @@ function queueDeeds(ids, scope) {
   else Object.assign(d, { queue: fresh, index: 0, mode: 'new', origin: document.activeElement, visiting: false });
   showDeed();
 }
-function openDeedFromCollection(id, origin) {
+function openDeedFromMap(id, origin) {
+  if (!districtDeed(state, id)?.open) return;
   const dialog = $('#deed-dialog');
-  Object.assign(ui.deeds, { queue: [id], index: 0, mode: 'collection', visiting: false, ...(dialog.open ? {} : { origin }) });
+  Object.assign(ui.deeds, { queue: [id], index: 0, mode: 'map', visiting: false, ...(dialog.open ? {} : { origin }) });
   showDeed();
 }
 function showDeed() {
@@ -612,7 +552,7 @@ function renderDeed() {
   card.style.setProperty('--deed', `var(--${deed.colour})`);
   $('#deed-kicker').textContent = d.mode === 'new' ? 'New area unlocked' : deed.status === 'keepsake' ? 'District deed · keepsake' : 'District deed';
   $('#deed-name').textContent = deed.name;
-  $('#deed-count').textContent = d.queue.length > 1 ? `Deed ${d.index + 1} of ${d.queue.length} · all are kept in Rewards` : '';
+  $('#deed-count').textContent = d.queue.length > 1 ? `Deed ${d.index + 1} of ${d.queue.length}` : '';
   const art = $('#deed-art');
   if (art.getAttribute('src') !== deed.art) art.setAttribute('src', deed.art);
   art.alt = `Pixel portrait of ${deed.name}`; // an illustration of the area, not a live view of the earned realm
@@ -633,12 +573,11 @@ function renderDeed() {
   $('#deed-next').textContent = more ? `Next deed (${d.index + 2} of ${d.queue.length})` : 'Next deed';
   $('#deed-close').textContent = more ? 'Close all' : 'Close';
 }
-// Visit: leave any art preview, focus the district on the map and keep keyboard focus on its control. No writes.
+// Visit the earned district and keep keyboard focus on its map control. No writes.
 function visitDeed(e) {
   const id = ui.deeds.queue[ui.deeds.index];
   ui.deeds.visiting = true;
   $('#deed-dialog').close();
-  if (ui.preview) { ui.preview = null; renderBoard({ animate: false, result: null }); }
   const button = $(`#realm-districts [data-district="${CSS.escape(id)}"]`);
   if (!button) return;
   scene?.focusDistrict(id);
@@ -646,7 +585,7 @@ function visitDeed(e) {
   button.focus({ preventScroll: true });
   revealRealm(button, { instant: e?.detail === 0 });
 }
-// Closing (button or Escape) returns focus to where it was, or to the same deed in the collection if that re-rendered.
+// Closing (button or Escape) returns focus to its map button, or the district if that button became hidden.
 // A close event that arrives after the dialog was opened again belongs to the earlier deed and is ignored.
 function deedClosed() {
   if ($('#deed-dialog').open) return;
@@ -655,7 +594,7 @@ function deedClosed() {
   Object.assign(d, { queue: [], index: 0, visiting: false });
   if (visiting) return;
   let target = d.origin;
-  if (!target?.isConnected || target.closest('[hidden]')) target = d.mode === 'collection' ? $(`#deed-list [data-deed="${CSS.escape(id ?? '')}"]`) : null;
+  if (!target?.isConnected || target.closest('[hidden]')) target = $(`#realm-districts [data-district="${CSS.escape(id ?? '')}"]`);
   (target ?? $('#next-step-go')).focus();
 }
 
@@ -1259,7 +1198,7 @@ async function logEntry(event, kind) {
 }
 
 // ---------- tabs, footer, events ----------
-const TABS = ['house', 'plan', 'give', 'ledger', 'rewards'];
+const TABS = ['house', 'plan', 'give', 'ledger'];
 function selectTab(name, { focus = true, remember = true } = {}) {
   ui.tab = name;
   ui.navigation++; // a pending Ledger reveal stands down once the family navigates again
@@ -1300,6 +1239,10 @@ function bindEvents() {
   // Selecting a district keeps focus on the button that was used. The focused map is taller on phones, so set that
   // layout before measuring, then reveal the realm without scrolling the button out of view.
   for(const root of [$('#realm-districts'),$('#realm-markers')])root.addEventListener('click',e=>{const button=e.target.closest('[data-district]');if(button&&scene){scene.focusDistrict(button.dataset.district);$('.realm-map').dataset.focused='true';revealRealm(button,{instant:e.detail===0});}});
+  $('#view-deed').addEventListener('click', (e) => {
+    const id = e.currentTarget.dataset.district;
+    if (id) openDeedFromMap(id, e.currentTarget);
+  });
   $('#tabs').addEventListener('click', (e) => { const b = e.target.closest('[role="tab"]'); if (b) selectTab(b.id.slice(4), { focus: false }); });
   $('#tabs').addEventListener('keydown', (e) => {
     const i = TABS.indexOf(ui.tab);
@@ -1320,13 +1263,6 @@ function bindEvents() {
     if (!action || !scene) return;
     e.preventDefault();
     scene.adjustView(action);
-  });
-  $('#end-preview').addEventListener('click', (e) => {
-    const origin = ui.preview ? $(`#reward-list [data-reward="${CSS.escape(ui.preview)}"] .reward-preview`) : null;
-    ui.preview = null;
-    renderBoard({ animate: false, result: null });
-    // This button is now hidden. A keyboard activation (detail 0) returns focus to the reward card it came from.
-    if (origin && e.detail === 0) origin.focus();
   });
   bus.on('scene:hop', (detail) => sound.cue('hop', detail));
   bus.on('scene:rise', (detail) => sound.cue('fanfare', detail));

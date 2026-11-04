@@ -59,8 +59,8 @@ export function nextAction(state, { persona = null, receipt = null, receiptRevie
     return step('found-house', 'house', 'Found your house', ['Choose solo or family, a house name and a crest. Nothing is paid here.'], 'Set up your house', '#house-heading');
   }
   if (progress.remainingCents <= 0) {
-    return step('goal-complete', 'rewards', 'The goal is complete', [`${money(progress.progressCents)} of ${money(goal.targetCents)} is tracked toward ${goal.name}. The castle stands.`],
-      'See your rewards', '#rewards-heading');
+    return step('goal-complete', 'realm', 'The goal is complete', [`${money(progress.progressCents)} of ${money(goal.targetCents)} is tracked toward ${goal.name}. The castle stands.`],
+      'Visit your castle', '#realm-districts [data-district="castle"]');
   }
   // A capture PayPal still reports as pending is the one unfinished payment a family can follow up.
   const pending = contributions.find((c) => c.status === 'pending');

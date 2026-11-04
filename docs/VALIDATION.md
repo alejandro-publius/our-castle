@@ -1,5 +1,17 @@
 # Validation
 
+## November 4, 2026: remove the Rewards catalogue; keep progression in the map
+
+The owner explicitly asked to delete the pictured Rewards panel and use less interface. The entire fifth tab and panel are removed: introduction, evidence banner, architectural catalogue, provider explainer, future-tier tour banner/exit and their unused rendering code/styles. Four journey tabs remain: House, Plan, Contribute, Ledger. The original world/models and automatic pixel unlock cards remain.
+
+Earned deeds reopen from a contextual **View deed** button when an owned district is selected on the map. It is hidden for locked districts and the whole-realm view. Cards retain their real status/evidence; visiting, opening and closing still do not write. The completed-goal next step now visits the castle directly. A remembered legacy Rewards tab falls back to a valid step.
+
+**Checks:** asset/palette/renderer/syntax check passed; 3/3 existing journey unit tests passed, including saved payment states and goal completion. All 28 applicable targeted browser cases passed across desktop and phone Chromium emulation, with 2 intentional device-project skips. Coverage: automatic unlock timing/queue/reload, pending/refund/re-crossing, opening/closing/visiting earned map deeds with no writes, arrival while another deed is open, 390/320 px layouts, reduced motion, stale tab recovery, completed-goal navigation, night/rain persistence, the earned court, route framing, milestone announcements/keepsakes and keyboard district focus.
+
+The initial batch had 25 passes, 2 skips and 3 failures: the new desktop completion scenario checked the deed before the long board walk ended; both estate scenarios still asserted a line in the deleted catalogue. The new scenario now waits for the existing board-settled condition; the obsolete text assertion was removed while retaining authoritative keepsake status, announcement and world assertions. Only those 3 failing cases were rerun, and all passed. Original logs/contexts remain ignored in `test-results/minimal-realm/`. No production-code fix was needed for those test expectations. The full suite, provider verifiers and paid calls were not run.
+
+Owner keys/database and approved rehearsal database hashes, permissions and timestamps remain unchanged. No existing server was restarted, and no PayPal order, payment, refund or paid AI call was made. Unit/browser simulated payments/refunds used only their isolated test fixtures. The old videos are preserved at their source commits and now documented as predating this deletion.
+
 ## November 4, 2026: game language for destination exploration
 
 The owner rejected the playable world's “Previewing a reward” and art-disclaimer language. The game now uses **Explore** for future rewards, **Visit** for earned rewards, the actual district name (for example **Explore Royal Citadel**), a short **Locked / Open / Keepsake** condition and **Return to your realm**. The court describes its guests and princesses directly. The footer keeps the artwork credit without linking to the historical art-reference tool. Contribution limit errors no longer call the game a prototype.

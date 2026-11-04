@@ -86,7 +86,7 @@ test('reaching the manor shows its deed after the board animation; Escape restor
   await expectNoDeed(page);
 });
 
-test('pending payments, refunds, re-crossing and art previews never create a deed; the collection reopens them', async ({ page }) => {
+test('pending payments, refunds and re-crossing never create a deed; earned map districts reopen them', async ({ page }) => {
   await ready(page);
   await foundHouse(page);
   await pay(page, '15.00', 'Simulate pending');
@@ -107,28 +107,24 @@ test('pending payments, refunds, re-crossing and art previews never create a dee
   await pay(page, '15.00');
   await expect(page.locator('#progress-amount')).toHaveText('$75.00');
   await expectNoDeed(page);
-  // Art previews never unlock.
-  await page.getByRole('tab', { name: /Rewards/ }).click();
-  await page.locator('[data-reward="home:castle"] .reward-preview').click();
-  await expect.poll(async () => (await scene(page)).tier).toBe(3);
+  // Locked districts keep their condition on the map and cannot open an earned deed.
+  await page.locator('#realm-districts [data-district="castle"]').click();
+  await expect(page.locator('#realm-focus-status')).toContainText('Royal Citadel · Locked · 100%');
+  await expect(page.locator('#view-deed')).toBeHidden();
   await expectNoDeed(page);
-  await page.getByRole('button', { name: 'Return to your realm' }).click();
-  await expectNoDeed(page);
-
-  // The collection: earned deeds reopen, locked ones show their exact condition.
-  await page.getByRole('tab', { name: /Rewards/ }).click();
-  const list = page.locator('#deed-list');
-  await expect(list.locator('li')).toHaveCount(6);
-  await expect(list.locator('li', { hasText: 'Royal Citadel' })).toContainText('Locked');
-  await expect(list.locator('li', { hasText: 'Royal Citadel' })).toContainText('Reach 100% of the shared goal ($300.00 tracked)');
-  await expect(list.locator('li', { hasText: 'Woodland Garden' })).toContainText('Record a bill you paid on time');
-  const view = list.locator('[data-deed="manor"]');
+  await page.locator('#realm-districts [data-district="garden"]').click();
+  await expect(page.locator('#realm-focus-status')).toContainText('Record an on-time bill habit');
+  await expect(page.locator('#view-deed')).toBeHidden();
+  // Earned deeds reopen directly from their district, with keyboard focus returned on Escape.
+  await page.locator('#realm-districts [data-district="manor"]').click();
+  const view = page.locator('#view-deed');
+  await expect(view).toBeVisible();
   await view.focus();
   await page.keyboard.press('Enter');
   await expect(page.locator('#deed-kicker')).toHaveText('District deed');
   await expect(page.locator('#deed-earned')).toHaveText('Earned: Reach 25% of the shared goal ($75.00 tracked)');
   await page.keyboard.press('Escape');
-  await expect(list.locator('[data-deed="manor"]')).toBeFocused();
+  await expect(view).toBeFocused();
 });
 
 test('several new areas queue one at a time, and Visit focuses the right district', async ({ page }) => {
@@ -137,7 +133,7 @@ test('several new areas queue one at a time, and Visit focuses the right distric
   await foundHouse(page);
   await pay(page, '135.00'); // $60 → $195: the Manor, the Market and the Keep
   await expect(dialog(page)).toHaveAttribute('open', '');
-  await expect(page.locator('#deed-count')).toHaveText('Deed 1 of 3 · all are kept in Rewards');
+  await expect(page.locator('#deed-count')).toHaveText('Deed 1 of 3');
   await expect(page.locator('#deed-name')).toHaveText('Manor Gardens');
   const before = writes.length;
   await page.getByRole('button', { name: 'Next deed (2 of 3)' }).click();
@@ -159,30 +155,30 @@ test('several new areas queue one at a time, and Visit focuses the right distric
   expect(writes.slice(before)).toEqual([]);
 });
 
-test('Visit from the collection leaves an art preview first', async ({ page }) => {
+test('a deed opened from the map visits the earned district with no write', async ({ page }) => {
+  const writes = trackWrites(page);
   await ready(page);
   await foundHouse(page);
   await pay(page, '15.00');
   await expect(dialog(page)).toHaveAttribute('open', '');
   await page.keyboard.press('Escape');
-  await page.getByRole('tab', { name: /Rewards/ }).click();
-  await page.locator('[data-reward="home:castle"] .reward-preview').click();
-  await expect(page.locator('#world-preview')).toBeVisible();
-  await page.locator('#deed-list [data-deed="manor"]').click();
+  await page.locator('#realm-districts [data-district="manor"]').click();
+  await page.locator('#view-deed').click();
+  const before = writes.length;
   await page.getByRole('button', { name: 'Visit Manor Gardens' }).click();
-  await expect(page.locator('#world-preview')).toBeHidden();
   await expect.poll(async () => (await scene(page)).tier).toBe(1);
   await expect(page.locator('#realm-districts [data-district="manor"]')).toBeFocused();
   expect((await scene(page)).view.focus).toBe('manor');
+  expect(writes.slice(before)).toEqual([]);
 });
 
-test('a new area that arrives while a collection deed is open replaces it in place without losing the queue', async ({ page }) => {
+test('a new area that arrives while a map deed is open replaces it in place without losing the queue', async ({ page }) => {
   await ready(page);
   await foundHouse(page);
   await pay(page, '15.00', 'Simulate pending');
   await expect(page.locator('#give-status')).toContainText('Pending');
-  await page.getByRole('tab', { name: /Rewards/ }).click();
-  await page.locator('#deed-list [data-deed="cottage"]').click();
+  await page.locator('#realm-districts [data-district="cottage"]').click();
+  await page.locator('#view-deed').click();
   await expect(page.locator('#deed-name')).toHaveText('Hearth Village');
   // The server's completion arrives while the deed is open (as a PayPal result can); the Ledger button is behind the
   // modal, so it is pressed by script here.
@@ -234,4 +230,30 @@ test.describe('with reduced motion', () => {
     await expect(dialog(page)).toHaveAttribute('open', '');
     expect(await page.locator('#deed').evaluate((el) => getComputedStyle(el).animationName)).toBe('none');
   });
+});
+
+
+test('four journey tabs recover an old Rewards selection and a completed goal visits the castle', async ({ page }) => {
+  await ready(page);
+  await foundHouse(page);
+  await page.evaluate(() => sessionStorage.setItem('our-castle:tab', 'rewards'));
+  await page.reload();
+  await page.waitForFunction(() => document.body.dataset.ready === 'true');
+  await expect(page.getByRole('tab')).toHaveCount(4);
+  await expect(page.locator('#tab-plan')).toHaveAttribute('aria-selected', 'true');
+  await expect(page.locator('#panel-rewards')).toHaveCount(0);
+  await expect(page.locator('#reward-list')).toHaveCount(0);
+  await pay(page, '240.00');
+  await expect(page.locator('#progress-amount')).toHaveText('$300.00');
+  // This jump walks all remaining spaces; wait for that animation before checking the queued cards.
+  await settled(page);
+  await expect(dialog(page)).toHaveAttribute('open', '');
+  await page.getByRole('button', { name: 'Close all' }).click();
+  await expect(page.locator('#next-step-go')).toHaveText('Visit your castle');
+  await page.locator('#next-step-go').focus();
+  await page.keyboard.press('Enter');
+  const castle = page.locator('#realm-districts [data-district="castle"]');
+  await expect(castle).toBeFocused();
+  await expect(castle).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.locator('#realm-focus-status')).toContainText('Royal Citadel · Open district');
 });

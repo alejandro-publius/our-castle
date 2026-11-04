@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { closeDeedsWhenTheyAppear } from './support/deeds.mjs';
 
-// The wider estate, reward view, previews and estate announcements, in example mode through the real server.
+// The wider estate and milestone announcements, in example mode through the real server.
 // These prove presentation and honesty rules; they do not prove any bill-provider integration (none exists).
 
 const ready = async (page) => {
@@ -82,56 +82,7 @@ test('the wider estate keeps every route space and the travelers visible and cle
   expect(errors).toEqual([]);
 });
 
-test('the Rewards tab shows each addition with its condition, exact progress and evidence source, and an honest bill boundary', async ({ page }) => {
-  await ready(page);
-  await page.getByRole('tab', { name: /Rewards/ }).click();
-  const card = (id) => page.locator(`[data-reward="${id}"]`);
-  await expect(card('home:cottage')).toHaveAttribute('data-status', 'unlocked');
-  await expect(card('estate:porch')).toHaveAttribute('data-status', 'unlocked');
-  await expect(card('home:manor')).toHaveAttribute('data-status', 'locked');
-  await expect(card('home:manor')).toContainText('Unlocks when: Reach 25% of the shared goal ($75.00 tracked)');
-  await expect(card('home:manor')).toContainText('Progress: $60.00 of $75.00 · $15.00 to go');
-  await expect(card('home:manor')).toContainText('Evidence: Goal ledger: $60.00 reported by you');
-  await expect(card('habit:garden')).toContainText('Recorded by you · not verified by any provider');
-  for (const id of ['bill:electricity', 'bill:water']) {
-    await expect(card(id)).toHaveAttribute('data-status', 'connection_required');
-    await expect(card(id)).toContainText('Needs a provider connection');
-  }
-  // Example mode says payments are simulated; no bill provider is claimed.
-  await expect(page.locator('#reward-evidence-note')).toContainText('Example-mode payments are simulated.');
-  await expect(page.locator('#reward-evidence-note')).toContainText('no bill provider is connected');
-  // No pretend verification control exists anywhere in the rewards view.
-  await expect(page.locator('#panel-rewards').getByRole('button', { name: /verify|connect|mark .*paid/i })).toHaveCount(0);
-});
 
-test('reward exploration only redraws the board: no server write, no announcement, and returning restores the earned estate', async ({ page, request }) => {
-  await ready(page);
-  const before = await (await request.get('/api/state')).json();
-  const writes = [];
-  page.on('request', (r) => { if (r.method() !== 'GET') writes.push(`${r.method()} ${r.url()}`); });
-  await startLog(page);
-  await page.getByRole('tab', { name: /Rewards/ }).click();
-  await page.locator('[data-reward="home:castle"] .reward-preview').click();
-  await expect(page.locator('#world-preview')).toBeVisible();
-  await expect(page.locator('#world-preview')).toContainText('Locked · Reach 100% of the shared goal ($300.00 tracked) · $240.00 to go.');
-  await expect.poll(async () => (await scene(page)).tier).toBe(3);
-  expect((await scene(page)).estateLevel).toBe(3);
-  await page.locator('[data-reward="bill:electricity"] .reward-preview').click();
-  await expect.poll(async () => (await scene(page)).previewFeature).toBe('electricity');
-  await expect(page.locator('#celebration')).toBeHidden();
-  expect(writes).toEqual([]);
-  expect(await appliedAdds(page)).toEqual([]);
-
-  const after = await (await request.get('/api/state')).json();
-  expect(after.achievements).toEqual(before.achievements);
-  expect(after.progress).toEqual(before.progress);
-  expect(after.rewards.entries.map((r) => [r.id, r.status])).toEqual(before.rewards.entries.map((r) => [r.id, r.status]));
-
-  await page.getByRole('button', { name: 'Return to your realm' }).click();
-  await expect.poll(async () => (await scene(page)).tier).toBe(0);
-  expect(await scene(page)).toMatchObject({ estateLevel: 1, previewFeature: null });
-  await expect(page.locator('#world-preview')).toBeHidden();
-});
 
 test('reaching 40% announces the village quarter once; a reload and a refund announce nothing new', async ({ page }) => {
   await ready(page);
@@ -151,8 +102,7 @@ test('reaching 40% announces the village quarter once; a reload and a refund ann
   await ready(page);
   await expect(page.locator('#celebration')).toBeHidden();
   await startLog(page);
-  await page.getByRole('tab', { name: /Rewards/ }).click();
-  await expect(page.locator('[data-reward="estate:market"]')).toHaveAttribute('data-status', 'unlocked');
+  expect(await page.evaluate(() => window.__ourCastle.state.rewards.entries.find((r) => r.id === 'estate:market').status)).toBe('unlocked');
 
   // Refund: progress falls below 40%; the quarter becomes a keepsake and no new reward is announced.
   await page.getByRole('tab', { name: /Ledger/ }).click();
@@ -165,7 +115,5 @@ test('reaching 40% announces the village quarter once; a reload and a refund ann
   expect(adds.flat()).toEqual([]);
   await expect(page.locator('#celebration')).toBeHidden();
   expect((await scene(page)).estateLevel).toBe(2);
-  await page.getByRole('tab', { name: /Rewards/ }).click();
-  await expect(page.locator('[data-reward="estate:market"]')).toHaveAttribute('data-status', 'keepsake');
-  await expect(page.locator('[data-reward="estate:market"]')).toContainText('kept after a refund');
+  expect(await page.evaluate(() => window.__ourCastle.state.rewards.entries.find((r) => r.id === 'estate:market').status)).toBe('keepsake');
 });

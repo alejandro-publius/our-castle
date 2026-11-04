@@ -12,3 +12,6 @@ Run `npm run check` before changing copied reference assets; update provenance d
 
 
 Product language: the playable world is a game, never an “art preview” or a “prototype” in user-facing headings, buttons or destination descriptions. Use Explore for future destinations, Visit for earned ones, the actual district name, the real unlock condition, and Return to your realm. Keep truthful sandbox/simulated payment labels, self-reported savings and connection-required bill status. Internal inspection flags and preserved historical references may retain their old names; do not turn copy changes into financial or entitlement changes.
+
+
+The Rewards catalogue and fifth journey tab were explicitly deleted by the owner. Keep the interface small: House, Plan, Contribute, Ledger, the world map and automatic unlock deeds. Earned deeds reopen from a selected district's View deed button; do not reintroduce a rewards/architecture/evidence catalogue or a future-tier tour banner. Preserve real access conditions and accurate financial records.

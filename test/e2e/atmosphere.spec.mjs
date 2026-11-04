@@ -40,7 +40,7 @@ test.beforeEach(async ({ request }) => {
   expect((await request.post('/api/demo/reset', { data: {} })).ok()).toBeTruthy();
 });
 
-test('Night and Rain light the world, survive refresh, previews and a payment, and never write or unlock anything', async ({ page }) => {
+test('Night and Rain light the world, survive refresh, district inspection and a payment, and never write or unlock anything', async ({ page }) => {
   await closeDeedsWhenTheyAppear(page);
   const seen = track(page);
   await ready(page);
@@ -62,12 +62,11 @@ test('Night and Rain light the world, survive refresh, previews and a payment, a
   await expect(page.locator('#weather-mode')).toHaveValue('rain');
   expect(await sky(page)).toMatchObject({ period: 'night', weather: 'rain' });
 
-  // An art preview and its return keep the atmosphere; night light is not the lantern festival.
-  await page.getByRole('tab', { name: /Rewards/ }).click();
-  await page.locator('[data-reward="home:castle"] .reward-preview').click();
-  await expect.poll(async () => (await page.evaluate(() => window.__ourCastle.scene())).tier).toBe(3);
+  // Inspecting a locked area and returning to the whole realm keep the atmosphere and actual access.
+  await page.locator('#realm-districts [data-district="castle"]').click();
   expect(await sky(page)).toMatchObject({ period: 'night', weather: 'rain', pointLights: 6 });
-  await page.getByRole('button', { name: 'Return to your realm' }).click();
+  await expect(page.locator('#view-deed')).toBeHidden();
+  await page.getByRole('button', { name: 'Whole realm', exact: true }).click();
   await expect.poll(async () => (await page.evaluate(() => window.__ourCastle.scene())).tier).toBe(0);
   const scene = await page.evaluate(() => window.__ourCastle.scene());
   expect(scene.previewFeature).toBe(null);

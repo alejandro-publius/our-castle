@@ -13,3 +13,5 @@ Recorded in the isolated example household on port 3156, with no payment or AI/p
 - All four exported scenes were viewed as a contact sheet; the full movie decodes. The capture logged no writes, external requests or page errors. Desktop and 320 px stills were inspected; the narrow layout kept keyboard focus on a visible return button with no overflow.
 
 The old court, realm, lighting and judge videos are preserved unchanged. This private demo has not been uploaded, published or submitted. Original Tiny Castle artwork, fonts and renderer remain subject to [NOTICE.md](../../../NOTICE.md).
+
+Later interface change: the owner removed the Rewards catalogue and future-tier tour. This video is preserved as a record of its named source commit; the running app has four journey steps and map-based deed access.

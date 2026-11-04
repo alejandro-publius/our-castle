@@ -1,5 +1,20 @@
 # Art direction — preserve this visual family
 
+## Less interface, progression in the world (November 4, 2026)
+
+The owner explicitly asked to delete the pictured Rewards catalogue and use less interface. This supersedes the catalogue and future-reward tour decisions below.
+
+**Reference lock:** the owner's supplied deletion target and existing map-first Tiny Castle game. Remove the entire Rewards tab/panel, introductory copy, evidence banner, repeatable architecture-description cards, provider explainer and the catalogue's tour banner/controls. Preserve the world, pixel renderer, palette, typography, financial actions and unlock cards.
+
+| Decision | Source | Role |
+| --- | --- | --- |
+| Four journey tabs: House, Plan, Contribute, Ledger | Owner: delete this panel, less stuff | Remove a destination, not replace it with another catalogue |
+| Unlock cards appear when an area opens; select an earned district to reopen its deed | Owner's earlier request for a card on each new area | One contextual View deed action in the map's existing controls |
+| Completed-goal next step visits the castle on the map | Existing family journey; deleted Rewards destination | Keep a valid next action without extra interface |
+| Real lock conditions stay with map labels; payment/evidence labels stay with payment records and deeds | Existing product rules; Refero orientation + status + action | Keep relevant facts at their point of use |
+
+No new design system, feature panel, provider connection, money change, model change or art asset.
+
 ## Game language for destination exploration (November 4, 2026)
 
 The owner rejected “Previewing a reward”, “Art preview” and “this does not unlock…” in the playable interface. The enterprise demo must present the game confidently.

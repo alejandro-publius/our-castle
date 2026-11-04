@@ -1,8 +1,8 @@
 # Demo clip provenance
 
-## Current gameplay demo
+## Recorded gameplay demo
 
-[17.60-second gameplay demo](gameplay/README.md), recorded from the actual game at `78033cc`. It shows Explore Royal Citadel, its court, night/rain and Return to your realm. Named destinations and unlock conditions replace the former art-tool wording. The existing example household, financial state and older clips are preserved.
+[17.60-second gameplay demo](gameplay/README.md), recorded from the actual game at `78033cc`. It shows Explore Royal Citadel, its court, night/rain and Return to your realm. Named destinations and unlock conditions replace the former art-tool wording. The existing example household, financial state and older clips are preserved. This source-pinned recording predates the later removal of the Rewards catalogue and future-tier tour.
 
 ## New lighting and rain preview
 

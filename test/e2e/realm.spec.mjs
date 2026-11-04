@@ -73,19 +73,3 @@ test('reaching the manor milestone opens its real district and lowers its bridge
   expect(actual.court.guests.filter(p=>p.district==='manor')).toHaveLength(4);
   await expect(page.locator('.realm-stop[data-district="manor"]')).toContainText('Open district');
 });
-
-test('destination exploration opens its bridge and keeps earlier districts; returning restores the real locks',async({page})=>{
-  await page.getByRole('tab',{name:/Rewards/}).click();
-  await page.locator('[data-reward="home:castle"] .reward-preview').click();
-  await expect.poll(async()=>(await scene(page)).districts.find(d=>d.id==='castle').open).toBe(true);
-  expect((await scene(page)).districts.filter(d=>d.open).map(d=>d.id)).toEqual(['cottage','manor','market','keep','castle']);
-  expect((await scene(page)).bridges.find(b=>b.id==='citadel-bridge')).toMatchObject({open:true,raised:false});
-  expect((await scene(page)).bridges.find(b=>b.id==='garden-bridge')).toMatchObject({open:false,raised:true,gate:true});
-  expect((await scene(page)).court.guests.some(p=>p.district==='cottage')).toBe(true);
-  expect((await scene(page)).court.guests.some(p=>p.district==='castle')).toBe(true);
-  await expect(page.locator('#world-preview')).toContainText('Locked · Reach');
-  await page.getByRole('button',{name:'Return to your realm'}).click();
-  await expect.poll(async()=>(await scene(page)).districts.find(d=>d.id==='castle').open).toBe(false);
-  expect((await scene(page)).bridges.find(b=>b.id==='citadel-bridge')).toMatchObject({open:false,raised:true});
-  expect((await scene(page)).court.capacity).toBe(2);
-});

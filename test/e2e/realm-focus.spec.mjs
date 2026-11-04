@@ -52,39 +52,3 @@ test.describe('at 320 by 568', () => {
     await inspectCastleByKeyboard(page);
   });
 });
-
-test('keyboard reward exploration moves focus to its visible exit, and returning brings focus back to the reward', async ({ page }) => {
-  const writes = trackWrites(page);
-  await ready(page);
-  await page.locator('#tab-rewards').focus();
-  await page.keyboard.press('Enter');
-  const preview = page.locator('[data-reward="home:castle"] .reward-preview');
-  await preview.focus();
-  await page.keyboard.press('Enter');
-
-  const exit = page.getByRole('button', { name: 'Return to your realm' });
-  await expect(exit).toBeFocused();
-  await expect(exit).toHaveAccessibleDescription(/Royal Citadel · 20 guests.*Locked · Reach 100%.*\$240\.00 to go\./);
-  await scrollSettled(page);
-  expect(await fullyVisible(exit), 'the preview exit is fully on screen').toBe(true);
-  await expect.poll(async () => (await page.evaluate(() => window.__ourCastle.scene())).tier).toBe(3);
-
-  await page.keyboard.press('Enter');
-  await expect(page.locator('#world-preview')).toBeHidden();
-  await expect(preview).toBeFocused();
-  await scrollSettled(page);
-  expect(await fullyVisible(preview), 'focus returned to a visible reward button').toBe(true);
-  await settle(page);
-  expect(await page.evaluate(() => window.__ourCastle.scene().tier)).toBe(0);
-  expect(writes).toEqual([]);
-});
-
-test('a pointer return from exploration stays at the realm instead of jumping to the reward card', async ({ page }) => {
-  await ready(page);
-  await page.getByRole('tab', { name: /Rewards/ }).click();
-  await page.locator('[data-reward="home:castle"] .reward-preview').click();
-  await page.getByRole('button', { name: 'Return to your realm' }).click();
-  await expect(page.locator('#world-preview')).toBeHidden();
-  await expect(page.locator('[data-reward="home:castle"] .reward-preview')).not.toBeFocused();
-  expect(await page.locator('.realm-map').evaluate((el) => { const r = el.getBoundingClientRect(); return r.bottom > 0 && r.top < innerHeight; })).toBe(true);
-});

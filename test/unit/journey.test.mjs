@@ -110,11 +110,11 @@ test('the next step follows saved state through house, plan, contributions, refu
     assert.match(next.why[0], /The Manor needs \$15\.00 more\./);
     assert.equal(next.record.status, 'refunded');
 
-    // Completing the goal points to the rewards.
+    // Completing the goal points to the castle on the map.
     res = await pay(s, state, state.progress.remainingCents, 'completed');
     state = res.state;
     next = nextAction(state, { persona: adultOf(state), receipt: res.contribution, receiptReviewed: true });
-    assert.deepEqual([next.key, next.step, next.cta], ['goal-complete', 'rewards', 'See your rewards']);
+    assert.deepEqual([next.key, next.step, next.cta], ['goal-complete', 'realm', 'Visit your castle']);
     assert.match(next.why[0], /\$300\.00 of \$300\.00 is tracked/);
   } finally { await s.close(); }
 });
