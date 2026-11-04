@@ -1,0 +1,25 @@
+# Demo clip provenance
+
+## `our-castle-connected-realm.mp4`
+
+| | |
+| --- | --- |
+| What it is | A silent, captioned visual walkthrough of the connected realm in **example mode** |
+| Length and format | 36.36 s; 1920×1080 H.264 at 25 fps; no audio stream |
+| Size and SHA-256 | 1,932,194 bytes; `33dd65316e28ee6e059cb856deccaaebfe8eb071e00750ab18f4d3b51beb2fc1` |
+| Recorded | November 4, 2026, from the app at commit `7468b57`, running on an isolated example database on port 3134. Not the owner's sandbox household |
+| Original file | `test-results/realm-promotion/our-castle-connected-realm.mp4` on the owner's Mac. That folder is git-ignored and holds the capture reports (`recording-report.json`, `timeline.json`, `export-manifest.json`). This copy is byte-identical; it was copied, not re-encoded |
+
+**Sections:**
+1. 0:00–0:09: six-district overview.
+2. 0:09–0:16: inspecting the locked Royal Citadel.
+3. 0:16–0:28: a **simulated** $15 contribution takes tracked progress from $60 to $75 and opens the Manor bridge.
+4. 0:28–0:36: overview with the village and manor both open.
+
+The talk track and timings are in [DEMO-SCRIPT.md](../DEMO-SCRIPT.md).
+
+**What it is not.**
+- It does not show PayPal, the AI planner or the steward, and it is not evidence of any live integration. That evidence is in [VALIDATION.md](../VALIDATION.md).
+- It is not the hackathon video. It has not been uploaded, published or submitted.
+
+**Rights.** The clip is a screen capture of this application rendering the owner's original Tiny Castle / Crown & Dust art, fonts and renderer. The scope and restrictions in [NOTICE.md](../../NOTICE.md) apply to it. The root MIT license covers application source, not this artwork. Public distribution is the owner's decision.

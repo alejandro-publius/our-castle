@@ -1,11 +1,16 @@
 # Judge and demo handoff
 
-Start here to run, evaluate or present Our Castle. State as of **November 4, 2026**: commit `7468b57` on the local branch `expansion/wider-estate`. It is not pushed: the GitHub `main` branch still holds only the original concept handoff (`5cf8363`). The repository is private, everything runs against the PayPal **sandbox**, and no hackathon entry has been submitted.
+Start here to run, evaluate or present Our Castle. State as of **November 4, 2026**, on the local branch `expansion/wider-estate`:
+
+- **App:** the connected-realm code is commit `7468b57`. Later local commits add documentation, the Postman guards and the tracked demo clip.
+- **Not pushed:** the GitHub `main` branch still holds only the original concept handoff (`5cf8363`), so **cloning GitHub does not give you this prototype**. Review it from the owner's checkout or from the private offline review kit (section 1).
+- **Status:** the repository is private, everything runs against the PayPal **sandbox**, and no hackathon entry has been submitted.
 
 | Look at | Where |
 | --- | --- |
 | The running app (owner's Mac) | http://localhost:3010 |
-| Finished 36-second world clip (silent, local only) | `test-results/realm-promotion/our-castle-connected-realm.mp4`; `test-results/` is git-ignored, so the clip is not in the repository and has not been uploaded |
+| Finished 36-second world clip (silent, example mode) | [`docs/demos/our-castle-connected-realm.mp4`](demos/our-castle-connected-realm.mp4) ([provenance](demos/README.md)). Tracked in this private branch; not uploaded or published |
+| Private offline review kit | `test-results/local-review/` on the owner's Mac: a source zip of a committed HEAD, with a manifest. Git-ignored and not published |
 | Live payment evidence | [LIVE-VERIFICATION.md](LIVE-VERIFICATION.md) |
 | Live AI evidence | [LIVE-VERIFICATION-AI.md](LIVE-VERIFICATION-AI.md) |
 | Every check run, with dates | [VALIDATION.md](VALIDATION.md) |
@@ -29,24 +34,33 @@ The app already runs at **http://localhost:3010**. It was started from `~/projec
 
   If it prints `Error: listen EADDRINUSE` instead of `Payments: EXAMPLE mode`, stop. Something else owns the port; don't reuse it, reset it or run Postman against it.
 
-### From a clean clone
+### From the private offline review kit (another machine)
 
-Requires Node.js 22.16 or later and access to the private repository.
+Cloning GitHub does not work for this yet: `main` has only the original starter, and pushing is the owner's decision. Instead, the owner can hand over the kit's zip. It is a source snapshot of one committed HEAD under a single `our-castle/` folder, with no Git history, `.env`, data or `node_modules`. Its adjacent manifest gives the commit and the SHA-256 hashes.
+
+Requires Node.js 22.16 or later. `npm ci` installs the exact versions in `package-lock.json` and needs network access to the npm registry, or a warm npm cache.
 
 ```sh
-git clone <repository URL> our-castle && cd our-castle
-npm install
-npm start          # http://localhost:3010, example mode
+mkdir our-castle-review && cd our-castle-review
+unzip /path/to/our-castle-<commit>-source.zip      # creates ./our-castle/
+cd our-castle
+npm ci
+OUR_CASTLE_ENV_FILE=none OUR_CASTLE_DATA_DIR="$(mktemp -d)" PAYPAL_CLIENT_ID= PAYPAL_CLIENT_SECRET= AI_API_KEY= PORT=3134 npm start
+# open http://localhost:3134/
 ```
 
-- **Without `.env`:** payments are simulated and the planner uses built-in rules. Both are labeled "simulated" and "no AI" everywhere, and the steward is off. This previews the product; it does not demonstrate the PayPal or AI integrations.
-- **For the real integrations:**
+If the last command prints `Error: listen EADDRINUSE` instead of `Payments: EXAMPLE mode`, **stop**. Another server owns port 3134; don't use or reset it.
+
+The kit also contains the finished clip at `docs/demos/our-castle-connected-realm.mp4`.
+
+- **Example mode:** that command runs it, with `.env` ignored, empty PayPal and AI credentials and a throwaway database. Payments are simulated and the planner uses built-in rules. Both are labeled "simulated" and "no AI" everywhere, and the steward is off. This previews the product; it does not demonstrate the PayPal or AI integrations.
+- **For the real integrations on another machine:**
   1. Copy `.env.example` to `.env`.
   2. Add your own PayPal **sandbox** REST app's client id and secret.
   3. Run `npm run set-ai-key` in your terminal and paste an Anthropic Console API key.
   4. Restart.
 
-  The README's "[Real PayPal sandbox and AI](../README.md#real-paypal-sandbox-and-ai)" section has the details.
+  The README's "[Real PayPal sandbox and AI](../README.md#real-paypal-sandbox-and-ai)" section has the details. This applies to another machine only: the owner's Mac is already configured and needs no new key.
 
 ### Names and paths
 
@@ -98,11 +112,11 @@ npm start          # http://localhost:3010, example mode
 
 ## 3. The finished clip
 
-`test-results/realm-promotion/our-castle-connected-realm.mp4`:
+[`docs/demos/our-castle-connected-realm.mp4`](demos/our-castle-connected-realm.mp4); see the [provenance note](demos/README.md).
 
-- **Format:** 36.36 s, 1920×1080 H.264, 25 fps, silent, burned-in captions. SHA-256 `33dd6531…eb2fc1`, as in `export-manifest.json`.
+- **Format:** 36.36 s, 1920×1080 H.264, 25 fps, no audio, burned-in captions. 1,932,194 bytes, SHA-256 `33dd65316e28ee6e059cb856deccaaebfe8eb071e00750ab18f4d3b51beb2fc1`.
+- **Original:** `test-results/realm-promotion/` on the owner's Mac, with the capture reports (`recording-report.json`, `timeline.json`, `export-manifest.json`). That folder is git-ignored; the tracked copy is byte-identical.
 - **Source:** recorded from an **isolated example database on port 3134** (now stopped), not the owner's sandbox household. Its one contribution is **simulated**.
-- **Reports:** `recording-report.json`, `timeline.json`, `export-manifest.json`, `promotion-report.json` and `main-smoke.json`, all in the same folder.
 
 | Clip time | Section (on-screen title) | What happens |
 | --- | --- | --- |
@@ -130,6 +144,7 @@ Items 1–3 can be closed by one payment (next actions, step 1).
 - **A public YouTube demo under three minutes** that shows the project working. The 36-second clip doesn't meet this on its own: it shows no PayPal or AI.
 - **The Devpost text**, from [SUBMISSION-DRAFT.md](SUBMISSION-DRAFT.md), including confirming the coding-assistant disclosure.
 - **Hosting is not required.** Run instructions in the repository satisfy the "functional demo" requirement.
+- **The private offline review kit satisfies none of these.** It is a private source snapshot for review, not a public repository, a YouTube video or a Devpost entry.
 
 **C. Provider-dependent, not buildable now:** confirmed-bill rewards (SDG&E or any utility). No authorized bill provider is available, so these rewards stay `connection_required` and the app cannot mark a bill verified.
 
@@ -157,8 +172,8 @@ Items 1–3 can be closed by one payment (next actions, step 1).
    5. In the Ledger tab, ask "Did PayPal confirm our last contribution?".
    6. Optionally, press "Refund in sandbox".
 
-   Stop it with Ctrl-C. If the PayPal button does not appear on 3021, rehearse on 3010 instead; the House of Alder would then move to $75 in sandbox test money.
-2. **Claude, after the owner reports the outcome:** record it in VALIDATION.md, the README status table and the SUBMISSION-DRAFT brackets. If the popup fails, the next code task is to diagnose it. The app currently has no in-page fallback to PayPal's hosted approval link, which is the path that was verified.
+   Stop it with Ctrl-C. If the PayPal button does not render or the popup fails, stop there. Note what happened, and leave the House of Alder on 3010 untouched: diagnose the failure in this isolated copy.
+2. **Claude, after the owner reports the outcome:** record it in VALIDATION.md, the README status table and the SUBMISSION-DRAFT brackets. If the popup failed, the next code task is to diagnose it, reproduced in an isolated rehearsal copy and never on the owner's household. The app has no in-page fallback to PayPal's hosted approval link, the path that was verified. Whether to add one depends on that diagnosis.
 3. **Owner: record the judge demo** from [DEMO-SCRIPT.md](DEMO-SCRIPT.md) part B, after step 1 passes.
 4. **Owner decisions, when ready:**
    - merging the prototype into `main`;
@@ -168,4 +183,4 @@ Items 1–3 can be closed by one payment (next actions, step 1).
 
    Claude can prepare a local merge and the submission text on request, but must not push, publish or submit.
 
-Nothing else is blocked on code. The bill-provider rewards stay locked until an authorized provider exists.
+Scope of this conclusion: the documentation, the Postman guards and the recorded test runs were reviewed in these local handoff tasks, and none of them leaves a code change pending. That is not a claim that the rest of the app is free of defects. The open items above need the owner, a sandbox buyer or a provider. A failed popup rehearsal would become a code task. The bill-provider rewards stay locked until an authorized provider exists.

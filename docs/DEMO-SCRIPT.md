@@ -9,7 +9,7 @@ Status and evidence: [JUDGE-HANDOFF.md](JUDGE-HANDOFF.md). Publishing, uploading
 
 ## Part A: the finished world clip (36 s, silent)
 
-File: `test-results/realm-promotion/our-castle-connected-realm.mp4` (local only; `test-results/` is git-ignored).
+File: [`docs/demos/our-castle-connected-realm.mp4`](demos/our-castle-connected-realm.mp4), with a [provenance note](demos/README.md). It is a byte-identical copy of the original in the owner's git-ignored `test-results/realm-promotion/`. Tracked in this private branch; not uploaded.
 
 - **Format:** 1920×1080 H.264 with burned-in titles and captions and no audio.
 - **Source:** an isolated example database on port 3134, not the owner's sandbox household.

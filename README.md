@@ -14,7 +14,10 @@ Built for the PayPal AI Hackathon as a local prototype, with PayPal at the cente
 
 > Private repository, sandbox only. No real money moves, nothing is deployed, and no hackathon entry has been submitted.
 
-**Judges and demo:** start with [docs/JUDGE-HANDOFF.md](docs/JUDGE-HANDOFF.md). It covers how to run the app, what is verified and by which evidence, the finished clip, and what still needs the owner.
+**Judges and demo:** start with [docs/JUDGE-HANDOFF.md](docs/JUDGE-HANDOFF.md). It covers how to run the app, what is verified and by which evidence, and what still needs the owner.
+
+- **The finished clip:** [docs/demos/our-castle-connected-realm.mp4](docs/demos/our-castle-connected-realm.mp4), a silent 36-second walkthrough in example mode. It is not proof of the PayPal or AI integrations ([provenance](docs/demos/README.md)).
+- **Where the prototype lives:** only on the owner's local branch and in the private offline review kit described in the handoff. GitHub `main` still holds just the original concept starter.
 
 ## Status — what works and what is not yet verified
 
@@ -43,7 +46,7 @@ See [docs/VALIDATION.md](docs/VALIDATION.md) for exactly which tests ran and the
 Requires **Node.js 22.16 or later** (uses the built-in `node:sqlite`).
 
 ```sh
-npm install
+npm ci        # exact versions from package-lock.json; needs npm registry access or a warm npm cache
 npm start
 # Open http://localhost:3010/
 # The original art reference stays at http://localhost:3010/art-preview.html

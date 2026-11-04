@@ -4,6 +4,8 @@ The MIT license at the repository root covers the application source authored fo
 
 Tiny Castle brand artwork is the repository owner's existing material, supplied for this project at the owner's request. Original miniatures, portraits, renderer, palette and reference screenshots were created for the owner's Crown & Dust project. Their precise copies/source commit/hashes are recorded in `assets/manifest.json`; original brand provenance is retained unchanged. Their inclusion does not grant a general license to use the Tiny Castle name or brand artwork for unrelated products. The owner should settle any broader original-art licensing before public distribution.
 
+The demo clip `docs/demos/our-castle-connected-realm.mp4` is a screen capture of this application rendering that artwork, fonts and renderer. The same scope applies to it: the MIT license does not cover the artwork it shows. See `docs/demos/README.md` for its provenance.
+
 Hollybrook Open and Nightshoal are inspiration links/descriptions only. Their source, screenshots, models, music and other art are not bundled. The owner later supplied a written description of Hollybrook Open's code structure; only general principles from it were applied: an event bus between systems, logic testable without the renderer, test hooks, pixel-snapped orthographic rendering, a world that keeps living at a cheap idle frame rate, and sound synthesized live with Web Audio (no samples), silent until enabled. No Hollybrook code was copied, and the original Our Castle renderer and palette files are unchanged. No Monopoly artwork, branding or source is included.
 
 ## Dependencies added for the application
