@@ -428,9 +428,8 @@ button { font: inherit; }
     linear-gradient(var(--gold), var(--gold)) left 9px bottom 9px / 6px 6px no-repeat, linear-gradient(var(--gold), var(--gold)) right 9px bottom 9px / 6px 6px no-repeat, var(--paper);
   box-shadow: inset 0 0 0 4px var(--paper), inset 0 0 0 6px var(--ink), inset 0 0 0 8px var(--paper), inset 0 0 0 9px var(--brass-dark); }
 .deed :focus-visible { outline: 3px solid #7a4f12; outline-offset: 3px; }
-.deed-band { margin: 6px 6px 12px; padding: 0 10px 12px; text-align: center; background: var(--deed, var(--cobalt)); color: var(--ivory); box-shadow: inset 0 0 0 2px var(--ink), inset 0 -5px 0 rgb(0 0 0 / .18); }
+.deed-band { margin: 6px 6px 12px; padding: 14px 10px; text-align: center; background: var(--deed, var(--cobalt)); color: var(--ivory); box-shadow: inset 0 0 0 2px var(--ink), inset 0 -5px 0 rgb(0 0 0 / .18); }
 .deed[data-district='garden'] .deed-band { color: var(--ink); }
-.deed-kicker { display: inline-block; margin: 0 0 8px; padding: 3px 10px 4px; background: var(--ink); color: var(--gold); font-size: 13px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; }
 .deed-band h2 { font-size: 29px; line-height: 1.1; color: inherit; }
 .deed-band h2:focus { outline: none; }
 .deed-count { margin: 6px 0 0; font-size: 14px; font-weight: 700; }
@@ -439,26 +438,14 @@ button { font: inherit; }
 .deed-picture img { display: block; width: 100%; height: 176px; object-fit: cover; object-position: center; image-rendering: pixelated; }
 .deed-seal { position: absolute; right: -8px; bottom: -16px; width: 50px; filter: drop-shadow(0 2px 0 rgb(56 47 37 / .45)); }
 .deed-seal svg { display: block; width: 100%; height: auto; }
-.deed-earned { margin: 0 0 10px; padding-right: 34px; font-size: 16px; font-weight: 700; line-height: 1.35; }
+.deed-earned { margin: 18px 0; padding: 0; text-align: center; font-size: 16px; font-weight: 700; line-height: 1.35; }
 .deed[data-status='keepsake'] .deed-earned, .deed[data-status='locked'] .deed-earned { color: var(--warn); }
-.deed-summary { list-style: none; margin: 0 0 8px; padding: 0; font-size: 15px; line-height: 1.35; }
-.deed-summary li { position: relative; padding-left: 16px; margin: 2px 0; }
-.deed-summary li::before { content: ''; position: absolute; left: 2px; top: .5em; width: 6px; height: 6px; background: var(--deed, var(--cobalt)); box-shadow: 0 0 0 1px var(--ink); }
-.deed-evidence { margin: 0 0 8px; font-size: 14px; line-height: 1.35; }
-.deed-more { margin: 0 0 12px; }
-.deed-more summary { min-height: 44px; display: flex; align-items: center; cursor: pointer; font-weight: 700; color: #6e4610; text-decoration: underline; text-underline-offset: 3px; }
-.deed-facts { display: grid; grid-template-columns: 1fr; gap: 2px; margin: 0 0 4px; }
-.deed-facts dt { margin-top: 6px; font-size: 12px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--brass-dark); }
-.deed-facts dd { margin: 0; font-size: 15px; line-height: 1.38; }
-.deed-stamp { margin: 0 0 4px; padding-top: 8px; border-top: 2px dashed var(--ink-line); font-size: 13px; line-height: 1.35; color: var(--ink-muted); }
 .deed-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 .deed-actions button { min-height: 44px; padding: 9px 14px; border: 2px solid var(--ink); border-radius: 0; background: var(--paper-3); color: var(--ink); font-weight: 700; cursor: pointer; box-shadow: 3px 3px 0 var(--ink); }
 .deed-actions button:hover { background: #fff7e2; }
-.deed-actions .deed-visit { flex: 2 1 12em; background: var(--brass); }
+.deed-actions .deed-visit { flex: 1 1 0; background: var(--brass); }
 .deed-actions .deed-visit:hover { background: #ebc684; }
-.deed-actions button:not(.deed-visit) { flex: 1 1 6em; }
-/* With a queue, Visit takes its own row and Next / Close all share the next. */
-.deed-actions:has(#deed-next:not([hidden])) .deed-visit { flex-basis: 100%; }
+.deed-actions button:not(.deed-visit) { flex: 1 1 0; }
 @media (prefers-reduced-motion: no-preference) {
   .deed-dialog[open] .deed { animation: deed-rise .36s steps(6) both; }
   @keyframes deed-rise { from { opacity: 0; transform: translateY(18px) scale(.94); } }
@@ -466,9 +453,7 @@ button { font: inherit; }
 @media (max-width: 360px) {
   .deed-paper { padding: 12px 10px 12px; }
   .deed-band h2 { font-size: 24px; }
-  .deed-facts dd { font-size: 14.5px; }
 }
-.panel .deed-entry button { min-height: 44px; padding: 8px 12px; white-space: nowrap; }
 
 /* Realm atmosphere controls: compact, square, beside the map; the world changes, the financial UI does not. */
 .world-atmosphere { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; padding: 8px 20px 0; color: var(--muted); }

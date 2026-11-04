@@ -538,7 +538,6 @@ function openDeedFromMap(id, origin) {
 }
 function showDeed() {
   const dialog = $('#deed-dialog');
-  $('#deed-more').open = false;
   renderDeed();
   if (!dialog.open) dialog.showModal();
   $('#deed-name').focus();
@@ -550,28 +549,25 @@ function renderDeed() {
   card.dataset.district = id;
   card.dataset.status = deed.status;
   card.style.setProperty('--deed', `var(--${deed.colour})`);
-  $('#deed-kicker').textContent = d.mode === 'new' ? 'New area unlocked' : deed.status === 'keepsake' ? 'District deed · keepsake' : 'District deed';
   $('#deed-name').textContent = deed.name;
-  $('#deed-count').textContent = d.queue.length > 1 ? `Deed ${d.index + 1} of ${d.queue.length}` : '';
+  $('#deed-count').textContent = d.queue.length > 1 ? `${d.index + 1} / ${d.queue.length}` : '';
   const art = $('#deed-art');
   if (art.getAttribute('src') !== deed.art) art.setAttribute('src', deed.art);
   art.alt = `Pixel portrait of ${deed.name}`; // an illustration of the area, not a live view of the earned realm
   $('#deed-seal').innerHTML = crestSvg(state.household.crest, { title: `${state.household.name} seal` });
-  $('#deed-earned').textContent = deed.earned;
-  $('#deed-summary').replaceChildren(h('li', {}, deed.summary), h('li', {}, deed.court.short));
-  $('#deed-evidence').textContent = `Evidence: ${deed.evidence}`;
-  const facts = [['What stands here', deed.stands.join(' ')], ['Guests', deed.court.text]];
-  if (deed.additions.length) facts.push(['Also here', deed.additions.map((a) => `${a.name}: ${a.status === 'unlocked' ? 'added' : a.status === 'keepsake' ? 'kept as a keepsake' : `not yet (${a.condition})`}`).join('. ') + '.']);
-  if (deed.providerLocked.length) facts.push(['Still locked', `${deed.providerLocked.join(', ')}: needs a connected bill provider, and none is connected.`]);
-  $('#deed-facts').replaceChildren(...facts.flatMap(([dt, dd]) => [h('dt', {}, dt), h('dd', {}, dd)]));
-  $('#deed-stamp').textContent = deed.stamp;
+  const percent = districtById(id).percent;
+  const milestone = deed.selfReported ? 'Recorded bill habit' : percent ? `${percent}% milestone` : 'Starting village';
+  $('#deed-earned').textContent = `${deed.status === 'keepsake' ? 'Keepsake' : deed.open ? 'Unlocked' : 'Locked'} · ${milestone}`;
   const visit = $('#deed-visit');
-  visit.textContent = `Visit ${deed.name}`;
+  visit.textContent = 'Visit';
+  visit.setAttribute('aria-label', `Visit ${deed.name}`);
   visit.hidden = !deed.open;
   const more = d.index < d.queue.length - 1;
   $('#deed-next').hidden = !more;
-  $('#deed-next').textContent = more ? `Next deed (${d.index + 2} of ${d.queue.length})` : 'Next deed';
-  $('#deed-close').textContent = more ? 'Close all' : 'Close';
+  $('#deed-next').textContent = 'Next';
+  $('#deed-next').setAttribute('aria-label', more ? `Next deed (${d.index + 2} of ${d.queue.length})` : 'Next deed');
+  $('#deed-close').textContent = 'Close';
+  $('#deed-close').setAttribute('aria-label', more ? 'Close all' : 'Close');
 }
 // Visit the earned district and keep keyboard focus on its map control. No writes.
 function visitDeed(e) {
@@ -1275,7 +1271,7 @@ function bindEvents() {
   $('#persona').addEventListener('change', (e) => { ui.personaId = e.target.value; pref.set('persona', ui.personaId); ui.refundArm = null; renderGive(); renderLedger(); renderNextStep(); });
   $('#next-step-go').addEventListener('click', openNextStep);
   $('#deed-visit').addEventListener('click', visitDeed);
-  $('#deed-next').addEventListener('click', () => { ui.deeds.index++; $('#deed-more').open = false; renderDeed(); $('#deed-name').focus(); });
+  $('#deed-next').addEventListener('click', () => { ui.deeds.index++; renderDeed(); $('#deed-name').focus(); });
   $('#deed-close').addEventListener('click', () => $('#deed-dialog').close());
   $('#deed-dialog').addEventListener('close', deedClosed);
   $('#next-step-record-go').addEventListener('click', openPaymentRecord);

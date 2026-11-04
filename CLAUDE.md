@@ -15,3 +15,6 @@ Product language: the playable world is a game, never an “art preview” or a 
 
 
 The Rewards catalogue and fifth journey tab were explicitly deleted by the owner. Keep the interface small: House, Plan, Contribute, Ledger, the world map and automatic unlock deeds. Earned deeds reopen from a selected district's View deed button; do not reintroduce a rewards/architecture/evidence catalogue or a future-tier tour banner. Preserve real access conditions and accurate financial records.
+
+
+Unlock-card brevity: keep only the area name, pixel art, crest and one short milestone/status line, plus Visit / Next / Close. No architecture descriptions, guest lists, evidence paragraphs, payment stamps or expandable details on these cards. Full financial facts stay in receipts and the Ledger.

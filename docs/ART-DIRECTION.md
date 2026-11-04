@@ -1,5 +1,11 @@
 # Art direction — preserve this visual family
 
+## Short collectible cards (November 4, 2026)
+
+Current card face: [Manor Gardens](screenshots/deed-manor-simple.png), captured from an isolated example-mode unlock.
+
+The owner asked for Monopoly-like brevity and rejected the dense unlock cards. Reference lock: the owner's card direction, existing coloured deed band, original 320×176 pixel art, crest seal and stepped ink border. Preserve the art and typography. The face now contains only the area name, art/crest and one short status/milestone line; a tiny queue count appears only for several cards. Visit, Next and Close share one row. Descriptions, guest lists, evidence/stamp paragraphs and expandable details are deleted. Payment facts remain in payment records; these are game collectibles, not receipts. Access, queue timing and financial logic are unchanged.
+
 ## Less interface, progression in the world (November 4, 2026)
 
 The owner explicitly asked to delete the pictured Rewards catalogue and use less interface. This supersedes the catalogue and future-reward tour decisions below.

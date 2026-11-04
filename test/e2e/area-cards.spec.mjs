@@ -51,7 +51,7 @@ test.beforeEach(async ({ request }) => {
   expect((await request.post('/api/demo/reset', { data: {} })).ok()).toBeTruthy();
 });
 
-test('reaching the manor shows its deed after the board animation; Escape restores focus and a reload shows none', async ({ page }) => {
+test('reaching the manor shows its deed after the board animation; Escape restores focus and a reload shows none', async ({ page }, testInfo) => {
   const writes = trackWrites(page);
   await ready(page);
   await watchDeedOpening(page);
@@ -59,21 +59,18 @@ test('reaching the manor shows its deed after the board animation; Escape restor
   await pay(page, '15.00');
   await expect(dialog(page)).toHaveAttribute('open', '');
   expect(await page.evaluate(() => window.__deedOpenings)).toEqual([{ animating: false, name: 'Manor Gardens' }]);
-  await expect(page.locator('#deed-kicker')).toHaveText('New area unlocked');
   await expect(page.locator('#deed-name')).toHaveText('Manor Gardens');
   await expect(page.locator('#deed-name')).toBeFocused();
-  await expect(page.locator('#deed-earned')).toHaveText('Earned: Reach 25% of the shared goal ($75.00 tracked)');
-  await expect(page.locator('#deed-summary')).toContainText('4 guests, including Princess Elowen');
-  await expect(page.locator('#deed-evidence')).toHaveText('Evidence: Goal ledger: $60.00 reported by you + $15.00 from simulated example payments');
-  await expect(page.locator('#deed-stamp')).toHaveText('Realm keepsake · Example mode · simulated payments');
+  await expect(page.locator('#deed-earned')).toHaveText('Unlocked · 25% milestone');
   const art = page.locator('#deed-art');
   expect(await art.evaluate((img) => [img.naturalWidth, img.naturalHeight, getComputedStyle(img).imageRendering, img.getAttribute('src')])).toEqual([320, 176, 'pixelated', 'assets/area-cards/manor.png']);
   await expect(art).toHaveAttribute('alt', 'Pixel portrait of Manor Gardens');
   await expect(page.locator('#deed-seal svg')).toBeVisible();
-  // Details hold the full guest list; opening them, tabbing and closing write nothing.
+  await expect(page.locator('#deed')).not.toContainText(/Evidence:|guests|Deed details|Realm keepsake/);
+  await page.locator('#deed').evaluate((el) => Promise.all(el.getAnimations().map((a) => a.finished)));
+  await page.locator('#deed-dialog').screenshot({ path: testInfo.outputPath('short-deed.png') });
+  // Tabbing and closing the compact card write nothing.
   expect(await writesDuring(page, writes, async () => {
-    await page.locator('#deed-more summary').click();
-    await expect(page.locator('#deed-facts')).toContainText('4 guests welcomed: Princess Elowen, Lady Mira, Pip and Oswin.');
     await page.keyboard.press('Tab');
     await page.keyboard.press('Escape');
   })).toEqual([]);
@@ -121,8 +118,7 @@ test('pending payments, refunds and re-crossing never create a deed; earned map 
   await expect(view).toBeVisible();
   await view.focus();
   await page.keyboard.press('Enter');
-  await expect(page.locator('#deed-kicker')).toHaveText('District deed');
-  await expect(page.locator('#deed-earned')).toHaveText('Earned: Reach 25% of the shared goal ($75.00 tracked)');
+  await expect(page.locator('#deed-earned')).toHaveText('Unlocked · 25% milestone');
   await page.keyboard.press('Escape');
   await expect(view).toBeFocused();
 });
@@ -133,13 +129,12 @@ test('several new areas queue one at a time, and Visit focuses the right distric
   await foundHouse(page);
   await pay(page, '135.00'); // $60 → $195: the Manor, the Market and the Keep
   await expect(dialog(page)).toHaveAttribute('open', '');
-  await expect(page.locator('#deed-count')).toHaveText('Deed 1 of 3');
+  await expect(page.locator('#deed-count')).toHaveText('1 / 3');
   await expect(page.locator('#deed-name')).toHaveText('Manor Gardens');
   const before = writes.length;
   await page.getByRole('button', { name: 'Next deed (2 of 3)' }).click();
   await expect(page.locator('#deed-name')).toHaveText('Market Town');
-  await expect(page.locator('#deed-summary')).toContainText('No court guests live here');
-  await expect(page.locator('#deed-earned')).toHaveText('Earned: Reach 40% of the shared goal ($120.00 tracked)');
+  await expect(page.locator('#deed-earned')).toHaveText('Unlocked · 40% milestone');
   await page.getByRole('button', { name: 'Next deed (3 of 3)' }).click();
   await expect(page.locator('#deed-name')).toHaveText('Stone Keep');
   await expect(page.locator('#deed-next')).toBeHidden();
@@ -184,7 +179,6 @@ test('a new area that arrives while a map deed is open replaces it in place with
   // modal, so it is pressed by script here.
   await page.evaluate(() => [...document.querySelectorAll('#ledger-contributions button')].find((b) => b.textContent === 'Simulate PayPal completing it').click());
   await expect(page.locator('#deed-name')).toHaveText('Manor Gardens');
-  await expect(page.locator('#deed-kicker')).toHaveText('New area unlocked');
   await page.waitForTimeout(500); // any stale close event has run by now
   await expect(dialog(page)).toHaveAttribute('open', '');
   await expect(page.locator('#deed-name')).toHaveText('Manor Gardens');

@@ -1,5 +1,13 @@
 # Validation
 
+## November 4, 2026: compact collectible unlock cards
+
+The owner asked for Monopoly-like brevity. The face now has only its area name, original pixel artwork, household crest and a short status/milestone line, such as **Unlocked · 25% milestone**. A small count appears only when several cards queue. Visit, Next and Close share one row; their accessible labels still name the destination or next card. Architecture descriptions, guest lists, evidence/stamp paragraphs and expandable details are deleted. Financial facts remain in receipts and the Ledger. No reward rule, access, core deed data, payment code, timing or stored record changed.
+
+**Checks:** original-asset/palette/renderer/syntax checks passed. All 8 applicable focused desktop/phone browser cases passed, with 2 intentional device-project skips: the short face/pixel image/crest, automatic arrival after the board animation, Escape focus and reload, multiple-card queue/Visit, a new area arriving during an open map deed, and 390/320 px sizing and reachable 44 px actions. The initial queue checks found a remaining reference to the deleted details element in the Next handler. It was removed; only the two failing queue cases were rerun, and both passed. Logs and initial contexts remain in ignored `test-results/short-deeds/`. The full suite and paid/provider checks were not run.
+
+[Current Manor card](screenshots/deed-manor-simple.png), captured from the isolated example-mode $15 unlock in the browser test. Its 388×406 face was visually reviewed; the original pixel artwork is unchanged. Saved owner/rehearsal files, permissions and timestamps match the protected snapshot. No existing server restart, PayPal order, real payment or paid AI call was made.
+
 ## November 4, 2026: remove the Rewards catalogue; keep progression in the map
 
 The owner explicitly asked to delete the pictured Rewards panel and use less interface. The entire fifth tab and panel are removed: introduction, evidence banner, architectural catalogue, provider explainer, future-tier tour banner/exit and their unused rendering code/styles. Four journey tabs remain: House, Plan, Contribute, Ledger. The original world/models and automatic pixel unlock cards remain.
