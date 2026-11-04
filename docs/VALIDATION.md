@@ -1,42 +1,86 @@
 # Validation
 
-## November 3, 2026 — first working prototype (example mode verified; live integrations pending credentials)
+## November 3, 2026 — PayPal tooling pass (official Server SDK, Agent Toolkit steward, AG Grid, Postman)
 
-Environment: macOS, Node 26.0.0 (SQLite 3.53.0), Playwright 1.64.1 with Chromium 156 (software WebGL via SwiftShader). No `.env` file and no PayPal or AI credentials were present, so every run below used example mode or test doubles.
+Environment: macOS, Node 26.0.0 (SQLite 3.53.0), Playwright 1.64.1 with Chromium 156 (software WebGL via SwiftShader), Newman 6.2.1 via `npx`. No `.env` file and no PayPal or AI credentials were present, so every run below used example mode or test doubles.
 
 ### What ran and passed
 
 `npm test` (exit code 0):
 
-- **`npm run check`** — 47 copied art/runtime files match their SHA-256 manifest; the original 90-color palette is intact; both `src/art-preview.js` and the new `src/world/board-scene.js` render through the original `PixelRenderer`; all JavaScript in `src/`, `scripts/`, `server/` and `test/` parses.
-- **`npm run test:unit`** — 53 Node tests, 0 failures:
-  - rules: default demo arithmetic ($60 of $300 is space 4; $15 more reaches the Manor at space 5), milestone rounding, clamping, strict amount parsing, provider decimal strings;
-  - ledger: example defaults, bills/gifts never count (also refused by a database CHECK constraint), persistence after closing and reopening the SQLite file, goal validation, members locked after a contribution;
-  - payments (against a stateful fake PayPal sandbox API): server-owned order body and idempotency headers; completed capture credits once and awards the Manor; replay, concurrent and post-crash retries never double-credit; amount, currency or `custom_id` mismatches are rejected; a capture for another household/goal is refused before PayPal is called; pending captures credit only after a verified webhook, once; declines, cancels and provider errors leave progress unchanged; unverified or unconfigured webhooks are refused; API refunds and dashboard refunds (by webhook) subtract exactly once while the keepsake stays; adult approval, limits and over-goal checks; request-id reuse; token caching; example and sandbox modes cannot cross over; sandbox progress survives a restart;
-  - planner: demo basis (eight weeks of $30 covers $240), impossible target with exact shortfall and alternative date, uneven remainders, valid AI output accepted, invalid AI output rejected for negative/fractional cents, over-budget weeks, wrong totals, wrong dates, missing weeks, false feasibility, fabricated dollar figures and missing explanation; invalid output is not stored and a labeled rules fallback is offered; provider errors are reported; household edits are re-validated; plans use current progress;
-  - AI provider (real Anthropic SDK 1.4.0 against a fake transport): request uses only the explicit `AI_API_KEY` (sent by this SDK version as `Authorization: Bearer`), `claude-opus-5-5`, JSON-schema structured output, `effort: medium`, `fallbacks: "default"` with the `server-side-fallback-2026-07-01` beta; refusals, truncation, invalid JSON, auth and rate-limit errors become typed planner errors; the schema avoids unsupported keywords; config never reads `ANTHROPIC_API_KEY`/`ANTHROPIC_AUTH_TOKEN` and accepts only the sandbox PayPal environment;
-  - HTTP server: no configured secret appears in any page or API response; `.env*`, `server/`, `data/`, `node_modules/` and `package.json` are not served; CSP per mode; cross-site writes, rebinding `Host` headers, non-JSON and oversized bodies are refused; full sandbox HTTP flow with the fake API (mismatch refused, capture credits once, replay safe, simulated endpoints and reset disabled in sandbox mode); webhook route requires PayPal signature verification; plan endpoints.
-- **`npm run test:e2e`** — 19 Playwright tests passed, 1 skipped by design (the keyboard-only path runs on desktop only), on desktop 1440×1000 and phone 390×844:
-  - full journey: found a family house with a custom crest → example plan with arithmetic → adult approval → simulated $15 contribution → simulated receipt → travelers move from space 4 to 5, the Manor geometry replaces the cottage (canvas pixels change), celebration shown without hiding the receipt → reload keeps $75.00, space 5 and the Manor → ledger shows the completed contribution and keepsake; no page or console errors;
-  - keyboard only (Tab, Enter, Space, arrow keys) through house, plan, approval and contribution;
-  - child persona cannot approve; impossible target shows the shortfall; household edits re-checked; bills and gifts grow a garden without moving the travelers; cancel/decline/pending leave progress unchanged until the simulated completion; a refund lowers progress and walks the travelers back while the Manor stays as an explained keepsake;
-  - no horizontal overflow in any tab at either size; amounts at least 24 px (progress) and 16 px (inputs);
-  - `/art-preview.html` still renders and switches tiers with no errors.
+- **`npm run check`**: 47 copied art/runtime files match their SHA-256 manifest. The original 90-color palette is intact. Both scenes render through the original `PixelRenderer`, and all JavaScript parses.
+- **`npm run test:unit`**: 82 Node tests, 81 passed, 0 failed, 1 skipped by design (OAuth token caching is REST-adapter-only; the SDK manages its own token).
+  - **Payments:** every payment-safety scenario runs twice, once through the REST adapter and once through the **official PayPal Server SDK adapter**. The SDK runs are driven by stand-in controllers that throw the SDK's real `ApiError`. Scenarios:
+    - a completed capture credits once and raises the Manor;
+    - replays, concurrent and post-crash retries never double-credit;
+    - amount, currency or `custom_id` mismatches are rejected;
+    - other households are refused before PayPal is called;
+    - pending captures credit only after a verified webhook;
+    - declines, cancels and provider errors never count;
+    - unverified webhooks are refused;
+    - refunds subtract exactly once;
+    - adult approval and limits are enforced;
+    - request-id reuse is handled, and PayPal's sandbox approval link is returned;
+    - progress persists through a restart.
+  - **SDK adapter:** it sends PayPal's camelCase request model (`CheckoutPaymentIntent.Capture`, `NO_SHIPPING`, `PAY_NOW`) with `paypalRequestId` and `prefer: return=representation`. `ApiError` maps to PayPal issue names and the debug id. Transport failures become provider errors, while programming errors are not hidden.
+  - **House steward:** tested with a scripted fake model through the real Anthropic SDK and stub PayPal tools.
+    - Only `read_household_ledger`, `get_order` and `list_transactions` are offered, and `get_order` is limited to this household's order ids. No create, pay, refund, invoice or subscription tool ever appears.
+    - Unknown tools and foreign order ids are refused without calling PayPal.
+    - Reconciliation verdicts (match, action, differs, unavailable) are deterministic.
+    - Dollar figures not present in checked data are flagged, and answers given without any check are flagged.
+    - Without PayPal credentials it reads only the ledger; without an AI key it is unavailable; provider errors are reported.
+    - The real `PayPalAgentToolkit` with `context.sandbox: true` exposes exactly `get_order` and `list_transactions` against a sandbox base URL. The wrapper refuses production or money-moving tools and builds every argument itself.
+  - **Postman files:** v2.1 schema; every request has assertions and a variable base URL; the environment is sandbox-only and ships without credentials.
+  - **Unchanged from the first pass:** rules, ledger, planner validation, AI provider request shape, HTTP security (secrets never served, CSP, Host/Origin/JSON guards, mode isolation).
+- **`npm run test:e2e`**: 21 Playwright tests passed, 1 skipped by design (keyboard path on desktop only), at 1440×1000 and 390×844. Added since the first pass:
+  - the AG Grid ledger renders (`data-grid="ag-grid"`), shows bills and gifts as "No — not savings", and the record filter narrows to bills while the pinned total stays;
+  - without an AI key the steward explains it is off and its controls are disabled.
 
-Visual review: screenshots of every step at both sizes were compared against `references/images/our-house-*.png`, `pixel-battlefield.png`, `color-and-heraldry.png` and `phone-reference.png`. The scene keeps the orthographic toy-scale island, dark contours, dither and palette; panels use the parchment/brass/teal tokens and the bundled Uncial Antiqua and Alegreya Sans files.
+  The earlier journeys still pass: full journey with reload persistence, keyboard path, child persona, impossible target, plan edits, bills/gifts and garden, cancel/decline/pending, refund keepsake, no horizontal overflow, art preview preserved.
+
+**Newman.** Folder 1 of `postman/our-house.postman_collection.json` ran against a fresh example-mode server: 10 requests, 21 assertions, 0 failures.
+
+**Visual review.** Screenshots of every step at both sizes were compared with the reference PNGs. The steward and ledger were also reviewed through a throwaway harness (real server and UI, fake PayPal sandbox, scripted fake AI) to check layout only. The harness found one false "unverified figure" warning, a milestone amount the steward could not see. The fix: the ledger tool now includes milestones.
+
+### PayPal documentation check
+
+PayPal's Node integration guide (developer.paypal.com/guides/node-express, updated October 8, 2026) uses:
+- `@paypal/paypal-server-sdk` with `ordersController.createOrder` / `captureOrder` (now used here);
+- `createInstance({ clientId, components: ["paypal-payments"], pageType: "checkout" })` in the v6 browser SDK;
+- a `createOrder` promise that resolves to `{ orderId }`, passed to `session.start({ presentationMode: "auto" }, …)`.
+
+The browser code matches this. A client-token fallback is kept because some v6 reference pages still describe token-based initialization.
+
+### Dependency audit
+
+`npm audit --omit=dev` reports 11 high and 1 moderate advisories. All come from packages pinned by `@paypal/agent-toolkit` 1.11.0: LangChain core, the Vercel AI SDK, the `openai` client, mathjs, zod and jsondiffpatch.
+
+The toolkit's OpenAI-format entry point, the only part used, loads just `@paypal/paypal-server-sdk`, axios, debug, lodash, mathjs and zod at runtime (checked by inspecting `require.cache`). The two loaded packages with advisories involve untrusted input:
+- **mathjs:** unsafe property setting through expression evaluation;
+- **zod:** memory use when validating oversized collections.
+
+The steward never passes model text to the toolkit. It sends only a known order id, a server-computed ISO date range and a one-letter status. The server is local-only. Revisit this before any public deployment; a newer toolkit release or dependency overrides may clear it. `npm audit fix --force` was not run because it would change the toolkit's pinned versions.
 
 ### Not yet verified (needs the owner's local `.env` credentials)
 
-These are implemented but have **no live evidence yet**. Test doubles and example mode do not prove them.
+These are implemented but have **no live evidence yet**. Test doubles, the harness and example mode do not prove them.
 
-1. **Real PayPal sandbox transaction.** With sandbox credentials, approve a $15 order with a sandbox buyer and confirm: the server capture succeeds, the receipt shows real order and capture ids, the same ids appear in the sandbox dashboard, and progress moves once. Then replay the capture request and refresh: no double credit.
-2. **JS SDK v6 in the browser.** Confirm `createInstance({ clientId })` (or the client-token fallback), `findEligibleMethods`, the `<paypal-button>` element, `session.start({ presentationMode: 'auto' }, …)` with a promise of `{ orderId }`, and `onApprove`/`onCancel`. Check the console for CSP violations from PayPal's domains.
-3. **Sandbox refund** through the Ledger's "Refund in sandbox" button reduces progress exactly once.
-4. **Pending/declined captures in the real sandbox** (for example with PayPal's negative-testing tools) leave progress unchanged.
-5. **Webhooks**: through a tunnel with `PAYPAL_WEBHOOK_ID`, confirm `verify-webhook-signature` returns `SUCCESS` for real deliveries, a pending→completed capture credits once, and a dashboard refund is applied once.
-6. **Live AI plan.** With `AI_API_KEY`, confirm `claude-opus-5-5` returns a plan that passes the server's validator for the demo inputs and for an impossible target, and note latency. If real output is rejected too often (for example by the dollar-figure check), tune the prompt rather than loosening validation.
-7. Real phone hardware, Safari/Firefox and screen-reader passes were not done (Chromium emulation and an automated keyboard path only).
+1. **Real PayPal sandbox transaction through the Server SDK.** Approve a $15 order with a sandbox buyer. Then confirm:
+   - the receipt shows real order and capture ids, matching the sandbox dashboard;
+   - progress moves once;
+   - replaying capture and refreshing do not double-credit.
 
-## Earlier: starter validation (November 3, 2026)
+   Postman folder 2 walks this, including PayPal's own `GET /v2/checkout/orders`.
+2. **JS SDK v6 in the browser:** the `<paypal-button>` element, the popup approval, `onApprove` and `onCancel`, and no CSP violations from PayPal's domains.
+3. **Live house steward:** with `AI_API_KEY` and sandbox credentials, the steward calls PayPal's Agent Toolkit `get_order` for a real order and reports "PayPal and the ledger agree." Check whether real answers trigger false "unverified figure" warnings.
+4. **Live AI plan:** `claude-opus-5-5` returns a plan that passes validation for the demo inputs and for an impossible target; note the latency.
+5. **Sandbox refund** through the Ledger's "Refund in sandbox" button (or Postman 2.9) reduces progress exactly once.
+6. **Pending and declined captures in the real sandbox** (for example with PayPal's negative-testing tools).
+7. **Webhooks** through a tunnel with `PAYPAL_WEBHOOK_ID`: `verify-webhook-signature` returns `SUCCESS` for real deliveries.
+8. **Other devices and assistive tech:** real phone hardware, Safari/Firefox, and a screen-reader pass of the AG Grid ledger.
 
-`npm run check` verified the 47 copied files, the palette and syntax. An isolated Chromium pass loaded the original art preview, visited all four tiers, toggled pixel/raw rendering and captured the `references/images/our-house-*.png` screenshots with zero page errors and no phone overflow. That pass validated only the art starter.
+## Earlier passes (November 3, 2026)
+
+**First working prototype:** 53 unit tests and 19 end-to-end tests passed in example mode and against a fake PayPal REST API.
+
+**Starter:** `npm run check` verified the copied files, palette and syntax. An isolated Chromium pass of the original art preview captured the `references/images/our-house-*.png` screenshots with zero page errors.

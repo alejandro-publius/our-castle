@@ -63,3 +63,4 @@ Do not replace the world with emoji, CSS rectangles or a screenshot background. 
 | Habit gardens beside the home for logged on-time bills | Product rules: "bill habits can award banners/gardens" | Rewards habits visibly without counting bills as savings |
 | Raised tiers stay after a refund, labeled as keepsakes; travelers walk back | Product rules on refunds | Truthful current progress without punitive demolition |
 | Plan headlines and receipts use Alegreya Sans when they contain amounts | Tokens table: amounts stay readable HTML | Uncial stays for names and titles only |
+| The Ledger tab uses AG Grid Community themed with the parchment, ink and brass tokens; the steward card sits above it | PayPal-focused tooling pass (sponsor tool) | A real records view without turning the product into a finance dashboard; the board stays the hero |

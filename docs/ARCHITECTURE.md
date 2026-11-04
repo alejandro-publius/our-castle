@@ -1,17 +1,19 @@
 # Architecture
 
-A small Node server (built-in `node:http` and `node:sqlite`, one runtime dependency: the official Anthropic SDK) serves a framework-free browser app. The board renders through the original pixel pipeline; the server owns every financial fact.
+A small Node server (built-in `node:http` and `node:sqlite`) serves a framework-free browser app. Runtime dependencies are the official Anthropic SDK, PayPal's Server SDK and Agent Toolkit, and AG Grid Community for the ledger. The board renders through the original pixel pipeline; the server owns every financial fact.
 
 ```
-browser                                   server (127.0.0.1)                     providers
-───────                                   ──────────────────                     ─────────
+browser                                   server (127.0.0.1)                        providers
+───────                                   ──────────────────                        ─────────
 index.html + app.css                      server/app.mjs  routes, Host/Origin
 src/app/main.js   panels, approval  ──►   checks, CSP, static allowlist
 src/app/bus.js    event bus               server/view.mjs  state view model
-src/world/board-scene.js  3D board        server/household.mjs  ledger, tiers
-  └ src/graphics/pixel-renderer.js        server/planner/*  basis, validation  ──► Anthropic Messages API
-src/app/paypal-checkout.js  SDK v6  ──►   server/payments/* orders, capture,  ──► PayPal sandbox REST
-src/core/rules.js  shared pure rules      refunds, webhooks                       (Orders v2, Payments v2,
+src/app/ledger-grid.js  AG Grid ledger    server/household.mjs  ledger, tiers
+src/world/board-scene.js  3D board        server/planner/*  basis, validation  ──► Anthropic Messages API
+  └ src/graphics/pixel-renderer.js        server/steward/*  read-only Q&A    ──► Anthropic Messages API (tools)
+src/app/paypal-checkout.js  SDK v6  ──►   server/payments/*                         └► PayPal Agent Toolkit (get_order,
+src/core/rules.js  shared pure rules        paypal-sdk-client  Server SDK   ──► PayPal sandbox      list_transactions)
+                                            contributions  verify, credit       (Orders v2, Payments v2,
                                           SQLite file per payment mode             Webhooks v1)
 ```
 
@@ -57,6 +59,10 @@ Crediting happens in one SQLite transaction: insert/upgrade the capture row, ins
 
 Webhooks are processed only when `PAYPAL_WEBHOOK_ID` is set and PayPal's `verify-webhook-signature` returns `SUCCESS`. Capture events are matched through the server's own order id mapping; refund events through the refund's `up` link to the capture.
 
+## PayPal adapters
+
+`createContributionService` talks to PayPal through one small interface (`createOrder`, `captureOrder`, `getOrder`, `refundCapture`, `verifyWebhookSignature`, `generateClientToken`). At runtime it is `server/payments/paypal-sdk-client.mjs`, built on PayPal's official Server SDK (`OrdersController`, `PaymentsController`, fixed to `Environment.Sandbox`). The adapter passes `paypalRequestId` and `prefer: return=representation`, and hands the service PayPal's raw REST JSON from the SDK response body. It maps the SDK's `ApiError` to PayPal issue names (for example `ORDER_ALREADY_CAPTURED` and `INSTRUMENT_DECLINED`). Webhook signature verification and browser client tokens are not in the Server SDK, so those two calls use `server/payments/paypal-client.mjs`, a minimal REST client with the same sandbox-only base URL. The payment test suite runs every scenario against both adapters.
+
 ## AI planner
 
 1. The server computes a deterministic **basis** from the household's inputs: remaining cents, the weekly dates before the target date, the maximum reachable amount, planned total, shortfall, required weekly amount, a feasible alternative date and milestone targets.
@@ -67,9 +73,24 @@ Webhooks are processed only when `PAYPAL_WEBHOOK_ID` is set and PayPal's `verify
 
 The planner proposes only. Each contribution still needs an adult's explicit approval in PayPal.
 
+## House steward (AI + PayPal Agent Toolkit, read-only)
+
+`server/steward/index.mjs` runs a short tool loop with Claude (`effort: low`, `fallbacks: "default"`, at most six turns, assistant turns appended unchanged). The tools it can offer:
+
+| Tool | Source | Limits |
+| --- | --- | --- |
+| `read_household_ledger` | Our House database | Goal, progress, milestones, contributions with PayPal ids and statuses; bills and gifts marked "not savings" |
+| `get_order` | PayPal Agent Toolkit | Only offered in sandbox mode; `order_id` is a JSON-schema enum of this household's PayPal order ids, re-checked by the server |
+| `list_transactions` | PayPal Agent Toolkit | Only offered in sandbox mode; the server turns `days` (clamped 1–31) and a status into the toolkit's date range |
+
+`server/steward/paypal-tools.mjs` constructs `PayPalAgentToolkit` with only `orders.get` and `transactions.list` enabled and `context.sandbox: true` (the toolkit defaults to production). It refuses to start if any other tool is enabled or if the base URL is not a sandbox host. No create, capture (`pay_order`), refund, invoice or subscription tool is ever offered. The model's arguments are never passed straight to the toolkit; the server rebuilds them.
+
+The server records what the steward actually checked. For each `get_order` it computes a deterministic reconciliation between PayPal's order and the ledger: match, needs a "Check with PayPal" refresh, differs, or unavailable. It also flags any dollar figure in the answer that does not appear in the data the steward was shown. The steward never changes the ledger; a "Check with PayPal" button runs the normal verified capture path.
+
 ## Browser
 
 - `main.js` renders server state into four keyboard-accessible tabs (House, Plan, Contribute, Ledger), the quest card and the board status, and talks to the board only through `scene.update()` and the event bus.
+- `ledger-grid.js` lazily loads AG Grid Community (served by exact path from `node_modules`), themes it with the parchment tokens through the Theming API, and falls back to a plain HTML table if it cannot load. Household-typed labels are rendered as DOM text, not HTML.
 - `board-scene.js` extends the original art-preview vocabulary (MiniBuilder instancing, layered trees, antlered deer, towers) with route stones that brighten as they are visited, milestone banners in crest colors, the household travelers (two figures for family, one for solo), habit gardens, a brook with a plank bridge and a small hamlet. Rendering is on demand; frames run only during walks and tier rises, and reduced-motion users get instant updates.
 - `paypal-checkout.js` loads the sandbox JS SDK v6, starts a one-time payment session with a server-created order, reports approval to the server and shows whatever the server decides.
 - Test hooks: `window.__ourHouse.state`, `window.__ourHouse.scene()`, `window.__ourHouse.bus` (set `bus.log = []` to record events), `document.body.dataset.ready`.
@@ -78,5 +99,6 @@ The planner proposes only. Each contribution still needs an adult's explicit app
 
 - Server binds to `127.0.0.1`; requests with non-local `Host` headers are refused (DNS rebinding); state-changing requests must be JSON and same-origin.
 - The app page sends a Content-Security-Policy that allows only itself and, in sandbox mode, the PayPal script/frame domains.
-- Only allowlisted static paths are served; `server/`, `data/`, `.env*`, `node_modules/` and `package.json` return 404.
+- Only allowlisted static paths are served; `server/`, `data/`, `.env*`, `node_modules/` (except two exact AG Grid files) and `package.json` return 404.
 - Secrets come from the local `.env` (or the process environment) and are never echoed in responses or logs; only the public PayPal client id is sent to the browser.
+- The PayPal Agent Toolkit pins dependencies with published advisories (see VALIDATION.md). Its OpenAI-format entry point only loads the Server SDK, axios, debug, lodash, mathjs and zod at runtime; the steward passes it only server-built arguments (a known order id, an ISO date range, a status letter), never model text.
