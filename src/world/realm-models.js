@@ -74,6 +74,7 @@ export function createRealmModels({ builder, part: addPart, models, colours: C }
 
   // ---------- The ground: one heightfield with river channels, meadow clearings and soil sides at the board edge ----------
   let groundData = null;
+  const surfaceMeshes = { ground: null, water: null };
   function ground(group) {
     groundData ??= groundArrays();
     const { positions, colours, index } = groundData;
@@ -83,11 +84,13 @@ export function createRealmModels({ builder, part: addPart, models, colours: C }
     geometry.setIndex(index); geometry.computeVertexNormals();
     const mesh = new THREE.Mesh(geometry, new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true, side: THREE.DoubleSide }));
     mesh.userData.ownedGeometry = true; mesh.userData.ownedMaterial = true; mesh.userData.ground = true; group.add(mesh);
+    surfaceMeshes.ground = mesh;
     // A shallow water bed under the whole board shows only where the ground is cut below it. Unlit, so the bright sun
     // does not wash it out; its sides show at the river mouths on the board edge.
     const water = new THREE.Mesh(new THREE.BoxGeometry(REALM_SIZE.width - .3, L.water - L.base - .1, REALM_SIZE.depth - .3), new THREE.MeshBasicMaterial({ color: F.water }));
     water.position.y = (L.water + L.base + .1) / 2;
     water.userData.ownedGeometry = true; water.userData.ownedMaterial = true; water.userData.water = true; group.add(water);
+    surfaceMeshes.water = water;
     return { vertices: positions.length / 3, triangles: index.length / 3 };
   }
   function groundArrays() {
@@ -305,7 +308,8 @@ export function createRealmModels({ builder, part: addPart, models, colours: C }
       box(g,x,(L.bed+deck)/2,0,1.2,deck-L.bed+.1,4.8,C.stone);box(g,x,L.water+.25,0,1.3,.12,4.9,F.course);
       for(const z of[-2.1,2.1]){box(g,x,1.25,z,.6,2.6,.6,C.cream);box(g,x,2.6,z,.72,.14,.72,C.gold);part(g,'cone',x,3.05,z,.8,.75,.8,C.red);}
     }
-    for(const x of[0,length])for(const z of[-2.1,2.1]){box(g,x,.9,z,.5,1.6,.5,C.stone);part(g,'cone',x,1.95,z,.7,.5,.7,C.gold);}
+    // Gate posts carry small lamps: lit glass at night, pale by day.
+    for(const x of[0,length])for(const z of[-2.1,2.1]){box(g,x,.9,z,.5,1.6,.5,C.stone);box(g,x,1.86,z,.36,.32,.36,models.roles.lamp);part(g,'cone',x,2.2,z,.7,.5,.7,C.gold);}
     const panels=[];
     for(const sign of[1,-1]){
       // Each leaf hinges on its bank and the two meet over the middle of the river.
@@ -374,5 +378,14 @@ export function createRealmModels({ builder, part: addPart, models, colours: C }
     builder.flush();
     return {districts,bridges,landscape:{...landscape,rebuildMs:Math.round(performance.now()-started)}};
   }
-  return {woodland,build,home,finish};
+  // Where warm night light falls: in front of each district's main door, and at both gates of every bridge.
+  function lightSpots() {
+    const spots = REALM_DISTRICTS.map((d) => {
+      const [x, z] = d.homeTier !== null ? [0, 4.6 * d.scale] : d.id === 'market' ? [-6, 2.4] : [7, -5.6];
+      return { kind: 'door', district: d.id, x: d.x + x, z: d.z + z };
+    });
+    for (const b of REALM_BRIDGES) for (const [x, z] of [b.a, b.b]) spots.push({ kind: 'gate', bridge: b.id, x, z });
+    return spots;
+  }
+  return {woodland,build,home,finish,lightSpots,surfaces:()=>({...surfaceMeshes})};
 }

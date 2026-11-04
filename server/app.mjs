@@ -42,7 +42,7 @@ function contentSecurityPolicy(hashes, paymentsMode) {
     `script-src 'self' ${hashes.join(' ')}${paypal}`,
     `style-src 'self' 'unsafe-inline'${paypal}`,
     `img-src 'self' data:${paypal}`,
-    `connect-src 'self'${paypal}`,
+    `connect-src 'self'${paypal} https://api.open-meteo.com https://geocoding-api.open-meteo.com`,
     `frame-src${paypal || " 'none'"}`,
     "font-src 'self'",
     "object-src 'none'",

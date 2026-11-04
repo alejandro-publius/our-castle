@@ -53,6 +53,40 @@
           <button type="button" class="chip" data-view="overview">Whole realm</button>
           <span id="view-hint">Drag to turn · Shift-drag or two fingers to pan · scroll or pinch to zoom</span>
         </div>
+        <!-- Cosmetic light and weather for the world only. Nothing here touches money, progress or the server. -->
+        <div class="world-atmosphere" role="group" aria-label="Time of day and weather in the realm">
+          <label class="atmosphere-field"><span>Time of day</span>
+            <select id="time-mode">
+              <option value="auto">Auto (device clock)</option>
+              <option value="day">Day</option>
+              <option value="afternoon">Afternoon</option>
+              <option value="night">Night</option>
+            </select>
+          </label>
+          <label class="atmosphere-field"><span>Weather</span>
+            <select id="weather-mode">
+              <option value="clear">Clear</option>
+              <option value="rain">Rain</option>
+              <option value="local">Local weather…</option>
+            </select>
+          </label>
+          <p id="atmosphere-status" class="atmosphere-status" role="status" aria-live="polite"></p>
+        </div>
+        <div id="weather-place" class="weather-place" hidden>
+          <p class="weather-place-current" id="weather-place-current" hidden>
+            <span id="weather-place-name"></span>
+            <button type="button" id="weather-change">Change town</button>
+            <button type="button" id="weather-disconnect">Disconnect local weather</button>
+          </p>
+          <form id="weather-place-form" class="weather-place-form" role="search" novalidate>
+            <label for="weather-place-query">Town or city for local weather</label>
+            <input id="weather-place-query" type="search" autocomplete="off" maxlength="80" spellcheck="false">
+            <button type="submit" id="weather-search">Search</button>
+          </form>
+          <p id="weather-place-status" class="weather-place-status" role="status" aria-live="polite"></p>
+          <ul id="weather-place-results" class="weather-place-results"></ul>
+          <p class="weather-place-note">Search sends the town name to Open-Meteo; choosing a result loads that town's weather. Saved in this browser; disconnect any time. <a href="https://open-meteo.com/" target="_blank" rel="noopener noreferrer">Weather data by Open-Meteo.com</a> · <a href="https://www.geonames.org/" target="_blank" rel="noopener noreferrer">town names from GeoNames</a></p>
+        </div>
         <p id="realm-focus-status" class="realm-focus-status" role="status" aria-live="polite">Select a district to inspect its buildings and unlock condition.</p>
         <div class="realm-map"><div id="world" class="world" aria-busy="true"></div><div id="realm-markers" class="realm-markers" aria-label="Districts on the map"></div></div>
         <nav id="realm-districts" class="realm-districts" aria-label="Inspect realm districts"></nav>

@@ -10,6 +10,8 @@ import { newlyEarnedEstate } from '../core/rewards.js';
 import { courtForTier } from '../core/court.js';
 import { contributionProjection, isCounted, nextAction } from '../core/journey.js';
 import { districtDeed, newlyOpenedDistricts } from '../core/deeds.js';
+import { TIME_MODES, WEATHER_MODES, resolveAtmosphere } from '../core/atmosphere.js';
+import { WEATHER_TTL_MS, createWeatherClient } from './local-weather.js';
 import { REALM_DISTRICTS, realmAccess, districtById, homeDistrict } from '../core/realm.js';
 
 // ---------- small helpers ----------
@@ -37,6 +39,7 @@ const timeLabel = (iso) => new Date(iso).toLocaleString('en-US', { month: 'short
 const pref = {
   get(key) { try { return localStorage.getItem(`our-castle:${key}`); } catch { return null; } },
   set(key, value) { try { localStorage.setItem(`our-castle:${key}`, value); } catch { /* private mode: fine */ } },
+  remove(key) { try { localStorage.removeItem(`our-castle:${key}`); } catch { /* private mode: fine */ } },
 };
 // The tab a family last chose, for this browser tab only: a refresh returns to it instead of jumping elsewhere.
 const sessionTab = {
@@ -103,6 +106,124 @@ function worldInsets() {
 }
 
 // ---------- boot ----------
+// ---------- Realm atmosphere: cosmetic time of day and weather (browser preferences only; no server request) ----------
+const savedPlace = () => { try { const p = JSON.parse(pref.get('atmosphere:place') ?? 'null'); return p && typeof p.label === 'string' ? p : null; } catch { return null; } };
+const sky = {
+  time: TIME_MODES.includes(pref.get('atmosphere:time')) ? pref.get('atmosphere:time') : 'auto',
+  weather: WEATHER_MODES.includes(pref.get('atmosphere:weather')) ? pref.get('atmosphere:weather') : 'clear',
+  place: savedPlace(), result: null, error: null, loading: false, editing: false,
+  generation: 0, controller: null, searchGeneration: 0, searchController: null, client: null, resolved: null,
+  attemptPlaceId: null, nextAttemptAt: 0,
+};
+// The weather client makes no request until a town is searched or a chosen town's weather is loaded.
+const weatherClient = () => (sky.client ??= createWeatherClient());
+function applySky() {
+  const resolved = resolveAtmosphere({ timeMode: sky.time, weatherMode: sky.weather, now: new Date(),
+    local: sky.weather === 'local' ? { place: sky.place, result: sky.result?.place?.id === sky.place?.id ? sky.result : null, error: sky.error, loading: sky.loading } : null });
+  sky.resolved = resolved;
+  scene?.setAtmosphere({ period: resolved.period, weather: resolved.weather });
+  if ($('#time-mode').value !== sky.time) $('#time-mode').value = sky.time;
+  if ($('#weather-mode').value !== sky.weather) $('#weather-mode').value = sky.weather;
+  if ($('#atmosphere-status').textContent !== resolved.status) $('#atmosphere-status').textContent = resolved.status;
+  $('.board-shell').dataset.period = resolved.period;
+  $('.board-shell').dataset.weather = resolved.weather;
+  renderWeatherPlace();
+}
+function renderWeatherPlace() {
+  const local = sky.weather === 'local', editing = local && (sky.editing || !sky.place);
+  $('#weather-place').hidden = !local;
+  $('#weather-place-current').hidden = !local || !sky.place;
+  if (sky.place) $('#weather-place-name').textContent = `Local weather: ${sky.place.label}`;
+  $('#weather-place-form').hidden = !editing;
+  if (!editing) $('#weather-place-results').replaceChildren();
+}
+// Load the chosen town's weather. A newer mode, town or disconnect cancels it, and an old answer never overrides them.
+// Scheduled loads (the minute tick, the page becoming visible) wait at least 15 minutes after any attempt for that town,
+// failed or not. Only an explicit choice (choosing a town, switching to Local weather) forces a new attempt sooner.
+async function loadLocalWeather({ force = false } = {}) {
+  if (sky.weather !== 'local' || !sky.place || document.hidden) return;
+  if (!force && sky.attemptPlaceId === sky.place.id && Date.now() < sky.nextAttemptAt) return;
+  sky.controller?.abort();
+  const generation = ++sky.generation, controller = (sky.controller = new AbortController()), place = sky.place;
+  Object.assign(sky, { loading: true, attemptPlaceId: place.id, nextAttemptAt: Date.now() + WEATHER_TTL_MS });
+  applySky();
+  try {
+    const result = await weatherClient().loadWeather(place, { signal: controller.signal });
+    if (generation !== sky.generation || sky.weather !== 'local' || sky.place?.id !== place.id) return;
+    Object.assign(sky, { result, error: null, nextAttemptAt: Math.max(sky.nextAttemptAt, result.expiresAt) });
+  } catch (error) {
+    if (error?.name === 'AbortError' || generation !== sky.generation) {
+      if (generation === sky.generation) sky.nextAttemptAt = 0; // canceled, not attempted: a later tick may try
+      return;
+    }
+    sky.error = error?.message || 'The weather service could not be reached.';
+  } finally {
+    if (generation === sky.generation) { sky.loading = false; sky.controller = null; applySky(); }
+  }
+}
+function cancelLocalWeather() {
+  sky.generation++;
+  sky.controller?.abort();
+  sky.searchGeneration++;
+  sky.searchController?.abort();
+  Object.assign(sky, { controller: null, searchController: null, loading: false });
+}
+async function searchTowns(event) {
+  event.preventDefault();
+  sky.searchController?.abort();
+  const generation = ++sky.searchGeneration, controller = (sky.searchController = new AbortController());
+  $('#weather-place-results').replaceChildren();
+  $('#weather-place-status').textContent = 'Searching Open-Meteo for that town…';
+  try {
+    const places = await weatherClient().searchPlaces($('#weather-place-query').value, { signal: controller.signal });
+    if (generation !== sky.searchGeneration || sky.weather !== 'local') return;
+    $('#weather-place-status').textContent = places.length ? `${places.length} ${places.length === 1 ? 'town' : 'towns'} found. Choose one to use its weather.` : 'No town found. Try another spelling.';
+    $('#weather-place-results').replaceChildren(...places.map((place) => h('li', {}, h('button', { type: 'button', 'data-place': place.id, onclick: () => choosePlace(place) }, place.label))));
+  } catch (error) {
+    if (error?.name === 'AbortError' || generation !== sky.searchGeneration) return;
+    $('#weather-place-status').textContent = error?.message || 'The town search did not work.';
+  } finally {
+    if (generation === sky.searchGeneration) sky.searchController = null;
+  }
+}
+function choosePlace(place) {
+  cancelLocalWeather();
+  Object.assign(sky, { place, result: null, error: null, editing: false, weather: 'local' });
+  pref.set('atmosphere:place', JSON.stringify(place));
+  pref.set('atmosphere:weather', 'local');
+  $('#weather-place-status').textContent = '';
+  applySky();
+  $('#weather-change').focus();
+  loadLocalWeather({ force: true });
+}
+function disconnectLocalWeather() {
+  cancelLocalWeather();
+  sky.client?.clear();
+  Object.assign(sky, { place: null, result: null, error: null, editing: false, weather: 'clear', attemptPlaceId: null, nextAttemptAt: 0 });
+  pref.remove('atmosphere:place');
+  pref.set('atmosphere:weather', 'clear');
+  $('#weather-place-status').textContent = '';
+  applySky();
+  $('#weather-mode').focus();
+}
+function bindAtmosphere() {
+  $('#time-mode').addEventListener('change', (e) => { sky.time = e.target.value; pref.set('atmosphere:time', sky.time); applySky(); });
+  $('#weather-mode').addEventListener('change', (e) => {
+    sky.weather = e.target.value;
+    pref.set('atmosphere:weather', sky.weather);
+    if (sky.weather !== 'local') { cancelLocalWeather(); sky.editing = false; applySky(); return; }
+    sky.editing = !sky.place;
+    applySky();
+    if (sky.place) loadLocalWeather({ force: true }); else $('#weather-place-query').focus();
+  });
+  $('#weather-place-form').addEventListener('submit', searchTowns);
+  $('#weather-change').addEventListener('click', () => { sky.editing = true; renderWeatherPlace(); $('#weather-place-query').focus(); });
+  $('#weather-disconnect').addEventListener('click', disconnectLocalWeather);
+  // The Auto period follows the clock minute by minute; local weather refreshes at most every 15 minutes while visible.
+  setInterval(() => { if (!document.hidden) { applySky(); loadLocalWeather(); } }, 60_000);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) { applySky(); loadLocalWeather(); } });
+}
+
 async function boot() {
   try {
     // The board announces hops and tier rises on the bus; sound (and tests) listen. Nothing calls audio directly.
@@ -120,6 +241,9 @@ async function boot() {
     $('#sound-toggle').hidden = true;
   }
   $('#world').setAttribute('aria-busy', 'false');
+  bindAtmosphere();
+  applySky();
+  loadLocalWeather();
   buildCrestPickers();
   bindEvents();
   try {
@@ -129,7 +253,7 @@ async function boot() {
     $('#honesty').textContent = `Could not load the household: ${error.message}`;
   }
   document.body.dataset.ready = 'true';
-  window.__ourCastle = { get state() { return state; }, scene: () => scene?.debug() ?? null, route: () => scene?.routeOnScreen() ?? null, bus, sound: () => ({ enabled: sound.enabled, played: sound.played() }) };
+  window.__ourCastle = { get state() { return state; }, scene: () => scene?.debug() ?? null, sky: () => ({ time: sky.time, weather: sky.weather, place: sky.place, loading: sky.loading, error: sky.error, result: sky.result && { kind: sky.result.kind, label: sky.result.label, expiresAt: sky.result.expiresAt }, resolved: sky.resolved }), route: () => scene?.routeOnScreen() ?? null, bus, sound: () => ({ enabled: sound.enabled, played: sound.played() }) };
   window.__booted = true;
 }
 

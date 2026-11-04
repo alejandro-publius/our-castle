@@ -18,14 +18,17 @@ export function addEstateGeometry(builder) {
 
 export function createEstateModels({part,builder,colours:c}) {
   const C={...c,grass2:0x66864f,grass3:0x789954,leaf2:0xa3b97c,brick:0x9c5948,roof:0xb44d46,roofDark:0x713c3e,slate:0x3f6388,
-    pale:0xf4e4be,stone2:0x88978d,water2:0x91c9d0,iron:0x374d56,flower:0xd9b0b9,purple:0x81739c,wheat:0xcfb46c};
+    pale:0xf4e4be,stone2:0x88978d,water2:0x91c9d0,iron:0x374d56,flower:0xd9b0b9,purple:0x81739c,wheat:0xcfb46c,
+    // Material roles, not new looks: window and lantern glass match the pale cream by day but are their own materials, so
+    // night can light them without lighting cream stone walls (which use pale too).
+    glass:0xf3e3bd,lampGlass:0xf5e2b6};
   const box=(g,x,y,z,w,h,d,color,ry=0,rz=0)=>part(g,'box',x,y,z,w,h,d,color,ry,rz);
   const round=(g,x,y,z,w,h,d,color)=>part(g,'round',x,y,z,w,h,d,color);
   const rock=(g,x,y,z,w,h,d,color)=>part(g,'rock',x,y,z,w,h,d,color);
   function window(g,x,y,z,w=.48,h=.64,lit=true,shutters=null){
     if(shutters)for(const s of[-1,1]){box(g,x+s*(w/2+.2),y,z+.04,.26,h+.08,.06,shutters);box(g,x+s*(w/2+.2),y,z+.08,.04,h-.1,.02,C.dark);}
     box(g,x,y,z,w+.16,h+.16,.13,C.wood);box(g,x,y,z+.075,w,h,.04,C.dark);
-    box(g,x,y,z+.105,w-.08,h-.08,.035,lit?C.pale:C.blue);
+    box(g,x,y,z+.105,w-.08,h-.08,.035,lit?C.glass:C.blue);
     box(g,x,y,z+.14,.055,h,.035,C.soil);box(g,x,y,z+.14,w,.055,.035,C.soil);
     box(g,x,y-h/2-.12,z+.17,w+.3,.15,.32,C.wood);
     for(let i=0;i<3;i++)rock(g,x+(i-1)*w*.28,y-h/2-.05,z+.25,.14,.2,.14,i%2?C.flower:C.leaf);
@@ -35,6 +38,8 @@ export function createEstateModels({part,builder,colours:c}) {
     for(let i=-2;i<=2;i++)box(g,x+i*w*.16,y-h*.15,z+.16,.025,h*.55,.02,C.wood);
     box(g,x,y-h*.06,z+.17,w*.9,.075,.03,C.iron);box(g,x,y-h*.32,z+.17,w*.9,.075,.03,C.iron);
     round(g,x+w*.25,y-h*.08,z+.2,.08,.08,.07,C.gold);
+    // A small wall lantern beside every door: dark iron by day, lit glass at night.
+    box(g,x+w/2+.38,y+h*.12,z+.14,.08,.08,.22,C.iron);box(g,x+w/2+.38,y+h*.02,z+.3,.2,.26,.2,C.lampGlass);part(g,'cone',x+w/2+.38,y+h*.02+.2,z+.3,.3,.16,.3,C.iron);
   }
   const roofShade=(color)=>color===C.blue||color===C.slate?0x26405f:C.roofDark;
   function roof(g,x,y,z,w,h,d,color=C.roof,finials=false){
@@ -55,7 +60,7 @@ export function createEstateModels({part,builder,colours:c}) {
   }
   function lantern(g,x,z,y=.2,on=false){
     box(g,x,y+1.15,z,.12,2.3,.12,C.soil);box(g,x+.28,y+2.22,z,.65,.12,.15,C.wood);
-    box(g,x+.5,y+1.93,z,.42,.5,.4,C.dark);box(g,x+.5,y+1.94,z+.02,.29,.34,.3,on?C.pale:C.gold);
+    box(g,x+.5,y+1.93,z,.42,.5,.4,C.dark);box(g,x+.5,y+1.94,z+.02,.29,.34,.3,on?C.lampGlass:C.gold);
     part(g,'cone',x+.5,y+2.26,z,.6,.3,.6,C.iron);box(g,x+.5,y+1.65,z,.52,.1,.5,C.iron);
   }
   function banner(g,x,y,z,flag,w=.65,h=1.15){
@@ -293,5 +298,5 @@ export function createEstateModels({part,builder,colours:c}) {
     }
     builder.flush();
   }
-  return {landscape,home,extras,cottage,roof,wall,tower,well,vegetables,lantern,banner,villager,shield,fountain,bunting};
+  return {landscape,home,extras,cottage,roof,wall,tower,well,vegetables,lantern,banner,villager,shield,fountain,bunting,roles:{glass:C.glass,lamp:C.lampGlass}};
 }

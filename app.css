@@ -507,3 +507,33 @@ button { font: inherit; }
 .deed-entry-condition { font-size: 13px; color: var(--ink-muted); text-align: right; max-width: 60%; }
 .deed-entry.deed-locked { border-style: dashed; border-left-style: solid; }
 .panel .deed-entry button { min-height: 44px; padding: 8px 12px; white-space: nowrap; }
+
+/* Realm atmosphere controls: compact, square, beside the map; the world changes, the financial UI does not. */
+.world-atmosphere { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; padding: 8px 20px 0; color: var(--muted); }
+.atmosphere-field { display: inline-flex; align-items: center; gap: 7px; font-size: 14px; color: var(--ivory); }
+.atmosphere-field select { min-height: 38px; padding: 5px 30px 5px 10px; border: 1px solid var(--line); border-radius: 0; background: var(--bg-2); color: var(--ivory); font: inherit; font-size: 14px; }
+.atmosphere-field select:hover { border-color: var(--brass); }
+.atmosphere-status { flex: 1 1 260px; margin: 0; font-size: 13px; line-height: 1.35; color: var(--muted); }
+.weather-place { margin: 8px 20px 0; padding: 10px 12px; border: 1px solid var(--line); border-left: 4px solid var(--brass); background: var(--bg-2); color: var(--ivory); font-size: 14px; }
+.weather-place-current { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin: 0 0 6px; }
+.weather-place-current span { font-weight: 700; margin-right: auto; }
+.weather-place button { min-height: 38px; padding: 5px 12px; border: 1px solid var(--line); border-radius: 0; background: var(--bg); color: var(--ivory); cursor: pointer; font: inherit; font-size: 14px; }
+.weather-place button:hover { border-color: var(--brass); }
+.weather-place-form { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; }
+.weather-place-form label { flex-basis: 100%; color: var(--muted); }
+.weather-place-form input { flex: 1 1 180px; min-height: 38px; padding: 5px 10px; border: 1px solid var(--line); border-radius: 0; background: var(--bg); color: var(--ivory); font: inherit; }
+.weather-place-status { margin: 6px 0 0; color: var(--muted); }
+.weather-place-status:empty { display: none; }
+.weather-place-results { list-style: none; margin: 6px 0 0; padding: 0; display: grid; gap: 4px; }
+.weather-place-results:empty { display: none; }
+.weather-place-results button { width: 100%; text-align: left; }
+.weather-place-note { margin: 8px 0 0; font-size: 12.5px; color: var(--muted); }
+.weather-place-note a { color: var(--brass); }
+@media (max-width: 640px) {
+  .world-atmosphere { padding: 6px 12px 0; gap: 6px 10px; }
+  .atmosphere-field { font-size: 13px; }
+  .atmosphere-field select { min-height: 44px; font-size: 14px; }
+  .atmosphere-status { flex-basis: 100%; }
+  .weather-place { margin: 6px 12px 0; }
+  .weather-place button, .weather-place-form input { min-height: 44px; }
+}

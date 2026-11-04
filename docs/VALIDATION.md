@@ -1,5 +1,67 @@
 # Validation
 
+## November 4, 2026: realm atmosphere, day, afternoon, night and rain, with optional local weather (branch `feature/realm-atmosphere`)
+
+The owner asked for *"night/day/afternoon/rain mode that enables the homes or castles to change and have lights to illuminate the dark"*, optionally following the person's time zone or weather. Built in the worktree `our-castle-district-guide` from `b2b31d5`; not yet promoted. The reference lock and ledger are in the atmosphere section of [ART-DIRECTION.md](ART-DIRECTION.md).
+
+**What changed:**
+- **Light presets:** the world's existing hemisphere light and sun follow presets for day, afternoon (lower warm-gold sun, cooler fill) and night (teal-blue moonlight).
+- **Night lights:**
+  - window glass and lantern glass glow, with their own material roles, so cream stone never glows;
+  - small wall lanterns at every door, and lamps on the bridge gate posts;
+  - six distance-limited warm point lights at the district doors, hidden by day;
+  - 18 soft ground pools of five concentric discs each, in one instanced mesh.
+- **Rain, with any time of day:** softer, greyer light; damp ground, wet-looking materials and darker water; 540 slanted streaks in two seamless instanced layers; 220 re-placed splashes, moved only on the existing ambient tick. No lightning.
+- **Unchanged:** the forest, rivers, bridges, buildings, locks and deeds.
+- **Controls** beside the map: `#time-mode` (Auto, Day, Afternoon, Night) and `#weather-mode` (Clear, Rain, Local weather), with an `#atmosphere-status` line naming the source.
+  - **Auto** uses the device's IANA time zone through `Intl` (`src/core/atmosphere.js`): day 06–15, afternoon 15–19, night 19–06, labelled as the device clock. It refreshes on the minute tick and when the page becomes visible.
+  - **Saved preferences:** they are kept in this browser only and survive refreshes, art previews and contributions.
+- **Local weather** uses root's `src/app/local-weather.js` and the CSP `connect-src` addition for the two Open-Meteo hosts.
+  - **Opt-in:** nothing is requested until a town is searched and chosen.
+  - **Requests:** a search sends only the typed name; choosing a result loads that town's weather.
+  - **Saved town:** it is remembered in the browser and can be disconnected.
+  - **Late answers:** stale searches and forecasts are canceled, and an old answer never overrides a newer choice.
+  - **Retries:** a scheduled reload waits at least 15 minutes after any attempt, failed or not; choosing again is an explicit retry.
+  - **Labels:** the status shows Open-Meteo's report time, says when data is not current or unavailable, and draws snow and fog as overcast, never as rain. Open-Meteo and GeoNames are credited.
+- **Cosmetic only:** the atmosphere never writes to the server and never touches progress, access, rewards or previews. Night light is not the provider-locked lantern festival, which stays `connection_required`.
+- **Debug hooks:** `window.__ourCastle.scene().atmosphere` reports the period, weather, panes, lamps, point lights, pools and rain counts and animation; `window.__ourCastle.sky()` reports the controller state.
+
+**Checks run** (Playwright example server and an isolated example server on 3154; Open-Meteo mocked in browser tests; no PayPal or AI calls):
+- **Unit:** `test/unit/atmosphere.test.mjs` **4/4**: period edges; New York and London daylight-saving changes; Kolkata's half-hour offset; the fallback for an unknown zone; manual overrides; local-weather looks and labels (fresh, stale, failed, loading, snow as overcast). Root's `test/unit/local-weather.test.mjs` (7/7) was run by root and not rerun here.
+- **Browser:** `test/e2e/atmosphere.spec.mjs` **15 passed, 1 skipped by project**:
+  - Night + Rain apply six point lights, 90 pool discs and glowing panes, with no write. They survive a reload, a castle art preview and its return (with no `previewFeature` and the festival still locked), and a simulated contribution.
+  - Auto in Los Angeles, with a fixed clock, goes from afternoon at 18:59 to night at 19:00.
+  - Local weather is opt-in, with no request before a search. It is remembered after a reload with no new search, and Disconnect forgets the town and makes no further requests.
+  - A slow forecast never overrides a newer Clear choice; an unreachable service is labelled and drawn clear.
+  - After a failed load, the scheduled reloads at 1, 5 and 14 minutes make no request, 16 minutes does, and an explicit choice retries at once.
+  - Reduced motion keeps rain still with no timer. A hidden page stops ambient frames.
+  - At 320 px: 44 px keyboard-usable selects, and no overflow.
+- **Affected existing specs:** `realm`, `estate`, `realm-focus` and `area-cards` **36 passed, 2 skipped by project**. The woodland colour test in `realm.spec` now selects Day explicitly, because Auto follows the machine clock.
+- `npm run check` and the whitespace check passed. The full suite, the financial/family suites, Postman guards and PayPal/AI verifiers were not run.
+
+**Frame cost** (one finished frame, whole realm, headless SwiftShader, possibly contended by root's parallel review; not a hardware benchmark):
+
+| Mode | Desktop frame | Phone frame | Triangles |
+| --- | --- | --- | --- |
+| Day | 209 ms | 97 ms | 189,622 |
+| Afternoon | 203 ms | 98 ms | 189,622 |
+| Night | 217 ms | 99 ms | 196,102 |
+| Night + rain | 220 ms | 112 ms | 211,702 |
+| Day + rain | 231 ms | 109 ms | 205,222 |
+
+Draw calls: 441 by day, 442 at night, 443–444 with rain.
+
+**Root review:**
+- On its own example server (3156), root's actual browser search and forecast for a public city (Edinburgh) succeeded through the new CSP, with exactly two anonymous GETs to Open-Meteo.
+- The manual controls and camera moves made zero financial writes.
+- Root approved the night cottage and night rain citadel renders, now in `docs/screenshots/atmosphere-night-cottage.png` and `atmosphere-night-rain-castle.png`.
+
+**Limitations:**
+- **Owner servers:** the running 3010 and 3021 servers still have their old CSP; live weather is not verified there, and they were not restarted.
+- **Clock:** Auto uses fixed device-clock bands, not astronomical sunrise or sunset.
+- **No geolocation:** there is no automatic location, IP lookup or PayPal account time zone.
+- **Not covered:** Chromium emulation only; no real phone, Safari, Firefox or screen reader.
+
 ## November 4, 2026: district deeds, a card when a new area opens (branch `feature/area-unlock-cards`)
 
 The owner asked for *"a card that indicates when you unlock a new area pixelated like a monopoly card."* Built from `7918113` and promoted locally as `da602b8`. The owner's keys, database file hashes/modes/timestamps, selected household state and original server PIDs on 3010, 3021 and 3140 were unchanged. The current main app serves the new files; preservation evidence is in git-ignored `test-results/area-card-review/promotion.json`. Nothing was pushed. The reference lock and ledger are in the district-deeds section of [ART-DIRECTION.md](ART-DIRECTION.md).

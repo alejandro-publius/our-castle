@@ -32,6 +32,8 @@ test('future castles are separate locked destinations in one green woodland behi
   expect(new Set(initial.bridges.map(b=>b.river))).toEqual(new Set(['main','west','east']));
   expect(initial.landscape.rivers.count).toBe(3);
   expect(initial.landscape.forest.trees).toBeGreaterThan(300);
+  // The woodland colour check uses Day explicitly; Auto would follow this machine's clock (atmosphere.spec covers it).
+  await page.selectOption('#time-mode','day');await page.selectOption('#weather-mode','clear');
   const colours=await mapColours(page);
   expect(colours.green,'the starting realm reads green').toBeGreaterThan(.4);
   expect(colours.blue,'rivers, not an ocean').toBeLessThan(.15);

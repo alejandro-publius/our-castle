@@ -89,6 +89,35 @@ The deed is an original property-deed shape: no Monopoly logos, characters, word
 | One district colour per deed band, from the existing tokens | Monopoly-like colour bands, in the Our Castle palette | Village emerald, Manor cobalt, Market crimson, Garden leaf, Keep timber, Citadel violet |
 | Visit and Close write nothing | Product rules | Visit leaves any art preview, focuses that district on the map and keeps keyboard focus visible. The collection reopens the same deeds from loaded state |
 
+## Realm atmosphere: day, afternoon, night and rain (November 4, 2026)
+
+The owner asked for *"night/day/afternoon/rain mode that enables the homes or castles to change and have lights to illuminate the dark"*, optionally following the person's actual time zone or weather. The woodland, rivers, bridges, colourful architecture, locks and deeds are unchanged; only the light and weather over them change.
+
+**Reference lock.**
+
+| Source | Role | Not taken |
+| --- | --- | --- |
+| The owner's supplied night screenshot, as interpreted by root | Primary target for night: a cool blue-teal woodland that stays readable, warm golden windows, warm light pools at doors and lamps along paths and bridges, roofs still detailed | Not a flat dark filter over the page |
+| Our Castle's own renderer, 90-colour palette, Uncial/Alegreya and parchment/gold/teal UI | Dominant system. Light is real scene light and emissive glass, still drawn through the pixel pass | Nothing replaced |
+| MekaVerse (Refero style `f5e5d282-4361-4654-aac2-c8b5cd8214b1`) | World-first composition with minimal controls only | Its type and brand colours |
+| Wayfinder (Refero style `168f20ae-b58e-4781-b9b8-46b2d9b81b5f`) | Atmospheric forest and restrained square controls only | Its type, palette and autumn tones |
+
+**Current rendered references:** `docs/screenshots/atmosphere-night-cottage.png` and `atmosphere-night-rain-castle.png`, approved by root.
+
+**Decision ledger.**
+
+| Decision | Source | Implementation |
+| --- | --- | --- |
+| Light comes from the buildings | Owner: lights "to illuminate the dark" | Window glass and lantern glass have their own material roles, separate from cream stone, and glow at night. A few distance-limited warm point lights at the district homes, plus cheap warm ground pools at doors and bridge gates, brighten nearby walls and paths |
+| Day, afternoon, night | Owner + target screenshot | Day keeps the existing light. Afternoon has a lower warm-gold sun with cooler fill. Night has cool blue moonlight bright enough to read the forest, buildings and bridges |
+| Rain with any time of day | Owner | Softer, cloudier light, damp ground and wet-looking roofs, darker water, and restrained slanted world-space streaks with small splashes. No lightning |
+| Cosmetic only | Product rules | Night light is not the provider-locked lantern festival. Atmosphere never changes previews, rewards, progress or access, and makes no server request |
+| Compact controls beside the map | MekaVerse and Wayfinder restraint | Two square selects, Time of day (Auto, Day, Afternoon, Night) and Weather (Clear, Rain, Local weather), with one status line naming the source |
+| Auto follows the device clock | Owner: the person's actual time zone | The device's IANA time zone through `Intl` (day 06–15, afternoon 15–19, night 19–06), labelled as the device clock rather than astronomical sunrise. Never a PayPal address or account data |
+| Local weather is opt-in | Privacy | Weather is fetched only after the person searches for and selects a town, which is sent to Open-Meteo with attribution. It can be disconnected. Results that are stale or unavailable are labelled so |
+| Soft light pools | Root review of the first night render | Each pool is five concentric low-opacity discs in one instanced mesh, warm at the centre and falling off outward, rather than a flat yellow circle |
+| Honest weather labels | Root review | The status names Open-Meteo's report time, not an "observation". The setup note says a search sends the typed town name, and credits Open-Meteo and GeoNames. A failed load is retried on schedule at most every 15 minutes |
+
 ## Earlier map target: a connected realm (historical)
 
 The grey-island treatment described in this section was superseded by the woodland revision above. Its captures (`docs/screenshots/realm-*.png`) and the demo clips recorded from it are historical.

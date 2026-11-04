@@ -307,6 +307,7 @@ export function createBoardScene(container, { reducedMotion = false, onEvent = (
       const flap = 0.25 + 0.75 * Math.abs(Math.sin(seconds * 9 + f.phase));
       f.left.rotation.z = flap; f.right.rotation.z = -flap;
     }
+    stepRain(seconds);
   }
   function startAmbient() {
     if (reducedMotion || ambientTimer) return;
@@ -319,6 +320,83 @@ export function createBoardScene(container, { reducedMotion = false, onEvent = (
       if (!animating && (view.focus || view.zoom>1.1 || ambientFrames%2===0)) draw();
     }, 125);
   }
+  // ---------- Atmosphere: day, afternoon, night and rain (cosmetic; never progress, access or rewards) ----------
+  // Light comes from the world: emissive window and lantern glass, a few distance-limited warm point lights at the
+  // district doors, and cheap warm pools on the ground. Rain is two instanced layers of streaks plus re-placed splashes,
+  // moved only on the existing ambient tick; reduced motion keeps them still.
+  const LOOKS = {
+    day: { sky: 0xeaf6ff, ground: 0x65714f, hemi: 2.7, sun: 0xffe9bf, sunI: 3.4, sunAt: [-12, 25, 17], water: 0x2f6f9f, overcast: 0x9fabb6 },
+    afternoon: { sky: 0xc8d4ea, ground: 0x6b5a46, hemi: 2.15, sun: 0xffb262, sunI: 4.1, sunAt: [-30, 13, 8], water: 0x2c6690, overcast: 0xa3a3a8 },
+    night: { sky: 0x6aa6c8, ground: 0x24424c, hemi: 1.5, sun: 0xa9c1ff, sunI: 0.9, sunAt: [18, 30, -14], water: 0x1b3d62, overcast: 0x5a6f80 },
+  };
+  const atmosphere = { period: 'day', weather: 'clear' };
+  let glow = null; let rain = null;
+  function seeded(seed) { let x = seed >>> 0; return () => { x = (x * 1664525 + 1013904223) >>> 0; return x / 4294967296; }; }
+  function buildAtmosphere() {
+    const t = new THREE.Object3D(), spots = realmModels.lightSpots();
+    // Each pool is five concentric low-opacity discs in one instanced mesh: warm at the centre, falling off at the edge.
+    const rings = [1, 0.8, 0.6, 0.42, 0.26];
+    const pools = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.5, 0.5, 1, 18), new THREE.MeshBasicMaterial({ color: 0xffc261, transparent: true, opacity: 0.11, depthWrite: false }), spots.length * rings.length);
+    spots.forEach((spot, i) => rings.forEach((ring, k) => {
+      const r = (spot.kind === 'door' ? 8 : 4.8) * ring;
+      t.position.set(spot.x, 0.36 + k * 0.004, spot.z); t.scale.set(r, 0.02, spot.kind === 'door' ? r * 0.8 : r); t.updateMatrix(); pools.setMatrixAt(i * rings.length + k, t.matrix);
+    }));
+    pools.renderOrder = 2; pools.visible = false; pools.userData.ownedGeometry = true; pools.userData.ownedMaterial = true; groups.atmosphere.add(pools);
+    const lights = spots.filter((spot) => spot.kind === 'door').map((spot) => {
+      const light = new THREE.PointLight(0xffb45c, 0, 20, 2); light.position.set(spot.x, 3.4, spot.z); light.visible = false; groups.atmosphere.add(light); return light;
+    });
+    glow = { pools, lights, glass: builder.material(models.roles.glass), lamp: builder.material(models.roles.lamp) };
+
+    const rand = seeded(20261104), height = 14, count = 540;
+    const streaks = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial({ color: 0xc9deeb, transparent: true, opacity: 0.5, depthWrite: false }), count * 2);
+    for (let i = 0; i < count; i++) {
+      const x = -82 + rand() * 164, z = -57 + rand() * 114, y = rand() * height;
+      for (const layer of [0, 1]) { t.position.set(x, y + layer * height, z); t.rotation.set(0, 0, 0.2); t.scale.set(0.13, 1.9, 0.13); t.updateMatrix(); streaks.setMatrixAt(i * 2 + layer, t.matrix); }
+    }
+    streaks.renderOrder = 3; streaks.userData.ownedGeometry = true; streaks.userData.ownedMaterial = true;
+    const splashes = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial({ color: 0xdcebf3, transparent: true, opacity: 0.75, depthWrite: false }), 220);
+    const placeSplash = (i) => { t.position.set(-80 + rand() * 160, 0.33, -55 + rand() * 110); t.rotation.set(0, rand() * 3, 0); t.scale.set(0.42, 0.03, 0.42); t.updateMatrix(); splashes.setMatrixAt(i, t.matrix); };
+    for (let i = 0; i < splashes.count; i++) placeSplash(i);
+    splashes.renderOrder = 3; splashes.userData.ownedGeometry = true; splashes.userData.ownedMaterial = true;
+    const group = new THREE.Group(); group.add(streaks, splashes); group.visible = false; groups.atmosphere.add(group);
+    rain = { group, streaks, splashes, height, placeSplash, next: 0 };
+  }
+  function stepRain(seconds) {
+    if (!rain?.group.visible || reducedMotion) return;
+    rain.streaks.position.y = -((seconds * 9) % rain.height);
+    for (let k = 0; k < 40; k++) { rain.placeSplash(rain.next); rain.next = (rain.next + 1) % rain.splashes.count; }
+    rain.splashes.instanceMatrix.needsUpdate = true;
+  }
+  function applyAtmosphere() {
+    const look = LOOKS[atmosphere.period] ?? LOOKS.day, wet = atmosphere.weather === 'rain', dull = wet || atmosphere.weather === 'overcast';
+    const night = atmosphere.period === 'night';
+    hemi.color.setHex(look.sky); if (dull) hemi.color.lerp(new THREE.Color(look.overcast), 0.65);
+    hemi.groundColor.setHex(look.ground); hemi.intensity = look.hemi * (wet ? (night ? 0.85 : 0.7) : dull ? 0.84 : 1);
+    sun.color.setHex(look.sun); sun.intensity = look.sunI * (wet ? 0.3 : dull ? 0.5 : 1); sun.position.set(...look.sunAt);
+    rain.streaks.material.color.setHex(night ? 0x9db6cf : 0xd0e2ee);
+    const { ground, water } = realmModels.surfaces();
+    water?.material.color.setHex(look.water); if (wet) water?.material.color.multiplyScalar(0.82);
+    ground?.material.color.setHex(wet ? 0xbcc7c5 : 0xffffff);
+    // Wet roofs and walls: a lower roughness gives the standard materials a damp sheen.
+    for (const material of builder.materials.values()) material.roughness = wet ? 0.5 : 0.87;
+    glow.glass.emissive.setHex(night ? 0xffbd5a : 0x000000); glow.glass.emissiveIntensity = night ? 1.45 : 0;
+    glow.lamp.emissive.setHex(night ? 0xffd27a : 0x000000); glow.lamp.emissiveIntensity = night ? 2 : 0;
+    glow.pools.visible = night;
+    for (const light of glow.lights) { light.visible = night; light.intensity = night ? 60 : 0; }
+    rain.group.visible = wet;
+    if (!wet) rain.streaks.position.y = 0;
+  }
+  function atmosphereDebug() {
+    let panes = 0, lamps = 0;
+    scene.traverse((o) => { if (o.isInstancedMesh && o.material === glow.glass) panes += o.count; if (o.isInstancedMesh && o.material === glow.lamp) lamps += o.count; });
+    return {
+      ...atmosphere, panes, lamps, glassGlow: glow.glass.emissiveIntensity, lampGlow: glow.lamp.emissiveIntensity,
+      pointLights: glow.lights.filter((l) => l.visible).length, pointLightCapacity: glow.lights.length, pools: glow.pools.visible ? glow.pools.count : 0,
+      rain: { visible: rain.group.visible, streaks: rain.streaks.count, splashes: rain.splashes.count, animated: rain.group.visible && !reducedMotion && Boolean(ambientTimer) },
+      hemi: hemi.intensity, sun: sun.intensity,
+    };
+  }
+
   // ---------- Camera: fit the whole island, then let people turn, zoom and pan ----------
   // The default view frames the entire realm (its earth sides, edge trees and the tallest castle tower) at any
   // rotation, in the part of the canvas not covered by the heading, view controls or caption. Zoom in for detail.
@@ -405,7 +483,7 @@ export function createBoardScene(container, { reducedMotion = false, onEvent = (
   renderer.domElement.setAttribute('aria-label', 'Woodland board with deer, a brook and the household home');
   container.append(renderer.domElement);
   scene = new THREE.Scene(); scene.background = new THREE.Color(0x112830);
-  scene.add(new THREE.HemisphereLight(0xeaf6ff, 0x65714f, 2.7));
+  const hemi = new THREE.HemisphereLight(0xeaf6ff, 0x65714f, 2.7); scene.add(hemi);
   const sun = new THREE.DirectionalLight(0xffe9bf, 3.4); sun.position.set(-12, 25, 17); scene.add(sun);
   camera = new THREE.OrthographicCamera(-90, 90, 60, -60, 0.1, 800); updateCamera();
   builder = new MiniBuilder();
@@ -414,10 +492,11 @@ export function createBoardScene(container, { reducedMotion = false, onEvent = (
   realmModels = createRealmModels({part,builder,models,colours});
   pipeline = new PixelRenderer(renderer);
   pipeline.configure({ pixelSize: 2, pixelMode: true, outlines: true, dither: true, exposure: 1.05 });
-  for (const name of ['woodland', 'land', 'route', 'gardens', 'token', 'fx', 'estate', 'court']) { groups[name] = new THREE.Group(); scene.add(groups[name]); }
+  for (const name of ['woodland', 'land', 'route', 'gardens', 'token', 'fx', 'estate', 'court', 'atmosphere']) { groups[name] = new THREE.Group(); scene.add(groups[name]); }
   court = createEstateCourt(groups.court, builder, colours);
   groups.castle = new THREE.Group(); scene.add(groups.castle);
   realmModels.woodland(groups.woodland);
+  buildAtmosphere();
   buildLandscape();buildRoute(); buildGardens(); buildCastle(); buildEstate(); buildToken(); buildCourt();
   observer = new ResizeObserver(resize); observer.observe(container); resize();
   startAmbient();
@@ -438,7 +517,7 @@ export function createBoardScene(container, { reducedMotion = false, onEvent = (
           const rebuild = crestChanged || prev.builtTier!==state.builtTier || prev.estateLevel!==state.estateLevel || prev.gardens!==state.gardens || prev.previewFeature!==state.previewFeature;
           if(rebuild){
             const oldOpen = new Set(realm.bridges.filter(b=>b.open).map(b=>b.id));
-            buildLandscape();buildCastle();
+            buildLandscape();buildCastle();applyAtmosphere(); // new materials take the current light and wetness
             const opening = realm.bridges.filter(b=>b.open&&!oldOpen.has(b.id));
             if(animate&&opening.length)await run(600,(t)=>{for(const bridge of opening)for(const panel of bridge.panels)panel.group.rotation.z=panel.sign*1.03*(1-easeInOut(t));});
           }
@@ -482,6 +561,13 @@ export function createBoardScene(container, { reducedMotion = false, onEvent = (
       Object.assign(view,{focus:id,zoom:1,panX:0,panY:0});updateCamera();resize();
     },
     setPixelMode(on) { pipeline.configure({ pixelMode: on }); draw(); },
+    /** Cosmetic light and weather: period 'day' | 'afternoon' | 'night', weather 'clear' | 'rain' | 'overcast'. */
+    setAtmosphere({ period = atmosphere.period, weather = atmosphere.weather } = {}) {
+      atmosphere.period = LOOKS[period] ? period : 'day';
+      atmosphere.weather = ['clear', 'rain', 'overcast'].includes(weather) ? weather : 'clear';
+      applyAtmosphere(); draw();
+      return atmosphereDebug();
+    },
     /** Test hook: where each route space and the travelers sit on the canvas, in CSS pixels. */
     routeOnScreen() {
       const rect = container.getBoundingClientRect();
@@ -493,7 +579,7 @@ export function createBoardScene(container, { reducedMotion = false, onEvent = (
       const t = groups.token.position;
       return { spaces, travelers: toScreen(t.x, t.y + 1.5, t.z), canvas: { left: rect.left, top: rect.top, width: rect.width, height: rect.height } };
     },
-    debug: () => ({ region: REALM_SIZE, estateLevel: state.estateLevel, view: { ...view }, previewFeature: state.previewFeature, tier: state.builtTier, position: state.position, shownPosition, gardens: state.gardens, crest: { ...state.crest }, playMode: state.playMode, animating, frames, ambient: Boolean(ambientTimer), ambientFrames, grazers: grazers.length, butterflies: flutterers.length, court: court.debug(), districts: realm.districts.map(({id,open,status,greyPaint,drawMeshes,hues})=>({id,open,status,greyPaint,drawMeshes,hues})), bridges: realm.bridges.map(({id,open,panels,gate,river})=>({id,open,gate,river,raised:panels.some(p=>Math.abs(p.group.rotation.z)>.01)})), landscape: realm.landscape, render: { ...perf, averageMs: perf.draws ? perf.totalMs / perf.draws : 0, geometries: renderer.info.memory.geometries } }),
+    debug: () => ({ region: REALM_SIZE, estateLevel: state.estateLevel, view: { ...view }, previewFeature: state.previewFeature, tier: state.builtTier, position: state.position, shownPosition, gardens: state.gardens, crest: { ...state.crest }, playMode: state.playMode, animating, frames, ambient: Boolean(ambientTimer), ambientFrames, grazers: grazers.length, butterflies: flutterers.length, court: court.debug(), districts: realm.districts.map(({id,open,status,greyPaint,drawMeshes,hues})=>({id,open,status,greyPaint,drawMeshes,hues})), bridges: realm.bridges.map(({id,open,panels,gate,river})=>({id,open,gate,river,raised:panels.some(p=>Math.abs(p.group.rotation.z)>.01)})), landscape: realm.landscape, atmosphere: atmosphereDebug(), render: { ...perf, averageMs: perf.draws ? perf.totalMs / perf.draws : 0, geometries: renderer.info.memory.geometries } }),
     dispose() { for (const [name,fn,options] of interactions) renderer.domElement.removeEventListener(name,fn,options); clearInterval(ambientTimer); observer?.disconnect(); court?.dispose(); for (const g of Object.values(groups)) disposeGroup(g); flutterGeo?.dispose(); builder?.dispose(); pipeline?.dispose(); renderer?.dispose(); },
   };
 
