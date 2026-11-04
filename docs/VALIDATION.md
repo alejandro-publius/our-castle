@@ -42,6 +42,19 @@ Environment: macOS, Node 26.0.0 (SQLite 3.53.0), Playwright 1.64.1 with Chromium
 
 **Visual review.** Screenshots of every step at both sizes were compared with the reference PNGs. The steward and ledger were also reviewed through a throwaway harness (real server and UI, fake PayPal sandbox, scripted fake AI) to check layout only. The harness found one false "unverified figure" warning, a milestone amount the steward could not see. The fix: the ledger tool now includes milestones.
 
+### Live reachability checks (invalid placeholder credentials, no account, no money)
+
+These calls reached the real services with deliberately invalid placeholder credentials. They show the endpoints, auth flow and error handling are wired to the real services. They are **not** evidence of a successful payment or AI answer.
+
+- **PayPal Server SDK adapter → `api-m.sandbox.paypal.com`:** HTTP 401, mapped to `PayPalError` (status 401). The order flow would report "PayPal sandbox could not create the order. No progress was recorded."
+- **PayPal Agent Toolkit (`sandbox: true`, base `https://api.sandbox.paypal.com`):** `get_order` returned `{"error":{"message":"Failed to fetch access token: Client Authentication failed"}}`, which the steward passes to the model as an error tool result.
+- **Anthropic Messages API (`claude-opus-5-5`, structured output, fallbacks):** HTTP 401, mapped to planner error `auth` ("The AI provider rejected the API key in the server .env file.").
+- **Browser, server in sandbox mode with a placeholder client id:**
+  - PayPal's v6 core script and its `paypal-payments`, locale and pixel resources loaded from `www.sandbox.paypal.com` with **zero CSP violations**, and `window.paypal.createInstance` was available.
+  - `findEligibleMethods` rejected the placeholder id ("missing clientToken or clientId auth"). The client-token fallback then ran once and the server's token request got a 401 from PayPal.
+  - The Contribute tab showed both reasons and no PayPal button; no page errors; no progress changed.
+  - This check led to one fix: the fallback now also covers eligibility-check failures, not only `createInstance` failures.
+
 ### PayPal documentation check
 
 PayPal's Node integration guide (developer.paypal.com/guides/node-express, updated October 8, 2026) uses:
@@ -71,7 +84,7 @@ These are implemented but have **no live evidence yet**. Test doubles, the harne
    - replaying capture and refreshing do not double-credit.
 
    Postman folder 2 walks this, including PayPal's own `GET /v2/checkout/orders`.
-2. **JS SDK v6 in the browser:** the `<paypal-button>` element, the popup approval, `onApprove` and `onCancel`, and no CSP violations from PayPal's domains.
+2. **JS SDK v6 in the browser with a real client id:** eligibility passes, the `<paypal-button>` renders, the popup approval works, and `onApprove`/`onCancel` reach the server. Script loading under the CSP is already confirmed (see the reachability checks above).
 3. **Live house steward:** with `AI_API_KEY` and sandbox credentials, the steward calls PayPal's Agent Toolkit `get_order` for a real order and reports "PayPal and the ledger agree." Check whether real answers trigger false "unverified figure" warnings.
 4. **Live AI plan:** `claude-opus-5-5` returns a plan that passes validation for the demo inputs and for an impossible target; note the latency.
 5. **Sandbox refund** through the Ledger's "Refund in sandbox" button (or Postman 2.9) reduces progress exactly once.

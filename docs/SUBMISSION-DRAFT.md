@@ -48,7 +48,7 @@ When an adult approves a contribution, it is paid through PayPal (sandbox). The 
   It never authorizes, schedules, captures or refunds a payment.
 - **PayPal developer tools:** JavaScript SDK v6, the Server SDK, the Agent Toolkit, Webhooks.
 - **Sponsor tools:** APIMatic (via the generated PayPal Server SDK), AG Grid, Postman.
-- **Development:** **[Owner to state development tools, e.g. that Claude Code assisted with implementation.]** This is separate from the runtime AI features.
+- **Development:** Claude Code (Anthropic's coding assistant) helped implement the code, tests and documentation **[owner: confirm or edit]**. This is separate from the runtime AI features above.
 
 ## Challenges
 
