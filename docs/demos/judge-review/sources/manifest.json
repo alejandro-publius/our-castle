@@ -1,0 +1,112 @@
+{
+  "originals": {
+    "realm": {
+      "file": "sources/connected-realm.mp4",
+      "original": "docs/demos/our-castle-connected-realm.mp4",
+      "sha256": "33dd65316e28ee6e059cb856deccaaebfe8eb071e00750ab18f4d3b51beb2fc1",
+      "kind": "Recorded current app, scripted interactions, example payments and built-in planner"
+    },
+    "earlier": {
+      "original": "test-results/demo-current/our-castle-current-build.mp4",
+      "sha256": "bddeb4a7aaf7defe5184f3d88dc8a4a5175a53c6e280e4bee93ec86cf505ec74",
+      "kind": "Recorded live AI in earlier UI, 2026-11-04T07:31:29.695Z; no checkout completed; original audio omitted"
+    }
+  },
+  "derivatives": [
+    {
+      "file": "sources/planner-request.mp4",
+      "source": "earlier",
+      "requested_in": 24.5,
+      "duration": 6,
+      "crop_xywh": [
+        1218,
+        245,
+        480,
+        600
+      ],
+      "edits": "crop, trim, re-encode to 25fps; original sound removed; no UI generated"
+    },
+    {
+      "file": "sources/planner-result.mp4",
+      "source": "earlier",
+      "requested_in": 38,
+      "duration": 10,
+      "crop_xywh": [
+        1218,
+        0,
+        480,
+        600
+      ],
+      "edits": "crop, trim, re-encode to 25fps; original sound removed; no UI generated"
+    },
+    {
+      "file": "sources/checkout-controls.mp4",
+      "source": "earlier",
+      "requested_in": 52,
+      "duration": 12,
+      "crop_xywh": [
+        1218,
+        340,
+        480,
+        600
+      ],
+      "edits": "crop, trim, re-encode to 25fps; original sound removed; no UI generated"
+    },
+    {
+      "file": "sources/steward-recording.mp4",
+      "source": "earlier",
+      "requested_in": 84,
+      "duration": 14,
+      "crop_xywh": [
+        1218,
+        300,
+        480,
+        600
+      ],
+      "edits": "crop, trim, re-encode to 25fps; original sound removed; no UI generated"
+    }
+  ],
+  "kit_files": {
+    "sources/historical-ai-verification.md": {
+      "bytes": 2501,
+      "sha256": "b09c3a981b7ef3ba0d1d6af8e264fa1f775964e8dc22d2b930af5ef7da3e99da"
+    },
+    "sources/connected-realm.mp4": {
+      "bytes": 1932194,
+      "sha256": "33dd65316e28ee6e059cb856deccaaebfe8eb071e00750ab18f4d3b51beb2fc1"
+    },
+    "sources/checkout-controls.mp4": {
+      "bytes": 163961,
+      "sha256": "66095d42526a33d8aa6ab7bca97ef26d0ec36a7b8c2e3f37aa8f525373d23c45"
+    },
+    "sources/earlier-ai-recording-report.json": {
+      "bytes": 1569,
+      "sha256": "14bdef09358a3484a121a100174ac5e52f5cb75ff5f71f90cda9c1c86cee945f"
+    },
+    "sources/planner-result.mp4": {
+      "bytes": 376475,
+      "sha256": "809ca81f712c77e7508888a933a168d262dec61d1d209d59a680f13c7644aef2"
+    },
+    "sources/realm-recording-report.json": {
+      "bytes": 5041,
+      "sha256": "7e58dec324d1113d053da6342fc85e988c6852d19e18c12e09d136e7b0198a98"
+    },
+    "sources/planner-request.mp4": {
+      "bytes": 48025,
+      "sha256": "5e322bec216a25364eefd2489a9af0b5d0e020d24f8f328b4850213f57f44d66"
+    },
+    "sources/steward-recording.mp4": {
+      "bytes": 312365,
+      "sha256": "41db292fc04d6a288dd5a1c289a5df233bc0bc669dcaaccc3d4b7d95fc7664a6"
+    },
+    "sources/historical-paypal-verification.md": {
+      "bytes": 1778,
+      "sha256": "dc470d491d724b47fcc8a198d0dd2f86d1987d6bee98b7ac3e5436cd9a6e9bba"
+    },
+    "sources/earlier-original-timeline.json": {
+      "bytes": 4807,
+      "sha256": "fce7ff000dd827466f214ce7271fff64e0519a16b81bfcbad06c43196d9951e0"
+    }
+  },
+  "scope": "No new AI or payment calls. Historical UI has been cropped, not recreated. Reports are byte-identical copies. Realm progression is simulated."
+}

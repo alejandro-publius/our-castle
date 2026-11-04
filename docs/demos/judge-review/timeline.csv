@@ -1,0 +1,13 @@
+id,start,end,duration,kind,source,original_in,provenance_label
+realm-intro,0,9,9,world,sources/connected-realm.mp4,0,EXAMPLE MODE · CURRENT CONNECTED REALM
+realm-locked,9,16,7,world,sources/connected-realm.mp4,9,EXAMPLE MODE · LOCKED DISTRICT INSPECTION
+planner-request,16,22,6,ui,sources/planner-request.mp4,24.5,HISTORICAL LIVE AI · EARLIER UI
+planner-result,22,32,10,ui,sources/planner-result.mp4,38,HISTORICAL LIVE AI · RECORDED RESULT
+ai-evidence,32,44,12,evidence,report/slate,,HISTORICAL LIVE AI · VERIFIER REPORT
+checkout-controls,44,56,12,ui,sources/checkout-controls.mp4,52,RECORDED SANDBOX CONTROLS · CHECKOUT NOT COMPLETED
+paypal-evidence,56,74,18,evidence,report/slate,,HISTORICAL PAYPAL SANDBOX · VERIFIER REPORT
+simulated-open,74,94.36,20.36,world,sources/connected-realm.mp4,16,EXAMPLE MODE · SIMULATED $15 · CURRENT REALM
+steward-recording,94.36,108.36,14,ui,sources/steward-recording.mp4,84,HISTORICAL LIVE AI · EARLIER STEWARD UI
+steward-evidence,108.36,120.36,12,evidence,report/slate,,HISTORICAL LIVE AI · VERIFIED SCOPE
+owner-insert,120.36,144.36,24,insert,report/slate,,OWNER RECORDING NEEDED · UNVERIFIED
+closing,144.36,156.36,12,world,sources/connected-realm.mp4,28.36,PRIVATE REVIEW CUT · NOT SUBMITTED

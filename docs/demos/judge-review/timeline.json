@@ -1,0 +1,290 @@
+{
+  "title": "Our Castle — private judge review cut",
+  "version": 1,
+  "status": "Draft; not submitted; owner insert still required",
+  "render": {
+    "width": 1920,
+    "height": 1080,
+    "fps": 25,
+    "voice": "Daniel",
+    "speech_rate": 172
+  },
+  "reference_lock": {
+    "primary": "Current Our Castle app.css, bundled Alegreya/Uncial fonts and connected-realm source footage",
+    "preserve": "Dark teal shell, ivory text, brass rules, original pixel world; use actual app footage",
+    "secondary": "Refero craft-details: legible captions, explicit state labels, no color-only provenance",
+    "reject": "Invented PayPal screens, synthetic AI responses, stale small-plot world presented as current"
+  },
+  "sources": {
+    "realm": {
+      "file": "sources/connected-realm.mp4",
+      "original": "docs/demos/our-castle-connected-realm.mp4",
+      "sha256": "33dd65316e28ee6e059cb856deccaaebfe8eb071e00750ab18f4d3b51beb2fc1",
+      "kind": "Recorded current app, scripted interactions, example payments and built-in planner"
+    },
+    "earlier": {
+      "original": "test-results/demo-current/our-castle-current-build.mp4",
+      "sha256": "bddeb4a7aaf7defe5184f3d88dc8a4a5175a53c6e280e4bee93ec86cf505ec74",
+      "kind": "Recorded live AI in earlier UI, 2026-11-04T07:31:29.695Z; no checkout completed; original audio omitted"
+    }
+  },
+  "scenes": [
+    {
+      "id": "realm-intro",
+      "duration": 9,
+      "kind": "world",
+      "source": "realm",
+      "in": 0,
+      "label": "EXAMPLE MODE · CURRENT CONNECTED REALM",
+      "title": "A shared goal. A realm you can grow.",
+      "caption": "Recorded app footage · Simulated payments · Built-in planner, no AI",
+      "narration": [
+        "Our Castle makes a shared family savings goal visible as a connected pixel realm.",
+        "This opening is recorded in example mode."
+      ]
+    },
+    {
+      "id": "realm-locked",
+      "duration": 7,
+      "kind": "world",
+      "source": "realm",
+      "in": 9,
+      "label": "EXAMPLE MODE · LOCKED DISTRICT INSPECTION",
+      "title": "The village stays. The realm expands.",
+      "caption": "Six districts · Grey future buildings · Raised bridges across waterways",
+      "narration": [
+        "The village stays.",
+        "Five future districts wait in grey beyond raised bridges.",
+        "Inspecting never unlocks them."
+      ]
+    },
+    {
+      "id": "planner-request",
+      "duration": 6,
+      "kind": "ui",
+      "source": "earlier",
+      "in": 24.5,
+      "crop": [
+        1218,
+        245,
+        480,
+        600
+      ],
+      "label": "HISTORICAL LIVE AI · EARLIER UI",
+      "title": "A plan built from the household’s numbers",
+      "eyebrow": "RECORDED INTERACTION · 04 NOV 2026 UTC",
+      "bullets": [
+        "Goal, target date and weekly budget",
+        "Claude request recorded previously",
+        "Waiting trimmed between excerpts"
+      ],
+      "caption": "Earlier interface; the original small world is cropped out. No new AI call.",
+      "narration": [
+        "A real Claude planning request, recorded earlier in the previous interface."
+      ],
+      "media": "sources/planner-request.mp4"
+    },
+    {
+      "id": "planner-result",
+      "duration": 10,
+      "kind": "ui",
+      "source": "earlier",
+      "in": 38,
+      "crop": [
+        1218,
+        0,
+        480,
+        600
+      ],
+      "label": "HISTORICAL LIVE AI · RECORDED RESULT",
+      "title": "Review it before any payment",
+      "eyebrow": "ACTUAL RECORDED RESPONSE · NO RECONSTRUCTION",
+      "metric": "8 × $30 = $240",
+      "bullets": [
+        "Editable weekly schedule",
+        "Server checks every cent",
+        "No automatic contribution"
+      ],
+      "caption": "Recorded plan result · $60 starting progress was reported by the household",
+      "narration": [
+        "Review the editable plan.",
+        "Eight thirty-dollar weeks fill the two hundred forty dollar gap.",
+        "Each payment needs adult approval."
+      ],
+      "media": "sources/planner-result.mp4"
+    },
+    {
+      "id": "ai-evidence",
+      "duration": 12,
+      "kind": "evidence",
+      "label": "HISTORICAL LIVE AI · VERIFIER REPORT",
+      "title": "The arithmetic was checked separately",
+      "eyebrow": "REPORT EXCERPT · 2026-11-04 07:11 UTC",
+      "metric": "$240 planned / $160 shortfall",
+      "quotes": [
+        "PASS — AI plan for the demo goal passed server validation",
+        "planned $240.00, shortfall $0.00",
+        "PASS — AI plan for an impossible target states the shortfall",
+        "shortfall $160.00"
+      ],
+      "source_note": "Source: docs/LIVE-VERIFICATION-AI.md · Feasible and impossible targets are separate cases",
+      "caption": "Historical verification evidence; this card is not a newly recorded AI interaction.",
+      "narration": [
+        "The historical verifier separately checked a feasible plan and a one hundred sixty dollar shortfall.",
+        "The server rechecks the arithmetic.",
+        "Reported starting progress is not a bank balance."
+      ]
+    },
+    {
+      "id": "checkout-controls",
+      "duration": 12,
+      "kind": "ui",
+      "source": "earlier",
+      "in": 52,
+      "crop": [
+        1218,
+        340,
+        480,
+        600
+      ],
+      "label": "RECORDED SANDBOX CONTROLS · CHECKOUT NOT COMPLETED",
+      "title": "An adult approves a specific amount",
+      "eyebrow": "EARLIER UI · NO POPUP APPROVAL SHOWN",
+      "metric": "$15.00 · Sandbox test money",
+      "bullets": [
+        "Adult approval control",
+        "PayPal button shown",
+        "No payment completed in this recording"
+      ],
+      "caption": "The popup and its in-app approval callback remain unverified.",
+      "narration": [
+        "These are recorded sandbox checkout controls.",
+        "The adult approves a specific amount.",
+        "This footage does not complete a payment or verify the popup."
+      ],
+      "media": "sources/checkout-controls.mp4"
+    },
+    {
+      "id": "paypal-evidence",
+      "duration": 18,
+      "kind": "evidence",
+      "label": "HISTORICAL PAYPAL SANDBOX · VERIFIER REPORT",
+      "title": "Verified on the server, counted once",
+      "eyebrow": "REPORT EXCERPT · 2026-11-04 06:48 UTC",
+      "metric": "$60 → $75 → $60",
+      "quotes": [
+        "PASS — Buyer approved the order in PayPal",
+        "PASS — Capture verified and credited once",
+        "PASS — Replayed capture is not counted twice",
+        "PASS — Mismatched household refused",
+        "PASS — Refund reverses progress once"
+      ],
+      "source_note": "Source: docs/LIVE-VERIFICATION.md · Hosted approval page; temporary database; 7 passed, 2 skipped",
+      "caption": "Separate historical test · Hosted approval path · Not an in-app popup recording",
+      "narration": [
+        "The historical sandbox test used PayPal’s hosted approval page.",
+        "The server verified a fifteen dollar capture, rejected replay and household mismatch, then refunded it.",
+        "This report is evidence of that test, not a new checkout."
+      ]
+    },
+    {
+      "id": "simulated-open",
+      "duration": 20.36,
+      "kind": "world",
+      "source": "realm",
+      "in": 16,
+      "label": "EXAMPLE MODE · SIMULATED $15 · CURRENT REALM",
+      "title": "The Manor bridge opens at 25%",
+      "caption": "Example progression shown here is separate from the historical PayPal test.",
+      "narration": [
+        "Back in the current realm, a simulated fifteen dollar contribution opens the Manor bridge at twenty five percent.",
+        "This example animation is separate from the historical PayPal test.",
+        "The village remains as the Manor gains its guests."
+      ]
+    },
+    {
+      "id": "steward-recording",
+      "duration": 14,
+      "kind": "ui",
+      "source": "earlier",
+      "in": 84,
+      "crop": [
+        1218,
+        300,
+        480,
+        600
+      ],
+      "label": "HISTORICAL LIVE AI · EARLIER STEWARD UI",
+      "title": "A steward that can check, but never pay",
+      "eyebrow": "ACTUAL RECORDED RESPONSE · READ-ONLY TOOLS",
+      "bullets": [
+        "Household ledger",
+        "PayPal Agent Toolkit",
+        "No create, pay or refund tool"
+      ],
+      "caption": "Recorded ledger/history interaction · Does not prove a specific household order reconciliation",
+      "narration": [
+        "Earlier recorded live AI footage also shows the house steward reading the ledger and checking sandbox transaction history.",
+        "It has read only tools, and cannot authorize a payment."
+      ],
+      "media": "sources/steward-recording.mp4"
+    },
+    {
+      "id": "steward-evidence",
+      "duration": 12,
+      "kind": "evidence",
+      "label": "HISTORICAL LIVE AI · VERIFIED SCOPE",
+      "title": "Show what was checked",
+      "eyebrow": "REPORT EXCERPT · 2026-11-04 07:11 UTC",
+      "quotes": [
+        "PASS — Steward read the household ledger",
+        "PASS — Steward listed PayPal transactions through the Agent Toolkit",
+        "PASS — Steward answer had no unverified figures",
+        "SKIPPED — Steward reconciles a real household order with PayPal (get_order)"
+      ],
+      "source_note": "Source: docs/LIVE-VERIFICATION-AI.md · Initial sandbox balance was not counted as family savings",
+      "caption": "Verified ledger/history checks; household get_order reconciliation still needs the owner insert.",
+      "narration": [
+        "The verified checks cover the ledger and transaction listing, not household order reconciliation.",
+        "A sandbox account’s initial balance is not family savings."
+      ]
+    },
+    {
+      "id": "owner-insert",
+      "duration": 24,
+      "kind": "insert",
+      "label": "OWNER RECORDING NEEDED · UNVERIFIED",
+      "title": "One owner-recorded insert remains",
+      "eyebrow": "24-SECOND SLOT · NO RESULT RECONSTRUCTED",
+      "bullets": [
+        "00–08  In-app sandbox approval in the popup",
+        "08–16  Verified receipt and the actual Manor unlock",
+        "16–24  Steward checks that same order with PayPal"
+      ],
+      "source_note": "Record one continuous isolated rehearsal, then trim only waiting. Keep this slate if any step fails.",
+      "caption": "This visible slot is unfinished. It must not be presented as a completed end-to-end demo.",
+      "narration": [
+        "This twenty four second slot still needs an owner recording.",
+        "Show the in app sandbox approval, its verified receipt, and the steward checking that same order.",
+        "None of those missing results is reconstructed here.",
+        "Record only after the isolated rehearsal succeeds."
+      ]
+    },
+    {
+      "id": "closing",
+      "duration": 12,
+      "kind": "world",
+      "source": "realm",
+      "in": 28.36,
+      "freeze_after": 8,
+      "label": "PRIVATE REVIEW CUT · NOT SUBMITTED",
+      "title": "A realm worth coming back to",
+      "caption": "Bill-confirmed rewards: connection required · Original art terms: owner decision",
+      "narration": [
+        "The bill-confirmed rewards still need a provider connection.",
+        "This private review cut is not submitted.",
+        "Our Castle connects plans, verified records, and a growing realm."
+      ]
+    }
+  ]
+}

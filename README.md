@@ -16,6 +16,8 @@ Built for the PayPal AI Hackathon as a local prototype, with PayPal at the cente
 
 **Judges and demo:** start with [docs/JUDGE-HANDOFF.md](docs/JUDGE-HANDOFF.md). It covers how to run the app, what is verified and by which evidence, and what still needs the owner.
 
+**Playable judge review draft:** [2:36.36 MP4](docs/demos/judge-review/our-castle-judge-review-draft.mp4), with [editable timeline, narration, captions and source notes](docs/demos/judge-review/README.md). It combines the current example-mode realm, earlier recorded live AI and historical sandbox evidence, with an explicit 24-second owner-recording slot still unfinished. It is private and not submitted. A [focused keyboard/device review](docs/ACCESSIBILITY-DEVICE-REVIEW.md) also fixed off-screen focus during district selection and reward previews; real-device and screen-reader checks remain open.
+
 - **The finished clip:** [docs/demos/our-castle-connected-realm.mp4](docs/demos/our-castle-connected-realm.mp4), a silent 36-second walkthrough in example mode. It is not proof of the PayPal or AI integrations ([provenance](docs/demos/README.md)).
 - **Where the prototype lives:** only on the owner's local branch and in the private offline review kit described in the handoff. GitHub `main` still holds just the original concept starter.
 

@@ -1,0 +1,137 @@
+{
+  "status": "Draft; not submitted; owner insert still required",
+  "duration": 156.36,
+  "frames_expected": 3909,
+  "scenes": [
+    {
+      "id": "realm-intro",
+      "start": 0,
+      "end": 9,
+      "duration": 9,
+      "kind": "world",
+      "source": "sources/connected-realm.mp4",
+      "original_in": 0,
+      "provenance_label": "EXAMPLE MODE \u00b7 CURRENT CONNECTED REALM"
+    },
+    {
+      "id": "realm-locked",
+      "start": 9,
+      "end": 16,
+      "duration": 7,
+      "kind": "world",
+      "source": "sources/connected-realm.mp4",
+      "original_in": 9,
+      "provenance_label": "EXAMPLE MODE \u00b7 LOCKED DISTRICT INSPECTION"
+    },
+    {
+      "id": "planner-request",
+      "start": 16,
+      "end": 22,
+      "duration": 6,
+      "kind": "ui",
+      "source": "sources/planner-request.mp4",
+      "original_in": 24.5,
+      "provenance_label": "HISTORICAL LIVE AI \u00b7 EARLIER UI"
+    },
+    {
+      "id": "planner-result",
+      "start": 22,
+      "end": 32,
+      "duration": 10,
+      "kind": "ui",
+      "source": "sources/planner-result.mp4",
+      "original_in": 38,
+      "provenance_label": "HISTORICAL LIVE AI \u00b7 RECORDED RESULT"
+    },
+    {
+      "id": "ai-evidence",
+      "start": 32,
+      "end": 44,
+      "duration": 12,
+      "kind": "evidence",
+      "source": "report/slate",
+      "original_in": "",
+      "provenance_label": "HISTORICAL LIVE AI \u00b7 VERIFIER REPORT"
+    },
+    {
+      "id": "checkout-controls",
+      "start": 44,
+      "end": 56,
+      "duration": 12,
+      "kind": "ui",
+      "source": "sources/checkout-controls.mp4",
+      "original_in": 52,
+      "provenance_label": "RECORDED SANDBOX CONTROLS \u00b7 CHECKOUT NOT COMPLETED"
+    },
+    {
+      "id": "paypal-evidence",
+      "start": 56,
+      "end": 74,
+      "duration": 18,
+      "kind": "evidence",
+      "source": "report/slate",
+      "original_in": "",
+      "provenance_label": "HISTORICAL PAYPAL SANDBOX \u00b7 VERIFIER REPORT"
+    },
+    {
+      "id": "simulated-open",
+      "start": 74,
+      "end": 94.36,
+      "duration": 20.36,
+      "kind": "world",
+      "source": "sources/connected-realm.mp4",
+      "original_in": 16,
+      "provenance_label": "EXAMPLE MODE \u00b7 SIMULATED $15 \u00b7 CURRENT REALM"
+    },
+    {
+      "id": "steward-recording",
+      "start": 94.36,
+      "end": 108.36,
+      "duration": 14,
+      "kind": "ui",
+      "source": "sources/steward-recording.mp4",
+      "original_in": 84,
+      "provenance_label": "HISTORICAL LIVE AI \u00b7 EARLIER STEWARD UI"
+    },
+    {
+      "id": "steward-evidence",
+      "start": 108.36,
+      "end": 120.36,
+      "duration": 12,
+      "kind": "evidence",
+      "source": "report/slate",
+      "original_in": "",
+      "provenance_label": "HISTORICAL LIVE AI \u00b7 VERIFIED SCOPE"
+    },
+    {
+      "id": "owner-insert",
+      "start": 120.36,
+      "end": 144.36,
+      "duration": 24,
+      "kind": "insert",
+      "source": "report/slate",
+      "original_in": "",
+      "provenance_label": "OWNER RECORDING NEEDED \u00b7 UNVERIFIED"
+    },
+    {
+      "id": "closing",
+      "start": 144.36,
+      "end": 156.36,
+      "duration": 12,
+      "kind": "world",
+      "source": "sources/connected-realm.mp4",
+      "original_in": 28.36,
+      "provenance_label": "PRIVATE REVIEW CUT \u00b7 NOT SUBMITTED"
+    }
+  ],
+  "video": {
+    "file": "our-castle-judge-review-draft.mp4",
+    "bytes": 10046567,
+    "sha256": "14e9f9aea57c4988979a45fc473dd55c8a79db3fdb04cca104aa5f882c52c344"
+  },
+  "audio_sha256": "30060e41110be40ca9e51172716b936db0c30684d9af366d67097422b68fdf94",
+  "source_manifest_sha256": "0cbd6db87a962efb0356d71fabdd5bd2350f6d3b1ce47de730eae133c7d8f4b6",
+  "caption_cues": 32,
+  "voice": "Synthetic, offline macOS Daniel",
+  "new_ai_or_payment_calls": 0
+}

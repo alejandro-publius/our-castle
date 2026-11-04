@@ -1,0 +1,43 @@
+{
+  "video_probe": {
+    "programs": [],
+    "stream_groups": [],
+    "streams": [
+      {
+        "codec_name": "h264",
+        "codec_type": "video",
+        "width": 1920,
+        "height": 1080,
+        "r_frame_rate": "25/1",
+        "duration": "156.360000",
+        "nb_frames": "3909"
+      },
+      {
+        "codec_name": "aac",
+        "codec_type": "audio",
+        "r_frame_rate": "0/0",
+        "duration": "156.360000",
+        "nb_frames": "3666"
+      }
+    ],
+    "format": {
+      "duration": "156.360000"
+    }
+  },
+  "full_decode_exit": 0,
+  "measured_caption_cues": 32,
+  "caption_intervals": "ordered, non-overlapping, within scene and final duration",
+  "narration": "all phrases fit; no truncation; offline synthetic Daniel voice",
+  "audio_mean_db": -20.2,
+  "audio_peak_db": -1.0,
+  "under_three_minutes": true,
+  "original_realm_unchanged": true,
+  "new_payment_orders": 0,
+  "new_paid_ai_calls": 0,
+  "owner_insert": {
+    "start": 120.36,
+    "end": 144.36,
+    "status": "unfilmed; visibly marked unverified"
+  },
+  "visual_qa": "Representative frames checked; no claim of a newly verified integration"
+}

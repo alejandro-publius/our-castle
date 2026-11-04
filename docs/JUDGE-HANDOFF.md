@@ -2,19 +2,21 @@
 
 Start here to run, evaluate or present Our Castle. State as of **November 4, 2026**, on the local branch `expansion/wider-estate`:
 
-- **App:** the connected-realm code is commit `7468b57`. Later local commits add documentation, the Postman guards and the tracked demo clip.
+- **App:** the connected-realm code is commit `7468b57`. Later local commits add documentation, the Postman guards, the tracked demo clips and the focused keyboard fix at `d869f1b`.
 - **Not pushed:** the GitHub `main` branch still holds only the original concept handoff (`5cf8363`), so **cloning GitHub does not give you this prototype**. Review it from the owner's checkout or from the private offline review kit (section 1).
 - **Status:** the repository is private, everything runs against the PayPal **sandbox**, and no hackathon entry has been submitted.
 
 | Look at | Where |
 | --- | --- |
 | The running app (owner's Mac) | http://localhost:3010 |
+| Playable judge review draft, 2:36.36 | [MP4](demos/judge-review/our-castle-judge-review-draft.mp4), [local player](demos/judge-review/review.html), [editable kit](demos/judge-review/README.md). A visible 24-second owner insert is unfinished; private, not submitted |
 | Finished 36-second world clip (silent, example mode) | [`docs/demos/our-castle-connected-realm.mp4`](demos/our-castle-connected-realm.mp4) ([provenance](demos/README.md)). Tracked in this private branch; not uploaded or published |
 | Private offline review kit | `test-results/local-review/` on the owner's Mac: a source zip of a committed HEAD, with a manifest. Git-ignored and not published |
 | Live payment evidence | [LIVE-VERIFICATION.md](LIVE-VERIFICATION.md) |
 | Live AI evidence | [LIVE-VERIFICATION-AI.md](LIVE-VERIFICATION-AI.md) |
 | Every check run, with dates | [VALIDATION.md](VALIDATION.md) |
 | Current world captures | [`docs/screenshots/realm-*.png`](screenshots/) |
+| Focused keyboard/device review | [ACCESSIBILITY-DEVICE-REVIEW.md](ACCESSIBILITY-DEVICE-REVIEW.md): 8 focused checks and 12 affected existing checks passed; Chromium emulation only |
 | Talk tracks | [DEMO-SCRIPT.md](DEMO-SCRIPT.md) |
 
 ## 1. Run it
@@ -110,7 +112,20 @@ The kit also contains the finished clip at `docs/demos/our-castle-connected-real
 - **Simulated example payments:** example mode only, labeled "simulated" on every badge, receipt and ledger line. This is what the finished clip shows.
 - **Reported by you:** starting savings, bills and gifts typed in by the household. Starting savings count toward the goal and are labeled as reported. Bills and gifts never count as savings. Bills grow the self-reported habit garden and the Woodland Garden district, never a provider-verified reward.
 
-## 3. The finished clip
+## 3. The review draft and preserved world clip
+
+### Playable judge review draft (2:36.36)
+
+The [new MP4](demos/judge-review/our-castle-judge-review-draft.mp4) is locally playable, with synthetic offline narration, burned-in captions, editable [SRT](demos/judge-review/captions.srt), [timeline](demos/judge-review/timeline.json) and [source notes](demos/judge-review/PROVENANCE.md). It clearly separates:
+
+- current recorded **example-mode** realm footage and simulated progression;
+- earlier recorded **live AI** planner/steward UI excerpts, labelled historical and cropped to omit the obsolete small world;
+- **historical verifier reports** for PayPal's hosted approval/server capture/refund path and the live AI checks;
+- an **unfilmed owner-recording slate at 2:00.36–2:24.36**. No popup approval or household `get_order` result is reconstructed.
+
+The [precise insert guide](demos/judge-review/OWNER-INSERT.md) needs one owner-led isolated rehearsal recording. The slot can expand to 40 seconds while the full cut stays at about 2:52.36. No new payment order or paid AI call was made to prepare the draft. It is not the submitted video or a fully live end-to-end recording. The private source kit at `de147d4` remains an earlier pinned snapshot; use a newer kit's manifest when one is present.
+
+### Preserved world clip (36.36 s)
 
 [`docs/demos/our-castle-connected-realm.mp4`](demos/our-castle-connected-realm.mp4); see the [provenance note](demos/README.md).
 
@@ -135,6 +150,8 @@ It is a world and progression demo. It does **not** show PayPal, the AI planner 
 2. Steward `get_order` reconciliation of that household order.
 3. The browser "Refund in sandbox" button.
 4. *Optional:* webhooks through a tunnel; pending and declined captures through PayPal's negative testing; real phone, Safari/Firefox and screen-reader passes.
+
+The focused [Chromium keyboard/device review](ACCESSIBILITY-DEVICE-REVIEW.md) fixed focus left off-screen after moving to the realm. Desktop and 390/320 px emulation passed its targeted checks. It does not close the real-hardware, Safari/Firefox, screen-reader or PayPal-popup accessibility items.
 
 Items 1–3 can be closed by one payment (next actions, step 1).
 
@@ -174,7 +191,7 @@ Items 1–3 can be closed by one payment (next actions, step 1).
 
    Stop it with Ctrl-C. If the PayPal button does not render or the popup fails, stop there. Note what happened, and leave the House of Alder on 3010 untouched: diagnose the failure in this isolated copy.
 2. **Claude, after the owner reports the outcome:** record it in VALIDATION.md, the README status table and the SUBMISSION-DRAFT brackets. If the popup failed, the next code task is to diagnose it, reproduced in an isolated rehearsal copy and never on the owner's household. The app has no in-page fallback to PayPal's hosted approval link, the path that was verified. Whether to add one depends on that diagnosis.
-3. **Owner: record the judge demo** from [DEMO-SCRIPT.md](DEMO-SCRIPT.md) part B, after step 1 passes.
+3. **Owner: finish the judge video** after step 1 passes. The [playable review draft](demos/judge-review/README.md) already includes the existing honest material; record its [one insert](demos/judge-review/OWNER-INSERT.md), replace the unfinished slate/narration/captions and review the result. [DEMO-SCRIPT.md](DEMO-SCRIPT.md) part B remains an optional full-take plan.
 4. **Owner decisions, when ready:**
    - merging the prototype into `main`;
    - repository visibility and art licensing;

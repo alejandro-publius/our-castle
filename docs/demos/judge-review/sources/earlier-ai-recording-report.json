@@ -1,0 +1,76 @@
+{
+  "recordedAt": "2026-11-04T07:31:29.695Z",
+  "modes": {
+    "payments": {
+      "mode": "sandbox",
+      "label": "PayPal sandbox",
+      "webhooks": false
+    },
+    "ai": {
+      "mode": "live",
+      "label": "AI planner",
+      "provider": "anthropic",
+      "model": "claude-opus-5-5"
+    },
+    "warnings": []
+  },
+  "goal": "Camping trip fund",
+  "progressBefore": 6000,
+  "progressAfter": 6000,
+  "contributionsBefore": 1,
+  "contributionsAfter": 1,
+  "posts": [
+    "/api/plans",
+    "/api/plans/plan_9ba260214c234e3dbbab/accept",
+    "/api/steward"
+  ],
+  "errors": [],
+  "chapters": [
+    {
+      "id": "intro",
+      "start": 8.337528250000002,
+      "end": 17.731098582999998
+    },
+    {
+      "id": "house",
+      "start": 17.731542375,
+      "end": 28.0578235
+    },
+    {
+      "id": "planner",
+      "start": 28.058388458,
+      "end": 48.1597365
+    },
+    {
+      "id": "plan-result",
+      "start": 48.160220041,
+      "end": 60.510796582999994
+    },
+    {
+      "id": "contribute",
+      "start": 60.517994083,
+      "end": 75.58392975000001
+    },
+    {
+      "id": "ledger",
+      "start": 75.58437775,
+      "end": 96.190654333
+    },
+    {
+      "id": "answer",
+      "start": 96.19125975,
+      "end": 106.298535333
+    },
+    {
+      "id": "renderer",
+      "start": 106.299999375,
+      "end": 117.543403208
+    },
+    {
+      "id": "closing",
+      "start": 117.543859041,
+      "end": 131.504440208
+    }
+  ],
+  "note": "Actual running local build. No checkout completed in this recording. No page content or responses were mocked."
+}

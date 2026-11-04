@@ -1,9 +1,10 @@
 # Demo script
 
-There are two pieces:
+There are three pieces:
 
 - **Part A** describes the clip that already exists. It is a silent 36-second world tour recorded in example mode.
 - **Part B** is a proposed judge demo, under three minutes, showing the PayPal and AI features. It has **not been recorded**, and two of its steps are not yet verified live.
+- **Part C** is the now-rendered [2:36.36 private review draft](demos/judge-review/our-castle-judge-review-draft.mp4): current example-world footage, earlier recorded live AI and historical evidence, with an explicit owner-insert slate. It is locally playable, not submitted, and not a fully live end-to-end recording.
 
 Status and evidence: [JUDGE-HANDOFF.md](JUDGE-HANDOFF.md). Publishing, uploading and submitting are the repository owner's decisions.
 
@@ -54,3 +55,13 @@ The plan assumes a household at $60 of a $300 goal. That is the owner's House of
 - The original Tiny Castle art appears throughout. Its public-distribution terms are an owner decision ([NOTICE.md](../NOTICE.md)).
 
 **If live credentials are unavailable:** do not present example mode as the PayPal or AI integration. Its badges and receipts say "simulated" and "no AI" on purpose, and the steward says it is off.
+
+## Part C: rendered judge review draft (2:36.36)
+
+The [editable kit](demos/judge-review/README.md) includes its [timeline](demos/judge-review/timeline.json), [narration](demos/judge-review/narration.md), [captions](demos/judge-review/captions.srt), render scripts and hashed source excerpts. The [provenance notes](demos/judge-review/PROVENANCE.md) give each source time and claim boundary.
+
+The already-recorded live planner and steward footage comes from the earlier UI; the original small world and obsolete audio are omitted. Historical verifier cards are labelled report excerpts. Current realm progression is labelled simulated. Nothing implies that the historical hosted approval was a newly recorded in-app popup.
+
+**One insert remains, at 2:00.36–2:24.36:** actual in-app sandbox approval, verified receipt/Manor bridge, then the steward checking the same household order with `get_order`. The [shot list](demos/judge-review/OWNER-INSERT.md) specifies the evidence, isolated rehearsal setup, edits and replacement narration. A 40-second insert still keeps the cut below three minutes. If any step fails, keep the visible unfilmed slate and record the failure; do not reconstruct the result.
+
+The original silent 36-second clip is unchanged. No new payment order or paid AI call was made for this review draft. Its offline synthetic voice, caption timings, source hashes, full decode and actual media streams are documented in the kit.

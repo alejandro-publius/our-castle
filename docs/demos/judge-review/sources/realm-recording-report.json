@@ -1,0 +1,222 @@
+{
+  "mode": {
+    "payments": {
+      "mode": "example",
+      "label": "Example payments (simulated)"
+    },
+    "ai": {
+      "mode": "example",
+      "label": "Example planner (built-in rules, no AI)"
+    },
+    "warnings": []
+  },
+  "progress": {
+    "startingCents": 6000,
+    "contributedCents": 0,
+    "refundedCents": 0,
+    "simulatedContributedCents": 1500,
+    "simulatedRefundedCents": 0,
+    "confirmedNetCents": 1500,
+    "progressCents": 7500,
+    "bills": {
+      "count": 0,
+      "totalCents": 0
+    },
+    "gifts": {
+      "count": 0,
+      "totalCents": 0
+    },
+    "remainingCents": 22500,
+    "percentTenths": 250,
+    "note": "Goal-progress ledger for this app. Not a bank balance or savings account."
+  },
+  "scene": {
+    "region": {
+      "width": 164,
+      "depth": 114
+    },
+    "estateLevel": 1,
+    "view": {
+      "angle": 0.66,
+      "zoom": 1,
+      "panX": 0,
+      "panY": 0,
+      "worldPerPixel": 0.18388773989889645,
+      "focus": null
+    },
+    "previewFeature": null,
+    "tier": 1,
+    "position": 5,
+    "shownPosition": 5,
+    "gardens": 0,
+    "crest": {
+      "field": "cobalt",
+      "charge": "stag"
+    },
+    "playMode": "family",
+    "animating": false,
+    "frames": 259,
+    "ambient": true,
+    "ambientFrames": 340,
+    "grazers": 4,
+    "butterflies": 4,
+    "court": {
+      "capacity": 6,
+      "princesses": [
+        "Princess Elowen"
+      ],
+      "description": "Princess Elowen, a noble visitor, a musician and a steward join the cottage guests.",
+      "batches": 32,
+      "guests": [
+        {
+          "id": "fern",
+          "name": "Fern",
+          "role": "gardener",
+          "x": -57.6,
+          "z": 33.9,
+          "heading": -1.5707963267948966,
+          "moving": false,
+          "activity": "greeting guests",
+          "district": "cottage"
+        },
+        {
+          "id": "kit",
+          "name": "Kit",
+          "role": "villager",
+          "x": -48.2,
+          "z": 25.242607999974496,
+          "heading": 3.141592653589793,
+          "moving": true,
+          "activity": "strolling",
+          "district": "cottage"
+        },
+        {
+          "id": "elowen",
+          "name": "Princess Elowen",
+          "role": "princess",
+          "x": -23.92,
+          "z": 30.487049600033764,
+          "heading": 0,
+          "moving": true,
+          "activity": "strolling",
+          "district": "manor"
+        },
+        {
+          "id": "mira",
+          "name": "Lady Mira",
+          "role": "noble",
+          "x": -13.859891200027468,
+          "z": 38.839999999999996,
+          "heading": -1.5707963267948966,
+          "moving": true,
+          "activity": "strolling",
+          "district": "manor"
+        },
+        {
+          "id": "pip",
+          "name": "Pip",
+          "role": "musician",
+          "x": -15.691729599969392,
+          "z": 35.480000000000004,
+          "heading": 1.5707963267948966,
+          "moving": true,
+          "activity": "strolling",
+          "district": "manor"
+        },
+        {
+          "id": "oswin",
+          "name": "Oswin",
+          "role": "steward",
+          "x": 4.16,
+          "z": 30.188249600033753,
+          "heading": 0,
+          "moving": true,
+          "activity": "strolling",
+          "district": "manor"
+        }
+      ]
+    },
+    "districts": [
+      {
+        "id": "cottage",
+        "open": true,
+        "status": "open",
+        "greyPaint": false,
+        "drawMeshes": 55
+      },
+      {
+        "id": "manor",
+        "open": true,
+        "status": "open",
+        "greyPaint": false,
+        "drawMeshes": 27
+      },
+      {
+        "id": "market",
+        "open": false,
+        "status": "locked",
+        "greyPaint": true,
+        "drawMeshes": 41
+      },
+      {
+        "id": "garden",
+        "open": false,
+        "status": "locked",
+        "greyPaint": true,
+        "drawMeshes": 33
+      },
+      {
+        "id": "keep",
+        "open": false,
+        "status": "locked",
+        "greyPaint": true,
+        "drawMeshes": 33
+      },
+      {
+        "id": "castle",
+        "open": false,
+        "status": "locked",
+        "greyPaint": true,
+        "drawMeshes": 42
+      }
+    ],
+    "bridges": [
+      {
+        "id": "manor-bridge",
+        "open": true,
+        "raised": false
+      },
+      {
+        "id": "keep-bridge",
+        "open": false,
+        "raised": true
+      },
+      {
+        "id": "citadel-bridge",
+        "open": false,
+        "raised": true
+      },
+      {
+        "id": "market-bridge",
+        "open": false,
+        "raised": true
+      },
+      {
+        "id": "garden-bridge",
+        "open": false,
+        "raised": true
+      },
+      {
+        "id": "royal-procession",
+        "open": false,
+        "raised": true
+      }
+    ]
+  },
+  "errors": [],
+  "posts": [
+    "http://localhost:3134/api/setup",
+    "http://localhost:3134/api/example/contributions"
+  ],
+  "note": "Isolated example database on port 3134. The $15 contribution is simulated; no PayPal payment or paid AI request."
+}

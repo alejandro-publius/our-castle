@@ -1,5 +1,27 @@
 # Validation
 
+## November 4, 2026: playable judge review draft and focused keyboard/device fix
+
+**Judge review draft:** `docs/demos/judge-review/our-castle-judge-review-draft.mp4` is a **2:36.36 private draft**, not a submitted or fully live end-to-end video. It reuses the current example-mode connected-realm footage, labelled earlier live-AI UI recordings, and separately labelled historical verifier reports. A visible **24-second unfilmed owner insert at 2:00.36–2:24.36** remains for the actual in-app popup approval, receipt/bridge and household `get_order` reconciliation. No missing outcome was reconstructed. Editable timeline, narration, SRT/WebVTT, source excerpts/hashes and an exact insert guide accompany it.
+
+**Media checks actually performed:**
+- 156.360 s; 1920×1080 H.264; 25 fps; **3,909 video frames**; AAC mono narration. Full video/audio decode completed with exit 0.
+- **32 caption cues** use measured offline speech-phrase durations, are ordered and non-overlapping, fit their scenes, and end within the cut. No spoken phrase is truncated. The voice is synthetic offline macOS Daniel, not the owner's voice; no speech service or music was used.
+- Audio measured mean −20.2 dB and peak −1.0 dB.
+- The two original recordings match their recorded SHA-256 values. The preserved 36-second realm clip remains **1,932,194 bytes**, SHA-256 `33dd65316e28ee6e059cb856deccaaebfe8eb071e00750ab18f4d3b51beb2fc1`.
+- Historical excerpts are cropped/trimmed from actual earlier recorded UI; original obsolete narration/small-plot world are omitted. Report copies are byte-identical. All included source/derivative hashes are checked by the renderer. Representative rendered frames were inspected for legibility and correct provenance labels.
+- Final draft SHA-256: `14e9f9aea57c4988979a45fc473dd55c8a79db3fdb04cca104aa5f882c52c344` (10,046,567 bytes). The clip's render report and source manifest record its inputs.
+- No new payment order, refund, paid AI call, integration retest, upload or publication. This is media preparation, not evidence that any previously unverified app path now works.
+
+**Focused UI review/fix:** commit `d869f1b`; details in [ACCESSIBILITY-DEVICE-REVIEW.md](ACCESSIBILITY-DEVICE-REVIEW.md).
+- On a keyboard reward preview, focus had stayed thousands of pixels below the scrolled-to realm, 21 Shift+Tab presses from its exit. At 320 px, district selection could also scroll the focused button off-screen.
+- The fix keeps the selected district control visible, moves preview focus to its described return control, and restores keyboard focus to the source reward card when returning. The six-district geometry, buildings, grey locked areas, raised bridges and renderer are unchanged.
+- Chromium desktop/390×844/320×568 emulation audit: visible focus, names, tab navigation, no horizontal overflow and no page errors/non-GET audit requests.
+- **8/8 focused browser tests passed.** Against the old code, four fail; those demonstrate the 320 px district and keyboard-preview regression. The small desktop clipping measured by the audit did not reproduce in that runner, as the detailed review explicitly records.
+- **12/12 existing affected-path browser checks passed** (realm/court 10, estate preview 2). Syntax and whitespace checks passed. No full suite or already-passed Postman guard suite was rerun.
+- `.env` and owner `data/` hashes/timestamps and all compared household fields matched the saved baseline. Existing servers on 3010 and 3020 were preserved. The isolated review server was stopped; its temporary database was retained.
+- This is **Chromium emulation only**. It does not close real iOS/Android hardware, Safari/Firefox, screen-reader, forced-color, 200% zoom, AG Grid or PayPal popup accessibility checks. Remaining observations are in the review.
+
 ## November 4, 2026: tracked demo clip and private offline review kit (packaging only)
 
 **Handoff fixes**, commit `47b35eb`:
