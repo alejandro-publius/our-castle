@@ -4,6 +4,7 @@ import { bus } from './bus.js';
 import { chargeIcon, crestChoices, crestSvg } from './crest.js';
 import { TIERS, formatCents, formatPercent, parseAmountToCents, ROUTE_LENGTH } from '../core/rules.js';
 import { mountPayPalButton } from './paypal-checkout.js';
+import { createLedgerGrid } from './ledger-grid.js';
 
 // ---------- small helpers ----------
 const $ = (selector, root = document) => root.querySelector(selector);
@@ -48,6 +49,7 @@ let state = null;
 let scene = null;
 let paypal = null;
 let paypalMount = null;
+let ledgerGrid = null;
 const ui = {
   tab: 'house',
   personaId: pref.get('persona'),
@@ -61,6 +63,8 @@ const ui = {
   receipt: null,
   refundArm: null,
   celebrationTimer: null,
+  ledgerFilter: 'all',
+  stewardBusy: false,
 };
 const persona = () => state?.members.find((m) => m.id === ui.personaId) ?? null;
 const isSandbox = () => state?.modes.payments.mode === 'sandbox';
@@ -583,6 +587,9 @@ function renderReceipt() {
       ...(completed && r.outcome === 'completed' ? [h('dt', {}, 'Goal progress'), h('dd', {}, `${money(r.before)} → ${money(r.after)} (${formatPercent(r.after, state.goal.targetCents)})`)] : []),
       ...(r.awarded.filter((a) => typeof a === 'number').length ? [h('dt', {}, 'Milestone'), h('dd', {}, r.awarded.filter((a) => typeof a === 'number').map((t) => `${TIERS[t].name} raised`).join(', '))] : []),
     ),
+    !c.simulated && c.providerOrderId && state.steward.paypalTools
+      ? h('div', { class: 'actions' }, h('button', { type: 'button', onclick: () => askSteward(`Did PayPal confirm the ${money(c.amountCents)} contribution?`, c.providerOrderId) }, 'Ask the steward to verify with PayPal'))
+      : null,
   );
 }
 
@@ -607,17 +614,36 @@ const KIND_LABEL = {
   starting_progress: 'Starting progress', contribution: 'Contribution', refund: 'Refund', simulated_contribution: 'Contribution', simulated_refund: 'Refund',
 };
 
+function ledgerRows() {
+  const { ledger } = state;
+  return [...ledger.goalEntries, ...ledger.bills, ...ledger.gifts].map((e) => {
+    const category = e.kind === 'bill_paid' ? 'bill' : e.kind === 'gift_sent' ? 'gift' : 'goal';
+    const signed = e.effect * e.amountCents;
+    return {
+      id: e.id,
+      category,
+      whenIso: e.createdAt,
+      when: timeLabel(e.createdAt),
+      record: category === 'goal' ? 'Goal progress' : category === 'bill' ? 'Bill paid (habit)' : 'Gift sent',
+      entry: e.label || KIND_LABEL[e.kind],
+      source: e.source === 'user-reported' ? 'You reported' : e.source === 'simulated' ? 'Simulated' : 'PayPal sandbox',
+      signedCents: category === 'goal' ? signed : e.amountCents,
+      amountText: category === 'goal' ? `${signed < 0 ? '−' : '+'}${money(e.amountCents)}` : money(e.amountCents),
+      counts: category === 'goal' ? (signed < 0 ? 'Yes (subtracts)' : 'Yes') : 'No — not savings',
+    };
+  });
+}
+
+function renderLedgerGrid() {
+  if (ui.tab !== 'ledger') return; // grids are sized while visible
+  if (!ledgerGrid) ledgerGrid = createLedgerGrid($('#ledger-goal'), { formatMoney: money });
+  ledgerGrid.update(ledgerRows(), state.progress.progressCents).then(() => ledgerGrid.setFilter(ui.ledgerFilter));
+}
+
 function renderLedger() {
-  const { ledger, progress, contributions, achievements, modes } = state;
-  const sourceTag = (e) => (e.source === 'user-reported' ? h('span', { class: 'tag reported' }, 'you reported')
-    : e.source === 'simulated' ? h('span', { class: 'tag simulated' }, 'simulated') : h('span', { class: 'tag sandbox' }, 'PayPal sandbox'));
-  $('#ledger-goal').replaceChildren(
-    h('thead', {}, h('tr', {}, h('th', { scope: 'col' }, 'Entry'), h('th', { scope: 'col', class: 'amount' }, 'Amount'))),
-    h('tbody', {}, ...ledger.goalEntries.map((e) => h('tr', {},
-      h('td', {}, KIND_LABEL[e.kind], ' ', sourceTag(e), h('small', {}, `${e.label ?? ''} · ${timeLabel(e.createdAt)}`)),
-      h('td', { class: 'amount' }, `${e.effect < 0 ? '−' : '+'}${money(e.amountCents)}`))),
-    h('tr', { class: 'total' }, h('th', { scope: 'row' }, 'Current tracked progress'), h('td', { class: 'amount' }, money(progress.progressCents)))),
-  );
+  const { contributions, achievements, modes } = state;
+  renderLedgerGrid();
+  renderSteward();
 
   const adult = persona()?.role === 'adult';
   $('#ledger-contributions').replaceChildren(...(contributions.length ? contributions.map((c) => {
@@ -626,6 +652,9 @@ function renderLedger() {
     const actions = [];
     if (c.status === 'pending' && c.simulated) actions.push(h('button', { type: 'button', onclick: () => completePending(c.id) }, 'Simulate PayPal completing it'));
     if (c.status === 'pending' && !c.simulated) actions.push(h('button', { type: 'button', onclick: () => refreshOrder(c.providerOrderId) }, 'Check with PayPal'));
+    if (!c.simulated && c.providerOrderId && state.steward.paypalTools) {
+      actions.push(h('button', { type: 'button', onclick: () => askSteward(`Did PayPal confirm the ${money(c.amountCents)} contribution?`, c.providerOrderId) }, 'Ask the steward to verify'));
+    }
     if (refundable && adult) {
       const left = capture.amountCents - capture.refundedCents;
       actions.push(ui.refundArm === capture.captureId
@@ -640,16 +669,70 @@ function renderLedger() {
       actions.length ? h('div', { class: 'actions' }, actions) : null);
   }) : [h('li', { class: 'empty' }, 'No contributions yet.')]));
 
-  const entryList = (items, empty) => (items.length ? items.map((e) => h('li', {}, h('span', {}, e.label, h('small', {}, ` · ${timeLabel(e.createdAt)}`)), h('span', {}, money(e.amountCents))))
-    : [h('li', { class: 'empty' }, empty)]);
-  $('#ledger-bills').replaceChildren(...entryList(ledger.bills, 'No bills logged. Logging an on-time bill plants a garden bed.'));
-  $('#ledger-gifts').replaceChildren(...entryList(ledger.gifts, 'No gifts logged.'));
   $('#achievements').replaceChildren(...(achievements.length ? achievements.map((a) => h('li', {}, h('strong', {}, a.label), h('span', {}, a.detail), h('small', {}, timeLabel(a.earnedAt))))
     : [h('li', { class: 'empty' }, 'Keepsakes appear as the house reaches milestones.')]));
   if (state.board.builtTierCommemorative) {
     $('#achievements').append(h('li', {}, h('strong', {}, 'About keepsakes'), h('span', {}, 'Raised buildings stay as keepsakes after a refund. Current progress and the travelers always show the true amount.')));
   }
   $('#reset-row').hidden = modes.payments.mode !== 'example';
+}
+
+// ---------- House steward (AI, read-only) ----------
+const STEWARD_SUGGESTIONS = ['Did PayPal confirm our last contribution?', 'How close are we to the next milestone?', 'Is anything still pending?'];
+
+function renderSteward() {
+  const { steward } = state;
+  $('#steward-note').textContent = !steward.available
+    ? 'The steward is off. It needs an AI key (AI_API_KEY) in the server’s .env file; with PayPal sandbox credentials it can also check payments through PayPal’s Agent Toolkit.'
+    : steward.paypalTools
+      ? `Claude (${steward.model}) answers from your ledger and checks PayPal sandbox records with PayPal’s Agent Toolkit. Read-only: it cannot create, pay or refund anything.`
+      : `Claude (${steward.model}) answers from your ledger. PayPal checks are off while payments are in example mode.`;
+  const suggestions = $('#steward-suggestions');
+  if (!suggestions.childElementCount) {
+    suggestions.append(...STEWARD_SUGGESTIONS.map((q) => h('button', { type: 'button', 'data-question': q }, h('span', {}, q))));
+  }
+  const disabled = !steward.available || ui.stewardBusy;
+  for (const el of [...$$('#steward-suggestions button'), $('#steward-form input'), $('#steward-ask')]) el.disabled = disabled;
+}
+
+async function askSteward(question, focusOrderId = null) {
+  if (!state.steward.available || ui.stewardBusy) return;
+  if (ui.tab !== 'ledger') selectTab('ledger', { focus: false });
+  $('#steward-form').elements.question.value = question;
+  ui.stewardBusy = true;
+  renderSteward();
+  setStatus('#steward-status', 'working', state.steward.paypalTools ? 'The steward is reading the ledger and checking with PayPal…' : 'The steward is reading the ledger…');
+  $('#steward-answer').hidden = true;
+  try {
+    const res = await api.post('/api/steward', { question, memberId: persona()?.id, focusOrderId });
+    if (res.status !== 'ok') { setStatus('#steward-status', 'error', `The steward could not answer: ${res.error.message}`); return; }
+    setStatus('#steward-status', '', '');
+    renderStewardAnswer(res);
+    bus.emit('steward:answer', res);
+  } catch (error) {
+    setStatus('#steward-status', 'error', error.message);
+  } finally {
+    ui.stewardBusy = false;
+    renderSteward();
+  }
+}
+
+const VERDICT_CLASS = { match: 'ok', action: 'warn', differs: 'bad', unavailable: 'warn' };
+function renderStewardAnswer(res) {
+  const box = $('#steward-answer');
+  box.hidden = false;
+  box.replaceChildren(
+    h('span', { class: 'source-badge ai' }, `AI steward · ${res.model} · read-only${res.paypalTools ? ' · PayPal Agent Toolkit' : ''}`),
+    h('p', { class: 'steward-text' }, res.answer),
+    ...(res.warnings.length ? [h('div', { class: 'callout warn' }, res.warnings.join(' '))] : []),
+    h('h5', {}, 'What it checked'),
+    h('ul', { class: 'checks' }, ...(res.checks.length ? res.checks.map((c) => h('li', {},
+      h('span', { class: `tag ${c.source.startsWith('PayPal') ? 'sandbox' : 'reported'}` }, c.source),
+      ' ', c.summary,
+      c.reconciliation ? h('span', { class: `verdict ${VERDICT_CLASS[c.reconciliation.verdict] ?? 'warn'}` }, c.reconciliation.note) : null,
+      c.reconciliation?.verdict === 'action' ? h('button', { type: 'button', onclick: () => refreshOrder(c.orderId) }, 'Check with PayPal') : null))
+      : [h('li', {}, 'Nothing was checked.')])),
+  );
 }
 
 async function completePending(id) {
@@ -702,6 +785,7 @@ function selectTab(name, { focus = true } = {}) {
     button.tabIndex = selected ? 0 : -1;
     $(`#panel-${tab}`).hidden = !selected;
   }
+  if (name === 'ledger' && state) renderLedgerGrid();
   if (focus) $(`#tab-${name}`).focus();
 }
 function renderTabs() {
@@ -787,6 +871,20 @@ function bindEvents() {
   $('#give-approve').addEventListener('change', () => { setStatus('#give-status', '', ''); renderGive(); });
 
   // Ledger
+  $('#ledger-filter').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-filter]');
+    if (!b) return;
+    ui.ledgerFilter = b.dataset.filter;
+    for (const x of $$('#ledger-filter [data-filter]')) x.setAttribute('aria-pressed', String(x === b));
+    ledgerGrid?.setFilter(ui.ledgerFilter);
+  });
+  $('#steward-suggestions').addEventListener('click', (e) => { const b = e.target.closest('[data-question]'); if (b) askSteward(b.dataset.question); });
+  $('#steward-form').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const q = e.currentTarget.elements.question.value.trim();
+    if (q.length < 3) { setStatus('#steward-status', 'error', 'Type a question first.'); return; }
+    askSteward(q);
+  });
   $('#bill-form').addEventListener('submit', (e) => logEntry(e, 'bill_paid'));
   $('#gift-form').addEventListener('submit', (e) => logEntry(e, 'gift_sent'));
   $('#reset-demo').addEventListener('click', async (e) => {

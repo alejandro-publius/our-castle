@@ -170,36 +170,57 @@
           <article class="receipt" id="receipt" hidden tabindex="-1" aria-labelledby="receipt-title"></article>
         </section>
 
-        <!-- 4. Ledger: goal progress, receipts, bills and gifts kept separate -->
+        <!-- 4. Ledger: AI steward, one ledger grid with savings, bills and gifts kept separate, receipts -->
         <section class="panel parchment" id="panel-ledger" role="tabpanel" aria-labelledby="tab-ledger" hidden>
           <h3>The house ledger</h3>
-          <p class="lede">Three separate records. Only goal progress moves the travelers and grows the home. This is not a bank balance.</p>
-          <section class="ledger-block" aria-labelledby="ledger-goal-title">
-            <h4 id="ledger-goal-title">Goal progress</h4>
-            <div class="table-wrap"><table class="ledger-table" id="ledger-goal"></table></div>
+          <p class="lede">Goal progress, bills and gifts are separate records. Only goal progress moves the travelers and grows the home. This is not a bank balance.</p>
+
+          <section class="ledger-block steward" aria-labelledby="steward-title">
+            <h4 id="steward-title">Ask the house steward <small>— AI, read-only</small></h4>
+            <p class="fine" id="steward-note"></p>
+            <div class="quick-picks suggestions" id="steward-suggestions" role="group" aria-label="Suggested questions"></div>
+            <form class="inline-form steward-form" id="steward-form" novalidate>
+              <label class="field"><span>Your question</span><input name="question" type="text" maxlength="300" autocomplete="off" placeholder="Did PayPal confirm our last contribution?"></label>
+              <button type="submit" id="steward-ask">Ask</button>
+            </form>
+            <div class="form-status" id="steward-status" role="status" aria-live="polite"></div>
+            <article class="steward-answer" id="steward-answer" hidden aria-live="polite"></article>
           </section>
+
+          <section class="ledger-block" aria-labelledby="ledger-grid-title">
+            <div class="ledger-head">
+              <h4 id="ledger-grid-title">Every record</h4>
+              <div class="segmented" id="ledger-filter" role="group" aria-label="Show records">
+                <button type="button" data-filter="all" aria-pressed="true">All</button>
+                <button type="button" data-filter="goal" aria-pressed="false">Goal progress</button>
+                <button type="button" data-filter="bill" aria-pressed="false">Bills</button>
+                <button type="button" data-filter="gift" aria-pressed="false">Gifts</button>
+              </div>
+            </div>
+            <div class="ledger-grid" id="ledger-goal" aria-label="House ledger records"></div>
+            <p class="fine">Grid by AG Grid Community. Bills and gifts show “not savings” and never change the total.</p>
+          </section>
+
           <section class="ledger-block" aria-labelledby="ledger-contrib-title">
             <h4 id="ledger-contrib-title">Contributions and receipts</h4>
             <ul class="contributions" id="ledger-contributions"></ul>
           </section>
-          <section class="ledger-block" aria-labelledby="ledger-bills-title">
-            <h4 id="ledger-bills-title">Bills paid on time <small>— habits grow gardens; not savings</small></h4>
-            <form class="inline-form" id="bill-form" novalidate>
-              <label class="field"><span>Bill</span><input name="label" type="text" maxlength="60" placeholder="Internet bill" required></label>
+
+          <section class="ledger-block" aria-labelledby="ledger-log-title">
+            <h4 id="ledger-log-title">Log a bill or a gift <small>— recorded separately; never counted as savings</small></h4>
+            <form class="inline-form" id="bill-form" novalidate aria-label="Log a bill paid on time">
+              <label class="field"><span>Bill paid on time</span><input name="label" type="text" maxlength="60" placeholder="Internet bill" required></label>
               <label class="field"><span>Amount</span><span class="money"><input name="amount" inputmode="decimal" placeholder="60.00" required></span></label>
               <button type="submit">Log bill</button>
             </form>
-            <ul class="entries" id="ledger-bills"></ul>
-          </section>
-          <section class="ledger-block" aria-labelledby="ledger-gifts-title">
-            <h4 id="ledger-gifts-title">Gifts sent <small>— recorded separately; not savings</small></h4>
-            <form class="inline-form" id="gift-form" novalidate>
-              <label class="field"><span>Gift</span><input name="label" type="text" maxlength="60" placeholder="Birthday gift" required></label>
+            <p class="fine">On-time bills grow garden beds beside the home.</p>
+            <form class="inline-form" id="gift-form" novalidate aria-label="Log a gift sent">
+              <label class="field"><span>Gift sent</span><input name="label" type="text" maxlength="60" placeholder="Birthday gift" required></label>
               <label class="field"><span>Amount</span><span class="money"><input name="amount" inputmode="decimal" placeholder="25.00" required></span></label>
               <button type="submit">Log gift</button>
             </form>
-            <ul class="entries" id="ledger-gifts"></ul>
           </section>
+
           <section class="ledger-block" aria-labelledby="keepsakes-title">
             <h4 id="keepsakes-title">Keepsakes</h4>
             <ul class="keepsakes" id="achievements"></ul>

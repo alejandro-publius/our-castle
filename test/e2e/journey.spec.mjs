@@ -101,7 +101,8 @@ test('full journey: house and crest, example plan, adult approval, receipt, boar
   await expect(page.getByRole('tab', { name: /Contribute/ })).toHaveAttribute('aria-selected', 'true');
   await page.getByRole('tab', { name: /Ledger/ }).click();
   await expect(page.locator('#ledger-goal')).toContainText('Current tracked progress');
-  await expect(page.locator('#ledger-goal')).toContainText('you reported');
+  await expect(page.locator('#ledger-goal')).toContainText('You reported');
+  await expect(page.locator('#ledger-goal[data-grid="ag-grid"] .ag-root')).toBeVisible();
   await expect(page.locator('#ledger-contributions')).toContainText('Completed — counted');
   await expect(page.locator('#achievements')).toContainText('Manor raised');
   expect(errors).toEqual([]);
@@ -182,16 +183,25 @@ test('bills and gifts are logged separately, grow a garden, and never move the t
   await foundHouse(page);
   await page.getByRole('tab', { name: /Ledger/ }).click();
   const bill = page.locator('#bill-form');
-  await bill.getByLabel('Bill').fill('Internet bill');
+  await bill.getByLabel('Bill paid on time').fill('Internet bill');
   await bill.getByLabel('Amount').fill('60.00');
   await bill.getByRole('button', { name: 'Log bill' }).click();
   await expect(page.locator('#ledger-status')).toContainText('do not count toward the goal');
   const gift = page.locator('#gift-form');
-  await gift.getByLabel('Gift').fill('Birthday gift');
+  await gift.getByLabel('Gift sent').fill('Birthday gift');
   await gift.getByLabel('Amount').fill('25.00');
   await gift.getByRole('button', { name: 'Log gift' }).click();
-  await expect(page.locator('#ledger-gifts')).toContainText('Birthday gift');
+  const grid = page.locator('#ledger-goal');
+  await expect(grid).toContainText('Birthday gift');
+  await expect(grid).toContainText('Internet bill');
+  await expect(grid.getByText('No — not savings')).toHaveCount(2);
   await expect(page.locator('#progress-amount')).toHaveText('$60.00');
+  // The record filter narrows the grid to one category; the total row still shows tracked progress.
+  await page.locator('#ledger-filter').getByRole('button', { name: 'Bills' }).click();
+  await expect(grid).toContainText('Internet bill');
+  await expect(grid).not.toContainText('Birthday gift');
+  await expect(grid).toContainText('Current tracked progress');
+  await page.locator('#ledger-filter').getByRole('button', { name: 'All' }).click();
   await settled(page);
   expect(await scene(page)).toMatchObject({ position: 4, tier: 0, gardens: 1 });
   await expect(page.locator('#achievements')).toContainText('Garden bed 1 planted');
@@ -233,6 +243,15 @@ test('a refund lowers progress and moves the travelers back; the Manor stays as 
   await expect(page.locator('#board-status')).toContainText('commemorates a milestone reached earlier');
   await expect(page.locator('#achievements')).toContainText('Raised buildings stay as keepsakes');
   await expect(page.locator('#ledger-contributions')).toContainText('Refunded — progress reversed');
+});
+
+test('without an AI key the steward explains it is off and cannot be used', async ({ page }) => {
+  await ready(page);
+  await page.getByRole('tab', { name: /Ledger/ }).click();
+  await expect(page.locator('#steward-note')).toContainText('needs an AI key (AI_API_KEY)');
+  await expect(page.locator('#steward-ask')).toBeDisabled();
+  await expect(page.locator('#steward-suggestions button').first()).toBeDisabled();
+  await expect(page.locator('#ledger-goal[data-grid="ag-grid"]')).toBeVisible();
 });
 
 test('layout: no horizontal overflow in any step and amounts stay readable', async ({ page }) => {
