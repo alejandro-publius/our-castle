@@ -1,8 +1,20 @@
 # Validation
 
+## November 4, 2026: current woodland/family review video
+
+The private [2:51 review kit](demos/woodland-review/README.md) shows new recorded example-mode family steps, the green woodland, a simulated $15 Manor unlock, a saved record after refresh and a labelled castle art preview. Earlier live-AI footage and historical PayPal verifier evidence remain separately labelled. The approved sandbox popup/receipt/same-order get_order insert is still **unfilmed at 2:17–2:41**. No missing outcome was reconstructed and nothing was submitted.
+
+- App footage source: `ecc7cc5`; a new headless Chromium context and an owned key-free example server on 3141 with a fresh database. Four real UI writes: setup, example plan, explicit plan acceptance and one simulated contribution. No external browser request, page error, PayPal call or paid AI call. Navigation made no writes.
+- The continuous original is retained. The earlier capture that exposed the Ledger focus issue is retained as superseded QA; the corrected recording checks the focused record is fully visible after the grid settles.
+- Actual export: **171.00 seconds**, 1920×1080 H.264 at 25 fps, **4,275 frames**, AAC mono narration at 24 kHz, **37 measured captions**. Fully decoded without errors; caption bounds and every included source hash checked. Representative final frames were inspected against the actual app for the forest, family plan, fully-visible record and explicit unfinished slate.
+- Synthetic voice: offline macOS Daniel, not the owner's voice. Editable narration, timeline, SRT/WebVTT, source hashes/ranges, original notices, capture/render scripts and exact insert instructions are included.
+- MP4: 10,447,683 bytes; SHA-256 `95dbde0b754fd37c8dd51054fa74c8bb9026ebe5f055f6511ec0b130b865606e`. The 36-second original clip and older 2:36 draft retain their original bytes.
+- The Mac's existing Python 3.9/Pillow environment was used for rendering; no new package was installed. The editable kit records that interpreter because the separate Homebrew Python lacks Pillow.
+- The owner reports PayPal login, but this worker has no supported browser controls. The preserved 3021 rehearsal still needs the existing browser operator to verify its personal sandbox-buyer session and resume the already-approved isolated test. No new key or repeated payment approval is needed. Source/provenance: [PROVENANCE.md](demos/woodland-review/PROVENANCE.md); exact remaining flow: [OWNER-INSERT.md](demos/woodland-review/OWNER-INSERT.md).
+
 ## November 4, 2026: an easier family journey with one next step (branch `feature/family-journey`)
 
-The owner chose *"An easier family journey: clearer planning, contributions and next steps."* This superseded the district-guide task before any of that feature was implemented; its drafted art-direction note is saved in the worktree's git-ignored `test-results/district-guide-paused/`. Built in the worktree `our-castle-district-guide` (branch renamed in place) from `68878ac`; not yet promoted.
+The owner chose *"An easier family journey: clearer planning, contributions and next steps."* This superseded the district-guide task before any of that feature was implemented; its drafted art-direction note is saved in the worktree's git-ignored `test-results/district-guide-paused/`. Built in the worktree `our-castle-district-guide` (branch renamed in place) from `68878ac`, reviewed, and promoted locally to `expansion/wider-estate` at `2a18bc5`.
 
 **What changed:**
 - **Next step:** the goal card shows one next step from saved state, with one or two lines on why and a button naming what it opens. The steps, in priority order:
@@ -52,6 +64,10 @@ The owner chose *"An easier family journey: clearer planning, contributions and 
 - **Not covered:** Chromium emulation only, with no real phone, Safari, Firefox or screen reader.
 - **Sandbox wording not exercised:** the PayPal sandbox wording of the projection and next step was not seen in a browser, because this worker does not use a signed-in browser or sandbox checkout. The live checkout/`get_order` reconciliation gap recorded elsewhere is **not** resolved by this change.
 - **Session-only receipt:** the receipt-ready step lives only in the browser session; after a refresh the record link is the way back.
+
+**Recorded-flow focus follow-up (`ecc7cc5`):** actual 1760×760 recording exposed a lazy-AG-Grid layout shift: the focused saved payment record moved below the viewport after its first reveal. A deterministic route gate reproduced it before the fix. The destination now waits for the existing grid load/fill promise and two stable-height animation frames, then reveals only if navigation and focus intent are unchanged. It reuses the existing grid work and performs no server write. The same handling covers the pending-payment Ledger destination. New gated-load tests passed in two repeats (8 passed, 8 duplicate-viewport cases skipped by design); the complete family spec then passed 12/12 active cases and the affected Ledger journey cases 8/8. A real-grid 1760×760 capture measured the focused row at top 12, bottom 123 within the 760-pixel viewport. Only main.js and the focused browser spec changed. Root reviewed and promoted the fix; the original recording is retained as superseded QA evidence, and the corrected walkthrough is recorded separately. No paid test or unrelated suite was repeated.
+
+**Local promotion check (November 4, 2026, 12:42 PM Pacific):** the existing app on 3010 serves the checked HTML, CSS, main module and new journey module byte-identically. All baseline household files and .env retained their content hashes, modification times and permissions; the selected household/goal/progress/ledger/plan state also hashed identically. Original 3010/3021 server processes remain 57180/67124. No server restart, checkout, payment or paid AI call was needed. Evidence: git-ignored `test-results/family-journey-promotion/after.json`. The identical-code suites were not repeated after promotion. The isolated example demo remains on 3140; recording uses its own fresh 3141 copy instead.
 
 ## November 4, 2026: woodland realm with rivers and colourful locked castles (branch `art/woodland-realm`)
 

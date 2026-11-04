@@ -1,5 +1,7 @@
 # Demo script
 
+**Current recorded review:** use [the woodland/family cut](demos/woodland-review/README.md), its [measured narration](demos/woodland-review/narration.md) and [editable timeline](demos/woodland-review/timeline.json). It is 2:51 with a clearly unfilmed approved sandbox insert at 2:17–2:41. The older talk tracks below are reference, not proof that an in-app checkout or same-order get_order has been filmed.
+
 There are three pieces:
 
 - **Part A** describes the clip that already exists. It is a silent 36-second world tour recorded in example mode.

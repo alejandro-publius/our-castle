@@ -1,5 +1,9 @@
 # Demo clip provenance
 
+## Current woodland and family review
+
+[The new 2:51 review kit](woodland-review/README.md) records the green forest and the clearer family journey in isolated example mode, alongside labelled historical PayPal/AI evidence. The approved sandbox insert remains unfilmed. The older clips below are preserved unchanged and show the earlier island layout.
+
 ## `our-castle-connected-realm.mp4`
 
 | | |

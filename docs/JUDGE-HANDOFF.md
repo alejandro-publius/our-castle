@@ -2,15 +2,16 @@
 
 Start here to run, evaluate or present Our Castle. State as of **November 4, 2026**, on the local branch `expansion/wider-estate`:
 
-- **App:** the connected-realm code is commit `7468b57`. Later local commits add documentation, the Postman guards, the tracked demo clips and the focused keyboard fix at `d869f1b`.
+- **App:** the woodland realm is `ce43a0f`; the clearer family journey is `2a18bc5`, with the lazy-Ledger focus follow-up at `ecc7cc5`. These are promoted to the primary local branch. The earlier `7468b57` island layout and preserved clips are historical.
 - **Not pushed:** the GitHub `main` branch still holds only the original concept handoff (`5cf8363`), so **cloning GitHub does not give you this prototype**. Review it from the owner's checkout or from the private offline review kit (section 1).
 - **Status:** the repository is private, everything runs against the PayPal **sandbox**, and no hackathon entry has been submitted.
 
 | Look at | Where |
 | --- | --- |
 | The running app (owner's Mac) | http://localhost:3010 |
-| Playable judge review draft, 2:36.36 | [MP4](demos/judge-review/our-castle-judge-review-draft.mp4), [local player](demos/judge-review/review.html), [editable kit](demos/judge-review/README.md). A visible 24-second owner insert is unfinished; private, not submitted |
-| Finished 36-second world clip (silent, example mode) | [`docs/demos/our-castle-connected-realm.mp4`](demos/our-castle-connected-realm.mp4) ([provenance](demos/README.md)). Tracked in this private branch; not uploaded or published |
+| Current woodland/family review draft, 2:51 | [MP4](demos/woodland-review/our-castle-family-woodland-review-draft.mp4), [local player](demos/woodland-review/review.html), [editable kit](demos/woodland-review/README.md). The approved 24-second sandbox insert at 2:17–2:41 remains unfilmed; private, not submitted |
+| Earlier review draft, historical visuals | [2:36.36 kit](demos/judge-review/README.md), preserved unchanged |
+| Historical 36-second world clip (silent, example mode) | [`docs/demos/our-castle-connected-realm.mp4`](demos/our-castle-connected-realm.mp4) ([provenance](demos/README.md)). Tracked in this private branch; not uploaded or published |
 | Private offline review kit | `test-results/local-review/` on the owner's Mac: a source zip of a committed HEAD, with a manifest. Git-ignored and not published |
 | Live payment evidence | [LIVE-VERIFICATION.md](LIVE-VERIFICATION.md) |
 | Live AI evidence | [LIVE-VERIFICATION-AI.md](LIVE-VERIFICATION-AI.md) |
@@ -112,9 +113,15 @@ The kit also contains the finished clip at `docs/demos/our-castle-connected-real
 - **Simulated example payments:** example mode only, labeled "simulated" on every badge, receipt and ledger line. This is what the finished clip shows.
 - **Reported by you:** starting savings, bills and gifts typed in by the household. Starting savings count toward the goal and are labeled as reported. Bills and gifts never count as savings. Bills grow the self-reported habit garden and the Woodland Garden district, never a provider-verified reward.
 
+## Current family journey and woodland review
+
+The [new review kit](demos/woodland-review/README.md) uses the current green forest and the clearer next-step family flow, with actual scripted example-mode interactions, a simulated Manor unlock and the saved-record path after refresh. It keeps the earlier live-AI excerpts and historical sandbox verifier evidence distinctly labelled. Its approved sandbox insert is still unfilmed; source notes and [the current insert guide](demos/woodland-review/OWNER-INSERT.md) explain the exact remaining flow and the existing 3021 rehearsal. Do not start another rehearsal or order.
+
+On the configured Mac, the owner can try the example-only family demo at **http://localhost:3140**; the configured household remains on **3010**. The existing coordination thread owns checkout on **3021**. This project worker has no supported browser controls; the owner reports login, but that session and the in-app payment/get_order result have not been verified here. No new key or repeated payment approval is needed to resume the already-authorized test with the browser operator.
+
 ## 3. The review draft and preserved world clip
 
-### Playable judge review draft (2:36.36)
+### Earlier judge review draft (2:36.36, historical visual version)
 
 The [new MP4](demos/judge-review/our-castle-judge-review-draft.mp4) is locally playable, with synthetic offline narration, burned-in captions, editable [SRT](demos/judge-review/captions.srt), [timeline](demos/judge-review/timeline.json) and [source notes](demos/judge-review/PROVENANCE.md). It clearly separates:
 

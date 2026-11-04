@@ -1,0 +1,15 @@
+id,start,end,duration,kind,source,original_in,provenance_label
+realm-intro,0,8,8,app,sources/family-woodland-capture.mp4,3.213,EXAMPLE MODE · RECORDED APP
+family-journey,8,26,18,app,sources/family-woodland-capture.mp4,27.694,EXAMPLE MODE · GUIDED FAMILY JOURNEY
+planner-request,26,32,6,ui,sources/planner-request.mp4,24.5,HISTORICAL LIVE AI · EARLIER UI
+planner-result,32,42,10,ui,sources/planner-result.mp4,38,HISTORICAL LIVE AI · RECORDED RESULT
+ai-evidence,42,54,12,evidence,report/slate,,HISTORICAL LIVE AI · VERIFIER REPORT
+example-contribution,54,66,12,app,sources/family-woodland-capture.mp4,43.348,EXAMPLE MODE · SIMULATED CONTRIBUTION
+paypal-evidence,66,82,16,evidence,report/slate,,HISTORICAL PAYPAL SANDBOX · VERIFIER REPORT
+simulated-open,82,98,16,app,sources/family-woodland-capture.mp4,52.969,EXAMPLE MODE · SIMULATED $15 · WOODLAND REALM
+saved-record,98,106,8,app,sources/family-woodland-capture.mp4,73.248,EXAMPLE MODE · SAVED SIMULATED PAYMENT
+castle-preview,106,115,9,app,sources/family-woodland-capture.mp4,82.51,ART PREVIEW · NO FINANCIAL CHANGE
+steward-recording,115,129,14,ui,sources/steward-recording.mp4,84,HISTORICAL LIVE AI · EARLIER STEWARD UI
+steward-evidence,129,137,8,evidence,report/slate,,HISTORICAL LIVE AI · VERIFIED SCOPE
+owner-insert,137,161,24,insert,report/slate,,SANDBOX INSERT · UNFILMED
+closing,161,171,10,app,sources/family-woodland-capture.mp4,94.585,PRIVATE REVIEW CUT · NOT SUBMITTED

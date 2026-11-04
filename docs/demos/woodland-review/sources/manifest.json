@@ -1,0 +1,243 @@
+{
+  "originals": {
+    "woodland": {
+      "file": "/Users/alexvintera/projects/our-castle-woodland-video/test-results/family-woodland-capture/2026-11-04T20-59-38-609Z/page@60ddd5e47dc07752689469dd7ccf9afb.webm",
+      "sha256": "5406ab7e1706dfa11e2bcc140619b686169cb49c2f0c4f07836104c97618cbdb",
+      "bytes": 21541741,
+      "source_commit": "ecc7cc5df5e054cfdc144fd9df81909401e2ff83",
+      "method": "Continuous isolated headless Chromium recording; SwiftShader; scripted real app UI; example-only server; no user browser or credentials",
+      "modes": {
+        "payments": {
+          "mode": "example",
+          "label": "Example payments (simulated)"
+        },
+        "ai": {
+          "mode": "example",
+          "label": "Example planner (built-in rules, no AI)"
+        },
+        "warnings": []
+      },
+      "recording_report": "sources/woodland-recording-report.json"
+    },
+    "earlier": {
+      "original": "test-results/demo-current/our-castle-current-build.mp4",
+      "sha256": "bddeb4a7aaf7defe5184f3d88dc8a4a5175a53c6e280e4bee93ec86cf505ec74",
+      "kind": "Recorded live AI in earlier UI, 2026-11-04T07:31:29.695Z; no checkout completed; original audio omitted"
+    }
+  },
+  "derivatives": [
+    {
+      "file": "sources/planner-request.mp4",
+      "source": "earlier",
+      "requested_in": 24.5,
+      "duration": 6,
+      "crop_xywh": [
+        1218,
+        245,
+        480,
+        600
+      ],
+      "edits": "crop, trim, re-encode to 25fps; original sound removed; no UI generated"
+    },
+    {
+      "file": "sources/planner-result.mp4",
+      "source": "earlier",
+      "requested_in": 38,
+      "duration": 10,
+      "crop_xywh": [
+        1218,
+        0,
+        480,
+        600
+      ],
+      "edits": "crop, trim, re-encode to 25fps; original sound removed; no UI generated"
+    },
+    {
+      "file": "sources/checkout-controls.mp4",
+      "source": "earlier",
+      "requested_in": 52,
+      "duration": 12,
+      "crop_xywh": [
+        1218,
+        340,
+        480,
+        600
+      ],
+      "edits": "crop, trim, re-encode to 25fps; original sound removed; no UI generated"
+    },
+    {
+      "file": "sources/steward-recording.mp4",
+      "source": "earlier",
+      "requested_in": 84,
+      "duration": 14,
+      "crop_xywh": [
+        1218,
+        300,
+        480,
+        600
+      ],
+      "edits": "crop, trim, re-encode to 25fps; original sound removed; no UI generated"
+    },
+    {
+      "file": "sources/family-woodland-capture.mp4",
+      "source": "woodland",
+      "requested_in": 0,
+      "duration": 106.52,
+      "crop_xywh": [
+        0,
+        0,
+        1760,
+        760
+      ],
+      "edits": "Full continuous recording re-encoded from VP9 WebM to silent H.264 at 25 fps. No temporal cut or speed change in this derivative."
+    }
+  ],
+  "edit_ranges": [
+    {
+      "scene": "realm-intro",
+      "source": "sources/family-woodland-capture.mp4",
+      "in": 3.213,
+      "duration": 8,
+      "label": "EXAMPLE MODE · RECORDED APP"
+    },
+    {
+      "scene": "family-journey",
+      "source": "sources/family-woodland-capture.mp4",
+      "in": 27.694,
+      "duration": 18,
+      "label": "EXAMPLE MODE · GUIDED FAMILY JOURNEY"
+    },
+    {
+      "scene": "planner-request",
+      "source": "sources/planner-request.mp4",
+      "in": 24.5,
+      "duration": 6,
+      "label": "HISTORICAL LIVE AI · EARLIER UI"
+    },
+    {
+      "scene": "planner-result",
+      "source": "sources/planner-result.mp4",
+      "in": 38,
+      "duration": 10,
+      "label": "HISTORICAL LIVE AI · RECORDED RESULT"
+    },
+    {
+      "scene": "ai-evidence",
+      "source": "report/slate",
+      "in": null,
+      "duration": 12,
+      "label": "HISTORICAL LIVE AI · VERIFIER REPORT"
+    },
+    {
+      "scene": "example-contribution",
+      "source": "sources/family-woodland-capture.mp4",
+      "in": 43.348,
+      "duration": 12,
+      "label": "EXAMPLE MODE · SIMULATED CONTRIBUTION"
+    },
+    {
+      "scene": "paypal-evidence",
+      "source": "report/slate",
+      "in": null,
+      "duration": 16,
+      "label": "HISTORICAL PAYPAL SANDBOX · VERIFIER REPORT"
+    },
+    {
+      "scene": "simulated-open",
+      "source": "sources/family-woodland-capture.mp4",
+      "in": 52.969,
+      "duration": 16,
+      "label": "EXAMPLE MODE · SIMULATED $15 · WOODLAND REALM"
+    },
+    {
+      "scene": "saved-record",
+      "source": "sources/family-woodland-capture.mp4",
+      "in": 73.248,
+      "duration": 8,
+      "label": "EXAMPLE MODE · SAVED SIMULATED PAYMENT"
+    },
+    {
+      "scene": "castle-preview",
+      "source": "sources/family-woodland-capture.mp4",
+      "in": 82.51,
+      "duration": 9,
+      "label": "ART PREVIEW · NO FINANCIAL CHANGE"
+    },
+    {
+      "scene": "steward-recording",
+      "source": "sources/steward-recording.mp4",
+      "in": 84,
+      "duration": 14,
+      "label": "HISTORICAL LIVE AI · EARLIER STEWARD UI"
+    },
+    {
+      "scene": "steward-evidence",
+      "source": "report/slate",
+      "in": null,
+      "duration": 8,
+      "label": "HISTORICAL LIVE AI · VERIFIED SCOPE"
+    },
+    {
+      "scene": "owner-insert",
+      "source": "report/slate",
+      "in": null,
+      "duration": 24,
+      "label": "SANDBOX INSERT · UNFILMED"
+    },
+    {
+      "scene": "closing",
+      "source": "sources/family-woodland-capture.mp4",
+      "in": 94.585,
+      "duration": 10,
+      "label": "PRIVATE REVIEW CUT · NOT SUBMITTED"
+    }
+  ],
+  "kit_files": {
+    "sources/checkout-controls.mp4": {
+      "bytes": 163961,
+      "sha256": "66095d42526a33d8aa6ab7bca97ef26d0ec36a7b8c2e3f37aa8f525373d23c45"
+    },
+    "sources/earlier-ai-recording-report.json": {
+      "bytes": 1569,
+      "sha256": "14bdef09358a3484a121a100174ac5e52f5cb75ff5f71f90cda9c1c86cee945f"
+    },
+    "sources/earlier-original-timeline.json": {
+      "bytes": 4807,
+      "sha256": "fce7ff000dd827466f214ce7271fff64e0519a16b81bfcbad06c43196d9951e0"
+    },
+    "sources/family-woodland-capture.mp4": {
+      "bytes": 4167373,
+      "sha256": "cf41231f9bafd54c191cba74ee18d051e9339d43e4dba0fb534409fe8d6b01c0"
+    },
+    "sources/historical-ai-verification.md": {
+      "bytes": 2501,
+      "sha256": "b09c3a981b7ef3ba0d1d6af8e264fa1f775964e8dc22d2b930af5ef7da3e99da"
+    },
+    "sources/historical-paypal-verification.md": {
+      "bytes": 1778,
+      "sha256": "dc470d491d724b47fcc8a198d0dd2f86d1987d6bee98b7ac3e5436cd9a6e9bba"
+    },
+    "sources/planner-request.mp4": {
+      "bytes": 48025,
+      "sha256": "5e322bec216a25364eefd2489a9af0b5d0e020d24f8f328b4850213f57f44d66"
+    },
+    "sources/planner-result.mp4": {
+      "bytes": 376475,
+      "sha256": "809ca81f712c77e7508888a933a168d262dec61d1d209d59a680f13c7644aef2"
+    },
+    "sources/steward-recording.mp4": {
+      "bytes": 312365,
+      "sha256": "41db292fc04d6a288dd5a1c289a5df233bc0bc669dcaaccc3d4b7d95fc7664a6"
+    },
+    "sources/woodland-recording-report.json": {
+      "bytes": 8291,
+      "sha256": "3d95a1f1fd42d096284a757c9129c05c22760444e3d4170f2d60e5e061d0afb5"
+    }
+  },
+  "scope": "No new PayPal or paid AI call. Current app footage is scripted example-mode UI, with a simulated contribution. Historical AI footage and report excerpts are unchanged. Popup approval and same-order get_order remain unverified and unfilmed.",
+  "superseded_qa_recording": {
+    "location": "test-results/family-woodland-capture/2026-11-04T20-42-25-438Z/",
+    "source_commit": "2a18bc5",
+    "reason": "Saved record shifted below the viewport during lazy grid load. Original retained; excluded from this final review cut."
+  }
+}

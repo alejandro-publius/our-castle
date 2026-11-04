@@ -1,0 +1,40 @@
+{
+  "duration_seconds": 171.0,
+  "video": {
+    "codec_name": "h264",
+    "width": 1920,
+    "height": 1080,
+    "avg_frame_rate": "25/1",
+    "nb_read_frames": "4275"
+  },
+  "audio": {
+    "codec_name": "aac",
+    "sample_rate": "24000",
+    "channels": 1
+  },
+  "decoded_without_errors": true,
+  "caption_cues": 37,
+  "caption_bounds_valid": true,
+  "source_hashes_valid": {
+    "sources/checkout-controls.mp4": true,
+    "sources/earlier-ai-recording-report.json": true,
+    "sources/earlier-original-timeline.json": true,
+    "sources/family-woodland-capture.mp4": true,
+    "sources/historical-ai-verification.md": true,
+    "sources/historical-paypal-verification.md": true,
+    "sources/planner-request.mp4": true,
+    "sources/planner-result.mp4": true,
+    "sources/steward-recording.mp4": true,
+    "sources/woodland-recording-report.json": true
+  },
+  "unfilmed_insert": {
+    "start_seconds": 137,
+    "end_seconds": 161,
+    "status": "unfinished; actual popup and same-order get_order not established"
+  },
+  "raw_example_recording_source": "ecc7cc5df5e054cfdc144fd9df81909401e2ff83",
+  "new_paypal_or_paid_ai_calls": 0,
+  "video_sha256": "95dbde0b754fd37c8dd51054fa74c8bb9026ebe5f055f6511ec0b130b865606e",
+  "video_bytes": 10447683,
+  "qa_frames": "/Users/alexvintera/projects/our-castle-woodland-video/test-results/woodland-review-final-qa"
+}

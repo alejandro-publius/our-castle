@@ -1,0 +1,355 @@
+{
+  "source_commit": "ecc7cc5df5e054cfdc144fd9df81909401e2ff83",
+  "recorder_sha256": "2628afa99d43937653ef2ea53f5e433728be6a5c5506718288e4c928e1232e7e",
+  "base": "http://127.0.0.1:3141",
+  "server_pid": 84692,
+  "data_dir": "/var/folders/zv/vxrp0js555l3b3vqr1m4gstw0000gn/T/our-castle-family-film-eoyUSR",
+  "raw_video": "/Users/alexvintera/projects/our-castle-woodland-video/test-results/family-woodland-capture/2026-11-04T20-59-38-609Z/page@60ddd5e47dc07752689469dd7ccf9afb.webm",
+  "viewport": {
+    "width": 1760,
+    "height": 760
+  },
+  "method": "Continuous isolated headless Chromium recording; SwiftShader; scripted real app UI; example-only server; no user browser or credentials",
+  "node_wall_seconds": 106.887538667,
+  "phases": [
+    {
+      "id": "realm-intro",
+      "node_seconds": 3.4128922079999997
+    },
+    {
+      "id": "locked-citadel",
+      "node_seconds": 12.953685958
+    },
+    {
+      "id": "family-journey",
+      "node_seconds": 27.893771417
+    },
+    {
+      "id": "example-contribution",
+      "node_seconds": 43.54812320800001
+    },
+    {
+      "id": "simulated-open",
+      "node_seconds": 53.168560875000004
+    },
+    {
+      "id": "saved-record",
+      "node_seconds": 73.448233042
+    },
+    {
+      "id": "castle-preview",
+      "node_seconds": 82.710265208
+    },
+    {
+      "id": "closing",
+      "node_seconds": 94.785103708
+    }
+  ],
+  "navigationChecks": [
+    {
+      "key": "make-plan",
+      "newWrites": 0
+    },
+    {
+      "key": "review-plan",
+      "newWrites": 0
+    },
+    {
+      "key": "contribute-week",
+      "newWrites": 0
+    }
+  ],
+  "errors": [],
+  "writes": [
+    {
+      "method": "POST",
+      "path": "/api/setup",
+      "at": 26.656125708
+    },
+    {
+      "method": "POST",
+      "path": "/api/plans",
+      "at": 32.535744833
+    },
+    {
+      "method": "POST",
+      "path": "/api/plans/plan_642550d16bd54cda8902/accept",
+      "at": 40.160681833000005
+    },
+    {
+      "method": "POST",
+      "path": "/api/example/contributions",
+      "at": 52.667716708
+    }
+  ],
+  "externalRequests": [],
+  "modes": {
+    "payments": {
+      "mode": "example",
+      "label": "Example payments (simulated)"
+    },
+    "ai": {
+      "mode": "example",
+      "label": "Example planner (built-in rules, no AI)"
+    },
+    "warnings": []
+  },
+  "finalProgress": {
+    "startingCents": 6000,
+    "contributedCents": 0,
+    "refundedCents": 0,
+    "simulatedContributedCents": 1500,
+    "simulatedRefundedCents": 0,
+    "confirmedNetCents": 1500,
+    "progressCents": 7500,
+    "bills": {
+      "count": 0,
+      "totalCents": 0
+    },
+    "gifts": {
+      "count": 0,
+      "totalCents": 0
+    },
+    "remainingCents": 22500,
+    "percentTenths": 250,
+    "note": "Goal-progress ledger for this app. Not a bank balance or savings account."
+  },
+  "finalScene": {
+    "region": {
+      "width": 164,
+      "depth": 114
+    },
+    "estateLevel": 1,
+    "view": {
+      "angle": 0.66,
+      "zoom": 1,
+      "panX": 0,
+      "panY": 0,
+      "worldPerPixel": 0.2393736179771948,
+      "focus": null
+    },
+    "previewFeature": null,
+    "tier": 1,
+    "position": 5,
+    "shownPosition": 5,
+    "gardens": 0,
+    "crest": {
+      "field": "cobalt",
+      "charge": "stag"
+    },
+    "playMode": "family",
+    "animating": false,
+    "frames": 141,
+    "ambient": true,
+    "ambientFrames": 217,
+    "grazers": 4,
+    "butterflies": 4,
+    "court": {
+      "capacity": 6,
+      "princesses": [
+        "Princess Elowen"
+      ],
+      "description": "Princess Elowen, a noble visitor, a musician and a steward join the cottage guests.",
+      "batches": 32,
+      "guests": [
+        {
+          "id": "fern",
+          "name": "Fern",
+          "role": "gardener",
+          "x": -53.30723199998856,
+          "z": 33.9,
+          "heading": 1.5707963267948966,
+          "moving": true,
+          "activity": "strolling",
+          "district": "cottage"
+        },
+        {
+          "id": "kit",
+          "name": "Kit",
+          "role": "villager",
+          "x": -48.2,
+          "z": 30.2,
+          "heading": 3.141592653589793,
+          "moving": false,
+          "activity": "greeting guests",
+          "district": "cottage"
+        },
+        {
+          "id": "elowen",
+          "name": "Princess Elowen",
+          "role": "princess",
+          "x": -23.92,
+          "z": 25.28,
+          "heading": 3.141592653589793,
+          "moving": false,
+          "activity": "greeting guests",
+          "district": "manor"
+        },
+        {
+          "id": "mira",
+          "name": "Lady Mira",
+          "role": "noble",
+          "x": -7.2649216000137375,
+          "z": 38.839999999999996,
+          "heading": -1.5707963267948966,
+          "moving": true,
+          "activity": "strolling",
+          "district": "manor"
+        },
+        {
+          "id": "pip",
+          "name": "Pip",
+          "role": "musician",
+          "x": -13.29442720001531,
+          "z": 35.480000000000004,
+          "heading": -1.5707963267948966,
+          "moving": true,
+          "activity": "strolling",
+          "district": "manor"
+        },
+        {
+          "id": "oswin",
+          "name": "Oswin",
+          "role": "steward",
+          "x": 4.16,
+          "z": 22.64833280001688,
+          "heading": 0,
+          "moving": true,
+          "activity": "strolling",
+          "district": "manor"
+        }
+      ]
+    },
+    "districts": [
+      {
+        "id": "cottage",
+        "open": true,
+        "status": "open",
+        "greyPaint": false,
+        "drawMeshes": 53,
+        "hues": 8
+      },
+      {
+        "id": "manor",
+        "open": true,
+        "status": "open",
+        "greyPaint": false,
+        "drawMeshes": 29,
+        "hues": 8
+      },
+      {
+        "id": "market",
+        "open": false,
+        "status": "locked",
+        "greyPaint": false,
+        "drawMeshes": 39,
+        "hues": 8
+      },
+      {
+        "id": "garden",
+        "open": false,
+        "status": "locked",
+        "greyPaint": false,
+        "drawMeshes": 32,
+        "hues": 8
+      },
+      {
+        "id": "keep",
+        "open": false,
+        "status": "locked",
+        "greyPaint": false,
+        "drawMeshes": 35,
+        "hues": 8
+      },
+      {
+        "id": "castle",
+        "open": false,
+        "status": "locked",
+        "greyPaint": false,
+        "drawMeshes": 45,
+        "hues": 8
+      }
+    ],
+    "bridges": [
+      {
+        "id": "manor-bridge",
+        "open": true,
+        "gate": false,
+        "river": "west",
+        "raised": false
+      },
+      {
+        "id": "keep-bridge",
+        "open": false,
+        "gate": true,
+        "river": "main",
+        "raised": true
+      },
+      {
+        "id": "citadel-bridge",
+        "open": false,
+        "gate": true,
+        "river": "east",
+        "raised": true
+      },
+      {
+        "id": "market-bridge",
+        "open": false,
+        "gate": true,
+        "river": "east",
+        "raised": true
+      },
+      {
+        "id": "garden-bridge",
+        "open": false,
+        "gate": true,
+        "river": "main",
+        "raised": true
+      },
+      {
+        "id": "royal-procession",
+        "open": false,
+        "gate": true,
+        "river": "main",
+        "raised": true
+      }
+    ],
+    "landscape": {
+      "ground": {
+        "vertices": 21199,
+        "triangles": 38504
+      },
+      "forest": {
+        "trees": 473,
+        "pines": 249,
+        "broadleaf": 215,
+        "birches": 9,
+        "shrubs": 120,
+        "ferns": 163,
+        "details": 123,
+        "meshes": 22,
+        "instances": 3441
+      },
+      "rivers": {
+        "count": 3,
+        "reeds": 75,
+        "stones": 61
+      },
+      "buildMs": 407,
+      "rebuildMs": 12
+    },
+    "render": {
+      "lastMs": 1.2000000476837158,
+      "maxMs": 1077.8000000715256,
+      "totalMs": 8653.999999523163,
+      "draws": 141,
+      "calls": 439,
+      "triangles": 190210,
+      "averageMs": 61.37588652144087,
+      "geometries": 12
+    }
+  },
+  "new_paypal_calls": 0,
+  "new_paid_ai_calls": 0,
+  "note": "The $15 contribution is simulated. Starting $60 is self-reported. No PayPal popup, approval, capture or same-order steward check is claimed. Source times are recorder marks; edit ranges must be visually checked."
+}

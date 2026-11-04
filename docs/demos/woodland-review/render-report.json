@@ -1,0 +1,157 @@
+{
+  "status": "Private review draft; sandbox popup and same-order steward insert remain unverified",
+  "duration": 171,
+  "frames_expected": 4275,
+  "scenes": [
+    {
+      "id": "realm-intro",
+      "start": 0,
+      "end": 8,
+      "duration": 8,
+      "kind": "app",
+      "source": "sources/family-woodland-capture.mp4",
+      "original_in": 3.213,
+      "provenance_label": "EXAMPLE MODE \u00b7 RECORDED APP"
+    },
+    {
+      "id": "family-journey",
+      "start": 8,
+      "end": 26,
+      "duration": 18,
+      "kind": "app",
+      "source": "sources/family-woodland-capture.mp4",
+      "original_in": 27.694,
+      "provenance_label": "EXAMPLE MODE \u00b7 GUIDED FAMILY JOURNEY"
+    },
+    {
+      "id": "planner-request",
+      "start": 26,
+      "end": 32,
+      "duration": 6,
+      "kind": "ui",
+      "source": "sources/planner-request.mp4",
+      "original_in": 24.5,
+      "provenance_label": "HISTORICAL LIVE AI \u00b7 EARLIER UI"
+    },
+    {
+      "id": "planner-result",
+      "start": 32,
+      "end": 42,
+      "duration": 10,
+      "kind": "ui",
+      "source": "sources/planner-result.mp4",
+      "original_in": 38,
+      "provenance_label": "HISTORICAL LIVE AI \u00b7 RECORDED RESULT"
+    },
+    {
+      "id": "ai-evidence",
+      "start": 42,
+      "end": 54,
+      "duration": 12,
+      "kind": "evidence",
+      "source": "report/slate",
+      "original_in": "",
+      "provenance_label": "HISTORICAL LIVE AI \u00b7 VERIFIER REPORT"
+    },
+    {
+      "id": "example-contribution",
+      "start": 54,
+      "end": 66,
+      "duration": 12,
+      "kind": "app",
+      "source": "sources/family-woodland-capture.mp4",
+      "original_in": 43.348,
+      "provenance_label": "EXAMPLE MODE \u00b7 SIMULATED CONTRIBUTION"
+    },
+    {
+      "id": "paypal-evidence",
+      "start": 66,
+      "end": 82,
+      "duration": 16,
+      "kind": "evidence",
+      "source": "report/slate",
+      "original_in": "",
+      "provenance_label": "HISTORICAL PAYPAL SANDBOX \u00b7 VERIFIER REPORT"
+    },
+    {
+      "id": "simulated-open",
+      "start": 82,
+      "end": 98,
+      "duration": 16,
+      "kind": "app",
+      "source": "sources/family-woodland-capture.mp4",
+      "original_in": 52.969,
+      "provenance_label": "EXAMPLE MODE \u00b7 SIMULATED $15 \u00b7 WOODLAND REALM"
+    },
+    {
+      "id": "saved-record",
+      "start": 98,
+      "end": 106,
+      "duration": 8,
+      "kind": "app",
+      "source": "sources/family-woodland-capture.mp4",
+      "original_in": 73.248,
+      "provenance_label": "EXAMPLE MODE \u00b7 SAVED SIMULATED PAYMENT"
+    },
+    {
+      "id": "castle-preview",
+      "start": 106,
+      "end": 115,
+      "duration": 9,
+      "kind": "app",
+      "source": "sources/family-woodland-capture.mp4",
+      "original_in": 82.51,
+      "provenance_label": "ART PREVIEW \u00b7 NO FINANCIAL CHANGE"
+    },
+    {
+      "id": "steward-recording",
+      "start": 115,
+      "end": 129,
+      "duration": 14,
+      "kind": "ui",
+      "source": "sources/steward-recording.mp4",
+      "original_in": 84,
+      "provenance_label": "HISTORICAL LIVE AI \u00b7 EARLIER STEWARD UI"
+    },
+    {
+      "id": "steward-evidence",
+      "start": 129,
+      "end": 137,
+      "duration": 8,
+      "kind": "evidence",
+      "source": "report/slate",
+      "original_in": "",
+      "provenance_label": "HISTORICAL LIVE AI \u00b7 VERIFIED SCOPE"
+    },
+    {
+      "id": "owner-insert",
+      "start": 137,
+      "end": 161,
+      "duration": 24,
+      "kind": "insert",
+      "source": "report/slate",
+      "original_in": "",
+      "provenance_label": "SANDBOX INSERT \u00b7 UNFILMED"
+    },
+    {
+      "id": "closing",
+      "start": 161,
+      "end": 171,
+      "duration": 10,
+      "kind": "app",
+      "source": "sources/family-woodland-capture.mp4",
+      "original_in": 94.585,
+      "provenance_label": "PRIVATE REVIEW CUT \u00b7 NOT SUBMITTED"
+    }
+  ],
+  "video": {
+    "file": "our-castle-family-woodland-review-draft.mp4",
+    "bytes": 10447683,
+    "sha256": "95dbde0b754fd37c8dd51054fa74c8bb9026ebe5f055f6511ec0b130b865606e"
+  },
+  "audio_sha256": "8e99098bab8cae5586c5608a9ce96b6e9ecf3a873e872aa07e53b12ca1ef4ed4",
+  "source_manifest_sha256": "f68e4f32b1f9e5f2b7b1f896473c7cce72eb66184ec4e87c9fbe1f65f63c74a8",
+  "caption_cues": 37,
+  "voice": "Synthetic, offline macOS Daniel",
+  "new_ai_or_payment_calls": 0
+}

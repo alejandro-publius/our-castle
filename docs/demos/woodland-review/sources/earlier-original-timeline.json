@@ -1,0 +1,92 @@
+[
+  {
+    "id": "intro",
+    "title": "The current running build",
+    "caption": "Pixel woodland board · Shared goal · Live AI · PayPal sandbox",
+    "narration": "This is the current build of Our Castle: a cooperative household savings journey, running locally with PayPal sandbox and a live Claude AI planner.",
+    "audio": "/Users/alexvintera/projects/our-house/test-results/demo-current/intro.aiff",
+    "duration": 8.185034,
+    "start": 8.337528250000002,
+    "end": 17.731098582999998
+  },
+  {
+    "id": "house",
+    "title": "One household, one shared journey",
+    "caption": "Choose a family or solo house, with its own name and crest.",
+    "narration": "A family shares one crest, one goal, and one woodland board. This example household has sixty dollars tracked toward a three hundred dollar camping trip.",
+    "audio": "/Users/alexvintera/projects/our-house/test-results/demo-current/house.aiff",
+    "duration": 9.125442,
+    "start": 17.731542375,
+    "end": 28.0578235
+  },
+  {
+    "id": "planner",
+    "title": "Ask the real AI planner",
+    "caption": "Goal, target date, weekly budget and optional bills become a reviewed plan.",
+    "narration": "The planning screen uses the goal, target date, chosen weekly budget, and optional bills. Here I am asking the real AI planner to create a plan, with the arithmetic checked on the server.",
+    "audio": "/Users/alexvintera/projects/our-house/test-results/demo-current/planner.aiff",
+    "duration": 10.739229,
+    "start": 28.058388458,
+    "end": 48.1597365
+  },
+  {
+    "id": "plan-result",
+    "title": "Review the plan and weekly schedule",
+    "caption": "Milestones and amounts stay visible and editable before acceptance.",
+    "narration": "The result explains the remaining amount, milestone thresholds, and weekly schedule. The household can review and edit those amounts before choosing to use the plan. Nothing is paid automatically.",
+    "audio": "/Users/alexvintera/projects/our-house/test-results/demo-current/plan-result.aiff",
+    "duration": 11.145578,
+    "start": 48.160220041,
+    "end": 60.510796582999994
+  },
+  {
+    "id": "contribute",
+    "title": "Adult-approved sandbox checkout",
+    "caption": "Payment controls shown here; this recording does not complete a checkout.",
+    "narration": "Contributions require an adult approval. The browser payment button uses PayPal sandbox, so this is test money. This tour shows the controls without completing another checkout.",
+    "audio": "/Users/alexvintera/projects/our-house/test-results/demo-current/contribute.aiff",
+    "duration": 10.716009,
+    "start": 60.517994083,
+    "end": 75.58392975000001
+  },
+  {
+    "id": "ledger",
+    "title": "Ask the house steward",
+    "caption": "A real AI request reads the ledger and checks PayPal sandbox history.",
+    "narration": "The ledger keeps goal progress separate from bills and gifts. The house steward answers questions using that ledger and read only PayPal tools. It never authorizes a payment.",
+    "audio": "/Users/alexvintera/projects/our-house/test-results/demo-current/ledger.aiff",
+    "duration": 9.543401,
+    "start": 75.58437775,
+    "end": 96.190654333
+  },
+  {
+    "id": "answer",
+    "title": "An answer backed by checked records",
+    "caption": "The visible response and tool checks were generated during this recording.",
+    "narration": "This answer is generated live. Its checks show the records the steward actually consulted, so the explanation is backed by data instead of guessed balances.",
+    "audio": "/Users/alexvintera/projects/our-house/test-results/demo-current/answer.aiff",
+    "duration": 8.904853,
+    "start": 96.19125975,
+    "end": 106.298535333
+  },
+  {
+    "id": "renderer",
+    "title": "Real 3D, rendered as pixel art",
+    "caption": "The existing Pixel art control switches between the two render modes.",
+    "narration": "The miniature world is real three dimensional geometry, displayed through the project's original pixel renderer. This control switches between raw geometry and the pixel art treatment.",
+    "audio": "/Users/alexvintera/projects/our-house/test-results/demo-current/renderer.aiff",
+    "duration": 10.04263,
+    "start": 106.299999375,
+    "end": 117.543403208
+  },
+  {
+    "id": "closing",
+    "title": "Current prototype, honestly shown",
+    "caption": "Payment and AI checks pass; popup approval and webhooks still need live checks.",
+    "narration": "This is the project as it stands today. Server side sandbox payment, refund, and live AI checks pass. In app popup approval, specific payment reconciliation, and webhooks remain the next checks.",
+    "audio": "/Users/alexvintera/projects/our-house/test-results/demo-current/closing.aiff",
+    "duration": 12.759365,
+    "start": 117.543859041,
+    "end": 131.504440208
+  }
+]

@@ -1,0 +1,313 @@
+{
+  "title": "Our Castle — family journey and woodland review",
+  "version": 2,
+  "status": "Private review draft; sandbox popup and same-order steward insert remain unverified",
+  "render": {
+    "width": 1920,
+    "height": 1080,
+    "fps": 25,
+    "voice": "Daniel",
+    "speech_rate": 172
+  },
+  "reference_lock": {
+    "primary": "Current Our Castle woodland app, existing Alegreya/Uncial fonts and dark teal/gold frame",
+    "preserve": "Actual app footage and source labels; wide frame for the family controls and map; original pixel world",
+    "secondary": "Existing review-kit legible measured captions and explicit source separation",
+    "reject": "Reconstructed PayPal approval, generated AI claims, historic island footage presented as current"
+  },
+  "sources": {
+    "woodland": {
+      "file": "sources/family-woodland-capture.mp4",
+      "kind": "Continuous local app recording, re-encoded to H.264 without cuts or speed changes; example payments and built-in rules only",
+      "sha256": "cf41231f9bafd54c191cba74ee18d051e9339d43e4dba0fb534409fe8d6b01c0",
+      "source_commit": "ecc7cc5df5e054cfdc144fd9df81909401e2ff83",
+      "original": "/Users/alexvintera/projects/our-castle-woodland-video/test-results/family-woodland-capture/2026-11-04T20-59-38-609Z/page@60ddd5e47dc07752689469dd7ccf9afb.webm",
+      "original_sha256": "5406ab7e1706dfa11e2bcc140619b686169cb49c2f0c4f07836104c97618cbdb"
+    },
+    "earlier": {
+      "original": "test-results/demo-current/our-castle-current-build.mp4",
+      "sha256": "bddeb4a7aaf7defe5184f3d88dc8a4a5175a53c6e280e4bee93ec86cf505ec74",
+      "kind": "Recorded live AI in earlier UI, 2026-11-04T07:31:29.695Z; no checkout completed; original audio omitted"
+    }
+  },
+  "scenes": [
+    {
+      "id": "realm-intro",
+      "duration": 8,
+      "kind": "app",
+      "source": "woodland",
+      "in": 3.213,
+      "title": "A shared goal. A woodland you can grow.",
+      "label": "EXAMPLE MODE · RECORDED APP",
+      "caption": "A real local app recording · Starting savings are reported · No PayPal or paid AI call",
+      "narration": [
+        "Our Castle turns a shared family savings goal into a growing woodland realm.",
+        "This tour uses example mode."
+      ],
+      "capture_marker": "realm-intro"
+    },
+    {
+      "id": "family-journey",
+      "duration": 18,
+      "kind": "app",
+      "source": "woodland",
+      "in": 27.694,
+      "title": "One clear next step for the family",
+      "label": "EXAMPLE MODE · GUIDED FAMILY JOURNEY",
+      "caption": "Actual app interactions · An example plan uses built-in rules, not AI",
+      "narration": [
+        "The next action follows the family’s saved progress.",
+        "Choose your house, review a weekly plan, then choose a contribution.",
+        "Opening a step never pays, accepts a plan, or asks the AI automatically.",
+        "The family decides when to continue."
+      ],
+      "capture_marker": "family-journey"
+    },
+    {
+      "id": "planner-request",
+      "duration": 6,
+      "kind": "ui",
+      "source": "earlier",
+      "in": 24.5,
+      "crop": [
+        1218,
+        245,
+        480,
+        600
+      ],
+      "label": "HISTORICAL LIVE AI · EARLIER UI",
+      "title": "A plan built from the household’s numbers",
+      "eyebrow": "RECORDED INTERACTION · 04 NOV 2026 UTC",
+      "bullets": [
+        "Goal, target date and weekly budget",
+        "Claude request recorded previously",
+        "Waiting trimmed between excerpts"
+      ],
+      "caption": "Earlier interface; the original small world is cropped out. No new AI call.",
+      "narration": [
+        "A real Claude planning request, recorded earlier in the previous interface."
+      ],
+      "media": "sources/planner-request.mp4"
+    },
+    {
+      "id": "planner-result",
+      "duration": 10,
+      "kind": "ui",
+      "source": "earlier",
+      "in": 38,
+      "crop": [
+        1218,
+        0,
+        480,
+        600
+      ],
+      "label": "HISTORICAL LIVE AI · RECORDED RESULT",
+      "title": "Review it before any payment",
+      "eyebrow": "ACTUAL RECORDED RESPONSE · NO RECONSTRUCTION",
+      "metric": "8 × $30 = $240",
+      "bullets": [
+        "Editable weekly schedule",
+        "Server checks every cent",
+        "No automatic contribution"
+      ],
+      "caption": "Recorded plan result · $60 starting progress was reported by the household",
+      "narration": [
+        "Review the editable plan.",
+        "Eight thirty-dollar weeks fill the two hundred forty dollar gap.",
+        "Each payment needs adult approval."
+      ],
+      "media": "sources/planner-result.mp4"
+    },
+    {
+      "id": "ai-evidence",
+      "duration": 12,
+      "kind": "evidence",
+      "label": "HISTORICAL LIVE AI · VERIFIER REPORT",
+      "title": "The arithmetic was checked separately",
+      "eyebrow": "REPORT EXCERPT · 2026-11-04 07:11 UTC",
+      "metric": "$240 planned / $160 shortfall",
+      "quotes": [
+        "PASS — AI plan for the demo goal passed server validation",
+        "planned $240.00, shortfall $0.00",
+        "PASS — AI plan for an impossible target states the shortfall",
+        "shortfall $160.00"
+      ],
+      "source_note": "Source: docs/LIVE-VERIFICATION-AI.md · Feasible and impossible targets are separate cases",
+      "caption": "Historical verification evidence; this card is not a newly recorded AI interaction.",
+      "narration": [
+        "The historical verifier separately checked a feasible plan and a one hundred sixty dollar shortfall.",
+        "The server rechecks the arithmetic.",
+        "Reported starting progress is not a bank balance."
+      ]
+    },
+    {
+      "id": "example-contribution",
+      "duration": 12,
+      "kind": "app",
+      "source": "woodland",
+      "in": 43.348,
+      "title": "Know what the contribution will change",
+      "label": "EXAMPLE MODE · SIMULATED CONTRIBUTION",
+      "caption": "This example uses a simulation button · It does not demonstrate PayPal checkout",
+      "narration": [
+        "Here, the family reviews fifteen dollars and the next milestone.",
+        "An adult approves the amount.",
+        "This contribution is simulated; no PayPal payment is made."
+      ],
+      "capture_marker": "example-contribution"
+    },
+    {
+      "id": "paypal-evidence",
+      "duration": 16,
+      "kind": "evidence",
+      "label": "HISTORICAL PAYPAL SANDBOX · VERIFIER REPORT",
+      "title": "Verified on the server, counted once",
+      "eyebrow": "REPORT EXCERPT · 2026-11-04 06:48 UTC",
+      "metric": "$60 → $75 → $60",
+      "quotes": [
+        "PASS — Buyer approved the order in PayPal",
+        "PASS — Capture verified and credited once",
+        "PASS — Replayed capture is not counted twice",
+        "PASS — Mismatched household refused",
+        "PASS — Refund reverses progress once"
+      ],
+      "source_note": "Source: docs/LIVE-VERIFICATION.md · Hosted approval page; temporary database; 7 passed, 2 skipped",
+      "caption": "Separate historical test · Hosted approval path · Not an in-app popup recording",
+      "narration": [
+        "A separate historical sandbox test used PayPal’s hosted approval page.",
+        "It verified a fifteen dollar capture, rejected duplicate credit and household mismatch, then refunded it.",
+        "This report is not a new checkout."
+      ]
+    },
+    {
+      "id": "simulated-open",
+      "duration": 16,
+      "kind": "app",
+      "source": "woodland",
+      "in": 52.969,
+      "title": "The Manor bridge opens at 25%",
+      "label": "EXAMPLE MODE · SIMULATED $15 · WOODLAND REALM",
+      "caption": "Example progression: $60 reported + $15 simulated = $75 · Separate from PayPal evidence",
+      "narration": [
+        "The example contribution raises tracked progress from sixty to seventy five dollars.",
+        "The Manor bridge lowers across the river.",
+        "The village stays, and Princess Elowen joins the Manor’s guests."
+      ],
+      "capture_marker": "simulated-open"
+    },
+    {
+      "id": "saved-record",
+      "duration": 8,
+      "kind": "app",
+      "source": "woodland",
+      "in": 73.248,
+      "capture_marker": "saved-record",
+      "label": "EXAMPLE MODE · SAVED SIMULATED PAYMENT",
+      "title": "A payment record to come back to",
+      "caption": "Actual refresh and saved Ledger record · Simulation, not a PayPal capture",
+      "narration": [
+        "Refresh; the simulated payment stays in the Ledger.",
+        "You can return to its saved record from the next-step guide."
+      ]
+    },
+    {
+      "id": "castle-preview",
+      "duration": 9,
+      "kind": "app",
+      "source": "woodland",
+      "in": 82.51,
+      "title": "Explore the reward without unlocking it",
+      "label": "ART PREVIEW · NO FINANCIAL CHANGE",
+      "caption": "A labelled art-only preview · Earned progress and records stay unchanged",
+      "narration": [
+        "Tour a future castle, its banners and its court.",
+        "This is an art preview; it does not unlock the reward."
+      ],
+      "capture_marker": "castle-preview"
+    },
+    {
+      "id": "steward-recording",
+      "duration": 14,
+      "kind": "ui",
+      "source": "earlier",
+      "in": 84,
+      "crop": [
+        1218,
+        300,
+        480,
+        600
+      ],
+      "label": "HISTORICAL LIVE AI · EARLIER STEWARD UI",
+      "title": "A steward that can check, but never pay",
+      "eyebrow": "ACTUAL RECORDED RESPONSE · READ-ONLY TOOLS",
+      "bullets": [
+        "Household ledger",
+        "PayPal Agent Toolkit",
+        "No create, pay or refund tool"
+      ],
+      "caption": "Recorded ledger/history interaction · Does not prove a specific household order reconciliation",
+      "narration": [
+        "Earlier recorded live AI footage also shows the house steward reading the ledger and checking sandbox transaction history.",
+        "It has read only tools, and cannot authorize a payment."
+      ],
+      "media": "sources/steward-recording.mp4"
+    },
+    {
+      "id": "steward-evidence",
+      "duration": 8,
+      "kind": "evidence",
+      "label": "HISTORICAL LIVE AI · VERIFIED SCOPE",
+      "title": "Show what was checked",
+      "eyebrow": "REPORT EXCERPT · 2026-11-04 07:11 UTC",
+      "quotes": [
+        "PASS — Steward read the household ledger",
+        "PASS — Steward listed PayPal transactions through the Agent Toolkit",
+        "PASS — Steward answer had no unverified figures",
+        "SKIPPED — Steward reconciles a real household order with PayPal (get_order)"
+      ],
+      "source_note": "Source: docs/LIVE-VERIFICATION-AI.md · Initial sandbox balance was not counted as family savings",
+      "caption": "Verified ledger/history checks; household get_order reconciliation still needs the owner insert.",
+      "narration": [
+        "Those verified checks cover ledger and transaction history.",
+        "Checking a specific household order still needs the sandbox insert."
+      ]
+    },
+    {
+      "id": "owner-insert",
+      "duration": 24,
+      "kind": "insert",
+      "label": "SANDBOX INSERT · UNFILMED",
+      "title": "The final sandbox insert remains",
+      "eyebrow": "24-SECOND SLOT · NOTHING RECONSTRUCTED",
+      "bullets": [
+        "00–08  In-app sandbox approval in the popup",
+        "08–16  Verified receipt and the actual Manor unlock",
+        "16–24  Steward checks that same order with PayPal"
+      ],
+      "source_note": "Use the existing isolated rehearsal and one approved order. Keep this slate if any step fails.",
+      "caption": "This visible slot is unfinished. It does not establish a completed end-to-end demo.",
+      "narration": [
+        "This twenty four second slot still needs the approved sandbox rehearsal.",
+        "Show in app approval, the verified receipt, and the steward checking that same order.",
+        "These missing outcomes have not been reconstructed.",
+        "The existing browser operator can resume after confirming the sandbox login."
+      ]
+    },
+    {
+      "id": "closing",
+      "duration": 10,
+      "kind": "app",
+      "source": "woodland",
+      "in": 94.585,
+      "title": "Plan together. Build your realm.",
+      "label": "PRIVATE REVIEW CUT · NOT SUBMITTED",
+      "caption": "Utility-provider verification still needs a connection · Sandbox insert remains unfinished",
+      "narration": [
+        "The forest is playable locally.",
+        "Utility verification still needs a provider connection.",
+        "This private review draft awaits its final sandbox insert."
+      ],
+      "capture_marker": "closing"
+    }
+  ]
+}

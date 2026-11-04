@@ -1,0 +1,406 @@
+{
+  "voice": "Daniel",
+  "rate": 172,
+  "method": "Offline macOS say; one phrase per audio file; captions use measured phrase durations",
+  "duration": 171,
+  "audio_duration": 171.0,
+  "audio_sha256": "8e99098bab8cae5586c5608a9ce96b6e9ecf3a873e872aa07e53b12ca1ef4ed4",
+  "scenes": [
+    {
+      "id": "realm-intro",
+      "start": 0,
+      "duration": 8,
+      "speech_end": 6.547437,
+      "silence_after": 1.452563
+    },
+    {
+      "id": "family-journey",
+      "start": 8,
+      "duration": 18,
+      "speech_end": 15.506531,
+      "silence_after": 2.493469
+    },
+    {
+      "id": "planner-request",
+      "start": 26,
+      "duration": 6,
+      "speech_end": 4.535011,
+      "silence_after": 1.464989
+    },
+    {
+      "id": "planner-result",
+      "start": 32,
+      "duration": 10,
+      "speech_end": 7.062177,
+      "silence_after": 2.937823
+    },
+    {
+      "id": "ai-evidence",
+      "start": 42,
+      "duration": 12,
+      "speech_end": 10.858639,
+      "silence_after": 1.141361
+    },
+    {
+      "id": "example-contribution",
+      "start": 54,
+      "duration": 12,
+      "speech_end": 9.778911,
+      "silence_after": 2.221089
+    },
+    {
+      "id": "paypal-evidence",
+      "start": 66,
+      "duration": 16,
+      "speech_end": 13.633424,
+      "silence_after": 2.366576
+    },
+    {
+      "id": "simulated-open",
+      "start": 82,
+      "duration": 16,
+      "speech_end": 11.276598,
+      "silence_after": 4.723402
+    },
+    {
+      "id": "saved-record",
+      "start": 98,
+      "duration": 8,
+      "speech_end": 6.721587,
+      "silence_after": 1.278413
+    },
+    {
+      "id": "castle-preview",
+      "start": 106,
+      "duration": 9,
+      "speech_end": 6.477778,
+      "silence_after": 2.522222
+    },
+    {
+      "id": "steward-recording",
+      "start": 115,
+      "duration": 14,
+      "speech_end": 10.39034,
+      "silence_after": 3.60966
+    },
+    {
+      "id": "steward-evidence",
+      "start": 129,
+      "duration": 8,
+      "speech_end": 7.534285,
+      "silence_after": 0.465715
+    },
+    {
+      "id": "owner-insert",
+      "start": 137,
+      "duration": 24,
+      "speech_end": 16.922948,
+      "silence_after": 7.077052
+    },
+    {
+      "id": "closing",
+      "start": 161,
+      "duration": 10,
+      "speech_end": 9.198413,
+      "silence_after": 0.801587
+    }
+  ],
+  "cues": [
+    {
+      "scene": "realm-intro",
+      "start": 0.1,
+      "end": 4.558231,
+      "local_start": 0.1,
+      "local_end": 4.558231,
+      "text": "Our Castle turns a shared family savings goal into a growing woodland realm."
+    },
+    {
+      "scene": "realm-intro",
+      "start": 4.678231,
+      "end": 6.547437,
+      "local_start": 4.678231,
+      "local_end": 6.547437,
+      "text": "This tour uses example mode."
+    },
+    {
+      "scene": "family-journey",
+      "start": 8.1,
+      "end": 11.304354,
+      "local_start": 0.1,
+      "local_end": 3.304354,
+      "text": "The next action follows the family\u2019s saved progress."
+    },
+    {
+      "scene": "family-journey",
+      "start": 11.424354,
+      "end": 15.882585,
+      "local_start": 3.424354,
+      "local_end": 7.882585,
+      "text": "Choose your house, review a weekly plan, then choose a contribution."
+    },
+    {
+      "scene": "family-journey",
+      "start": 16.002585,
+      "end": 21.157415,
+      "local_start": 8.002585,
+      "local_end": 13.157415,
+      "text": "Opening a step never pays, accepts a plan, or asks the AI automatically."
+    },
+    {
+      "scene": "family-journey",
+      "start": 21.277415,
+      "end": 23.506531,
+      "local_start": 13.277415,
+      "local_end": 15.506531,
+      "text": "The family decides when to continue."
+    },
+    {
+      "scene": "planner-request",
+      "start": 26.1,
+      "end": 30.535011,
+      "local_start": 0.1,
+      "local_end": 4.535011,
+      "text": "A real Claude planning request, recorded earlier in the previous interface."
+    },
+    {
+      "scene": "planner-result",
+      "start": 32.1,
+      "end": 33.644127,
+      "local_start": 0.1,
+      "local_end": 1.644127,
+      "text": "Review the editable plan."
+    },
+    {
+      "scene": "planner-result",
+      "start": 33.764127,
+      "end": 37.026531,
+      "local_start": 1.764127,
+      "local_end": 5.026531,
+      "text": "Eight thirty-dollar weeks fill the two hundred forty dollar gap."
+    },
+    {
+      "scene": "planner-result",
+      "start": 37.146531,
+      "end": 39.062177,
+      "local_start": 5.146531,
+      "local_end": 7.062177,
+      "text": "Each payment needs adult approval."
+    },
+    {
+      "scene": "ai-evidence",
+      "start": 42.1,
+      "end": 47.719229,
+      "local_start": 0.1,
+      "local_end": 5.719229,
+      "text": "The historical verifier separately checked a feasible plan and a one hundred sixty dollar shortfall."
+    },
+    {
+      "scene": "ai-evidence",
+      "start": 47.839229,
+      "end": 49.812925,
+      "local_start": 5.839229,
+      "local_end": 7.812925,
+      "text": "The server rechecks the arithmetic."
+    },
+    {
+      "scene": "ai-evidence",
+      "start": 49.932925,
+      "end": 52.858639,
+      "local_start": 7.932925,
+      "local_end": 10.858639,
+      "text": "Reported starting progress is not a bank balance."
+    },
+    {
+      "scene": "example-contribution",
+      "start": 54.1,
+      "end": 58.024172,
+      "local_start": 0.1,
+      "local_end": 4.024172,
+      "text": "Here, the family reviews fifteen dollars and the next milestone."
+    },
+    {
+      "scene": "example-contribution",
+      "start": 58.144172,
+      "end": 59.781179,
+      "local_start": 4.144172,
+      "local_end": 5.781179,
+      "text": "An adult approves the amount."
+    },
+    {
+      "scene": "example-contribution",
+      "start": 59.901179,
+      "end": 63.778911,
+      "local_start": 5.901179,
+      "local_end": 9.778911,
+      "text": "This contribution is simulated; no PayPal payment is made."
+    },
+    {
+      "scene": "paypal-evidence",
+      "start": 66.1,
+      "end": 70.836871,
+      "local_start": 0.1,
+      "local_end": 4.836871,
+      "text": "A separate historical sandbox test used PayPal\u2019s hosted approval page."
+    },
+    {
+      "scene": "paypal-evidence",
+      "start": 70.956871,
+      "end": 77.574558,
+      "local_start": 4.956871,
+      "local_end": 11.574558,
+      "text": "It verified a fifteen dollar capture, rejected duplicate credit and household mismatch, then refunded it."
+    },
+    {
+      "scene": "paypal-evidence",
+      "start": 77.694558,
+      "end": 79.633424,
+      "local_start": 11.694558,
+      "local_end": 13.633424,
+      "text": "This report is not a new checkout."
+    },
+    {
+      "scene": "simulated-open",
+      "start": 82.1,
+      "end": 87.17356,
+      "local_start": 0.1,
+      "local_end": 5.17356,
+      "text": "The example contribution raises tracked progress from sixty to seventy five dollars."
+    },
+    {
+      "scene": "simulated-open",
+      "start": 87.29356,
+      "end": 89.255646,
+      "local_start": 5.29356,
+      "local_end": 7.255646,
+      "text": "The Manor bridge lowers across the river."
+    },
+    {
+      "scene": "simulated-open",
+      "start": 89.375646,
+      "end": 93.276598,
+      "local_start": 7.375646,
+      "local_end": 11.276598,
+      "text": "The village stays, and Princess Elowen joins the Manor\u2019s guests."
+    },
+    {
+      "scene": "saved-record",
+      "start": 98.1,
+      "end": 101.257914,
+      "local_start": 0.1,
+      "local_end": 3.257914,
+      "text": "Refresh; the simulated payment stays in the Ledger."
+    },
+    {
+      "scene": "saved-record",
+      "start": 101.377914,
+      "end": 104.721587,
+      "local_start": 3.377914,
+      "local_end": 6.721587,
+      "text": "You can return to its saved record from the next-step guide."
+    },
+    {
+      "scene": "castle-preview",
+      "start": 106.1,
+      "end": 109.153424,
+      "local_start": 0.1,
+      "local_end": 3.153424,
+      "text": "Tour a future castle, its banners and its court."
+    },
+    {
+      "scene": "castle-preview",
+      "start": 109.273424,
+      "end": 112.477778,
+      "local_start": 3.273424,
+      "local_end": 6.477778,
+      "text": "This is an art preview; it does not unlock the reward."
+    },
+    {
+      "scene": "steward-recording",
+      "start": 115.1,
+      "end": 121.798957,
+      "local_start": 0.1,
+      "local_end": 6.798957,
+      "text": "Earlier recorded live AI footage also shows the house steward reading the ledger and checking sandbox transaction history."
+    },
+    {
+      "scene": "steward-recording",
+      "start": 121.918957,
+      "end": 125.39034,
+      "local_start": 6.918957,
+      "local_end": 10.39034,
+      "text": "It has read only tools, and cannot authorize a payment."
+    },
+    {
+      "scene": "steward-evidence",
+      "start": 129.1,
+      "end": 132.513333,
+      "local_start": 0.1,
+      "local_end": 3.513333,
+      "text": "Those verified checks cover ledger and transaction history."
+    },
+    {
+      "scene": "steward-evidence",
+      "start": 132.633333,
+      "end": 136.534285,
+      "local_start": 3.633333,
+      "local_end": 7.534285,
+      "text": "Checking a specific household order still needs the sandbox insert."
+    },
+    {
+      "scene": "owner-insert",
+      "start": 137.1,
+      "end": 141.279592,
+      "local_start": 0.1,
+      "local_end": 4.279592,
+      "text": "This twenty four second slot still needs the approved sandbox rehearsal."
+    },
+    {
+      "scene": "owner-insert",
+      "start": 141.399592,
+      "end": 146.182903,
+      "local_start": 4.399592,
+      "local_end": 9.182903,
+      "text": "Show in app approval, the verified receipt, and the steward checking that same order."
+    },
+    {
+      "scene": "owner-insert",
+      "start": 146.302903,
+      "end": 149.228617,
+      "local_start": 9.302903,
+      "local_end": 12.228617,
+      "text": "These missing outcomes have not been reconstructed."
+    },
+    {
+      "scene": "owner-insert",
+      "start": 149.348617,
+      "end": 153.922948,
+      "local_start": 12.348617,
+      "local_end": 16.922948,
+      "text": "The existing browser operator can resume after confirming the sandbox login."
+    },
+    {
+      "scene": "closing",
+      "start": 161.1,
+      "end": 162.980816,
+      "local_start": 0.1,
+      "local_end": 1.980816,
+      "text": "The forest is playable locally."
+    },
+    {
+      "scene": "closing",
+      "start": 163.100816,
+      "end": 166.37483,
+      "local_start": 2.100816,
+      "local_end": 5.37483,
+      "text": "Utility verification still needs a provider connection."
+    },
+    {
+      "scene": "closing",
+      "start": 166.49483,
+      "end": 170.198413,
+      "local_start": 5.49483,
+      "local_end": 9.198413,
+      "text": "This private review draft awaits its final sandbox insert."
+    }
+  ]
+}
