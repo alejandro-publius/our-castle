@@ -1,11 +1,12 @@
 {
   "info": {
     "name": "Our Castle — local API and PayPal sandbox",
-    "description": "Step-by-step requests for the Our Castle prototype.\n\nFolder 1 runs against a server in example mode (no credentials): every payment is simulated and labeled.\nFolder 2 needs the server running with PayPal sandbox credentials in its .env file, plus the same sandbox client id/secret in the Postman environment for the direct PayPal requests. Open the approveUrl from step 2.2 in a browser and approve with a sandbox buyer account before running 2.3.\n\nNever put real (live) credentials here. Sandbox only.",
+    "description": "Step-by-step requests for the Our Castle prototype.\n\nFolder 1 runs against a throwaway server in example mode (no credentials) at {{exampleBaseUrl}}, default http://localhost:3134: every payment is simulated and labeled. Its guard refuses to send anything unless GET /api/status reports example payments and example AI.\nFolder 2 needs the server running with PayPal sandbox credentials in its .env file, plus the same sandbox client id/secret in the Postman environment for the direct PayPal requests. Open the approveUrl from step 2.2 in a browser and approve with a sandbox buyer account before running 2.3.\n\nNever put real (live) credentials here. Sandbox only.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
     { "key": "baseUrl", "value": "http://localhost:3010" },
+    { "key": "exampleBaseUrl", "value": "http://localhost:3134" },
     { "key": "householdId", "value": "hh_demo" },
     { "key": "goalId", "value": "goal_demo" },
     { "key": "adultId", "value": "m_rowan" },
@@ -14,6 +15,33 @@
   "item": [
     {
       "name": "1 · Example mode walkthrough (no credentials)",
+      "description": "Runs only against a throwaway example-mode server at {{exampleBaseUrl}} (default http://localhost:3134), never the sandbox app on {{baseUrl}}. A folder-level pre-request guard checks GET /api/status before every request and skips the request, fails the run and stops it unless payments and AI are both in example mode.",
+      "event": [{ "listen": "prerequest", "script": { "type": "text/javascript", "exec": [
+            "// Fail-closed guard. Every request in this folder writes or calls the planner/steward, so each one is sent only",
+            "// after GET {{exampleBaseUrl}}/api/status confirms BOTH payments.mode and ai.mode are \"example\". Anything else",
+            "// (sandbox payments, live AI, unreachable, non-200, malformed or missing fields) skips the request, records a failed",
+            "// assertion so the run ends unsuccessfully, and stops the run.",
+            "const target = pm.variables.get('exampleBaseUrl');",
+            "const block = (reason) => {",
+            "  pm.test(`BLOCKED \"${pm.info.requestName}\" (not sent): ${reason}`, () => { throw new Error(`${reason} Folder 1 runs only against a throwaway example-mode server (README, Postman section).`); });",
+            "  pm.execution.setNextRequest(null);",
+            "  pm.execution.skipRequest();",
+            "};",
+            "if (typeof target !== 'string' || !/^https?:\\/\\/[^/]+$/.test(target)) {",
+            "  block(`exampleBaseUrl must be a bare http(s) origin such as http://localhost:3134, not ${JSON.stringify(target)}.`);",
+            "} else {",
+            "  pm.sendRequest({ url: `${target}/api/status`, method: 'GET' }, (err, res) => {",
+            "    if (err) return block(`${target}/api/status is unreachable (${err.code || err.message}).`);",
+            "    if (!res || res.code !== 200) return block(`${target}/api/status answered HTTP ${res && res.code}.`);",
+            "    let status;",
+            "    try { status = res.json(); } catch (e) { return block(`${target}/api/status did not return JSON.`); }",
+            "    const payments = status && status.payments && status.payments.mode;",
+            "    const ai = status && status.ai && status.ai.mode;",
+            "    if (payments !== 'example' || ai !== 'example') return block(`${target} reports payments ${JSON.stringify(payments)} and AI ${JSON.stringify(ai)}; both must be \"example\".`);",
+            "    pm.test('example payments and example AI confirmed by /api/status before sending', () => {});",
+            "  });",
+            "}"
+          ] } }],
       "item": [
         {
           "name": "1.1 Reset the example household",
@@ -23,7 +51,7 @@
             "pm.test('starts at $60.00 of $300.00, user-reported', () => { pm.expect(s.progress.progressCents).to.eql(6000); pm.expect(s.goal.targetCents).to.eql(30000); });",
             "pm.test('labeled example modes', () => pm.expect(s.modes.payments.mode).to.eql('example'));"
           ] } }],
-          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{}" }, "url": "{{baseUrl}}/api/demo/reset" }
+          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{}" }, "url": "{{exampleBaseUrl}}/api/demo/reset" }
         },
         {
           "name": "1.2 Found the house (family, crest)",
@@ -31,7 +59,7 @@
             "pm.test('house founded', () => pm.expect(pm.response.json().state.household.setupComplete).to.be.true);",
             "pm.test('two example personas: an adult and a child', () => pm.expect(pm.response.json().state.members.map(m => m.role)).to.eql(['adult', 'child']));"
           ] } }],
-          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"playMode\": \"family\",\n  \"name\": \"House of Alder\",\n  \"crest\": { \"field\": \"emerald\", \"charge\": \"leaf\" }\n}" }, "url": "{{baseUrl}}/api/setup" }
+          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"playMode\": \"family\",\n  \"name\": \"House of Alder\",\n  \"crest\": { \"field\": \"emerald\", \"charge\": \"leaf\" }\n}" }, "url": "{{exampleBaseUrl}}/api/setup" }
         },
         {
           "name": "1.3 Ask the planner (rules plan in example mode, AI plan with an AI key)",
@@ -48,7 +76,7 @@
               "pm.collectionVariables.set('planId', body.plan.id);"
             ] } }
           ],
-          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"goal\": { \"name\": \"Camping trip fund\", \"targetCents\": 30000, \"startingCents\": 6000, \"targetDate\": \"{{targetDate}}\", \"weeklyBudgetCents\": 3000 },\n  \"commitments\": [{ \"label\": \"Internet bill\", \"amountCents\": 6000, \"cadence\": \"monthly\" }]\n}" }, "url": "{{baseUrl}}/api/plans" }
+          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"goal\": { \"name\": \"Camping trip fund\", \"targetCents\": 30000, \"startingCents\": 6000, \"targetDate\": \"{{targetDate}}\", \"weeklyBudgetCents\": 3000 },\n  \"commitments\": [{ \"label\": \"Internet bill\", \"amountCents\": 6000, \"cadence\": \"monthly\" }]\n}" }, "url": "{{exampleBaseUrl}}/api/plans" }
         },
         {
           "name": "1.4 Use the plan",
@@ -57,7 +85,7 @@
             "pm.test('plan accepted', () => pm.expect(s.acceptedPlanId).to.eql(pm.collectionVariables.get('planId')));",
             "pm.test('next step is week 1', () => pm.expect(s.nextStep.week).to.eql(1));"
           ] } }],
-          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{}" }, "url": "{{baseUrl}}/api/plans/{{planId}}/accept" }
+          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{}" }, "url": "{{exampleBaseUrl}}/api/plans/{{planId}}/accept" }
         },
         {
           "name": "1.5 Simulated $15 contribution, approved by an adult",
@@ -70,7 +98,7 @@
               "pm.test('simulated money is never reported as PayPal money', () => pm.expect(body.progress.contributedCents).to.eql(0));"
             ] } }
           ],
-          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"householdId\": \"{{householdId}}\",\n  \"goalId\": \"{{goalId}}\",\n  \"amountCents\": 1500,\n  \"approverId\": \"{{adultId}}\",\n  \"approvalConfirmed\": true,\n  \"requestId\": \"{{requestId}}\",\n  \"outcome\": \"completed\"\n}" }, "url": "{{baseUrl}}/api/example/contributions" }
+          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"householdId\": \"{{householdId}}\",\n  \"goalId\": \"{{goalId}}\",\n  \"amountCents\": 1500,\n  \"approverId\": \"{{adultId}}\",\n  \"approvalConfirmed\": true,\n  \"requestId\": \"{{requestId}}\",\n  \"outcome\": \"completed\"\n}" }, "url": "{{exampleBaseUrl}}/api/example/contributions" }
         },
         {
           "name": "1.6 Replay the same request — not counted twice",
@@ -79,7 +107,7 @@
             "pm.test('recognized as already processed', () => pm.expect(body.outcome).to.eql('already_processed'));",
             "pm.test('progress still $75.00', () => pm.expect(body.progress.progressCents).to.eql(7500));"
           ] } }],
-          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"householdId\": \"{{householdId}}\",\n  \"goalId\": \"{{goalId}}\",\n  \"amountCents\": 1500,\n  \"approverId\": \"{{adultId}}\",\n  \"approvalConfirmed\": true,\n  \"requestId\": \"{{requestId}}\",\n  \"outcome\": \"completed\"\n}" }, "url": "{{baseUrl}}/api/example/contributions" }
+          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"householdId\": \"{{householdId}}\",\n  \"goalId\": \"{{goalId}}\",\n  \"amountCents\": 1500,\n  \"approverId\": \"{{adultId}}\",\n  \"approvalConfirmed\": true,\n  \"requestId\": \"{{requestId}}\",\n  \"outcome\": \"completed\"\n}" }, "url": "{{exampleBaseUrl}}/api/example/contributions" }
         },
         {
           "name": "1.7 A child persona cannot approve",
@@ -87,7 +115,7 @@
             "pm.test('refused with 403', () => pm.response.to.have.status(403));",
             "pm.test('adult approval required', () => pm.expect(pm.response.json().error.code).to.eql('adult_approval_required'));"
           ] } }],
-          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"householdId\": \"{{householdId}}\",\n  \"goalId\": \"{{goalId}}\",\n  \"amountCents\": 1500,\n  \"approverId\": \"{{childId}}\",\n  \"approvalConfirmed\": true,\n  \"requestId\": \"pm-child-attempt-001\"\n}" }, "url": "{{baseUrl}}/api/example/contributions" }
+          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"householdId\": \"{{householdId}}\",\n  \"goalId\": \"{{goalId}}\",\n  \"amountCents\": 1500,\n  \"approverId\": \"{{childId}}\",\n  \"approvalConfirmed\": true,\n  \"requestId\": \"pm-child-attempt-001\"\n}" }, "url": "{{exampleBaseUrl}}/api/example/contributions" }
         },
         {
           "name": "1.8 Log a bill — a habit, not savings",
@@ -96,7 +124,7 @@
             "pm.test('progress unchanged at $75.00', () => pm.expect(s.progress.progressCents).to.eql(7500));",
             "pm.test('bill recorded separately and a garden bed planted', () => { pm.expect(s.progress.bills.count).to.eql(1); pm.expect(s.board.gardens).to.eql(1); });"
           ] } }],
-          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"kind\": \"bill_paid\",\n  \"label\": \"Internet bill\",\n  \"amountCents\": 6000,\n  \"memberId\": \"{{adultId}}\"\n}" }, "url": "{{baseUrl}}/api/entries" }
+          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"kind\": \"bill_paid\",\n  \"label\": \"Internet bill\",\n  \"amountCents\": 6000,\n  \"memberId\": \"{{adultId}}\"\n}" }, "url": "{{exampleBaseUrl}}/api/entries" }
         },
         {
           "name": "1.9 Ask the house steward (off without an AI key)",
@@ -107,14 +135,14 @@
             "  pm.test('answered from checked data', () => { pm.expect(pm.response.json().status).to.eql('ok'); pm.expect(pm.response.json().checks.length).to.be.above(0); });",
             "}"
           ] } }],
-          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"question\": \"How close are we to the next milestone?\",\n  \"memberId\": \"{{childId}}\"\n}" }, "url": "{{baseUrl}}/api/steward" }
+          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"question\": \"How close are we to the next milestone?\",\n  \"memberId\": \"{{childId}}\"\n}" }, "url": "{{exampleBaseUrl}}/api/steward" }
         },
         {
           "name": "1.10 Cross-site writes are refused",
           "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
             "pm.test('refused with 403', () => pm.response.to.have.status(403));"
           ] } }],
-          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Origin", "value": "https://evil.example" }], "body": { "mode": "raw", "raw": "{\n  \"playMode\": \"solo\",\n  \"name\": \"Not ours\",\n  \"crest\": { \"field\": \"cobalt\", \"charge\": \"stag\" }\n}" }, "url": "{{baseUrl}}/api/setup" }
+          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Origin", "value": "https://evil.example" }], "body": { "mode": "raw", "raw": "{\n  \"playMode\": \"solo\",\n  \"name\": \"Not ours\",\n  \"crest\": { \"field\": \"cobalt\", \"charge\": \"stag\" }\n}" }, "url": "{{exampleBaseUrl}}/api/setup" }
         }
       ]
     },

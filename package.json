@@ -10,6 +10,7 @@
     "dev": "node --watch server/index.mjs",
     "art-preview": "node scripts/serve.mjs",
     "check": "node scripts/check.mjs",
+    "check:postman-guard": "node scripts/check-postman-guard.mjs",
     "test": "npm run check && npm run test:unit && npm run test:e2e",
     "test:unit": "node --test \"test/unit/**/*.test.mjs\"",
     "test:e2e": "playwright test",

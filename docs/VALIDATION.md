@@ -1,5 +1,51 @@
 # Validation
 
+## November 4, 2026: fail-closed guard for the Postman example folder
+
+**The gap.** Folder 1 of the Postman collection writes and calls the planner and steward. It used the same `baseUrl` default as folder 2, `http://localhost:3010`, which is where the owner's sandbox app with live AI runs. Run as documented on that Mac, it would have renamed the sandbox household, logged a bill and made paid AI calls.
+
+**The fix.**
+- Folder 1 now targets its own `exampleBaseUrl`, default `http://localhost:3134`. Folder 2 keeps `baseUrl`.
+- A folder-level pre-request script runs before every folder-1 request and calls `GET {{exampleBaseUrl}}/api/status`. Unless the reply is HTTP 200 JSON with `payments.mode === "example"` **and** `ai.mode === "example"`, the guard:
+  1. records a failing `BLOCKED "<request>" (not sent): <reason>` assertion;
+  2. calls `pm.execution.setNextRequest(null)`;
+  3. calls `pm.execution.skipRequest()`.
+- A malformed or empty `exampleBaseUrl` blocks before any network call.
+- The guard does not rely on throwing. `skipRequest` is supported for pre-request scripts by the cached runtime (Newman 6.2.1, postman-runtime 7.39.1, postman-sandbox 4.7.1), and the runs below show the request is not sent.
+
+**Real Newman runtime, `npm run check:postman-guard`: 12 passed, 0 failed.** Mock targets on free localhost ports log every incoming request. Port 3010 is refused by the script and was never targeted.
+
+| Case | Result |
+| --- | --- |
+| Status says sandbox payments, example AI | Blocked: exit 1; the mock received only `GET /api/status`; the run stopped after item 1.1 |
+| Example payments, **live AI** | Blocked, same evidence |
+| Sandbox payments and live AI | Blocked, same evidence |
+| Status HTTP 500 / not JSON / `{}` / modes as plain strings | Each blocked, same evidence |
+| Status port closed (`ECONNREFUSED`) | Blocked: exit 1; only the failed status attempt; stopped after 1.1 |
+| `exampleBaseUrl` empty, or with a path | Blocked: exit 1; no request at all |
+| Control: a mock that claims example/example | The guard lets requests through, and the mock received all 10 folder requests. So the mocks above would have recorded any mutation |
+| A fresh example-mode server (temporary database, no `.env`, empty PayPal and AI variables) behind a logging proxy | Exit 0; 10 folder requests, each immediately preceded by `GET /api/status`; **31/31 assertions passed** (the original 21 plus one guard confirmation per request) |
+
+**The README's exact commands** were run on port 3134 with the cached Newman CLI:
+- the server started with `Payments: EXAMPLE mode` and `Planner: EXAMPLE mode`;
+- every item showed "example payments and example AI confirmed by /api/status before sending";
+- Newman's table reported 20 requests (10 guard checks plus 10 folder requests) and 31 assertions, 0 failed.
+
+The server was then stopped.
+
+**When the port is taken:** the documented start command, pointed at an occupied port (3020), printed `Error: listen EADDRINUSE` and exited, and the existing server kept answering. The README and the judge handoff now say to stop at that point rather than run Newman.
+
+**Unit tests:** `node --test test/unit/postman.test.mjs`, 5 passed.
+- Two new tests run the guard exactly as written against a stubbed `pm`. Twelve status replies and six malformed variables must block, and only example/example sends.
+- A third checks the variable split: folder 1 uses only `exampleBaseUrl`, folder 2 never does, and the guard is not attached to folder 2.
+- Weakening the guard to ignore `ai.mode` made the fail-closed test fail; the file was then restored.
+
+**Not done:**
+- Folder 2 (sandbox) was not run.
+- No PayPal order was created and no paid AI call was made.
+- The owner's app on 3010 was read only through `GET /api/status` and `GET /api/state`. Household, members, goal, progress, ledger, contributions, achievements and plan matched the saved baseline.
+- Other suites were not rerun; only the Postman files, a new check script, `package.json` scripts and docs changed.
+
 ## November 4, 2026 — connected districts, grey future areas and gated bridges
 
 Implemented in the isolated `expansion/connected-realm` worktree, keeping the previous running household available during development. The owner's corrected visual direction is now a six-district 164×114 realm rather than one upgraded building on a small plot.
