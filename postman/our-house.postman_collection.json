@@ -1,0 +1,243 @@
+{
+  "info": {
+    "name": "Our House — local API and PayPal sandbox",
+    "description": "Step-by-step requests for the Our House prototype.\n\nFolder 1 runs against a server in example mode (no credentials): every payment is simulated and labeled.\nFolder 2 needs the server running with PayPal sandbox credentials in its .env file, plus the same sandbox client id/secret in the Postman environment for the direct PayPal requests. Open the approveUrl from step 2.2 in a browser and approve with a sandbox buyer account before running 2.3.\n\nNever put real (live) credentials here. Sandbox only.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:3010" },
+    { "key": "householdId", "value": "hh_demo" },
+    { "key": "goalId", "value": "goal_demo" },
+    { "key": "adultId", "value": "m_rowan" },
+    { "key": "childId", "value": "m_wren" }
+  ],
+  "item": [
+    {
+      "name": "1 · Example mode walkthrough (no credentials)",
+      "item": [
+        {
+          "name": "1.1 Reset the example household",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('reset accepted (example mode only)', () => pm.response.to.have.status(200));",
+            "const s = pm.response.json().state;",
+            "pm.test('starts at $60.00 of $300.00, user-reported', () => { pm.expect(s.progress.progressCents).to.eql(6000); pm.expect(s.goal.targetCents).to.eql(30000); });",
+            "pm.test('labeled example modes', () => pm.expect(s.modes.payments.mode).to.eql('example'));"
+          ] } }],
+          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{}" }, "url": "{{baseUrl}}/api/demo/reset" }
+        },
+        {
+          "name": "1.2 Found the house (family, crest)",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('house founded', () => pm.expect(pm.response.json().state.household.setupComplete).to.be.true);",
+            "pm.test('two example personas: an adult and a child', () => pm.expect(pm.response.json().state.members.map(m => m.role)).to.eql(['adult', 'child']));"
+          ] } }],
+          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"playMode\": \"family\",\n  \"name\": \"House of Alder\",\n  \"crest\": { \"field\": \"emerald\", \"charge\": \"leaf\" }\n}" }, "url": "{{baseUrl}}/api/setup" }
+        },
+        {
+          "name": "1.3 Ask the planner (rules plan in example mode, AI plan with an AI key)",
+          "event": [
+            { "listen": "prerequest", "script": { "type": "text/javascript", "exec": [
+              "const d = new Date(Date.now() + 56 * 86400000);",
+              "pm.collectionVariables.set('targetDate', `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`);"
+            ] } },
+            { "listen": "test", "script": { "type": "text/javascript", "exec": [
+              "const body = pm.response.json();",
+              "pm.test('plan proposed and checked by the server', () => pm.expect(body.status).to.eql('ok'));",
+              "pm.test('eight weeks cover the remaining $240.00 exactly', () => { pm.expect(body.plan.contributions.length).to.eql(8); pm.expect(body.plan.totals.plannedCents).to.eql(24000); pm.expect(body.plan.totals.shortfallCents).to.eql(0); });",
+              "pm.test('the plan says where it came from', () => pm.expect(['rules', 'ai']).to.include(body.plan.source));",
+              "pm.collectionVariables.set('planId', body.plan.id);"
+            ] } }
+          ],
+          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"goal\": { \"name\": \"Camping trip fund\", \"targetCents\": 30000, \"startingCents\": 6000, \"targetDate\": \"{{targetDate}}\", \"weeklyBudgetCents\": 3000 },\n  \"commitments\": [{ \"label\": \"Internet bill\", \"amountCents\": 6000, \"cadence\": \"monthly\" }]\n}" }, "url": "{{baseUrl}}/api/plans" }
+        },
+        {
+          "name": "1.4 Use the plan",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "const s = pm.response.json().state;",
+            "pm.test('plan accepted', () => pm.expect(s.acceptedPlanId).to.eql(pm.collectionVariables.get('planId')));",
+            "pm.test('next step is week 1', () => pm.expect(s.nextStep.week).to.eql(1));"
+          ] } }],
+          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{}" }, "url": "{{baseUrl}}/api/plans/{{planId}}/accept" }
+        },
+        {
+          "name": "1.5 Simulated $15 contribution, approved by an adult",
+          "event": [
+            { "listen": "prerequest", "script": { "type": "text/javascript", "exec": ["pm.collectionVariables.set('requestId', 'pm-' + pm.variables.replaceIn('{{$guid}}'));"] } },
+            { "listen": "test", "script": { "type": "text/javascript", "exec": [
+              "const body = pm.response.json();",
+              "pm.test('completed and labeled simulated', () => { pm.expect(body.outcome).to.eql('completed'); pm.expect(body.contribution.simulated).to.be.true; });",
+              "pm.test('progress $60.00 → $75.00, travelers on space 5, Manor raised', () => { pm.expect(body.progress.progressCents).to.eql(7500); pm.expect(body.state.board.position).to.eql(5); pm.expect(body.state.board.builtTier).to.eql(1); });",
+              "pm.test('simulated money is never reported as PayPal money', () => pm.expect(body.progress.contributedCents).to.eql(0));"
+            ] } }
+          ],
+          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"householdId\": \"{{householdId}}\",\n  \"goalId\": \"{{goalId}}\",\n  \"amountCents\": 1500,\n  \"approverId\": \"{{adultId}}\",\n  \"approvalConfirmed\": true,\n  \"requestId\": \"{{requestId}}\",\n  \"outcome\": \"completed\"\n}" }, "url": "{{baseUrl}}/api/example/contributions" }
+        },
+        {
+          "name": "1.6 Replay the same request — not counted twice",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "const body = pm.response.json();",
+            "pm.test('recognized as already processed', () => pm.expect(body.outcome).to.eql('already_processed'));",
+            "pm.test('progress still $75.00', () => pm.expect(body.progress.progressCents).to.eql(7500));"
+          ] } }],
+          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"householdId\": \"{{householdId}}\",\n  \"goalId\": \"{{goalId}}\",\n  \"amountCents\": 1500,\n  \"approverId\": \"{{adultId}}\",\n  \"approvalConfirmed\": true,\n  \"requestId\": \"{{requestId}}\",\n  \"outcome\": \"completed\"\n}" }, "url": "{{baseUrl}}/api/example/contributions" }
+        },
+        {
+          "name": "1.7 A child persona cannot approve",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('refused with 403', () => pm.response.to.have.status(403));",
+            "pm.test('adult approval required', () => pm.expect(pm.response.json().error.code).to.eql('adult_approval_required'));"
+          ] } }],
+          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"householdId\": \"{{householdId}}\",\n  \"goalId\": \"{{goalId}}\",\n  \"amountCents\": 1500,\n  \"approverId\": \"{{childId}}\",\n  \"approvalConfirmed\": true,\n  \"requestId\": \"pm-child-attempt-001\"\n}" }, "url": "{{baseUrl}}/api/example/contributions" }
+        },
+        {
+          "name": "1.8 Log a bill — a habit, not savings",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "const s = pm.response.json().state;",
+            "pm.test('progress unchanged at $75.00', () => pm.expect(s.progress.progressCents).to.eql(7500));",
+            "pm.test('bill recorded separately and a garden bed planted', () => { pm.expect(s.progress.bills.count).to.eql(1); pm.expect(s.board.gardens).to.eql(1); });"
+          ] } }],
+          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"kind\": \"bill_paid\",\n  \"label\": \"Internet bill\",\n  \"amountCents\": 6000,\n  \"memberId\": \"{{adultId}}\"\n}" }, "url": "{{baseUrl}}/api/entries" }
+        },
+        {
+          "name": "1.9 Ask the house steward (off without an AI key)",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "if (pm.response.code === 409) {",
+            "  pm.test('explains the steward needs an AI key', () => pm.expect(pm.response.json().error.code).to.eql('steward_unavailable'));",
+            "} else {",
+            "  pm.test('answered from checked data', () => { pm.expect(pm.response.json().status).to.eql('ok'); pm.expect(pm.response.json().checks.length).to.be.above(0); });",
+            "}"
+          ] } }],
+          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"question\": \"How close are we to the next milestone?\",\n  \"memberId\": \"{{childId}}\"\n}" }, "url": "{{baseUrl}}/api/steward" }
+        },
+        {
+          "name": "1.10 Cross-site writes are refused",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('refused with 403', () => pm.response.to.have.status(403));"
+          ] } }],
+          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Origin", "value": "https://evil.example" }], "body": { "mode": "raw", "raw": "{\n  \"playMode\": \"solo\",\n  \"name\": \"Not ours\",\n  \"crest\": { \"field\": \"cobalt\", \"charge\": \"stag\" }\n}" }, "url": "{{baseUrl}}/api/setup" }
+        }
+      ]
+    },
+    {
+      "name": "2 · PayPal sandbox walkthrough (needs sandbox credentials)",
+      "item": [
+        {
+          "name": "2.1 Server is in PayPal sandbox mode",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('payments run against the PayPal sandbox', () => pm.expect(pm.response.json().payments.mode).to.eql('sandbox'));"
+          ] } }],
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/status" }
+        },
+        {
+          "name": "2.2 Create a sandbox order (the server sets the amount)",
+          "event": [
+            { "listen": "prerequest", "script": { "type": "text/javascript", "exec": ["pm.collectionVariables.set('requestId', 'pm-' + pm.variables.replaceIn('{{$guid}}'));"] } },
+            { "listen": "test", "script": { "type": "text/javascript", "exec": [
+              "const body = pm.response.json();",
+              "pm.test('order created by Our House', () => pm.expect(body.orderId).to.match(/^[A-Z0-9]{17,32}$/));",
+              "pm.test('approval link points at the PayPal sandbox', () => pm.expect(body.approveUrl).to.match(/^https:\\/\\/www\\.sandbox\\.paypal\\.com\\//));",
+              "pm.test('nothing counted before capture', () => pm.expect(body.contribution.status).to.eql('created'));",
+              "pm.collectionVariables.set('orderId', body.orderId);",
+              "console.log('Open this link, log in with a sandbox BUYER account and approve, then run 2.3:', body.approveUrl);"
+            ] } }
+          ],
+          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"householdId\": \"{{householdId}}\",\n  \"goalId\": \"{{goalId}}\",\n  \"amountCents\": 1500,\n  \"approverId\": \"{{adultId}}\",\n  \"approvalConfirmed\": true,\n  \"requestId\": \"{{requestId}}\"\n}" }, "url": "{{baseUrl}}/api/paypal/orders" }
+        },
+        {
+          "name": "2.3 Capture after approval (server verifies with PayPal)",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "const body = pm.response.json();",
+            "pm.test('captured and verified', () => pm.expect(body.outcome).to.eql('completed'));",
+            "pm.test('real PayPal capture id recorded', () => pm.expect(body.contribution.captures[0].captureId).to.be.a('string'));",
+            "pm.collectionVariables.set('captureId', body.contribution.captures[0].captureId);",
+            "pm.collectionVariables.set('progressAfterCapture', String(body.progress.progressCents));"
+          ] } }],
+          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"householdId\": \"{{householdId}}\",\n  \"goalId\": \"{{goalId}}\"\n}" }, "url": "{{baseUrl}}/api/paypal/orders/{{orderId}}/capture" }
+        },
+        {
+          "name": "2.4 Replay the capture — not counted twice",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "const body = pm.response.json();",
+            "pm.test('already completed', () => pm.expect(body.outcome).to.eql('already_completed'));",
+            "pm.test('progress unchanged', () => pm.expect(String(body.progress.progressCents)).to.eql(pm.collectionVariables.get('progressAfterCapture')));"
+          ] } }],
+          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"householdId\": \"{{householdId}}\",\n  \"goalId\": \"{{goalId}}\"\n}" }, "url": "{{baseUrl}}/api/paypal/orders/{{orderId}}/capture" }
+        },
+        {
+          "name": "2.5 A different household cannot capture this order",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('refused with 409', () => pm.response.to.have.status(409));",
+            "pm.test('order mismatch', () => pm.expect(pm.response.json().error.code).to.eql('order_mismatch'));"
+          ] } }],
+          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"householdId\": \"hh_someone_else\",\n  \"goalId\": \"{{goalId}}\"\n}" }, "url": "{{baseUrl}}/api/paypal/orders/{{orderId}}/capture" }
+        },
+        {
+          "name": "2.6 PayPal: get an access token (sandbox client credentials)",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('token issued by the sandbox', () => pm.response.to.have.status(200));",
+            "pm.collectionVariables.set('paypalAccessToken', pm.response.json().access_token);"
+          ] } }],
+          "request": {
+            "method": "POST",
+            "auth": { "type": "basic", "basic": [{ "key": "username", "value": "{{paypalClientId}}", "type": "string" }, { "key": "password", "value": "{{paypalClientSecret}}", "type": "string" }] },
+            "header": [{ "key": "Content-Type", "value": "application/x-www-form-urlencoded" }],
+            "body": { "mode": "urlencoded", "urlencoded": [{ "key": "grant_type", "value": "client_credentials" }] },
+            "url": "{{paypalApiBase}}/v1/oauth2/token"
+          }
+        },
+        {
+          "name": "2.7 PayPal: the order as PayPal sees it",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "const order = pm.response.json();",
+            "pm.test('PayPal reports the order completed', () => pm.expect(order.status).to.eql('COMPLETED'));",
+            "pm.test('same capture id as the Our House receipt', () => pm.expect(order.purchase_units[0].payments.captures[0].id).to.eql(pm.collectionVariables.get('captureId')));",
+            "pm.test('amount and currency match', () => pm.expect(order.purchase_units[0].payments.captures[0].amount).to.eql({ currency_code: 'USD', value: '15.00' }));"
+          ] } }],
+          "request": { "method": "GET", "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{paypalAccessToken}}", "type": "string" }] }, "url": "{{paypalApiBase}}/v2/checkout/orders/{{orderId}}" }
+        },
+        {
+          "name": "2.8 Ask the steward to verify with PayPal (needs an AI key)",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "const body = pm.response.json();",
+            "pm.test('answered', () => pm.expect(body.status).to.eql('ok'));",
+            "const check = (body.checks || []).find(c => c.tool === 'get_order');",
+            "pm.test('it looked the order up through the PayPal Agent Toolkit', () => pm.expect(check && check.source).to.eql('PayPal sandbox via Agent Toolkit'));",
+            "pm.test('PayPal and the ledger agree', () => pm.expect(check && check.reconciliation.verdict).to.eql('match'));"
+          ] } }],
+          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"question\": \"Did PayPal confirm the $15.00 contribution?\",\n  \"memberId\": \"{{adultId}}\",\n  \"focusOrderId\": \"{{orderId}}\"\n}" }, "url": "{{baseUrl}}/api/steward" }
+        },
+        {
+          "name": "2.9 Refund in the sandbox (adult) — progress reversed once",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "const body = pm.response.json();",
+            "pm.test('refunded', () => pm.expect(body.outcome).to.eql('refunded'));",
+            "pm.test('progress reduced by exactly $15.00', () => pm.expect(body.progress.progressCents).to.eql(Number(pm.collectionVariables.get('progressAfterCapture')) - 1500));"
+          ] } }],
+          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"householdId\": \"{{householdId}}\",\n  \"approverId\": \"{{adultId}}\",\n  \"approvalConfirmed\": true\n}" }, "url": "{{baseUrl}}/api/paypal/captures/{{captureId}}/refund" }
+        },
+        {
+          "name": "2.10 PayPal: create an order directly (outside Our House)",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('PayPal created it', () => pm.response.to.have.status(201));",
+            "pm.collectionVariables.set('foreignOrderId', pm.response.json().id);"
+          ] } }],
+          "request": {
+            "method": "POST",
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{paypalAccessToken}}", "type": "string" }] },
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"intent\": \"CAPTURE\",\n  \"purchase_units\": [{ \"amount\": { \"currency_code\": \"USD\", \"value\": \"15.00\" } }]\n}" },
+            "url": "{{paypalApiBase}}/v2/checkout/orders"
+          }
+        },
+        {
+          "name": "2.11 Our House refuses an order it did not create",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('refused with 404', () => pm.response.to.have.status(404));",
+            "pm.test('unknown order', () => pm.expect(pm.response.json().error.code).to.eql('unknown_order'));"
+          ] } }],
+          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"householdId\": \"{{householdId}}\",\n  \"goalId\": \"{{goalId}}\"\n}" }, "url": "{{baseUrl}}/api/paypal/orders/{{foreignOrderId}}/capture" }
+        }
+      ]
+    }
+  ]
+}
