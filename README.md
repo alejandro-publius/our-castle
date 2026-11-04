@@ -50,6 +50,15 @@ With no `.env` file the app runs in **example mode**: payments are simulated by 
 4. Restart `npm start`. The startup log and the header badges show "PayPal sandbox" and "AI planner"; the Ledger tab's steward shows "PayPal Agent Toolkit". Sandbox data is kept in a separate database file from example data.
 5. Pay with a **sandbox personal (buyer) account** from the PayPal developer dashboard.
 
+**One-command live check.** With `.env` filled in, run `npm run verify:live`. It runs:
+- the AI plan, plus an impossible-target plan;
+- a real sandbox order through the Server SDK: it prints PayPal's approval link and waits while you approve with a sandbox buyer;
+- the capture, replay and mismatch checks, and PayPal's own record of the order;
+- the steward's Agent Toolkit check;
+- a refund.
+
+It uses a temporary database and writes the evidence to `docs/LIVE-VERIFICATION.md`.
+
 Optional webhooks: expose the local server through a tunnel, add a webhook in the sandbox app pointing to `https://<tunnel>/api/paypal/webhook` for `PAYMENT.CAPTURE.COMPLETED`, `PAYMENT.CAPTURE.PENDING`, `PAYMENT.CAPTURE.DENIED`, `PAYMENT.CAPTURE.REFUNDED` and `PAYMENT.CAPTURE.REVERSED`, then set `PAYPAL_WEBHOOK_ID`. Without it, captures still complete synchronously; unverified webhook deliveries are always refused.
 
 ### Postman

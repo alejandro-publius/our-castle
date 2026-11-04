@@ -78,6 +78,8 @@ The steward never passes model text to the toolkit. It sends only a known order 
 
 These are implemented but have **no live evidence yet**. Test doubles, the harness and example mode do not prove them.
 
+Items 1 and 3–5 are automated by `npm run verify:live`. The only manual step is approving one order with a sandbox buyer; the script writes `docs/LIVE-VERIFICATION.md`. It was smoke-tested here with no credentials (all sections skipped) and with invalid placeholders (each section failed cleanly, including a real PayPal sandbox debug id, with no progress recorded). Items 2, 6, 7 and 8 stay manual.
+
 1. **Real PayPal sandbox transaction through the Server SDK.** Approve a $15 order with a sandbox buyer. Then confirm:
    - the receipt shows real order and capture ids, matching the sandbox dashboard;
    - progress moves once;

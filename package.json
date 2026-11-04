@@ -13,7 +13,8 @@
     "test": "npm run check && npm run test:unit && npm run test:e2e",
     "test:unit": "node --test \"test/unit/**/*.test.mjs\"",
     "test:e2e": "playwright test",
-    "reset-demo": "node scripts/reset-demo.mjs"
+    "reset-demo": "node scripts/reset-demo.mjs",
+    "verify:live": "node scripts/verify-live.mjs"
   },
   "engines": {
     "node": ">=22.16"
