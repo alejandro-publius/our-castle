@@ -27,6 +27,9 @@ Built for the PayPal AI Hackathon as a local prototype, with PayPal at the cente
 | AI house steward with PayPal Agent Toolkit (read-only) | **Verified live (Nov 3, 2026)**: Claude reads the household ledger and lists sandbox transactions through the Agent Toolkit, with no unverified figures. Specific-order `get_order` reconciliation still needs an in-app payment |
 | AG Grid ledger | Working (AG Grid Community, MIT), with a plain-table fallback |
 | Living world and sound | Grazing deer and butterflies at a low idle frame rate (off for reduced motion); synthesized Web Audio cues, off until turned on |
+| Wider estate (second version) | Working: a 42×30 island with a waterfall bluff, river, mill, bridges, pond, orchard, farms, windmill and hamlet around the route. Detailed homes for every tier. Zoom, turn, pan and reset controls; the default view fits the whole island on desktop and phone. Screenshots in [docs/screenshots](docs/screenshots) |
+| Estate additions and Rewards view | Working: porch, village quarter and outer ramparts at 10/40/80% of the goal, earned from the goal ledger. Kept as keepsakes after a refund and announced when newly reached. The Rewards tab shows each condition, its exact progress and the evidence source, with labeled art-only previews |
+| Bill-confirmed rewards (e.g. SDG&E) | **Not built; proposal only.** No bill provider is connected. These rewards are shown locked as "needs a provider connection", and the app cannot mark a bill verified. See [docs/BILL-VERIFICATION-RESEARCH.md](docs/BILL-VERIFICATION-RESEARCH.md) |
 | Postman collection | Example-mode folder run with Newman: 10 requests, 21/21 assertions passed. Sandbox folder needs credentials |
 | Verified webhooks | Implemented with PayPal signature verification; **unverified live** (needs a public tunnel and `PAYPAL_WEBHOOK_ID`) |
 
@@ -105,6 +108,8 @@ npm run art-preview   # the original static art preview server
 3. **Contribute:** an adult persona ticks an explicit approval for a specific amount, then pays in the PayPal sandbox. The server captures the order with the Server SDK, checks amount, currency, goal and household against its own record, and only then credits progress. The receipt shows the PayPal order and capture ids.
 4. **The board answers:** the travelers walk to the new space. When a milestone is crossed, the next home tier rises with a celebration banner. Refresh or restart, and the same result is there. Turn on **Sound** to hear synthesized footsteps, a chime for a confirmed payment and a fanfare when the home grows. All of it is generated in the browser; there are no audio files.
 5. **Ledger and steward:** ask "Did PayPal confirm our last contribution?" The steward reads the ledger, looks the order up through PayPal's Agent Toolkit, and the server shows what was checked and whether PayPal and the ledger agree. The AG Grid ledger keeps goal progress, bills and gifts apart. Bills grow garden beds as a habit reward but never count as savings. A refund lowers progress exactly once and walks the travelers back; the raised building stays as an explained keepsake.
+
+6. **Rewards:** the Rewards tab lists every home tier and estate addition. Each card shows what unlocks it, the exact progress toward it and where that progress comes from. Additions announce themselves when newly reached. "Preview in the world (art only)" redraws the board without touching rewards or money. Bill-provider rewards stay locked because no bill provider is connected.
 
 Default demo numbers (editable, synthetic): a $300 goal, $60 already set aside, eight weeks of $30, and a first $15 contribution that reaches the Manor at 25%.
 

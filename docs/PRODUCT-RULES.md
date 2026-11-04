@@ -25,3 +25,28 @@ AI never authorizes a payment, changes a confirmed amount, or silently schedules
 ## Example mode
 
 Missing credentials should still allow the woodland preview and an explicitly labeled example household/quest plan. An example payment event must be labeled simulated. A real sandbox capture needs separate proof; example mode cannot satisfy that acceptance check or the complete hackathon entry by itself.
+
+## Rewards and evidence (second version)
+
+World rewards are cosmetic. They never change money, savings totals, captures or the ledger, and none is cash-equivalent.
+
+**Status vocabulary** (shared by the server, the UI and the tests):
+- **unlocked:** current tracked goal progress meets the condition.
+- **keepsake:** earned earlier and kept after a refund; current progress is below the condition, and the card says so.
+- **locked:** not reached yet.
+- **connection_required:** needs an authorized provider that is not connected. Nothing in this app can unlock it.
+
+**Evidence sources:**
+- **goal_progress:** this app's goal ledger. The label states the exact mix: reported starting progress, PayPal sandbox-confirmed captures, and simulated example payments. Simulated or reported money is never called "confirmed by PayPal".
+- **self_reported:** bills and gifts the household records. These grow the habit garden only, are labeled "Recorded by you · not verified by any provider", and never count as savings.
+- **provider_required:** a real, authorized bill provider would have to confirm the right household bill, period and payment state. None is connected. The public API ignores any client-sent "verified" or provider fields, and there is no verify route.
+
+**Thresholds** (editable defaults): the home tiers stay at 0/25/60/100% of the goal. Estate additions sit at 10% (porch), 40% (village quarter) and 80% (outer ramparts), rounded up to whole cents like the tiers.
+- Additions are earned in the same transaction as the tier awards.
+- They are awarded once (unique per goal) and kept as keepsakes after a refund.
+
+**Announcements:** a new addition is announced only when it changes from locked to unlocked between two authoritative server states. A first load, reload, replayed capture, refund, crossing again after a refund, and any preview announce nothing.
+
+**Previews:** previews only redraw the board, with a visible "Art preview" notice. They make no server request and cannot change rewards, achievements or money.
+
+**Bill-provider rewards:** these (lanterns for electricity, a water garden for water) stay locked until a real authorized provider integration exists and is verified. See [BILL-VERIFICATION-RESEARCH.md](BILL-VERIFICATION-RESEARCH.md).

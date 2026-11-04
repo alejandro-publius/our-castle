@@ -24,6 +24,24 @@ Choose a house/crest → set a shared goal → review an AI plan → approve a s
 
 ## Keep out of the first build
 
-Real savings custody, interest, investments, bank-account balances, arbitrary automatic bill discovery, real-money transfers, punitive house demolition, public financial leaderboards, property gambling, RPS combat, multiplayer AR, a broad open world and a general financial chatbot.
+Real savings custody, interest, investments, bank-account balances, arbitrary automatic bill discovery, real-money transfers, punitive house demolition, public financial leaderboards, property gambling, RPS combat, multiplayer AR, a broad open world and a general financial chatbot. (The second version's wider estate is still one bounded board around the route, not an open world.)
 
 PayPal sandbox is the required demonstration environment. The app tracks goal progress; it must not imply that the internal goal ledger is a regulated savings account or that Checkout proves a family's overall savings balance. Check product support before proposing any real-world family pooling arrangement.
+
+## Second version — the owner's expansion direction (November 4, 2026)
+
+After watching the first demo, the owner asked for three things:
+- a much more expansive and detailed world;
+- substantially richer visible rewards as the home levels up;
+- real financial conditions, such as a confirmed SDG&E bill payment, to unlock fitting world details.
+
+**Built in this version:**
+- **A wider estate:** a 42×30 island (it was 24×18) around the same 20-space route. It has a terraced bluff with a waterfall, a river with a mill and footbridge, a brook under a plank bridge into a reed pond, an orchard, farm plots, a well, a windmill and a hamlet.
+- **More detailed homes:** a porched cottage with tiled roof, timber framing and chimney; a manor with a wing, courtyard and kitchen garden; a keep with towers and a gatehouse; and a castle with spired towers, great hall, moat, drawbridge, fountain and gardens.
+- **Estate additions between the tiers:** the welcoming porch at 10% of the goal, the village quarter at 40% and the outer ramparts at 80%. They are earned from the same goal ledger as the tiers, kept as keepsakes after a refund, and announced when newly reached.
+- **A Rewards view:** it shows each addition's condition, exact progress and evidence source, with labeled art-only previews.
+
+**Proposed, not built:** bill-confirmed rewards. A lantern festival would follow a confirmed electricity bill, and a water garden a confirmed water bill. Both are shown locked with "needs a provider connection".
+- SDG&E accepting PayPal does not let this app read a household's SDG&E bill status.
+- No bill provider is connected, and nothing in the app can mark a bill as verified.
+- The proof requirements and a possible provider path are in [BILL-VERIFICATION-RESEARCH.md](BILL-VERIFICATION-RESEARCH.md).
