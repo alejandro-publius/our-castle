@@ -23,8 +23,8 @@ Built for the PayPal AI Hackathon as a local prototype, with PayPal at the cente
 | Example mode (no credentials) | Working and labeled everywhere: simulated payments, built-in rules planner, steward off |
 | PayPal sandbox order → approval → capture → verified credit → refund | **Verified live in the sandbox (Nov 3, 2026)**, on the official Server SDK. A sandbox buyer approved a $15 order, which was captured and credited once. The replay was not double-counted, a mismatched household was refused, PayPal's record matched the receipt, and the refund reversed progress once. Also tested against a fake sandbox through both adapters |
 | PayPal JS SDK v6 button | Implemented as PayPal's Oct 2026 Node guide shows. **Live sandbox:** eligibility passes and PayPal's button renders with the real client id, with no CSP violations. The popup approval is not yet verified |
-| AI planner (Claude, structured output, server validation) | Implemented and tested against a fake transport. **No live AI call yet** |
-| AI house steward with PayPal Agent Toolkit (read-only) | Implemented and tested with a scripted fake model and fake PayPal. The toolkit's read-only `list_transactions` works against the live sandbox. **No live AI run yet** (needs `AI_API_KEY`) |
+| AI planner (Claude, structured output, server validation) | **Verified live (Nov 3, 2026)** with Claude Opus 5.5: a feasible plan passes server validation, and an impossible target reports its $160 shortfall |
+| AI house steward with PayPal Agent Toolkit (read-only) | **Verified live (Nov 3, 2026)**: Claude reads the household ledger and lists sandbox transactions through the Agent Toolkit, with no unverified figures. Specific-order `get_order` reconciliation still needs an in-app payment |
 | AG Grid ledger | Working (AG Grid Community, MIT), with a plain-table fallback |
 | Living world and sound | Grazing deer and butterflies at a low idle frame rate (off for reduced motion); synthesized Web Audio cues, off until turned on |
 | Postman collection | Example-mode folder run with Newman: 10 requests, 21/21 assertions passed. Sandbox folder needs credentials |
@@ -49,8 +49,8 @@ With no `.env` file the app runs in **example mode**: payments are simulated by 
 
 1. Copy `.env.example` to `.env` (server-side only; it is git-ignored and never served).
 2. PayPal: create a **sandbox** REST app at developer.paypal.com and put its client id and secret in `PAYPAL_CLIENT_ID` / `PAYPAL_CLIENT_SECRET`. `PAYPAL_ENV` must be `sandbox`; the code has no live endpoint (the Server SDK is fixed to `Environment.Sandbox` and the Agent Toolkit to `sandbox: true`).
-3. AI: create an API key in the Anthropic Console (https://console.anthropic.com/settings/keys), then run `npm run set-ai-key` in your own terminal and paste it.
-   - The script hides the key as you paste and accepts only Console API keys (`sk-ant-api…`). It refuses Claude subscription/OAuth tokens, like the one Claude Code signs in with.
+3. AI: create an API key in the Anthropic Console (https://platform.claude.com/settings/keys), then run `npm run set-ai-key` in your own terminal and paste it.
+   - The script hides the key as you paste and accepts Console API keys (`sk-ant-api…` or personal `sk-ant-usr-…` keys). It refuses Claude subscription/OAuth tokens, like the one Claude Code signs in with.
    - It writes `AI_API_KEY` to `.env` with owner-only permissions. Every other line, including the PayPal settings, is kept. `AI_PROVIDER=anthropic` and `AI_MODEL=claude-opus-5-5` are filled in if missing.
    - The server reads only `AI_API_KEY`. It never uses `ANTHROPIC_API_KEY` or a coding assistant's login.
 4. Restart `npm start`. The startup log and the header badges show "PayPal sandbox" and "AI planner"; the Ledger tab's steward shows "PayPal Agent Toolkit". Sandbox data is kept in a separate database file from example data.

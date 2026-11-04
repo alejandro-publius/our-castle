@@ -32,6 +32,14 @@ test('only Anthropic Console API keys are accepted; Claude subscription/OAuth to
   assert.ok(!maskKey(FAKE_KEY).includes('FAKEfake'), 'the mask never shows the secret part');
 });
 
+test('personal Console API keys are accepted and masked without showing any extra key characters', () => {
+  const personal = 'sk-ant-usr-FAKEfakeFAKEfakeFAKEfake_0123456789-abcd';
+  assert.deepEqual(checkApiKey(personal), { ok: true, key: personal });
+  assert.equal(maskKey(personal), 'sk-ant-usr-…abcd');
+  assert.equal(checkApiKey('sk-ant-usr-short').ok, false);
+  assert.equal(checkApiKey('sk-ant-admin01-FAKEfakeFAKEfakeFAKEfake_0123456789').ok, false);
+});
+
 test('setting the AI key keeps every PayPal setting, comment and line order', () => {
   const next = upsertEnv(PAYPAL_ENV, { set: { AI_API_KEY: FAKE_KEY }, defaults: AI_DEFAULTS });
   assert.equal(next, PAYPAL_ENV.replace('AI_API_KEY=\n', `AI_API_KEY=${FAKE_KEY}\n`));
