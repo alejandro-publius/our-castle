@@ -1,8 +1,34 @@
 # Validation
 
+## November 3, 2026, 10:48–10:58 PM PST — buyer-approved sandbox payment (`npm run verify:live`)
+
+The first full PayPal sandbox payment. The owner approved a $15.00 order with a Personal sandbox buyer account; everything else was automated. The script used a temporary database, so the app's data files were not touched. Test money only. Full output: [LIVE-VERIFICATION.md](LIVE-VERIFICATION.md). **Result: 7 passed, 0 failed, 2 skipped** (the AI checks; no `AI_API_KEY`).
+
+| Check | Result | Evidence |
+| --- | --- | --- |
+| Server-created order (Server SDK) | PASS | Order `5D424601H2372591L`, $15.00 USD |
+| Buyer approval in PayPal | PASS | The owner approved as a sandbox buyer; PayPal order status `APPROVED` |
+| Capture verified and credited once | PASS | Capture `72476659YH700454R`. Progress went from $60.00 to $75.00 and the Manor (tier 1) was awarded |
+| Replayed capture | PASS | Outcome `already_completed`; progress stayed at $75.00 |
+| Mismatched household | PASS | Refused with `order_mismatch` before any PayPal call |
+| PayPal's own record matches the receipt | PASS | `GET /v2/checkout/orders`: `COMPLETED`, capture `72476659YH700454R`, 15.00 USD |
+| Refund reverses progress once | PASS | Outcome `refunded`; progress went from $75.00 back to $60.00 |
+| AI planner (demo goal and impossible target) | PENDING | No `AI_API_KEY` in `.env` |
+| House steward with the Agent Toolkit | PENDING | No `AI_API_KEY` in `.env` |
+
+**Checked afterwards with PayPal (read-only):**
+- `GET /v2/payments/captures/72476659YH700454R` returns `REFUNDED`, 15.00 USD, `final_capture: true`, with `custom_id` set to the app's contribution id.
+- The order lists refund `9U925627HK881213A`: `COMPLETED`, 15.00 USD.
+
+**Not covered by this run:**
+- A *repeated* refund request (the unit tests cover refund idempotency; this run refunded once).
+- The browser button's popup approval. This run approved through PayPal's hosted approval link, not the in-page v6 button.
+- Webhooks.
+- The AI planner and the steward.
+
 ## November 3, 2026 (evening) — live PayPal sandbox checks with the owner's credentials
 
-The owner's sandbox REST credentials were added to the local, git-ignored `.env` (`PAYPAL_ENV=sandbox`). Every call below reached the **real PayPal sandbox**. No real money moved, and no buyer approved anything, so nothing was captured or charged. No AI key is configured yet, so the AI checks are **blocked**.
+The owner's sandbox REST credentials were added to the local, git-ignored `.env` (`PAYPAL_ENV=sandbox`). Every call below reached the **real PayPal sandbox**. No real money moved, and no buyer approved anything at this stage, so nothing was captured or charged. No AI key is configured yet, so the AI checks are **blocked**.
 
 - **OAuth.** The first attempt returned `401 invalid_client`. A later attempt with the same `.env` returned **200** and an access token. Nothing was changed in between, so the new sandbox app was most likely still activating.
 - **Server SDK order** (temporary database, not the app's data):
@@ -23,9 +49,7 @@ The owner's sandbox REST credentials were added to the local, git-ignored `.env`
   - Local hosts now send no domain, and the app's `/api/paypal/client-token` returns a real sandbox token.
   - The fake sandbox now enforces the same rule, with a unit test.
 
-**Still to verify live:**
-- one buyer approval → capture → credit → replay → refund, using `npm run verify:live` with a sandbox buyer account (or the browser button);
-- everything that needs `AI_API_KEY` (the planner and the steward).
+**Still to verify live** at this point: one buyer-approved capture, replay and refund (done later that night; see the section above), and everything that needs `AI_API_KEY`.
 
 After these checks and the rename to Our Castle, the earlier suites still pass: `npm test` (47 verified files, 82 unit tests passed and 1 skipped by design, 25 browser tests passed) and Newman folder 1 (10 requests, 21/21 assertions).
 
@@ -109,18 +133,13 @@ The steward never passes model text to the toolkit. It sends only a known order 
 
 These are implemented but have **no live evidence yet**. Test doubles, the harness and example mode do not prove them.
 
-Items 1 and 3–5 are automated by `npm run verify:live`. The only manual step is approving one order with a sandbox buyer; the script writes `docs/LIVE-VERIFICATION.md`. It was smoke-tested here with no credentials (all sections skipped) and with invalid placeholders (each section failed cleanly, including a real PayPal sandbox debug id, with no progress recorded). Items 2, 6, 7 and 8 stay manual.
+Items 1 and 3–5 are automated by `npm run verify:live` (items 1 and 5 passed live on Nov 3, 2026; items 3 and 4 wait for `AI_API_KEY`). The only manual step is approving one order with a sandbox buyer; the script writes `docs/LIVE-VERIFICATION.md`. It was smoke-tested here with no credentials (all sections skipped) and with invalid placeholders (each section failed cleanly, including a real PayPal sandbox debug id, with no progress recorded). Items 2, 6, 7 and 8 stay manual.
 
-1. **Real PayPal sandbox transaction through the Server SDK.** Order creation, PayPal's own record and the refusal to capture an unapproved order are now verified live (see the evening section). Still needed: approve a $15 order with a sandbox buyer. Then confirm:
-   - the receipt shows real order and capture ids, matching the sandbox dashboard;
-   - progress moves once;
-   - replaying capture and refreshing do not double-credit.
-
-   Postman folder 2 walks this, including PayPal's own `GET /v2/checkout/orders`.
+1. ~~**Real PayPal sandbox transaction through the Server SDK.**~~ **Verified on Nov 3, 2026.** A buyer approved a $15 order, which was then captured and credited once. The replay did not double-credit, and PayPal's own record matched (see the top section). Postman folder 2 can repeat it by hand.
 2. **JS SDK v6 in the browser with a real client id:** eligibility and the `<paypal-button>` rendering are now verified live. Still needed: the popup approval works and `onApprove`/`onCancel` reach the server.
 3. **Live house steward:** with `AI_API_KEY` and sandbox credentials, the steward calls PayPal's Agent Toolkit `get_order` for a real order and reports "PayPal and the ledger agree." Check whether real answers trigger false "unverified figure" warnings.
 4. **Live AI plan:** `claude-opus-5-5` returns a plan that passes validation for the demo inputs and for an impossible target; note the latency.
-5. **Sandbox refund** through the Ledger's "Refund in sandbox" button (or Postman 2.9) reduces progress exactly once.
+5. ~~**Sandbox refund**~~ **Verified on Nov 3, 2026** through the server's refund path: progress went from $75.00 back to $60.00, and PayPal shows refund `9U925627HK881213A` `COMPLETED`. Still untested live: the Ledger tab's "Refund in sandbox" button in the browser.
 6. **Pending and declined captures in the real sandbox** (for example with PayPal's negative-testing tools).
 7. **Webhooks** through a tunnel with `PAYPAL_WEBHOOK_ID`: `verify-webhook-signature` returns `SUCCESS` for real deliveries.
 8. **Other devices and assistive tech:** real phone hardware, Safari/Firefox, and a screen-reader pass of the AG Grid ledger.
