@@ -2,7 +2,7 @@
 
 ## November 4, 2026: district deeds, a card when a new area opens (branch `feature/area-unlock-cards`)
 
-The owner asked for *"a card that indicates when you unlock a new area pixelated like a monopoly card."* Built in the worktree `our-castle-district-guide` from `7918113`; not yet promoted. The reference lock and ledger are in the district-deeds section of [ART-DIRECTION.md](ART-DIRECTION.md).
+The owner asked for *"a card that indicates when you unlock a new area pixelated like a monopoly card."* Built from `7918113` and promoted locally as `da602b8`. The owner's keys, database file hashes/modes/timestamps, selected household state and original server PIDs on 3010, 3021 and 3140 were unchanged. The current main app serves the new files; preservation evidence is in git-ignored `test-results/area-card-review/promotion.json`. Nothing was pushed. The reference lock and ledger are in the district-deeds section of [ART-DIRECTION.md](ART-DIRECTION.md).
 
 **What it does:**
 - **When it appears:** after the board animation, a portrait deed card (a native modal dialog) appears for each district that the server's state newly opened for the same household and goal. The rule is `newlyOpenedDistricts` in `src/core/deeds.js`, which compares `rewards.realm.districts` between server states.
@@ -51,7 +51,7 @@ The owner asked for *"a card that indicates when you unlock a new area pixelated
 - zero writes from navigation, no page errors and no external requests;
 - a closed card 614 px tall at 390×844, scrolling inside itself at 320 px.
 
-The approved crop is `docs/screenshots/deed-manor.png`.
+The approved crop is `docs/screenshots/deed-manor.png`. The card tryout on http://localhost:3153 is an isolated example household, initially $60 reported plus one $15 simulated contribution; it is left available for the owner and must not be reset during their review. The preserved 2:51 video predates these cards; it remains labelled with its original footage provenance.
 
 **Limitations:**
 - **Not covered:** Chromium emulation only; no real phone, Safari, Firefox or screen reader.

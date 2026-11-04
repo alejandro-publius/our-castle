@@ -19,6 +19,8 @@ Confirm the app's **PayPal sandbox** and live-AI badges and the goal: **$300**, 
 
 The app's front-end artwork and family guidance have changed since the rehearsal server was started; the payment backend is unchanged. If no order is in progress, the operator may reload the same app tab to use the latest front end. Record both the server's startup source and current front-end commit accurately when they differ. Do not interrupt an active checkout to update visuals.
 
+The current front end also includes the district-deed feature (`da602b8`), checked in example mode. When the Manor newly opens, a card follows its board animation. Show it briefly, then choose Visit or Close before navigating to the Ledger. Keep the receipt/capture identifiers and actual same-order get_order reconciliation as the integration evidence; the card is the game reward. The preserved review footage predates these cards.
+
 ## Record one continuous original before creating the order
 
 Keep login, developer dashboards, .env files, passwords and keys off screen. Set up continuous capture before pressing the payment button. If login, CAPTCHA, 2FA or another manual step blocks the operator, report the exact page and current order/waiter state; do not create replacements or retry blindly.
