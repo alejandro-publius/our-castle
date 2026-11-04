@@ -1,0 +1,42 @@
+{
+  "file": "our-castle-gameplay-demo.mp4",
+  "sourceCommit": "78033cc7e89851763541fe980f1425579a98d74e",
+  "bytes": 1977310,
+  "sha256": "e02f227acd9b9a8a69eee53eb68f6820fd388d4153fe10efc6ce3c2d2a743e2b",
+  "duration": 17.6,
+  "format": {
+    "width": 1440,
+    "height": 1000,
+    "codec": "H.264",
+    "fps": 25,
+    "audio": false
+  },
+  "label": "OUR CASTLE | DEMO MODE",
+  "kind": "Recorded interactive example-mode game; manual lighting/rain; no payment or provider verification",
+  "edits": [
+    {
+      "id": "connected-realm",
+      "source_in": 3.135,
+      "duration": 3.25
+    },
+    {
+      "id": "royal-court",
+      "source_in": 7.917,
+      "duration": 5.25
+    },
+    {
+      "id": "night-rain",
+      "source_in": 14.485,
+      "duration": 5.25
+    },
+    {
+      "id": "return-to-realm",
+      "source_in": 22.421,
+      "duration": 3.75
+    }
+  ],
+  "raw": "continuous-gameplay.webm",
+  "rawSha256": "abc9c8a9e43df815640bb09cbaa2f8c211fb79fe5cd16802722a643f40e23a2d",
+  "fullDecodePassed": true,
+  "captureReport": "capture.json"
+}

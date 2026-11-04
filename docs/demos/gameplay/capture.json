@@ -1,0 +1,44 @@
+{
+  "createdAt": "2026-11-04T23:12:43.178Z",
+  "sourceCommit": "78033cc7e89851763541fe980f1425579a98d74e",
+  "kind": "Recorded interactive example-mode game; manual lighting/rain; no payment or provider verification",
+  "raw": "continuous-gameplay.webm",
+  "rawSha256": "abc9c8a9e43df815640bb09cbaa2f8c211fb79fe5cd16802722a643f40e23a2d",
+  "phases": [
+    {
+      "id": "connected-realm",
+      "seconds": 2.984848666
+    },
+    {
+      "id": "royal-court",
+      "seconds": 7.767165125
+    },
+    {
+      "id": "night-rain",
+      "seconds": 14.335425375000002
+    },
+    {
+      "id": "return-to-realm",
+      "seconds": 22.271355
+    }
+  ],
+  "sourceHashes": {
+    "index.html": "5f6c2871bc22686595a66985842de8ec913a38c857465dfb60883363fbfe8cd3",
+    "src/app/main.js": "59cef9b32cecec5713dabd3dc3fc348210b2b2d19ac9117071ac545d3f1c8b56",
+    "app.css": "7907a69446406c48c15e97025da8d250f0d757e5465d227bdd779ded1bf1a413",
+    "src/world/board-scene.js": "a46f446525f96d8769be79e491460b0e62b3030e4d000fb54efd6bc3b3ae2267"
+  },
+  "visible": {
+    "title": "Explore Royal Citadel",
+    "condition": "Locked · Reach 100% of the shared goal ($300.00 tracked) · $240.00 to go.",
+    "court": "Court · 20 wandering guests, including 3 princesses."
+  },
+  "mobile": {
+    "exitVisible": true,
+    "noOverflow": true
+  },
+  "writes": [],
+  "external": [],
+  "pageErrors": [],
+  "financialStateUnchanged": true
+}

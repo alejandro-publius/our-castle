@@ -1,5 +1,9 @@
 # Demo clip provenance
 
+## Current gameplay demo
+
+[17.60-second gameplay demo](gameplay/README.md), recorded from the actual game at `78033cc`. It shows Explore Royal Citadel, its court, night/rain and Return to your realm. Named destinations and unlock conditions replace the former art-tool wording. The existing example household, financial state and older clips are preserved.
+
 ## New lighting and rain preview
 
 [18.04-second MP4 and source notes](atmosphere/README.md): actual example-mode UI at `feada574`, switching Day → Afternoon → Night → Rain. Manual weather is clearly labelled; it is not a live forecast or payment demonstration. The 2:51 review below predates district deeds and atmosphere.
