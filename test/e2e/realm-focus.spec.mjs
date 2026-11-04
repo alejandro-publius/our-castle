@@ -53,7 +53,7 @@ test.describe('at 320 by 568', () => {
   });
 });
 
-test('a keyboard reward preview moves focus to its visible exit, and returning brings focus back to the reward', async ({ page }) => {
+test('keyboard reward exploration moves focus to its visible exit, and returning brings focus back to the reward', async ({ page }) => {
   const writes = trackWrites(page);
   await ready(page);
   await page.locator('#tab-rewards').focus();
@@ -62,9 +62,9 @@ test('a keyboard reward preview moves focus to its visible exit, and returning b
   await preview.focus();
   await page.keyboard.press('Enter');
 
-  const exit = page.getByRole('button', { name: 'Return to my estate' });
+  const exit = page.getByRole('button', { name: 'Return to your realm' });
   await expect(exit).toBeFocused();
-  await expect(exit).toHaveAccessibleDescription(/Preview: The castle · 20 guests.*Art preview · this does not unlock a reward or change your goal\./);
+  await expect(exit).toHaveAccessibleDescription(/Royal Citadel · 20 guests.*Locked · Reach 100%.*\$240\.00 to go\./);
   await scrollSettled(page);
   expect(await fullyVisible(exit), 'the preview exit is fully on screen').toBe(true);
   await expect.poll(async () => (await page.evaluate(() => window.__ourCastle.scene())).tier).toBe(3);
@@ -79,11 +79,11 @@ test('a keyboard reward preview moves focus to its visible exit, and returning b
   expect(writes).toEqual([]);
 });
 
-test('a pointer return from a preview stays at the realm instead of jumping to the reward card', async ({ page }) => {
+test('a pointer return from exploration stays at the realm instead of jumping to the reward card', async ({ page }) => {
   await ready(page);
   await page.getByRole('tab', { name: /Rewards/ }).click();
   await page.locator('[data-reward="home:castle"] .reward-preview').click();
-  await page.getByRole('button', { name: 'Return to my estate' }).click();
+  await page.getByRole('button', { name: 'Return to your realm' }).click();
   await expect(page.locator('#world-preview')).toBeHidden();
   await expect(page.locator('[data-reward="home:castle"] .reward-preview')).not.toBeFocused();
   expect(await page.locator('.realm-map').evaluate((el) => { const r = el.getBoundingClientRect(); return r.bottom > 0 && r.top < innerHeight; })).toBe(true);

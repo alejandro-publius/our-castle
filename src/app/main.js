@@ -446,7 +446,7 @@ function renderBoard({ animate, result, added = [] }) {
   });
 }
 
-// ---------- Rewards and explicit, presentation-only previews ----------
+// ---------- Rewards and destination exploration ----------
 const REWARD_LABELS = { unlocked: 'Unlocked', keepsake: 'Keepsake', locked: 'Locked', connection_required: 'Needs a provider connection' };
 function renderDeedList() {
   const labels = { earned: 'Earned', keepsake: 'Keepsake', locked: 'Locked' };
@@ -478,7 +478,7 @@ function renderRewards() {
     card.append(h('p', { class: 'reward-source' }, `Evidence: ${reward.sourceLabel}`));
     if (reward.status === 'keepsake') card.append(h('p', { class: 'fine' }, 'Reached earlier and kept after a refund. Current goal progress is shown above and in the ledger.'));
     card.append(h('button', { type: 'button', class: 'reward-preview', onclick: (e) => previewReward(reward, { keyboard: e.detail === 0 }) },
-      reward.status === 'unlocked' ? 'Show it in the world' : 'Preview in the world (art only)'));
+      ['unlocked', 'keepsake'].includes(reward.status) ? 'Visit' : 'Explore'));
     return card;
   }));
 }
@@ -493,26 +493,33 @@ function revealRealm(keep, { instant = false } = {}) {
   if (Math.abs(delta) >= 1) window.scrollBy({ top: delta, behavior: instant || matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' });
 }
 
-// A preview only redraws the board. It never calls the server, so it cannot change rewards, achievements or money.
+// Exploration only redraws the board. Access and progress stay authoritative; no server writes.
 function previewReward(reward, { keyboard = false } = {}) {
   if (!scene) return;
   ui.preview = reward.id;
   $('#world-preview').hidden = false;
   const previewTier = reward.previewTier ?? state.board.builtTier;
   const previewCourt = courtForTier(previewTier);
-  $('#preview-title').textContent = `${reward.status === 'unlocked' ? 'Showing' : 'Preview'}: ${reward.name} · ${previewCourt.capacity} guests`;
+  const districtId = reward.id === 'estate:market' ? 'market'
+    : ['water', 'habit-garden'].includes(reward.previewFeature) ? 'garden' : homeDistrict(previewTier).id;
+  const district = state.rewards.realm.districts.find((d) => d.id === districtId);
+  const destination = reward.id.startsWith('home:') ? district.name : reward.name;
+  const access = reward.status === 'unlocked' ? 'Open' : reward.status === 'keepsake' ? 'Keepsake' : 'Locked';
+  $('#preview-title').textContent = `${destination} · ${previewCourt.capacity} guests`;
+  $('#preview-note').textContent = reward.status === 'keepsake'
+    ? 'Keepsake · A milestone your household reached earlier.'
+    : `${access} · ${reward.condition}${reward.remainingCents > 0 ? ` · ${money(reward.remainingCents)} to go` : ''}.`;
   const royals = previewCourt.princesses.length;
-  $('#board-status').textContent = `Art preview · ${previewCourt.capacity} wandering guests${royals ? `, including ${royals} princess${royals === 1 ? '' : 'es'}` : ''}. Your earned home remains the ${TIERS[state.board.builtTier].name.toLowerCase()}.`;
+  $('#board-status').textContent = `Court · ${previewCourt.capacity} wandering guests${royals ? `, including ${royals} princess${royals === 1 ? '' : 'es'}` : ''}.`;
   $('#world').dataset.preview = 'true';
-  $('#board-title').textContent = reward.status === 'unlocked' ? reward.name : 'Previewing a reward';
+  $('#board-title').textContent = ['unlocked', 'keepsake'].includes(reward.status) ? destination : `Explore ${destination}`;
   scene.update({
     builtTier: previewTier,
     estateLevel: reward.previewEstateLevel ?? state.board.estateLevel,
     gardens: reward.previewFeature === 'habit-garden' ? 4 : state.board.gardens,
     previewFeature: reward.previewFeature ?? null,
   }, { animate: false }).then(()=>{
-    const id = reward.id==='estate:market'?'market':reward.previewFeature==='water'||reward.previewFeature==='habit-garden'?'garden':homeDistrict(previewTier).id;
-    scene.focusDistrict(id);
+    scene.focusDistrict(districtId);
   });
   // The reward card is far below the board: move focus to the preview's own exit so it is visible and one key away.
   $('#end-preview').focus({ preventScroll: true });
@@ -542,7 +549,7 @@ function syncRealmMarkers({focus,points}){
   if(!state)return;
   const regions=realmAccess({builtTier:state.board.builtTier,estateLevel:state.board.estateLevel,gardens:state.board.gardens});
   const d=regions.find(d=>d.id===focus);
-  const message=focus?`${d.name} · ${d.open?'Open district':'Locked'} · ${districtCondition(d)}${ui.preview?' · Viewing an art preview':''}`:`${ui.preview?'Art preview · ':''}Whole realm · ${regions.filter(d=>d.open).length}/6 districts earned. Select a locked district to inspect its condition.`;
+  const message=focus?`${d.name} · ${d.open?'Open district':'Locked'} · ${districtCondition(d)}`:`Whole realm · ${regions.filter(d=>d.open).length}/6 districts earned. Select a locked district to inspect its condition.`;
   if($('#realm-focus-status').textContent!==message)$('#realm-focus-status').textContent=message;
 }
 
@@ -887,7 +894,7 @@ function amountCheck() {
   const cents = parseAmountToCents($('#give-amount').value);
   const { contributionLimits: lim, progress } = state;
   if (cents === null) return { cents: null, error: 'Enter an amount like 15.00.' };
-  if (cents < lim.minCents || cents > lim.maxCents) return { cents, error: `Contributions are ${money(lim.minCents)}–${money(lim.maxCents)} in this prototype.` };
+  if (cents < lim.minCents || cents > lim.maxCents) return { cents, error: `Contributions are ${money(lim.minCents)}–${money(lim.maxCents)}.` };
   if (cents > progress.remainingCents) return { cents, error: `Only ${money(progress.remainingCents)} is still needed for this goal.` };
   return { cents, error: null };
 }

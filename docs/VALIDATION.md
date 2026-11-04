@@ -1,5 +1,13 @@
 # Validation
 
+## November 4, 2026: game language for destination exploration
+
+The owner rejected the playable world's “Previewing a reward” and art-disclaimer language. The game now uses **Explore** for future rewards, **Visit** for earned rewards, the actual district name (for example **Explore Royal Citadel**), a short **Locked / Open / Keepsake** condition and **Return to your realm**. The court describes its guests and princesses directly. The footer keeps the artwork credit without linking to the historical art-reference tool. Contribution limit errors no longer call the game a prototype.
+
+Only presentation and existing test-language expectations changed. Internal inspection selectors/flags remain compatible. Reward ownership, bridges, server writes, financial logic and provider boundaries are unchanged; sandbox/simulated money and reported savings remain accurately labelled. The old standalone art-reference route and historical media remain preserved.
+
+Checks: the asset/palette/renderer/syntax check passed. Ten existing targeted browser cases passed (desktop and phone Chromium emulation): exploring larger courts, no financial writes or achievements, exact locked condition, restoring actual locks, keyboard focus/accessible description and pointer return. The full suite and paid provider checks were not rerun. Ignored `test-results/game-language/protected-check.json` confirms the saved keys, owner database files and approved rehearsal database hashes/permissions/timestamps are unchanged. No server restart, order or paid AI call was made for this copy edit.
+
 ## November 4, 2026: realm atmosphere, day, afternoon, night and rain, with optional local weather (branch `feature/realm-atmosphere`)
 
 The owner asked for *"night/day/afternoon/rain mode that enables the homes or castles to change and have lights to illuminate the dark"*, optionally following the person's time zone or weather. Built in the worktree `our-castle-district-guide` from `b2b31d5` and promoted locally as `feada574`. Nothing was pushed. The reference lock and ledger are in the atmosphere section of [ART-DIRECTION.md](ART-DIRECTION.md).

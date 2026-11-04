@@ -104,7 +104,7 @@ test('the Rewards tab shows each addition with its condition, exact progress and
   await expect(page.locator('#panel-rewards').getByRole('button', { name: /verify|connect|mark .*paid/i })).toHaveCount(0);
 });
 
-test('a preview only redraws the board: no server write, no announcement, and returning restores the earned estate', async ({ page, request }) => {
+test('reward exploration only redraws the board: no server write, no announcement, and returning restores the earned estate', async ({ page, request }) => {
   await ready(page);
   const before = await (await request.get('/api/state')).json();
   const writes = [];
@@ -113,7 +113,7 @@ test('a preview only redraws the board: no server write, no announcement, and re
   await page.getByRole('tab', { name: /Rewards/ }).click();
   await page.locator('[data-reward="home:castle"] .reward-preview').click();
   await expect(page.locator('#world-preview')).toBeVisible();
-  await expect(page.locator('#world-preview')).toContainText('Art preview · this does not unlock a reward or change your goal.');
+  await expect(page.locator('#world-preview')).toContainText('Locked · Reach 100% of the shared goal ($300.00 tracked) · $240.00 to go.');
   await expect.poll(async () => (await scene(page)).tier).toBe(3);
   expect((await scene(page)).estateLevel).toBe(3);
   await page.locator('[data-reward="bill:electricity"] .reward-preview').click();
@@ -127,7 +127,7 @@ test('a preview only redraws the board: no server write, no announcement, and re
   expect(after.progress).toEqual(before.progress);
   expect(after.rewards.entries.map((r) => [r.id, r.status])).toEqual(before.rewards.entries.map((r) => [r.id, r.status]));
 
-  await page.getByRole('button', { name: 'Return to my estate' }).click();
+  await page.getByRole('button', { name: 'Return to your realm' }).click();
   await expect.poll(async () => (await scene(page)).tier).toBe(0);
   expect(await scene(page)).toMatchObject({ estateLevel: 1, previewFeature: null });
   await expect(page.locator('#world-preview')).toBeHidden();

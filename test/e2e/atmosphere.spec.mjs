@@ -67,7 +67,7 @@ test('Night and Rain light the world, survive refresh, previews and a payment, a
   await page.locator('[data-reward="home:castle"] .reward-preview').click();
   await expect.poll(async () => (await page.evaluate(() => window.__ourCastle.scene())).tier).toBe(3);
   expect(await sky(page)).toMatchObject({ period: 'night', weather: 'rain', pointLights: 6 });
-  await page.getByRole('button', { name: 'Return to my estate' }).click();
+  await page.getByRole('button', { name: 'Return to your realm' }).click();
   await expect.poll(async () => (await page.evaluate(() => window.__ourCastle.scene())).tier).toBe(0);
   const scene = await page.evaluate(() => window.__ourCastle.scene());
   expect(scene.previewFeature).toBe(null);

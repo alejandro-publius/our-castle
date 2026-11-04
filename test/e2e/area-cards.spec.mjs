@@ -112,7 +112,7 @@ test('pending payments, refunds, re-crossing and art previews never create a dee
   await page.locator('[data-reward="home:castle"] .reward-preview').click();
   await expect.poll(async () => (await scene(page)).tier).toBe(3);
   await expectNoDeed(page);
-  await page.getByRole('button', { name: 'Return to my estate' }).click();
+  await page.getByRole('button', { name: 'Return to your realm' }).click();
   await expectNoDeed(page);
 
   // The collection: earned deeds reopen, locked ones show their exact condition.

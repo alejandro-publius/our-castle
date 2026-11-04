@@ -1,5 +1,21 @@
 # Art direction — preserve this visual family
 
+## Game language for destination exploration (November 4, 2026)
+
+The owner rejected “Previewing a reward”, “Art preview” and “this does not unlock…” in the playable interface. The enterprise demo must present the game confidently.
+
+**Reference lock:** the owner's supplied destination-screen screenshot and current Tiny Castle UI are primary; preserve their world, typography, colors and controls. Refero's copywriting guide supplies only orientation + status + action, concrete action labels and calm payment language. This is a copy edit, not a new visual system.
+
+| Decision | Source | Role |
+| --- | --- | --- |
+| Destination heading uses its real district name; buttons say Explore or Visit | Owner correction; Refero action + object guidance | Make world exploration a normal game action |
+| A short Locked / Open / Keepsake line gives the actual unlock condition | Existing authoritative reward state; Refero status + action | Explain access in the game's vocabulary instead of an art disclaimer |
+| Return to your realm | Owner correction; existing keyboard return flow | Keep a clear way back with focus preserved |
+| Court text describes guests and princesses directly | Existing court data and owner preference for rich rewards | Keep the reward exciting without a development qualifier |
+| Payment sandbox/simulated labels, reported savings and connection-required bill status remain accurate | Existing product rules | Presentation language never changes money, entitlement or evidence |
+
+No changes to models, bridges, palette, financial logic, stored data or internal inspection identifiers. The original art-reference route and historical captures remain preserved; development/provenance notes belong in documentation, not destination banners.
+
 ## Current map target: a woodland realm with rivers (November 4, 2026)
 
 The owner corrected the connected-realm captures directly: *"it should be all green the landscape is a forest separated by rivers under the bridge not this big ocean and why are the castles so bland? shouldn't they be embelished with colors and little accent colors?"* This supersedes the grey-island target below. Do not ask for that choice again.

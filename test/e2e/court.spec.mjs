@@ -9,7 +9,7 @@ test.beforeEach(async ({ request }) => {
   expect((await request.post('/api/demo/reset', { data: {} })).ok()).toBeTruthy();
 });
 
-test('home previews show larger roaming courts without earning guests or writing financial state', async ({ page, request }) => {
+test('home exploration shows larger roaming courts without earning guests or writing financial state', async ({ page, request }) => {
   const errors = [];
   page.on('pageerror', (e) => errors.push(e.message));
   await ready(page);
@@ -23,10 +23,10 @@ test('home previews show larger roaming courts without earning guests or writing
     await page.locator(`[data-reward="home:${id}"] .reward-preview`).click();
     await expect.poll(async () => (await court(page)).capacity).toBe(count);
     expect((await court(page)).princesses).toHaveLength(princesses);
-    await expect(page.locator('#world-preview')).toContainText('Art preview');
+    await expect(page.locator('#world-preview')).toContainText('Locked · Reach');
     await expect(page.locator('#preview-title')).toContainText(`${count} guests`);
     await expect(page.locator('#board-status')).toContainText(`${count} wandering guests`);
-    await expect(page.locator('#board-status')).toContainText('Your earned home remains the cottage');
+    await expect(page.locator('#board-status')).toContainText(`${princesses} princess`);
     await expect(page.locator('#world canvas')).toHaveAttribute('aria-label', new RegExp(`${count} wandering guests`));
   }
   const first = await court(page);
@@ -36,12 +36,12 @@ test('home previews show larger roaming courts without earning guests or writing
     const now = await court(page);
     return now.guests.some((p, i) => Math.hypot(p.x - first.guests[i].x, p.z - first.guests[i].z) > .08);
   }, { timeout: 8000 }).toBe(true);
-  await page.getByRole('button', { name: 'Return to my estate' }).click();
+  await page.getByRole('button', { name: 'Return to your realm' }).click();
   await expect.poll(async () => (await court(page)).capacity).toBe(2);
   await page.locator('[data-reward="home:castle"] .reward-preview').click();
   await expect.poll(async () => (await court(page)).capacity).toBe(20);
   expect((await court(page)).batches).toBe(first.batches, 'previews do not accumulate guest batches');
-  await page.getByRole('button', { name: 'Return to my estate' }).click();
+  await page.getByRole('button', { name: 'Return to your realm' }).click();
   await expect.poll(async () => (await court(page)).capacity).toBe(2);
   const after = await (await request.get('/api/state')).json();
   expect(after.progress).toEqual(before.progress);
