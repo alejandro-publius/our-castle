@@ -285,7 +285,7 @@ export function createContributionService({ db, clock, mode, paypal = null, webh
       const existing = orderByRequestId(input.requestId);
       if (existing) {
         if (!sameRequest(existing, input, 'paypal-sandbox')) throw new DomainError(409, 'request_conflict', 'That request id was already used for a different contribution.');
-        if (existing.provider_order_id) return { orderId: existing.provider_order_id, contribution: view(existing.id) };
+        if (existing.provider_order_id) return { orderId: existing.provider_order_id, approveUrl: null, contribution: view(existing.id) };
         throw new DomainError(409, 'in_progress', 'This contribution is already being created.');
       }
       const { goal } = validateRequest(input);
@@ -308,7 +308,10 @@ export function createContributionService({ db, clock, mode, paypal = null, webh
         throw new DomainError(502, 'provider_mismatch', 'PayPal returned an unexpected order. Nothing was charged or recorded.');
       }
       db.prepare("UPDATE payment_orders SET provider_order_id = ?, status = 'created', updated_at = ? WHERE id = ?").run(data.id, clock.iso(), id);
-      return { orderId: data.id, contribution: view(id) };
+      // PayPal's own approval link, for API clients (e.g. the Postman collection). Only a sandbox URL is passed on.
+      const link = (data.links ?? []).find((l) => ['payer-action', 'approve'].includes(l.rel))?.href ?? null;
+      const approveUrl = link && /^https:\/\/www\.sandbox\.paypal\.com\//.test(link) ? link : null;
+      return { orderId: data.id, approveUrl, contribution: view(id) };
     },
 
     /** Called after the buyer approves in PayPal. The capture result, not the callback, decides. */

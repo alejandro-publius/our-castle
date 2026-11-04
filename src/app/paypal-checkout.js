@@ -2,8 +2,9 @@ import { api } from './api.js';
 
 // PayPal JavaScript SDK v6 (sandbox host). The browser only starts checkout and reports approval;
 // the server creates the order with its own amount and decides the outcome by capturing it.
-// Unverified until run with real sandbox credentials: the SDK's docs disagree on whether
-// createInstance takes clientId or a client token, so both are tried.
+// Follows PayPal's Node integration guide (Oct 2026): createInstance({ clientId, components,
+// pageType }) and a createOrder promise resolving to { orderId }. A server-issued client token is
+// kept as a fallback because some v6 reference pages still describe token-based initialization.
 
 let sdkPromise = null;
 function loadSdk(src) {

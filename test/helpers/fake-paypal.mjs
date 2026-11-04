@@ -18,7 +18,7 @@ export function createFakePayPal(options = {}) {
   const requests = [];
   let counter = 0;
   let tokenCalls = 0;
-  const nextId = (prefix) => `${prefix}${String(++counter).padStart(6, '0')}TEST`;
+  const nextId = (prefix) => `${prefix}${String(++counter).padStart(8, '0')}TEST`; // 17 chars, like real ids
 
   const json = (status, body, extraHeaders = {}) => new Response(JSON.stringify(body), {
     status, headers: { 'Content-Type': 'application/json', 'paypal-debug-id': 'debug-fake', ...extraHeaders },
@@ -53,6 +53,7 @@ export function createFakePayPal(options = {}) {
         intent: body.intent,
         purchase_units: [{ reference_id: unit.reference_id, custom_id: unit.custom_id, invoice_id: unit.invoice_id, amount: { ...unit.amount }, description: unit.description }],
       };
+      order.links = [{ rel: 'payer-action', method: 'GET', href: `https://www.sandbox.paypal.com/checkoutnow?token=${order.id}` }];
       orders.set(order.id, order);
       return remember(structuredClone(order));
     }
@@ -117,3 +118,43 @@ export const webhookHeaders = {
   'paypal-transmission-sig': 'signature-fake',
   'paypal-transmission-time': '2026-11-03T20:00:00Z',
 };
+
+// Stand-in for the official Server SDK controllers, routed through the same fake sandbox so the
+// payment tests can run against the SDK adapter too. Mirrors the SDK: camelCase request models,
+// a raw JSON `body` on success, and the SDK's own ApiError on HTTP errors.
+import { ApiError } from '@paypal/paypal-server-sdk';
+
+const toSnake = (value) => {
+  if (Array.isArray(value)) return value.map(toSnake);
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(Object.entries(value).map(([k, v]) => [k.replace(/[A-Z]/g, (m) => `_${m.toLowerCase()}`), toSnake(v)]));
+  }
+  return value;
+};
+
+export function fakeSdkControllers(fake) {
+  const sdkCalls = [];
+  async function send(method, path, { body, paypalRequestId, prefer } = {}) {
+    const headers = { Authorization: 'Bearer sdk-fake-token', 'Content-Type': 'application/json' };
+    if (paypalRequestId) headers['PayPal-Request-Id'] = paypalRequestId;
+    if (prefer) headers.Prefer = prefer;
+    const response = await fake.fetch(`https://api-m.sandbox.paypal.com${path}`, { method, headers, body: body === undefined ? undefined : JSON.stringify(toSnake(body)) });
+    const text = await response.text();
+    const responseHeaders = Object.fromEntries(response.headers.entries());
+    if (!response.ok) throw new ApiError({ request: { method, url: path }, response: { statusCode: response.status, body: text, headers: responseHeaders } }, `HTTP ${response.status}`);
+    return { statusCode: response.status, headers: responseHeaders, body: text, result: {} };
+  }
+  const record = (name, args) => { sdkCalls.push({ name, args }); };
+  return {
+    sdkCalls,
+    orders: {
+      createOrder(args) { record('createOrder', args); return send('POST', '/v2/checkout/orders', args); },
+      captureOrder(args) { record('captureOrder', args); return send('POST', `/v2/checkout/orders/${args.id}/capture`, { ...args, body: {} }); },
+      getOrder(args) { record('getOrder', args); return send('GET', `/v2/checkout/orders/${args.id}`); },
+    },
+    payments: {
+      getCapturedPayment(args) { record('getCapturedPayment', args); return send('GET', `/v2/payments/captures/${args.captureId}`); },
+      refundCapturedPayment(args) { record('refundCapturedPayment', args); return send('POST', `/v2/payments/captures/${args.captureId}/refund`, args); },
+    },
+  };
+}
