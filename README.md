@@ -1,49 +1,90 @@
 # Our House
 
-A cooperative household savings adventure: travel through a pixelated medieval woodland, choose a family crest, and grow a cottage into a castle as you reach shared goals. Solo households work too. **Our House is a working name.**
+A cooperative household savings journey. A family (or one person) founds a house, chooses a crest, and travels a pixel woodland board past deer, a brook and a plank bridge. As real, adult-approved contributions reach shared milestones, their cottage grows into a manor, a keep and finally a castle. **Our House is a working name.**
 
-This repository is a **Claude build handoff and runnable art starter**, not a completed payment application. It contains the user's concept, proposed product rules, implementation plan, acceptance checks, actual reusable art/code, and visual references from the user's Tiny Castle / Crown & Dust projects. PayPal and runtime AI are not integrated yet.
+Built for the PayPal AI Hackathon as a local prototype: an **AI planner** turns the household's own numbers into an editable weekly plan with its arithmetic shown, and a **PayPal sandbox checkout** (Orders v2, created and captured by the server) is the only way progress moves forward.
 
-## Start in Claude Code
+> Private repository, sandbox only. No real money moves, nothing is deployed, and no hackathon entry has been submitted.
 
-Open this folder in Claude Code and paste the contents of [CLAUDE-START.md](CLAUDE-START.md). On the Mac, double-click **Continue in Claude.command**. It opens Claude in this project with that prompt, using normal Claude permissions.
+## Status — what works and what is not yet verified
 
-Read in this order:
+| Area | State |
+| --- | --- |
+| Board, crest, house tiers, travelers, gardens | Working in the browser on the original 90-color pixel renderer |
+| Household / goal / plan / ledger / milestones | Working, stored in SQLite, survives restarts |
+| Example mode (no credentials) | Working and labeled everywhere: simulated payments, built-in rules planner |
+| AI planner (Anthropic Messages API, structured output, server-side validation) | Implemented and unit-tested against a fake transport. **A live AI call has not been made yet** (no `AI_API_KEY` in this environment) |
+| PayPal sandbox order → approval → capture → verified credit | Server path implemented and tested against a fake sandbox API. **No real sandbox transaction has been made yet** (no sandbox credentials here) |
+| PayPal JS SDK v6 button in the browser | Implemented; **unverified** until run with a sandbox client id |
+| Verified webhooks (capture completed/denied, refunds) | Implemented with PayPal signature verification; **unverified live** (needs a public tunnel and `PAYPAL_WEBHOOK_ID`) |
+
+See [docs/VALIDATION.md](docs/VALIDATION.md) for exactly which tests ran and the remaining credential-dependent checks.
+
+## Run it
+
+Requires **Node.js 22.16 or later** (uses the built-in `node:sqlite`).
+
+```sh
+npm install
+npm start
+# Open http://localhost:3010/
+# The original art reference stays at http://localhost:3010/art-preview.html
+```
+
+With no `.env` file the app runs in **example mode**: payments are simulated by the server and labeled "simulated" on every badge, receipt and ledger line; plans come from built-in rules and are labeled "no AI". Example mode is for previewing the product, not proof of either integration.
+
+### Real PayPal sandbox and AI planner
+
+1. Copy `.env.example` to `.env` (server-side only; it is git-ignored and never served).
+2. PayPal: create a **sandbox** REST app at developer.paypal.com and put its client id and secret in `PAYPAL_CLIENT_ID` / `PAYPAL_CLIENT_SECRET`. `PAYPAL_ENV` must be `sandbox`; the code has no live endpoint.
+3. AI: set `AI_PROVIDER=anthropic`, `AI_MODEL=claude-opus-5-5` and an application API key from the Anthropic Console in `AI_API_KEY`. The server reads only `AI_API_KEY`; it never uses `ANTHROPIC_API_KEY` or a coding assistant's login.
+4. Restart `npm start`. The startup log and the header badges show "PayPal sandbox" and "AI planner". Sandbox data is kept in a separate database file from example data.
+5. Pay with a **sandbox personal (buyer) account** from the PayPal developer dashboard.
+
+Optional webhooks: expose the local server through a tunnel, add a webhook in the sandbox app pointing to `https://<tunnel>/api/paypal/webhook` for `PAYMENT.CAPTURE.COMPLETED`, `PAYMENT.CAPTURE.PENDING`, `PAYMENT.CAPTURE.DENIED`, `PAYMENT.CAPTURE.REFUNDED` and `PAYMENT.CAPTURE.REVERSED`, then set `PAYPAL_WEBHOOK_ID`. Without it, captures still complete synchronously; unverified webhook deliveries are always refused.
+
+Other commands:
+
+```sh
+npm test              # integrity check + unit tests + browser end-to-end tests
+npm run test:unit     # node --test (ledger, payments, planner, AI provider, HTTP server)
+npm run test:e2e      # Playwright, desktop 1440px and phone 390px, example mode
+npm run check         # asset hashes, 90-color palette, renderer wiring, JS syntax
+npm run reset-demo    # erase the local example household (add --include-sandbox to also erase sandbox records)
+npm run art-preview   # the original static art preview server
+```
+
+## How it plays
+
+1. **House** — choose solo or family (example personas Rowan, adult; Wren, child), name the house and compose a crest (field color + crown, leaf, stag or tower).
+2. **Plan** — enter the goal, what is already set aside (self-reported), a target date, the weekly amount you choose, and bills you already pay (context only). The planner proposes a weekly schedule, shows the arithmetic and projects when the Manor, Keep and Castle are reached. Every week is editable; impossible targets show the exact shortfall and how to close it.
+3. **Contribute** — an adult persona ticks an explicit approval for a specific amount, then pays in the PayPal sandbox. The server captures the order, checks amount, currency, goal and household against its own record, and only then credits progress. The receipt shows the PayPal order and capture ids.
+4. **The board answers** — the travelers walk to the new space, and when a milestone is crossed the next home tier rises with a celebration banner. Refresh or restart: the same result is there.
+5. **Ledger** — goal progress, receipts, bills paid and gifts are kept separate. Bills grow garden beds as a habit reward but never count as savings. A refund lowers progress exactly once and walks the travelers back; the raised building stays as an explained keepsake.
+
+Default demo numbers (editable, synthetic): a $300 goal, $60 already set aside, eight weeks of $30, and a first $15 contribution that reaches the Manor at 25%.
+
+## What keeps it honest
+
+- Integer cents everywhere; amounts are real HTML text in Alegreya Sans, never pixel art.
+- The browser cannot credit a payment. Redirects, callbacks, pending, canceled and declined orders never count.
+- Unique capture and refund ids plus PayPal-Request-Id idempotency keys mean replays, double clicks and repeated webhooks cannot double-credit.
+- A capture for a different household or goal, or with a different amount, currency or `custom_id`, is rejected.
+- The database refuses bill or gift entries that would count toward the goal.
+- AI output is validated before it is shown or stored: schema, whole nonnegative cents, exact dates, totals, feasibility claims, and every dollar figure in its prose must come from the household's inputs. Failed output is shown with reasons and a labeled rules-based fallback is offered. AI never authorizes or schedules a payment.
+- Secrets stay in the server `.env`; tests check that no secret reaches any page or API response. The server binds to `127.0.0.1` and refuses cross-site writes and rebinding hosts.
+- The internal ledger is goal progress, not a bank balance, and PayPal does not see the household's other bills.
+
+Architecture, data model and payment states: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). Demo script: [docs/DEMO-SCRIPT.md](docs/DEMO-SCRIPT.md).
+
+## Background documents
 
 1. [Concept and decisions](docs/CONCEPT.md)
-2. [Art direction and reference lock](docs/ART-DIRECTION.md), then open the referenced PNGs
+2. [Art direction and reference lock](docs/ART-DIRECTION.md), with the reference PNGs in `references/images/`
 3. [Product rules](docs/PRODUCT-RULES.md)
 4. [Build plan and acceptance checks](docs/BUILD-PLAN.md)
 5. [PayPal hackathon requirements](docs/HACKATHON.md)
 
-For Claude.ai, extract the source ZIP, attach `CLAUDE-START.md`, the four documents above, `references/images/pixel-battlefield.png`, `color-and-heraldry.png` and the art preview screenshot when present. For the full build, Claude Code or an explicitly authorized GitHub connection to this private repo can access every asset. Do not assume a chat attachment contains the whole repository.
+The board uses the original Tiny Castle / Crown & Dust renderer, 90-color palette, fonts and miniature vocabulary. The older card battler and other projects are separate and unchanged.
 
-## Run the art starter
-
-Requires Node.js 20 or later. No dependency installation is needed for this preview; Three.js is vendored with its license.
-
-```sh
-npm start
-# Open http://localhost:3010/art-preview.html
-npm run check
-```
-
-The original native 3D scene previews a woodland board and four house tiers using the actual 90-color pixel pipeline. Tier buttons are **art previews**, not earned rewards or payment confirmations. The existing self-contained [pixel rendering study](references/pixel-rendering-study.html) is additional rendering reference, with historical Crown & Dust navigation.
-
-## What is included
-
-- Original 90-color palette, orthographic pixel renderer, depth outlines and Bayer dither.
-- Actual Uncial Antiqua and Alegreya Sans font files and SIL OFL notices.
-- Original Tiny Castle crests/brand images, eight medieval portraits and six GLB miniatures.
-- Original scenery/procedural-model and heraldry source as reference, plus asset generation source.
-- Approved scene/card/phone screenshots and the user's original knight/parchment concepts.
-- A SHA-256 manifest linking copied files to the source commit.
-- A sandbox-only `.env.example`; no secrets or real household financial data.
-
-The new financial product uses a board journey, not the older game's RPS combat, army deployment, energy or three-minute matches. Existing projects remain separate. The repo should stay private until the owner chooses to publish it.
-
-## Status
-
-Ready: concept/handoff, reusable assets, art preview and integrity checks. Still to build: household/goal state, crest selection, AI planning, PayPal sandbox order/capture flow, durable idempotent ledger, progression and the working submission demo. Real-world savings custody, arbitrary bill discovery and real-money transfers are not implemented.
-
-The MIT license covers application source; asset and third-party notices are in [NOTICE.md](NOTICE.md) and [assets/README.md](assets/README.md). The pasted hackathon page lists November 12, 2026 at noon Pacific; confirm final official rules before submission.
+The MIT license covers application source; asset and third-party notices are in [NOTICE.md](NOTICE.md) and [assets/README.md](assets/README.md).

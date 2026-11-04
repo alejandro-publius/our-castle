@@ -55,3 +55,11 @@ Do not replace the world with emoji, CSS rectangles or a screenshot background. 
 | Legible HTML amounts and approvals | Functional financial interaction | Pixelation belongs to the world, not the payment details |
 | Cooperative crest and home tiers | User's family "house" | Shared achievements, not competitive armies |
 | No combat or property-brand copying | New concept and owned asset sources | Keeps this new product distinct and implementable |
+| Household travelers in crest colors (two figures for family, one for solo) on a gold "you are here" ring | First playable build | The token must read at pixel scale and belong to the family, not to an army |
+| Route stones brighten as visited; milestone banners raise in the crest color when reached | First playable build | Shows progress on the board itself, not only in the panel |
+| Brook with plank bridge, a second doe and fawn, a two-hut hamlet | First playable build, from the "wooden bridges / water / villages" vocabulary above | More wilderness without leaving the original miniature language |
+| The four trees on the route corners step outward | First playable build | The original tree ellipse passes through the corner spaces and hid the travelers |
+| At 100% the travelers bound over the walls and stand at the castle gate | First playable build | Home is the finish; the back towers would otherwise hide them |
+| Habit gardens beside the home for logged on-time bills | Product rules: "bill habits can award banners/gardens" | Rewards habits visibly without counting bills as savings |
+| Raised tiers stay after a refund, labeled as keepsakes; travelers walk back | Product rules on refunds | Truthful current progress without punitive demolition |
+| Plan headlines and receipts use Alegreya Sans when they contain amounts | Tokens table: amounts stay readable HTML | Uncial stays for names and titles only |
