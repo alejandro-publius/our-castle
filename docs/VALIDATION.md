@@ -1,5 +1,58 @@
 # Validation
 
+## November 4, 2026: an easier family journey with one next step (branch `feature/family-journey`)
+
+The owner chose *"An easier family journey: clearer planning, contributions and next steps."* This superseded the district-guide task before any of that feature was implemented; its drafted art-direction note is saved in the worktree's git-ignored `test-results/district-guide-paused/`. Built in the worktree `our-castle-district-guide` (branch renamed in place) from `68878ac`; not yet promoted.
+
+**What changed:**
+- **Next step:** the goal card shows one next step from saved state, with one or two lines on why and a button naming what it opens. The steps, in priority order:
+  1. found the house;
+  2. the goal is complete;
+  3. a payment is pending;
+  4. a confirmed receipt has not been shown yet;
+  5. make a plan;
+  6. review a plan that is not in use;
+  7. this week's planned contribution;
+  8. contribute more after the planned weeks.
+- **Shared logic:** `src/core/journey.js` derives the step and is shared and unit-tested.
+- **Supporting lines:** canceled, declined, unfinished, refunded and keepsake states add a line that never reads as credit.
+- **Opening a step:** the button only switches tab and focuses that step's heading or control. Keyboard activation scrolls instantly.
+- **Payment record link:** a small line under the step names the latest saved payment and opens its record in the Ledger, by GET-only navigation.
+- **Tabs:** the tab holding the next step has a gold underline and "next step" for screen readers. The Plan tab counts as done only when the current plan is the accepted one.
+- **Resume:** a refresh keeps the tab the family chose in that browser tab (session storage); a new visit opens the next step's tab; an unfounded house always opens House. Refreshes after actions never move the family or clear unsaved plan or amount input; that behaviour already existed and is now tested.
+- **Contribute:** it names the plan in use. Under the amount, "If the server confirms…" shows the new total and any milestone or estate addition it would reach, with the shared milestone rules. It says nothing counts until the server confirms, and that the receipt appears below and in the Ledger.
+- **Existing defects fixed on the way:** the contribution receipt printed a literal "null" at its end (`replaceChildren` with a `null` argument). At 320 px, the bold "Contribute" tab label was clipped by 1–2 px.
+- **Unchanged:** no new financial rules, thresholds, planner, navigation or server endpoints. No art or renderer changes.
+
+**Checks run** (isolated example server on 3140 and the Playwright example server; no PayPal or AI calls):
+- **Unit:** `test/unit/journey.test.mjs`, **3/3**. It drives a real in-memory example-mode server through every step in order: setup → plan → accept → canceled → pending → server completion → receipt → refund/keepsake → completion. It checks the step, button, target and record link at each state, and the child persona's adult-approval line. Plus:
+  - an unfinished `created` sandbox order;
+  - a newer unaccepted plan;
+  - projections for the default goal, a keepsake, the village quarter and an awkward custom goal ($1,234.56).
+- **Browser:** `test/e2e/family-journey.spec.mjs`, **8/8** on desktop and phone projects, including 320×568:
+  - first-time House step;
+  - keyboard focus reaching the House heading, Plan heading, plan headline, Ledger heading, receipt and Ledger row;
+  - no non-GET request from any step button, tab change or record link;
+  - review without accepting;
+  - the Plan done mark cleared by a newer plan;
+  - the projection;
+  - an unsaved amount kept across a bill log on another tab;
+  - a pending payment that is not credit;
+  - receipt-ready while on the Ledger;
+  - refresh restoring the chosen tab, then the record link;
+  - a new tab resuming at Contribute;
+  - the child persona line;
+  - no overflow, labels that fit, and a 44 px button at 320 px.
+- **Existing browser tests on affected paths:** `journey.spec`, `estate.spec` and `realm-focus.spec`, **39 passed, 1 skipped by design** (the keyboard-only journey runs on desktop only). After the final narrow-tab CSS change, the full and layout journey tests were rerun, **4/4**.
+- `npm run check` and whitespace checks passed. The full suite, Postman guards and PayPal/AI verifiers were not run.
+
+**Captures:** `docs/screenshots/journey-next-step.png`, `journey-receipt-ready.png`, `journey-phone-first-time.png` and `journey-320-contribute.png`. All states on desktop, 390 and 320 px are in git-ignored `test-results/family-journey/final/` with `journey.json` (no page errors, no horizontal overflow). The 3140 demo was reset to its starting state ($60.00 of $300.00, no house, plan or contributions; 1/6 districts).
+
+**Limitations:**
+- **Not covered:** Chromium emulation only, with no real phone, Safari, Firefox or screen reader.
+- **Sandbox wording not exercised:** the PayPal sandbox wording of the projection and next step was not seen in a browser, because this worker does not use a signed-in browser or sandbox checkout. The live checkout/`get_order` reconciliation gap recorded elsewhere is **not** resolved by this change.
+- **Session-only receipt:** the receipt-ready step lives only in the browser session; after a refresh the record link is the way back.
+
 ## November 4, 2026: woodland realm with rivers and colourful locked castles (branch `art/woodland-realm`)
 
 The owner's visual correction: *"it should be all green the landscape is a forest separated by rivers under the bridge not this big ocean and why are the castles so bland?"* Built in the separate worktree `our-castle-woodland` from `da82bad`, reviewed, and promoted locally to `expansion/wider-estate` at `ce43a0f`. Brief, reference lock and ledger: the woodland section of [ART-DIRECTION.md](ART-DIRECTION.md).

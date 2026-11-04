@@ -8,6 +8,7 @@ import { createLedgerGrid } from './ledger-grid.js';
 import { sound } from './sound.js';
 import { newlyEarnedEstate } from '../core/rewards.js';
 import { courtForTier } from '../core/court.js';
+import { contributionProjection, isCounted, nextAction } from '../core/journey.js';
 import { REALM_DISTRICTS, realmAccess, districtById, homeDistrict } from '../core/realm.js';
 
 // ---------- small helpers ----------
@@ -35,6 +36,11 @@ const timeLabel = (iso) => new Date(iso).toLocaleString('en-US', { month: 'short
 const pref = {
   get(key) { try { return localStorage.getItem(`our-castle:${key}`); } catch { return null; } },
   set(key, value) { try { localStorage.setItem(`our-castle:${key}`, value); } catch { /* private mode: fine */ } },
+};
+// The tab a family last chose, for this browser tab only: a refresh returns to it instead of jumping elsewhere.
+const sessionTab = {
+  get() { try { return sessionStorage.getItem('our-castle:tab'); } catch { return null; } },
+  set(value) { try { if (value) sessionStorage.setItem('our-castle:tab', value); else sessionStorage.removeItem('our-castle:tab'); } catch { /* storage off: fine */ } },
 };
 
 function setStatus(target, kind, message, extra = {}) {
@@ -70,6 +76,8 @@ const ui = {
   ledgerFilter: 'all',
   stewardBusy: false,
   preview: null,
+  receiptReviewed: null,
+  next: null,
 };
 const persona = () => state?.members.find((m) => m.id === ui.personaId) ?? null;
 const isSandbox = () => state?.modes.payments.mode === 'sandbox';
@@ -112,7 +120,7 @@ async function boot() {
   bindEvents();
   try {
     applyState(await api.get('/api/state'), { animate: false });
-    selectTab(defaultTab(), { focus: false });
+    selectTab(resumeTab(), { focus: false, remember: false });
   } catch (error) {
     $('#honesty').textContent = `Could not load the household: ${error.message}`;
   }
@@ -121,10 +129,12 @@ async function boot() {
   window.__booted = true;
 }
 
-function defaultTab() {
+// A returning family lands on the tab they last chose in this browser tab; otherwise on the tab holding their next step.
+// An unfounded house always starts at House.
+function resumeTab() {
+  const chosen = sessionTab.get();
   if (!state.household.setupComplete) return 'house';
-  if (!state.acceptedPlanId) return 'plan';
-  return 'give';
+  return TABS.includes(chosen) ? chosen : ui.next?.step ?? 'house';
 }
 
 // Announce only additions earned between two authoritative server states for the same goal (see rewards.js).
@@ -137,6 +147,7 @@ function applyState(next, { animate = true, result = null } = {}) {
   if (!persona()) ui.personaId = state.members.find((m) => m.role === 'adult')?.id ?? state.members[0]?.id;
   renderHeader();
   renderQuest();
+  renderNextStep();
   renderBoard({ animate, result, added });
   renderHouse();
   renderPlan();
@@ -146,6 +157,59 @@ function applyState(next, { animate = true, result = null } = {}) {
   renderTabs();
   renderFooter();
   bus.emit('state:applied', { result, added: added.map((r) => r.id) });
+}
+
+// ---------- the family's next step ----------
+// A receipt counts as shown per contribution *and* status: seeing a pending receipt does not cover its later completion.
+const receiptKey = () => (ui.receipt ? `${ui.receipt.contribution.id}:${ui.receipt.contribution.status}` : null);
+// Text is updated in place, so the button keeps focus across refreshes. Nothing here writes to the server.
+function renderNextStep() {
+  if (!state) return;
+  const next = nextAction(state, { persona: persona(), receipt: ui.receipt?.contribution ?? null, receiptReviewed: Boolean(ui.receipt) && ui.receiptReviewed === receiptKey() });
+  ui.next = next;
+  $('#next-step').dataset.key = next.key;
+  if ($('#next-step-title').textContent !== next.title) $('#next-step-title').textContent = next.title;
+  const why = next.why.join('\n');
+  if ($('#next-step-why').dataset.text !== why) {
+    $('#next-step-why').dataset.text = why;
+    $('#next-step-why').replaceChildren(...next.why.map((line) => h('p', {}, line)));
+  }
+  const go = $('#next-step-go');
+  if (go.textContent !== next.cta) go.textContent = next.cta;
+  // A compact way back to the saved payment record (Ledger), from durable state. Opening it only reads.
+  const record = $('#next-step-record');
+  record.hidden = !next.record;
+  if (next.record) {
+    const r = next.record, line = `Last payment: ${money(r.amountCents)} · ${STATUS_LABEL[r.status] ?? r.status} · ${r.simulated ? 'simulated' : 'PayPal sandbox'}.`;
+    if ($('#next-step-record-text').textContent !== line) $('#next-step-record-text').textContent = line;
+    record.dataset.contribution = r.contributionId;
+  }
+  renderTabs();
+}
+// Open the Ledger at that record. No server call: the record is already in the loaded state.
+function openPaymentRecord(e) {
+  const id = $('#next-step-record').dataset.contribution;
+  selectTab('ledger', { focus: false });
+  const target = $(`#ledger-contributions [data-contribution="${CSS.escape(id)}"]`) ?? $('#ledger-contrib-title');
+  revealFocus(target, e?.detail === 0);
+}
+function revealFocus(target, keyboard) {
+  target.focus({ preventScroll: true });
+  const margin = 12, r = target.getBoundingClientRect();
+  if (r.top < margin || r.bottom > innerHeight - margin) {
+    window.scrollBy({ top: r.top - margin, behavior: keyboard || matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' });
+  }
+}
+// Open the step: switch tab and move focus to its heading or control. Keyboard activation scrolls instantly.
+function openNextStep(e) {
+  const next = ui.next;
+  if (!next) return;
+  selectTab(next.step, { focus: false });
+  let target = $(next.target);
+  if (!target || target.hidden || target.closest('[hidden]')) target = $(`#panel-${next.step} h3`);
+  if (next.key === 'receipt-ready') ui.receiptReviewed = receiptKey();
+  revealFocus(target, e?.detail === 0);
+  renderNextStep();
 }
 
 // ---------- header, quest, board ----------
@@ -578,7 +642,7 @@ function renderGive() {
   const done = progress.remainingCents <= 0;
   $('#give-context').textContent = !setup ? 'Found your house first, then add to the journey.'
     : done ? 'The goal is complete. The castle stands.'
-      : nextStep?.week ? `Next in your plan: week ${nextStep.week} (${dateLabel(nextStep.date)}) — ${money(nextStep.dueCents)} of ${money(nextStep.plannedCents)} still to add.`
+      : nextStep?.week ? `Plan in use: “${state.plan?.id === acceptedPlanId ? state.plan.headline : 'your accepted plan'}.” Next in your plan: week ${nextStep.week} (${dateLabel(nextStep.date)}) — ${money(nextStep.dueCents)} of ${money(nextStep.plannedCents)} still to add.`
         : acceptedPlanId ? 'Your plan’s weeks are covered. You can still add more.' : 'No plan in use yet. You can still contribute, or make a plan first.';
   const picks = setup && !done ? quickPicks() : [];
   const amountInput = $('#give-amount');
@@ -589,6 +653,7 @@ function renderGive() {
   }, h('strong', {}, money(p.cents)), h('span', {}, p.label))));
   const check = amountCheck();
   $('#give-amount-help').textContent = check.error && amountInput.value ? check.error : `${money(state.contributionLimits.minCents)}–${money(state.contributionLimits.maxCents)} per contribution. ${money(progress.remainingCents)} still needed.`;
+  renderProjection(setup && !done && !check.error ? check.cents : null);
 
   const who = persona();
   const approve = $('#give-approve');
@@ -610,6 +675,22 @@ function renderGive() {
     ? 'PayPal sandbox only. Progress changes after the server captures the payment and checks the amount, currency and goal with PayPal — never from the browser alone.'
     : 'Example mode: no PayPal call is made. The server records a clearly labeled simulated payment through the same checks.';
   renderReceipt();
+}
+
+// What the chosen amount would do if the server confirms it, from the shared milestone rules. It is a projection,
+// never credit: progress only changes after the server confirms the payment.
+function renderProjection(cents) {
+  const box = $('#give-projection');
+  if (cents === null) { box.replaceChildren(); return; }
+  const { progress, goal, board, achievements } = state;
+  const p = contributionProjection({ progressCents: progress.progressCents, targetCents: goal.targetCents, builtTier: board.builtTier, earned: achievements.map((a) => a.key) }, cents);
+  const parts = [`${money(p.beforeCents)} → `, h('strong', {}, money(p.afterCents)), ` tracked (${p.percent}).`];
+  if (p.rises.length) parts.push(` The ${p.rises.join(' and the ')} would rise.`);
+  if (p.alreadyStanding.length) parts.push(` The ${p.alreadyStanding.join(' and the ')} already stands as a keepsake.`);
+  if (p.additions.length) parts.push(` Adds ${p.additions.join(' and ').toLowerCase()}.`);
+  parts.push(p.completes ? ' This completes the goal.' : p.next ? ` Then the ${p.next.name} needs ${money(p.next.awayCents)} more.` : '');
+  const how = isSandbox() ? 'after an adult approves it in PayPal sandbox and the server captures and checks it' : 'after an adult approves it and the server records the simulated payment';
+  box.replaceChildren(h('strong', {}, `If the server confirms ${money(cents)}: `), ...parts, ` Nothing counts until then: it is counted only ${how}. The receipt appears below this form and in the Ledger.`);
 }
 
 function renderGiveAction(ready) {
@@ -697,6 +778,7 @@ function handleContributionResult(res) {
   bus.emit('contribution:result', res);
   applyState(res.state, { animate: true, result: res });
   if (ui.receipt && ['completed', 'pending'].includes(res.outcome)) $('#receipt').focus({ preventScroll: false });
+  renderNextStep();
 }
 
 function renderReceipt() {
@@ -722,9 +804,10 @@ function renderReceipt() {
       ...(completed && r.outcome === 'completed' ? [h('dt', {}, 'Goal progress'), h('dd', {}, `${money(r.before)} → ${money(r.after)} (${formatPercent(r.after, state.goal.targetCents)})`)] : []),
       ...(r.awarded.filter((a) => typeof a === 'number').length ? [h('dt', {}, 'Milestone'), h('dd', {}, r.awarded.filter((a) => typeof a === 'number').map((t) => `${TIERS[t].name} raised`).join(', '))] : []),
     ),
-    !c.simulated && c.providerOrderId && state.steward.paypalTools
-      ? h('div', { class: 'actions' }, h('button', { type: 'button', onclick: () => askSteward(`Did PayPal confirm the ${money(c.amountCents)} contribution?`, c.providerOrderId) }, 'Ask the steward to verify with PayPal'))
-      : null,
+    // replaceChildren would print a null as the text "null", so the optional action is spread in only when present.
+    ...(!c.simulated && c.providerOrderId && state.steward.paypalTools
+      ? [h('div', { class: 'actions' }, h('button', { type: 'button', onclick: () => askSteward(`Did PayPal confirm the ${money(c.amountCents)} contribution?`, c.providerOrderId) }, 'Ask the steward to verify with PayPal'))]
+      : []),
   );
 }
 
@@ -796,7 +879,7 @@ function renderLedger() {
         ? h('button', { type: 'button', class: 'danger', onclick: () => refund(capture.captureId, c.simulated) }, `Confirm refund of ${money(left)}`)
         : h('button', { type: 'button', onclick: () => { ui.refundArm = capture.captureId; renderLedger(); } }, c.simulated ? 'Simulate refund' : 'Refund in sandbox'));
     }
-    return h('li', {},
+    return h('li', { 'data-contribution': c.id, tabindex: -1 },
       h('div', { class: 'row' }, h('span', { class: 'amount' }, money(c.amountCents)), h('span', {}, STATUS_LABEL[c.status] ?? c.status,
         h('span', { class: `tag ${c.simulated ? 'simulated' : 'sandbox'}` }, c.simulated ? 'simulated' : 'PayPal sandbox'))),
       h('div', { class: 'ids' }, `${timeLabel(c.createdAt)} · order ${c.providerOrderId ?? '—'}${capture ? ` · capture ${capture.captureId}` : ''}`),
@@ -912,8 +995,9 @@ async function logEntry(event, kind) {
 
 // ---------- tabs, footer, events ----------
 const TABS = ['house', 'plan', 'give', 'ledger', 'rewards'];
-function selectTab(name, { focus = true } = {}) {
+function selectTab(name, { focus = true, remember = true } = {}) {
   ui.tab = name;
+  if (remember) sessionTab.set(name);
   for (const tab of TABS) {
     const button = $(`#tab-${tab}`);
     const selected = tab === name;
@@ -926,8 +1010,15 @@ function selectTab(name, { focus = true } = {}) {
 }
 function renderTabs() {
   $('#tab-house').classList.toggle('done', state.household.setupComplete);
-  $('#tab-plan').classList.toggle('done', Boolean(state.acceptedPlanId));
-  $('#tab-give').classList.toggle('done', state.contributions.some((c) => ['completed', 'refunded', 'partially_refunded'].includes(c.status)));
+  $('#tab-plan').classList.toggle('done', Boolean(state.plan && state.plan.id === state.acceptedPlanId));
+  $('#tab-give').classList.toggle('done', state.contributions.some(isCounted));
+  for (const tab of TABS) {
+    const button = $(`#tab-${tab}`), next = ui.next?.step === tab;
+    button.classList.toggle('next', next);
+    let marker = button.querySelector('.tab-next');
+    if (next && !marker) button.append(marker = h('span', { class: 'tab-next' }, ' · next step'));
+    if (!next && marker) marker.remove();
+  }
 }
 function renderFooter() {
   const { modes } = state;
@@ -979,7 +1070,10 @@ function bindEvents() {
     e.currentTarget.textContent = on ? 'Pixel art' : 'Raw 3D';
     scene?.setPixelMode(on);
   });
-  $('#persona').addEventListener('change', (e) => { ui.personaId = e.target.value; pref.set('persona', ui.personaId); ui.refundArm = null; renderGive(); renderLedger(); });
+  $('#persona').addEventListener('change', (e) => { ui.personaId = e.target.value; pref.set('persona', ui.personaId); ui.refundArm = null; renderGive(); renderLedger(); renderNextStep(); });
+  $('#next-step-go').addEventListener('click', openNextStep);
+  $('#next-step-record-go').addEventListener('click', openPaymentRecord);
+  $('#receipt').addEventListener('focus', () => { if (ui.receipt && ui.receiptReviewed !== receiptKey()) { ui.receiptReviewed = receiptKey(); renderNextStep(); } });
 
   // House
   $('#panel-house').addEventListener('change', (e) => {
@@ -1053,7 +1147,8 @@ function bindEvents() {
     e.currentTarget.dataset.armed = 'false'; e.currentTarget.textContent = 'Reset the example household';
     try {
       const res = await api.post('/api/demo/reset');
-      Object.assign(ui, { receipt: null, houseDirty: false, planFormDirty: false, scheduleDirty: false, amountTouched: false });
+      Object.assign(ui, { receipt: null, receiptReviewed: null, houseDirty: false, planFormDirty: false, scheduleDirty: false, amountTouched: false });
+      sessionTab.set(null);
       applyState(res.state, { animate: false });
       selectTab('house');
       setStatus('#house-status', 'info', 'The example household was reset.');

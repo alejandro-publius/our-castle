@@ -77,6 +77,14 @@
           </div>
           <p class="quest-next" id="quest-next"></p>
           <p class="fine" id="progress-breakdown"></p>
+          <!-- One next step from saved state. Opening it only switches tab and moves focus; it never writes. -->
+          <div class="next-step" id="next-step" aria-labelledby="next-step-title">
+            <p class="eyebrow ink">Your next step</p>
+            <h3 id="next-step-title"></h3>
+            <div class="next-step-why" id="next-step-why"></div>
+            <button type="button" class="primary" id="next-step-go"></button>
+            <p class="next-step-record" id="next-step-record" hidden><span id="next-step-record-text"></span> <button type="button" class="link-button" id="next-step-record-go">Open the payment record in the Ledger</button></p>
+          </div>
         </section>
 
         <div class="steps" role="tablist" aria-label="Journey steps" id="tabs">
@@ -89,7 +97,7 @@
 
         <!-- 1. House: solo or family, name and crest -->
         <section class="panel parchment" id="panel-house" role="tabpanel" aria-labelledby="tab-house">
-          <h3 id="house-heading">Found your house</h3>
+          <h3 id="house-heading" tabindex="-1">Found your house</h3>
           <p class="lede">Save alone or as a family. Everyone shares one crest and one home.</p>
           <fieldset class="choice-cards" id="play-mode">
             <legend>Who is saving?</legend>
@@ -122,7 +130,7 @@
 
         <!-- 2. Plan: inputs, AI or example plan, editable schedule -->
         <section class="panel parchment" id="panel-plan" role="tabpanel" aria-labelledby="tab-plan" hidden>
-          <h3>Plan the journey</h3>
+          <h3 id="plan-heading" tabindex="-1">Plan the journey</h3>
           <p class="lede" id="planner-lede"></p>
           <form id="plan-form" class="grid-form" novalidate>
             <label class="field span-2"><span>Goal</span><input id="goal-name-input" type="text" maxlength="60" required></label>
@@ -143,7 +151,7 @@
           <article class="plan" id="plan-result" hidden aria-labelledby="plan-headline">
             <header class="plan-head">
               <span class="source-badge" id="plan-source"></span>
-              <h4 id="plan-headline"></h4>
+              <h4 id="plan-headline" tabindex="-1"></h4>
             </header>
             <p id="plan-summary"></p>
             <div class="callout warn" id="plan-shortfall" hidden></div>
@@ -169,7 +177,7 @@
 
         <!-- 3. Contribute: adult approval, PayPal sandbox or labeled simulation, receipt -->
         <section class="panel parchment" id="panel-give" role="tabpanel" aria-labelledby="tab-give" hidden>
-          <h3>Add to the journey</h3>
+          <h3 id="give-heading" tabindex="-1">Add to the journey</h3>
           <p class="lede" id="give-context"></p>
           <div class="quick-picks" id="quick-picks" role="group" aria-label="Suggested amounts"></div>
           <label class="field">
@@ -177,6 +185,7 @@
             <span class="money"><input id="give-amount" inputmode="decimal" autocomplete="off" aria-describedby="give-amount-help"></span>
           </label>
           <p class="fine" id="give-amount-help"></p>
+          <p class="give-projection" id="give-projection" aria-live="polite"></p>
           <label class="check" id="give-approve-row">
             <input type="checkbox" id="give-approve">
             <span id="give-approve-text"></span>
@@ -219,7 +228,7 @@
           </section>
 
           <section class="ledger-block" aria-labelledby="ledger-contrib-title">
-            <h4 id="ledger-contrib-title">Contributions and receipts</h4>
+            <h4 id="ledger-contrib-title" tabindex="-1">Contributions and receipts</h4>
             <ul class="contributions" id="ledger-contributions"></ul>
           </section>
 
@@ -249,7 +258,7 @@
         </section>
         <section class="panel parchment" id="panel-rewards" role="tabpanel" aria-labelledby="tab-rewards" hidden>
           <p class="eyebrow ink">An estate built together</p>
-          <h3>Every milestone adds something</h3>
+          <h3 id="rewards-heading" tabindex="-1">Every milestone adds something</h3>
           <p class="lede">Grow from a timber cottage to a castle and a living village. Each addition shows its condition and where the progress comes from.</p>
           <p class="reward-evidence-note" id="reward-evidence-note"></p>
           <div id="reward-list" class="reward-list"></div>

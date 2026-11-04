@@ -424,3 +424,22 @@ button { font: inherit; }
   .realm-map[data-focused='true'] .world,.realm-map[data-focused='true'] #world[data-preview='true'] { height:400px; }
   .realm-map[data-focused='false'] .realm-markers { display:none; }
 }
+
+/* Family journey: one next step inside the goal card, and the tab that holds it. */
+.next-step { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--ink-line); }
+.next-step .eyebrow { margin-bottom: 4px; }
+.next-step h3 { font-size: 20px; color: var(--ink); line-height: 1.2; }
+.next-step-why p { margin: 6px 0 0; font-size: 15px; line-height: 1.4; color: var(--ink); }
+.next-step-why p + p { color: var(--ink-muted); font-size: 14px; }
+#next-step-go { margin-top: 11px; min-height: 44px; padding: 9px 16px; border-radius: 3px; border: 1px solid var(--brass-dark); background: var(--brass); color: var(--ink); font-weight: 700; cursor: pointer; max-width: 100%; }
+#next-step-go:hover { background: #ebc684; }
+.steps button.next { border-color: var(--brass); box-shadow: inset 0 -3px var(--brass); }
+.tab-next { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.give-projection { margin: 8px 0 4px; padding: 8px 10px; border-left: 3px solid var(--brass-dark); background: var(--paper-3); font-size: 15px; color: var(--ink); }
+.give-projection:empty { display: none; }
+.give-projection strong { font-variant-numeric: tabular-nums; }
+[tabindex='-1']:focus:not(:focus-visible) { outline: none; }
+.next-step-record { margin: 10px 0 0; font-size: 14px; color: var(--ink-muted); }
+.next-step-record .link-button { font-size: 14px; min-height: 32px; padding: 4px 0; }
+#ledger-contributions li:focus-visible { outline-offset: 2px; }
+@media (max-width: 360px) { .steps { gap: 2px; } .steps button { font-size: 12px; padding: 6px 0; } }

@@ -36,6 +36,32 @@ No external game art and no generated or screenshot background. The financial UI
 - **Forest shading:** the forest and ground use flat Lambert paint in shared instanced batches, built once. The full standard material over that much screen area tripled software-rendered frame time.
 - **Locked roads:** roads and route stones on locked legs are pale dust and weathered stone, not grey.
 
+## Family journey: one clear next step (November 4, 2026)
+
+The owner chose "an easier family journey: clearer planning, contributions and next steps." This builds on the existing House → Plan → Contribute → receipt/rewards flow. There is no new planner, no checklist, no tour and no new navigation; the forest stays the main view.
+
+**Reference lock.**
+
+| Source | Role | Not taken |
+| --- | --- | --- |
+| The current app, `docs/screenshots/forest-*.png` and the Tiny Castle / Crown & Dust art | Primary. Parchment journey cards, dark teal frame, brass actions and focus, Uncial titles, Alegreya Sans for text and amounts | Nothing replaced |
+| SavvyCal guided setup (Refero `86bfb0b1-1b19-49ca-92d1-6fbc4964fa7f`) | Only completed, current and unfinished steps told apart, with one unfinished action prioritised and its purpose stated | Its colours, Inter type, sidebar, upgrade prompts and white screens |
+| Lemon Squeezy onboarding checklist (Refero `edc09563-82ab-4fd0-8b94-034755f5046d`) | Only a short task, its explanation and an explicit action grouped together; finished setup does not compete with the next action | Its purple palette, generic panels, type and extra navigation |
+
+The root's flow research ([SavvyCal flow](https://refero.design/flows/3346)) confirmed the same pattern: an explicit next action, saved progress and no implicit provider connection. No styling was taken from it. MekaVerse, Wayfinder and Karl keep their narrow composition, woodland and architecture roles above.
+
+**Decision ledger.**
+
+| Decision | Source | Implementation |
+| --- | --- | --- |
+| One "next step" inside the existing goal card, above the step tabs | SavvyCal priority + Lemon Squeezy grouping | A title, one or two plain sentences on why, and one button naming what it opens. It is derived from saved server state: household, plan, accepted plan, plan week, contributions, progress |
+| The step tabs show done and next | SavvyCal step states | The existing tabs keep their done marks; the tab holding the next step gets a gold marker and "next step" for screen readers. No second navigation |
+| Opening a step never writes | Product rules | The button only switches tab and moves focus. Making, accepting or paying stay the existing explicit buttons |
+| Returning families resume | Owner request | On load, the tab the family last chose in this browser session is restored; otherwise the next step's tab. Refreshes after an action never move the family to another tab or clear unsaved plan or amount input |
+| Plan → contribution → milestone in Contribute | Existing quick picks and milestone rules | Under the amount, "if the server confirms it" shows the new total and any milestone it would reach, computed with the shared rules. Nothing is counted until the server confirms it; the receipt appears below |
+| Honest money states | Product rules | Pending, canceled, declined and refunded payments never read as credit; keepsakes never imply the money is still there; reported, simulated and PayPal sandbox amounts stay labelled |
+| A way back to the saved payment record | Root review: a durable return path after refresh | Under the next step, a small line names the latest payment and its saved status, with a link that opens its record in the Ledger. It reads loaded state only; it is never the primary action |
+
 ## Earlier map target: a connected realm (historical)
 
 The grey-island treatment described in this section was superseded by the woodland revision above. Its captures (`docs/screenshots/realm-*.png`) and the demo clips recorded from it are historical.
