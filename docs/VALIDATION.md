@@ -1,5 +1,38 @@
 # Validation
 
+## November 4, 2026: tracked demo clip and private offline review kit (packaging only)
+
+**Handoff fixes**, commit `47b35eb`:
+- **The clip:** the finished example-mode clip is now tracked at `docs/demos/our-castle-connected-realm.mp4`. It is byte-identical to the git-ignored original, which stays in place (`cmp` identical; 1,932,194 bytes; SHA-256 `33dd65316e28ee6e059cb856deccaaebfe8eb071e00750ab18f4d3b51beb2fc1`). `ffprobe` shows 36.36 s, 1920×1080 H.264, 25 fps and no audio stream. A provenance note sits beside it, and NOTICE.md says the artwork scope applies to it.
+- **JUDGE-HANDOFF:**
+  - It no longer implies that cloning GitHub gives the prototype, since `main` is only the original starter. It points to the review kit instead.
+  - A failed popup rehearsal now stays in the isolated copy, with no fallback to the owner's household on 3010.
+  - Its "nothing blocked on code" line is limited to the scope actually reviewed.
+- **README and DEMO-SCRIPT:** point at the tracked clip; README uses `npm ci`.
+
+**Review kit validation**, run on a trial archive of `47b35eb`. The same script repeats it on the final kit, built from the commit that adds this note. That kit's commit and archive hash are in the manifest beside the zip, outside the archive, so no commit has to contain its own hash.
+- **Built** with `git archive --format=zip --prefix=our-castle/` from the committed HEAD (clean tree), not the working directory. Source snapshot only, with no history.
+- **Paths:** 167 files under one top-level `our-castle/` folder, equal to the 167 files tracked at the commit. No `.git/`, `node_modules/`, `test-results/`, runtime `data/`, `*.sqlite*` or `.env*` other than `.env.example`.
+- **Extraction:** into a fresh directory under the ignored `test-results/local-review/`. Present:
+  - the realm source (`src/core/realm.js`, `src/world/realm-models.js`, `src/world/board-scene.js`) and the server;
+  - README, the judge handoff, the demo script and this log;
+  - `NOTICE.md`, `LICENSE`, `assets/manifest.json`, `vendor/three/LICENSE` and both OFL font licenses;
+  - the three `references/images/our-house-*.png` captures;
+  - `package.json`, `package-lock.json` and `.env.example`.
+
+  The extracted clip's hash matched.
+- **Secrets:**
+  - Exact-match check against the configured `.env` credentials (`PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET`, `AI_API_KEY`; `PAYPAL_WEBHOOK_ID` is not set): 0 matches in every extracted file. Values were read only for the comparison and never printed. `.env` was not modified.
+  - Pattern scan, 6 matches, all explained:
+    - 4 synthetic `sk-ant-` fixtures in `test/unit/set-ai-key.test.mjs`;
+    - 2 key-shaped strings inside a `data:font/ttf;base64,` run in `references/pixel-rendering-study.html`, the original hash-locked art reference, present since `5cf8363`.
+  - No SQLite files.
+- **Not done:** dependencies were not installed, and no app, unit, browser or paid suite was run from the extracted copy.
+
+**Owner app:** read-only `GET /api/status` still reports PayPal sandbox and live AI (`claude-opus-5-5`). `GET /api/state` matches the saved baseline for household, members, goal, progress, ledger, contributions, achievements, plan, accepted plan and next step. The `.env` and `data/` modification times are unchanged.
+
+The kit is private review material. It does not satisfy the public-repository, YouTube or Devpost requirements, which remain owner decisions.
+
 ## November 4, 2026: the Postman sandbox folder is off by default
 
 **The gap.** The example-folder guard (next section) stops at its own folder. Running the whole collection after a successful folder 1 would have continued into folder 2. Folder 2 calls the app on `baseUrl` (the owner's sandbox app on 3010) and PayPal directly on `paypalApiBase`, and its steps 2.2 and 2.10 create sandbox orders.
