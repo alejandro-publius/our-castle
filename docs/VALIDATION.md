@@ -1,5 +1,16 @@
 # Validation
 
+## November 4, 2026 — a living royal court
+
+The owner clarified that larger homes should welcome more guests and princesses. Implemented in an isolated `expansion/living-court` worktree before promotion to the running app. The existing home thresholds, financial ledger, provider boundaries and original art/runtime files are preserved.
+
+- **Full `npm test`: exit 0.** The 47 locked art/runtime files and original 90-color pipeline pass integrity checks; **100 unit tests passed, 1 skipped by design; 37 browser tests passed, 1 skipped by design** at desktop and phone sizes.
+- **New court tests:** guest counts grow 2/6/12/20, with 0/1/2/3 original princesses; all existing guests remain when a new tier arrives. Every guest is sampled across 500 seconds of walking and pauses to check position continuity at stops, reversals and loop boundaries, and safe lanes outside the castle, moat, market and proposed water fountain.
+- **Rendering:** shared batches contain the articulated native 3D cast (16/32/38/39 batches across the tiers). The existing ambient loop moves their boots, arms and heads. No second rendering loop is added. Reduced motion preserves the full cast in still poses.
+- **Browser checks:** previews show the right guest/princess counts, actual guests change position, returning restores the earned cottage and two guests, and repeated previews do not accumulate instance batches. No preview writes to the server; contributions, achievements and progress stay identical. Both reduced-motion runs keep the royal cast still.
+- **Visual QA:** inspected real renders of all four tiers, the castle close view and phone layout. A stale earned-home caption during previews was corrected; the final court/estate browser suite then passed **12/12**. The caption now states the preview's guest/princess counts and the household's actual earned home separately.
+- **Scope:** the court is cosmetic. A kept home retains its guests after refunds. No new PayPal order or paid AI request is needed to exercise it, and no utility bill provider is claimed.
+
 ## November 4, 2026 — wider estate, estate additions and the Rewards view (branch `expansion/wider-estate`)
 
 Environment: macOS, Node 26.0.0, Playwright 1.64.1 with Chromium (SwiftShader). Everything below ran in example mode or against test doubles, with isolated data directories. No new PayPal order was created, no paid AI call was repeated, and the owner's `.env` and sandbox household data were not modified.

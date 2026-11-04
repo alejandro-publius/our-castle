@@ -71,3 +71,18 @@ Do not replace the world with emoji, CSS rectangles or a screenshot background. 
 | Estate additions at 10/40/80% (porch, village quarter with market stalls, outer ramparts with crest-coloured turrets) | Owner asked for richer intermediate rewards | Rewards between the 0/25/60/100% home tiers, without changing them |
 | The default camera fits the whole island in the area not covered by the heading, controls and caption, measured from the live layout. Zoom, turn, pan (Shift-drag, right-drag or two fingers) and reset controls; on phones the controls sit below the board | Larger world on desktop and phone | The route, travelers and every tier stay visible at the default view; detail is one zoom away |
 | Labeled art-only previews of locked rewards, including the proposed bill rewards | Owner allowed honest previews | People can see what is possible without the preview touching earned rewards or money |
+
+## A living royal court
+
+The owner clarified that higher rewards mean larger homes **and more guests and princesses roaming the grounds**. The existing Our Castle captures remain the dominant reference: native 3D miniatures, the original palette/post-process, dark outlines, heraldic clothing and readable silhouettes. This is a direct extension of that source.
+
+Refero references reviewed: [TinyFaces](https://nft.tinyfac.es) for toy character silhouettes and personality through accessories, and [Obscura](https://obscura.net) for simple forms that remain readable after pixelation. Their fonts, layouts, button styles and palettes are not carried over. The bundled Refero motion guidance supplies the reduced-motion requirement; slow world simulation expresses the growing household reward rather than animating financial controls.
+
+| Decision | Source and bounded role | Implementation |
+| --- | --- | --- |
+| 2/6/12/20 wandering guests at cottage/manor/keep/castle | Owner's larger-home/larger-court clarification | Existing home thresholds and keepsakes control the cast |
+| Princesses Elowen, Amara and Sorrel join at successive tiers | Owner specifically requested princesses | Gold circlets, gems, long hair, bright gowns and flowers; original invented characters |
+| Gardeners, musicians, nobles, pages and ceremonial guards | Owner's guests brief + TinyFaces' distinct accessories | Straw hats, lutes, capes, satchels, plumed helmets and crest shields distinguish roles |
+| Strolling, greeting and music on safe lanes | Owner requested roaming; existing living miniature world | Articulated arms and boots, visits between walks; no path through home, moat, walls, market or fountain |
+| Shared instanced batches on the existing ambient clock | Existing performance architecture | No extra render loop; reduced motion freezes positions and poses while preserving the cast |
+| Guest counts on reward cards and preview title | Existing labeled preview interaction | A castle preview shows twenty guests without earning the castle or changing payments |

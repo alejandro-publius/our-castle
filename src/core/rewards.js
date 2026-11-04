@@ -1,4 +1,5 @@
 import { TIERS, formatCents, milestoneCents } from './rules.js';
+import { courtForTier } from './court.js';
 
 // Cosmetic world rewards. Shared by the server (which decides what is earned) and the browser (which draws it).
 // Nothing here changes money, savings totals or payment state, and nothing here can mark a bill as verified.
@@ -87,7 +88,7 @@ export function buildRewards({ progress, targetCents, currency = 'USD', achievem
     id: `home:${tier.key}`, name: tier.index === 0 ? 'Hearth cottage' : `The ${tier.name.toLowerCase()}`, detail: HOME_DETAILS[tier.key],
     percent: tier.percent, earned: tier.index <= builtTier,
     previewTier: tier.index, previewEstateLevel: ESTATE_MILESTONES.filter((r) => r.percent <= tier.percent).length,
-  }));
+  })).map((reward, tier) => ({ ...reward, court: courtForTier(tier) }));
   const estate = ESTATE_MILESTONES.map((r) => goalReward({
     id: `estate:${r.key}`, name: r.name, detail: r.detail, percent: r.percent, earned: keys.has(`estate:${r.key}`),
     previewTier: TIERS.filter((t) => t.percent <= r.percent).at(-1).index, previewEstateLevel: r.level,

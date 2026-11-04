@@ -7,6 +7,7 @@ import { mountPayPalButton } from './paypal-checkout.js';
 import { createLedgerGrid } from './ledger-grid.js';
 import { sound } from './sound.js';
 import { newlyEarnedEstate } from '../core/rewards.js';
+import { courtForTier } from '../core/court.js';
 
 // ---------- small helpers ----------
 const $ = (selector, root = document) => root.querySelector(selector);
@@ -198,6 +199,7 @@ function renderBoard({ animate, result, added = [] }) {
     ? `The ${built.name} commemorates a milestone reached earlier; current progress is ${formatPercent(progress.progressCents, goal.targetCents)}.`
     : `The ${built.name.toLowerCase()} stands at the center.`;
   if (board.gardens) status += ` ${board.gardens} garden bed${board.gardens === 1 ? '' : 's'} for bill habits.`;
+  status += ` ${courtForTier(board.builtTier).capacity} guests roam the grounds.`;
   $('#board-status').textContent = status;
   $('#tier-track').replaceChildren(...board.tiers.map((t) => h('li', {
     class: [t.built ? 'built' : '', t.index === board.currentTier ? 'current' : ''].join(' ').trim(),
@@ -228,6 +230,7 @@ function renderRewards() {
       h('div', { class: 'reward-heading' }, h('h4', {}, reward.name), h('span', { class: 'reward-state' }, REWARD_LABELS[reward.status] ?? reward.status)),
       h('p', { class: 'reward-detail' }, reward.detail),
       h('p', { class: 'reward-condition' }, `Unlocks when: ${reward.condition}`));
+    if (reward.court) card.append(h('p', { class: 'reward-court' }, h('strong', {}, `${reward.court.capacity} wandering guests. `), reward.court.description));
     if (reward.source === 'goal_progress' && reward.requiredCents > 0) {
       card.append(h('p', { class: 'reward-progress' }, 'Progress: ', h('strong', {}, money(reward.progressCents)), ` of ${money(reward.requiredCents)}`,
         reward.remainingCents > 0 ? ` · ${money(reward.remainingCents)} to go` : ' · reached'));
@@ -245,11 +248,15 @@ function previewReward(reward) {
   if (!scene) return;
   ui.preview = reward.id;
   $('#world-preview').hidden = false;
-  $('#preview-title').textContent = `${reward.status === 'unlocked' ? 'Showing' : 'Preview'}: ${reward.name}`;
+  const previewTier = reward.previewTier ?? state.board.builtTier;
+  const previewCourt = courtForTier(previewTier);
+  $('#preview-title').textContent = `${reward.status === 'unlocked' ? 'Showing' : 'Preview'}: ${reward.name} · ${previewCourt.capacity} guests`;
+  const royals = previewCourt.princesses.length;
+  $('#board-status').textContent = `Art preview · ${previewCourt.capacity} wandering guests${royals ? `, including ${royals} princess${royals === 1 ? '' : 'es'}` : ''}. Your earned home remains the ${TIERS[state.board.builtTier].name.toLowerCase()}.`;
   $('#world').dataset.preview = 'true';
   $('#board-title').textContent = reward.status === 'unlocked' ? reward.name : 'Previewing a reward';
   scene.update({
-    builtTier: reward.previewTier ?? state.board.builtTier,
+    builtTier: previewTier,
     estateLevel: reward.previewEstateLevel ?? state.board.estateLevel,
     gardens: reward.previewFeature === 'habit-garden' ? 4 : state.board.gardens,
     previewFeature: reward.previewFeature ?? null,

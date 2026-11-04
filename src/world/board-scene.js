@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { PixelRenderer } from '../graphics/pixel-renderer.js';
 import { CREST_FIELDS, ROUTE_LENGTH } from '../core/rules.js';
 import { addEstateGeometry, createEstateModels, ESTATE_SIZE } from './estate-models.js';
+import { createEstateCourt } from './court.js';
 
 // The playable woodland board. It extends the original art-preview vocabulary (MiniBuilder,
 // layered trees, antlered deer, stone towers) and renders through the original 90-colour
@@ -71,7 +72,7 @@ const easeInOut = (t) => (t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2);
 const easeOutBack = (t) => 1 + 2.2 * (t - 1) ** 3 + 1.2 * (t - 1) ** 2;
 
 export function createBoardScene(container, { reducedMotion = false, onEvent = () => {}, insets = null } = {}) {
-  let renderer; let pipeline; let scene; let camera; let builder; let observer; let models;
+  let renderer; let pipeline; let scene; let camera; let builder; let observer; let models; let court;
   const part = (...args) => builder.part(...args);
   const groups = {};
   let state = { builtTier: 0, position: 0, crest: { field: 'cobalt', charge: 'stag' }, gardens: 0, playMode: 'family', milestoneSpaces: [5, 12, 20], reached: [], estateLevel: 0, previewFeature: null };
@@ -184,6 +185,11 @@ export function createBoardScene(container, { reducedMotion = false, onEvent = (
     disposeGroup(groups.estate);
     models.extras(groups.estate, state.estateLevel, crestColour(state.crest.field), state.previewFeature);
   }
+  function buildCourt() {
+    court.setTier(state.builtTier, crestColour(state.crest.field));
+    const profile = court.debug();
+    renderer.domElement.setAttribute('aria-label', `Woodland estate with ${profile.capacity} wandering guests. ${profile.description}`);
+  }
 
   // ---------- Household travelers ----------
   function traveler(group, x, size, cloak) {
@@ -270,6 +276,7 @@ export function createBoardScene(container, { reducedMotion = false, onEvent = (
   function draw() { if (renderer && pipeline) { pipeline.render(scene, camera); frames++; } }
 
   function ambientStep(seconds) {
+    court.tick(seconds);
     for (const r of rotators) r.group.rotation[r.axis] = seconds * r.speed;
     for (const g of grazers) {
       const cycle = (seconds * 0.35 + g.phase) % 6; // graze for ~2 of every ~17 seconds
@@ -386,9 +393,10 @@ export function createBoardScene(container, { reducedMotion = false, onEvent = (
   pipeline = new PixelRenderer(renderer);
   pipeline.configure({ pixelSize: 2, pixelMode: true, outlines: true, dither: true, exposure: 1.05 });
   buildLandscape();
-  for (const name of ['route', 'gardens', 'token', 'fx', 'estate']) { groups[name] = new THREE.Group(); scene.add(groups[name]); }
+  for (const name of ['route', 'gardens', 'token', 'fx', 'estate', 'court']) { groups[name] = new THREE.Group(); scene.add(groups[name]); }
+  court = createEstateCourt(groups.court, builder, colours);
   groups.castle = new THREE.Group(); groups.castle.position.z = 0.15; scene.add(groups.castle);
-  buildRoute(); buildGardens(); buildCastle(); buildEstate(); buildToken();
+  buildRoute(); buildGardens(); buildCastle(); buildEstate(); buildToken(); buildCourt();
   observer = new ResizeObserver(resize); observer.observe(container); resize();
   startAmbient();
   bindView();
@@ -417,6 +425,7 @@ export function createBoardScene(container, { reducedMotion = false, onEvent = (
           buildRoute();
           if (crestChanged || prev.builtTier !== state.builtTier || prev.estateLevel !== state.estateLevel) buildCastle();
           if (crestChanged || prev.estateLevel !== state.estateLevel || prev.previewFeature !== state.previewFeature) buildEstate();
+          if (crestChanged || prev.builtTier !== state.builtTier) buildCourt();
           if (tierUp && animate) await rise();
         } finally {
           animating = false;
@@ -452,7 +461,7 @@ export function createBoardScene(container, { reducedMotion = false, onEvent = (
       const t = groups.token.position;
       return { spaces, travelers: toScreen(t.x, t.y + 1.5, t.z), canvas: { left: rect.left, top: rect.top, width: rect.width, height: rect.height } };
     },
-    debug: () => ({ region: ESTATE_SIZE, estateLevel: state.estateLevel, view: { ...view }, previewFeature: state.previewFeature, tier: state.builtTier, position: state.position, shownPosition, gardens: state.gardens, crest: { ...state.crest }, playMode: state.playMode, animating, frames, ambient: Boolean(ambientTimer), ambientFrames, grazers: grazers.length, butterflies: flutterers.length }),
-    dispose() { for (const [name,fn,options] of interactions) renderer.domElement.removeEventListener(name,fn,options); clearInterval(ambientTimer); observer?.disconnect(); for (const g of Object.values(groups)) disposeGroup(g); flutterGeo?.dispose(); builder?.dispose(); pipeline?.dispose(); renderer?.dispose(); },
+    debug: () => ({ region: ESTATE_SIZE, estateLevel: state.estateLevel, view: { ...view }, previewFeature: state.previewFeature, tier: state.builtTier, position: state.position, shownPosition, gardens: state.gardens, crest: { ...state.crest }, playMode: state.playMode, animating, frames, ambient: Boolean(ambientTimer), ambientFrames, grazers: grazers.length, butterflies: flutterers.length, court: court.debug() }),
+    dispose() { for (const [name,fn,options] of interactions) renderer.domElement.removeEventListener(name,fn,options); clearInterval(ambientTimer); observer?.disconnect(); court?.dispose(); for (const g of Object.values(groups)) disposeGroup(g); flutterGeo?.dispose(); builder?.dispose(); pipeline?.dispose(); renderer?.dispose(); },
   };
 }

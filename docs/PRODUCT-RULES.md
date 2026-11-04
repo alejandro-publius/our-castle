@@ -1,5 +1,11 @@
 # Proposed product rules — editable starting point
 
+## Living court rewards
+
+The owner requested more guests and princesses as homes grow. The built home unlocks 2 wandering guests at the cottage, 6 at the manor, 12 at the keep and 20 at the castle. Princesses Elowen, Amara and Sorrel arrive at successive home tiers among musicians, nobles, gardeners, merchants, pages and ceremonial guards. These are original fictional characters and cosmetic scenery. Fixed background hamlet locals are separate from this guest count.
+
+The court follows the already-built home, so a kept home retains its guests after a refund while current progress still falls correctly. A locked-home preview can show its future court without earning it. Guest animations, descriptions and counts cannot confirm a payment or bill, change money, or bypass any existing unlock condition. Reduced motion shows the complete court in still poses.
+
 ## Data and progress
 
 Use integer cents and an explicit currency, initially USD. A household owns a goal, optional member contributions, a crest and board/castle achievements. The first local demo may use two clearly labeled example members; do not claim that a persona switch is secure multi-user authentication.
