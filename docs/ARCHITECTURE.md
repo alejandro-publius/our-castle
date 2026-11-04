@@ -92,8 +92,10 @@ The server records what the steward actually checked. For each `get_order` it co
 - `main.js` renders server state into four keyboard-accessible tabs (House, Plan, Contribute, Ledger), the quest card and the board status, and talks to the board only through `scene.update()` and the event bus.
 - `ledger-grid.js` lazily loads AG Grid Community (served by exact path from `node_modules`), themes it with the parchment tokens through the Theming API, and falls back to a plain HTML table if it cannot load. Household-typed labels are rendered as DOM text, not HTML.
 - `board-scene.js` extends the original art-preview vocabulary (MiniBuilder instancing, layered trees, antlered deer, towers) with route stones that brighten as they are visited, milestone banners in crest colors, the household travelers (two figures for family, one for solo), habit gardens, a brook with a plank bridge and a small hamlet. Rendering is on demand; frames run only during walks and tier rises, and reduced-motion users get instant updates.
+- The board lives between events: an idle loop at about 8 frames per second lowers the deer's heads to graze and flutters a few butterflies. It pauses for hidden tabs, and is off when the person prefers reduced motion. The board emits `scene:hop` and `scene:rise` on the event bus.
+- `sound.js` synthesizes every cue with Web Audio: footstep taps, a confirmation chime, a tier fanfare through a generated-noise reverb, a sprout for gardens and a soft tone for declines. It is silent until the Sound toggle is pressed, and main.js routes bus events to it, so the board never calls audio directly.
 - `paypal-checkout.js` loads the sandbox JS SDK v6, starts a one-time payment session with a server-created order, reports approval to the server and shows whatever the server decides.
-- Test hooks: `window.__ourHouse.state`, `window.__ourHouse.scene()`, `window.__ourHouse.bus` (set `bus.log = []` to record events), `document.body.dataset.ready`.
+- Test hooks: `window.__ourHouse.state`, `window.__ourHouse.scene()` (tier, position, animation and ambient counters), `window.__ourHouse.sound()` (enabled flag and recent cues), `window.__ourHouse.bus` (set `bus.log = []` to record events), `document.body.dataset.ready`.
 
 ## Security notes
 

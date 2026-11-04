@@ -1,6 +1,6 @@
 # Demo script (under 3 minutes)
 
-Record only after the live checks in [VALIDATION.md](VALIDATION.md) pass with real sandbox and AI credentials, so the video shows the real integrations, not example mode. Use the sandbox app and a sandbox buyer account. Never show the `.env` file, client secret or API key. Use no third-party music or trademarks beyond the PayPal sandbox checkout the product integrates. Publishing, uploading and submitting are the repository owner's decisions.
+Record only after the live checks in [VALIDATION.md](VALIDATION.md) pass with real sandbox and AI credentials, so the video shows the real integrations, not example mode. Use the sandbox app and a sandbox buyer account. Never show the `.env` file, client secret or API key. Use no third-party music or trademarks beyond the PayPal sandbox checkout the product integrates. Turn on the app's **Sound** toggle: every sound is synthesized live in the browser, so the video's audio is original. Publishing, uploading and submitting are the repository owner's decisions.
 
 | Time | Screen | Say |
 | --- | --- | --- |

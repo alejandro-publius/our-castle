@@ -24,6 +24,7 @@ Built for the PayPal AI Hackathon as a local prototype, with PayPal at the cente
 | AI planner (Claude, structured output, server validation) | Implemented and tested against a fake transport. **No live AI call yet** |
 | AI house steward with PayPal Agent Toolkit (read-only) | Implemented and tested with a scripted fake model and fake PayPal. **No live AI + PayPal toolkit run yet** |
 | AG Grid ledger | Working (AG Grid Community, MIT), with a plain-table fallback |
+| Living world and sound | Grazing deer and butterflies at a low idle frame rate (off for reduced motion); synthesized Web Audio cues, off until turned on |
 | Postman collection | Example-mode folder run with Newman: 10 requests, 21/21 assertions passed. Sandbox folder needs credentials |
 | Verified webhooks | Implemented with PayPal signature verification; **unverified live** (needs a public tunnel and `PAYPAL_WEBHOOK_ID`) |
 
@@ -91,7 +92,7 @@ npm run art-preview   # the original static art preview server
 1. **House:** choose solo or family (example personas: Rowan, an adult, and Wren, a child), name the house and compose a crest (field color plus crown, leaf, stag or tower).
 2. **Plan:** enter the goal, what is already set aside (self-reported), a target date, the weekly amount you choose, and bills you already pay (context only). The planner proposes a weekly schedule, shows the arithmetic and projects when the Manor, Keep and Castle are reached. Every week is editable; impossible targets show the exact shortfall and how to close it.
 3. **Contribute:** an adult persona ticks an explicit approval for a specific amount, then pays in the PayPal sandbox. The server captures the order with the Server SDK, checks amount, currency, goal and household against its own record, and only then credits progress. The receipt shows the PayPal order and capture ids.
-4. **The board answers:** the travelers walk to the new space. When a milestone is crossed, the next home tier rises with a celebration banner. Refresh or restart, and the same result is there.
+4. **The board answers:** the travelers walk to the new space. When a milestone is crossed, the next home tier rises with a celebration banner. Refresh or restart, and the same result is there. Turn on **Sound** to hear synthesized footsteps, a chime for a confirmed payment and a fanfare when the home grows. All of it is generated in the browser; there are no audio files.
 5. **Ledger and steward:** ask "Did PayPal confirm our last contribution?" The steward reads the ledger, looks the order up through PayPal's Agent Toolkit, and the server shows what was checked and whether PayPal and the ledger agree. The AG Grid ledger keeps goal progress, bills and gifts apart. Bills grow garden beds as a habit reward but never count as savings. A refund lowers progress exactly once and walks the travelers back; the raised building stays as an explained keepsake.
 
 Default demo numbers (editable, synthetic): a $300 goal, $60 already set aside, eight weeks of $30, and a first $15 contribution that reaches the Manor at 25%.
