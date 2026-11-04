@@ -21,5 +21,9 @@ async function checkJS(directory){
     }
   }
 }
-await checkJS('src');await checkJS('scripts');
-console.log(`Verified ${manifest.files.length} copied art/runtime files, the original 90-color palette and starter JavaScript syntax.`);
+await checkJS('src');await checkJS('scripts');await checkJS('server');await checkJS('test');
+const art=await readFile(path.join(root,'src/art-preview.js'),'utf8');
+if(!art.includes("import { PixelRenderer } from './graphics/pixel-renderer.js'"))throw Error('The original art preview must keep using the original pixel renderer');
+const board=await readFile(path.join(root,'src/world/board-scene.js'),'utf8');
+if(!board.includes("from '../graphics/pixel-renderer.js'"))throw Error('The board scene must render through the original pixel renderer');
+console.log(`Verified ${manifest.files.length} copied art/runtime files, the original 90-color palette, the renderer wiring and JavaScript syntax.`);
