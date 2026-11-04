@@ -1,5 +1,9 @@
 # Demo clip provenance
 
+## New lighting and rain preview
+
+[18.04-second MP4 and source notes](atmosphere/README.md): actual example-mode UI at `feada574`, switching Day → Afternoon → Night → Rain. Manual weather is clearly labelled; it is not a live forecast or payment demonstration. The 2:51 review below predates district deeds and atmosphere.
+
 ## Current woodland and family review
 
 [The new 2:51 review kit](woodland-review/README.md) records the green forest and the clearer family journey in isolated example mode, alongside labelled historical PayPal/AI evidence. The approved sandbox insert remains unfilmed. The older clips below are preserved unchanged and show the earlier island layout.

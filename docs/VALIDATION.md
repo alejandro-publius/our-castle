@@ -2,7 +2,7 @@
 
 ## November 4, 2026: realm atmosphere, day, afternoon, night and rain, with optional local weather (branch `feature/realm-atmosphere`)
 
-The owner asked for *"night/day/afternoon/rain mode that enables the homes or castles to change and have lights to illuminate the dark"*, optionally following the person's time zone or weather. Built in the worktree `our-castle-district-guide` from `b2b31d5`; not yet promoted. The reference lock and ledger are in the atmosphere section of [ART-DIRECTION.md](ART-DIRECTION.md).
+The owner asked for *"night/day/afternoon/rain mode that enables the homes or castles to change and have lights to illuminate the dark"*, optionally following the person's time zone or weather. Built in the worktree `our-castle-district-guide` from `b2b31d5` and promoted locally as `feada574`. Nothing was pushed. The reference lock and ledger are in the atmosphere section of [ART-DIRECTION.md](ART-DIRECTION.md).
 
 **What changed:**
 - **Light presets:** the world's existing hemisphere light and sun follow presets for day, afternoon (lower warm-gold sun, cooler fill) and night (teal-blue moonlight).
@@ -56,8 +56,10 @@ Draw calls: 441 by day, 442 at night, 443–444 with rain.
 - The manual controls and camera moves made zero financial writes.
 - Root approved the night cottage and night rain citadel renders, now in `docs/screenshots/atmosphere-night-cottage.png` and `atmosphere-night-rain-castle.png`.
 
+**New visual preview:** [18.04-second MP4](demos/atmosphere/our-castle-time-weather-preview.mp4), actual example-mode UI with manual Day, Afternoon, Night and Rain. Its burned-in label names example mode and manual weather. The entire export decodes, and its size and SHA-256 match the [source notes and timeline](demos/atmosphere/README.md). No payment, paid AI call or live-weather footage is presented in this clip. The older 2:51 review is preserved and predates deeds and atmosphere.
+
 **Limitations:**
-- **Owner servers:** the running 3010 and 3021 servers still have their old CSP; live weather is not verified there, and they were not restarted.
+- **Local activation:** the main app on 3010 was restarted from the promoted source to activate the two weather origins in its CSP (PID 57180 to 91227). Its selected household/API state and every user database table/row match the pre-restart backup; only SQLite's internal `sqlite_sequence.seq` counter changed during ordinary startup. The saved `.env` bytes, permissions and timestamp are unchanged. The active header was verified; a public Edinburgh forecast was exercised on the separate example fixture, not with the owner's city on 3010. The isolated 3021 rehearsal (PID 67124) and its database remain untouched, with its original runtime CSP. Do not restart it or start checkout from this project worker. Ignored preservation evidence: `test-results/atmosphere-review/activation.json` and `database-comparison.json`.
 - **Clock:** Auto uses fixed device-clock bands, not astronomical sunrise or sunset.
 - **No geolocation:** there is no automatic location, IP lookup or PayPal account time zone.
 - **Not covered:** Chromium emulation only; no real phone, Safari, Firefox or screen reader.

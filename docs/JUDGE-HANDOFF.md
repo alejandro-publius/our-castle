@@ -2,7 +2,7 @@
 
 Start here to run, evaluate or present Our Castle. State as of **November 4, 2026**, on the local branch `expansion/wider-estate`:
 
-- **App:** the woodland realm is `ce43a0f`; the clearer family journey is `2a18bc5`, with the lazy-Ledger focus follow-up at `ecc7cc5`. These are promoted to the primary local branch. The earlier `7468b57` island layout and preserved clips are historical.
+- **App:** the woodland realm is `ce43a0f`; the clearer family journey is `2a18bc5`, with the lazy-Ledger focus follow-up at `ecc7cc5`. District-deed cards are `da602b8`; time, rain and optional city weather are `feada574`. All are promoted to the primary local branch. The earlier `7468b57` island layout and preserved clips are historical.
 - **Not pushed:** the GitHub `main` branch still holds only the original concept handoff (`5cf8363`), so **cloning GitHub does not give you this prototype**. Review it from the owner's checkout or from the private offline review kit (section 1).
 - **Status:** the repository is private, everything runs against the PayPal **sandbox**, and no hackathon entry has been submitted.
 
@@ -10,6 +10,7 @@ Start here to run, evaluate or present Our Castle. State as of **November 4, 202
 | --- | --- |
 | The running app (owner's Mac) | http://localhost:3010 |
 | Current woodland/family review draft, 2:51 | [MP4](demos/woodland-review/our-castle-family-woodland-review-draft.mp4), [local player](demos/woodland-review/review.html), [editable kit](demos/woodland-review/README.md). The approved 24-second sandbox insert at 2:17–2:41 remains unfilmed; private, not submitted |
+| New time/weather preview, 18.04 s | [MP4](demos/atmosphere/our-castle-time-weather-preview.mp4), [source notes and timeline](demos/atmosphere/README.md). Actual example UI; manual lighting/rain, no payment or live-weather footage |
 | Earlier review draft, historical visuals | [2:36.36 kit](demos/judge-review/README.md), preserved unchanged |
 | Historical 36-second world clip (silent, example mode) | [`docs/demos/our-castle-connected-realm.mp4`](demos/our-castle-connected-realm.mp4) ([provenance](demos/README.md)). Tracked in this private branch; not uploaded or published |
 | Private offline review kit | `test-results/local-review/` on the owner's Mac: a source zip of a committed HEAD, with a manifest. Git-ignored and not published |
@@ -24,7 +25,9 @@ Start here to run, evaluate or present Our Castle. State as of **November 4, 202
 
 ### On the owner's configured Mac
 
-The app already runs at **http://localhost:3010**. It was started from `~/projects/our-house` with `npm start`, which reads the git-ignored `.env` (PayPal sandbox credentials and `AI_API_KEY`) and the sandbox household in `data/our-castle-sandbox.sqlite`.
+The app already runs at **http://localhost:3010**. Its main server was safely restarted for the weather CSP at `feada574`; its household records and saved keys are preserved. Refresh to load the atmosphere controls. **Auto** follows the device clock; manual Day, Afternoon and Night work with Clear or Rain. **Local weather** sends the town you explicitly search/choose to Open-Meteo; Disconnect forgets it in that browser. No PayPal address or GPS is used. The separate example lighting tryout is **http://localhost:3156**. The approved payment rehearsal on 3021 was not restarted; its old runtime CSP does not support the new optional weather hosts, so keep its weather Clear/manual during any coordinated recording.
+
+The main app starts from `~/projects/our-house` with `npm start`, reading the git-ignored `.env` (PayPal sandbox credentials and `AI_API_KEY`) and the sandbox household in `data/our-castle-sandbox.sqlite`.
 
 - **Check it, read-only:** `curl -s http://localhost:3010/api/status` should report `"mode":"sandbox"` for payments and `"mode":"live"` with `claude-opus-5-5` for AI. The page header shows the badges **PayPal sandbox** and **AI planner · claude-opus-5-5**.
 - **If it is not running:** `cd ~/projects/our-house && npm start`. It does not modify `.env` or any ledger or payment record. While the app is up, a second `npm start` fails because port 3010 is in use.

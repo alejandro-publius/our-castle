@@ -1,0 +1,53 @@
+{
+  "file": "our-castle-time-weather-preview.mp4",
+  "bytes": 1798934,
+  "sha256": "9a2ebd25d6f71d6cef6e20006f813234f75a2fbc0ee2a387f57c82fef291493e",
+  "duration": 18.04,
+  "kind": "Actual example UI, manual time/rain; no live weather or payment evidence",
+  "raw_sha256": "0d23684679e7147c3f7a4840115a61dd089be9f96f5ae50b69e18b3bdf8013f9",
+  "edits": [
+    {
+      "phase": "day",
+      "source_in": 2.961,
+      "duration": 2.5
+    },
+    {
+      "phase": "afternoon",
+      "source_in": 6.275,
+      "duration": 2.5
+    },
+    {
+      "phase": "night",
+      "source_in": 10.606,
+      "duration": 3.0
+    },
+    {
+      "phase": "night-cottage",
+      "source_in": 14.774,
+      "duration": 3.0
+    },
+    {
+      "phase": "night-rain",
+      "source_in": 18.695,
+      "duration": 3.0
+    },
+    {
+      "phase": "night-rain-castle",
+      "source_in": 23.091,
+      "duration": 4.0
+    }
+  ],
+  "complete_decode_passed": true,
+  "source_review": "test-results/atmosphere-review/final/clean-recording.json (local, ignored)",
+  "source_commit": "feada5740436fb9f3cdc725cc73279721ca8caf6",
+  "burned_label": "EXAMPLE REALM | MANUAL LIGHTING + RAIN",
+  "raw_original": "test-results/atmosphere-review/final/continuous-clean-preview.webm (local, ignored)",
+  "format": {
+    "width": 1440,
+    "height": 1000,
+    "fps": 25,
+    "codec": "H.264",
+    "pixel_format": "yuv420p",
+    "audio": false
+  }
+}
