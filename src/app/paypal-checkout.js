@@ -22,14 +22,28 @@ function loadSdk(src) {
   return sdkPromise;
 }
 
-async function createInstance(paypal, config) {
+/**
+ * Initialize with the client id (PayPal's guide), and check eligibility. Some v6 failures only
+ * appear at the eligibility call, so a failure anywhere in that pair retries once with a
+ * server-issued, domain-bound client token before giving up with both reasons.
+ */
+async function initialize(paypal, config) {
   const base = { components: ['paypal-payments'], pageType: 'checkout', locale: 'en-US' };
+  const attempt = async (auth) => {
+    const instance = await paypal.createInstance({ ...base, ...auth });
+    const methods = await instance.findEligibleMethods({ currencyCode: config.currency });
+    return { instance, methods };
+  };
   try {
-    return await paypal.createInstance({ ...base, clientId: config.clientId });
+    return await attempt({ clientId: config.clientId });
   } catch (first) {
     console.warn('[paypal] clientId initialization failed; trying a server-issued client token', first);
-    const { accessToken } = await api.post('/api/paypal/client-token');
-    return paypal.createInstance({ ...base, clientToken: accessToken });
+    try {
+      const { accessToken } = await api.post('/api/paypal/client-token');
+      return await attempt({ clientToken: accessToken });
+    } catch (second) {
+      throw new Error(`${first?.message ?? first} (client-token fallback: ${second?.message ?? second})`);
+    }
   }
 }
 
@@ -41,8 +55,7 @@ export async function mountPayPalButton(container, { getOrderInput, getOwnership
   const config = await api.get('/api/paypal/config');
   if (config.mode !== 'sandbox') throw new Error('PayPal sandbox is not configured on the server.');
   const paypal = await loadSdk(config.sdkUrl);
-  const instance = await createInstance(paypal, config);
-  const methods = await instance.findEligibleMethods({ currencyCode: config.currency });
+  const { instance, methods } = await initialize(paypal, config);
   if (!methods.isEligible('paypal')) throw new Error('PayPal is not eligible for this sandbox account or browser.');
 
   let currentOrderId = null;
