@@ -1,5 +1,11 @@
 # Proposed product rules — editable starting point
 
+## Connected district progression (owner correction)
+
+The realm retains the starting village and every later home as separate destinations. The manor opens at 25%, keep at 60% and citadel at 100%; the market district opens with the existing 40% village-quarter reward. The woodland garden is the existing self-reported bill-habit reward, clearly identified as reported by the household. It is not utility-provider verification.
+
+All six districts are visible before unlocking. Locked destinations are grey and their connecting drawbridges raised. An earned destination lowers its crossing; keepsake destinations remain accessible after a refund while the progress ledger updates truthfully. Inspecting a district only changes the camera. A separately labeled art preview can temporarily show a future district in color and lower its bridge without earning it or writing to the server. Returning restores the real locks.
+
 ## Living court rewards
 
 The owner requested more guests and princesses as homes grow. The built home unlocks 2 wandering guests at the cottage, 6 at the manor, 12 at the keep and 20 at the castle. Princesses Elowen, Amara and Sorrel arrive at successive home tiers among musicians, nobles, gardeners, merchants, pages and ceremonial guards. These are original fictional characters and cosmetic scenery. Fixed background hamlet locals are separate from this guest count.

@@ -1,5 +1,6 @@
 import { TIERS, formatCents, milestoneCents } from './rules.js';
 import { courtForTier } from './court.js';
+import { REALM_SIZE, realmAccess, bridgeAccess } from './realm.js';
 
 // Cosmetic world rewards. Shared by the server (which decides what is earned) and the browser (which draws it).
 // Nothing here changes money, savings totals or payment state, and nothing here can mark a bill as verified.
@@ -85,7 +86,7 @@ export function buildRewards({ progress, targetCents, currency = 'USD', achievem
   };
 
   const homes = TIERS.map((tier) => goalReward({
-    id: `home:${tier.key}`, name: tier.index === 0 ? 'Hearth cottage' : `The ${tier.name.toLowerCase()}`, detail: HOME_DETAILS[tier.key],
+    id: `home:${tier.key}`, name: tier.index === 0 ? 'Hearth cottage' : `The ${tier.name.toLowerCase()}`, detail: `${HOME_DETAILS[tier.key]} ${tier.index ? 'Opens its own district and lowers the connecting bridge; earlier districts remain.' : 'Your starting village remains as the realm expands.'}`,
     percent: tier.percent, earned: tier.index <= builtTier,
     previewTier: tier.index, previewEstateLevel: ESTATE_MILESTONES.filter((r) => r.percent <= tier.percent).length,
   })).map((reward, tier) => ({ ...reward, court: courtForTier(tier) }));
@@ -117,6 +118,7 @@ export function buildRewards({ progress, targetCents, currency = 'USD', achievem
 
   return {
     entries,
+    realm: { size: REALM_SIZE, districts: realmAccess({ builtTier, estateLevel: estateLevelFor(achievements, progress.progressCents, targetCents), gardens: gardenCount }), bridges: bridgeAccess({ builtTier, estateLevel: estateLevelFor(achievements, progress.progressCents, targetCents), gardens: gardenCount }) },
     estateLevel: estateLevelFor(achievements, progress.progressCents, targetCents),
     billVerification: {
       connected: false,

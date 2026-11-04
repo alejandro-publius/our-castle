@@ -1,3 +1,5 @@
+import { homeDistrict } from './realm.js';
+
 // A cosmetic cast unlocked by the home already built. Never a payment, balance or bill-verification source.
 const CAST = [
   ['fern', 'Fern', 'gardener', 0], ['kit', 'Kit', 'villager', 0],
@@ -63,4 +65,10 @@ export function courtPose(person, seconds) {
     };
   }
   throw new Error('Court route has no segment');
+}
+
+/** Guests belong to the district that welcomed them; later unlocks keep the village and manor inhabited. */
+export function courtWorldPose(person, seconds) {
+  const pose = courtPose(person, seconds), district = homeDistrict(person.tier);
+  return { ...pose, x: district.x + pose.x * district.scale, z: district.z + pose.z * district.scale, district: district.id };
 }

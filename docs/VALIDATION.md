@@ -1,5 +1,16 @@
 # Validation
 
+## November 4, 2026 — connected districts, grey future areas and gated bridges
+
+Implemented in the isolated `expansion/connected-realm` worktree, keeping the previous running household available during development. The owner's corrected visual direction is now a six-district 164×114 realm rather than one upgraded building on a small plot.
+
+- **Integrity and units:** all 47 locked art/runtime files, the original 90-color palette and renderer wiring pass; all JavaScript parses. **104 unit tests passed, 1 skipped by design.** New checks cover separate shore footprints, district and bridge access from earned achievements, continuous travel over the existing 0/5/12/20 milestones, and retained guests in their own districts.
+- **Browsers:** **43 cases passed across desktop and phone, 1 skipped by design.** The full run initially had 41 passing cases and two outdated assertions for the former board heading. After updating that expectation to the new realm heading, both full household journeys passed in the targeted rerun. No financial assertion was removed or relaxed.
+- **Bridge behavior:** a simulated $15 contribution from $60 to $75 opens the manor and lowers its bridge; the village remains and both districts have their own guests. Other destinations stay locked. Locked districts have real grey-painted meshes and raised drawbridge halves. Selecting a destination changes only camera focus; it cannot unlock the destination or write to the server.
+- **Previews and keepsakes:** an explicitly labeled castle art preview shows the connected earlier districts and open crossings, but returning restores the actual locks and two village guests. Existing refund/keepsake checks still pass. No preview changes progress, contributions or achievements.
+- **Visual QA:** inspected all six shores in the overview, the locked citadel, manor and citadel art previews, and the phone overview/detail views. The world spans the page width. Mobile overview labels do not obscure the landscape; district buttons provide the names and conditions. No page errors or horizontal overflow occurred in the captures.
+- **Scope:** all new transactions exercised in tests/demo are simulated against isolated example databases. No new PayPal order or paid AI call was needed. The woodland garden is the existing self-reported habit reward; confirmed-bill rewards still require an authorized provider that is not connected.
+
 ## November 4, 2026 — a living royal court
 
 The owner clarified that larger homes should welcome more guests and princesses. Implemented in an isolated `expansion/living-court` worktree before promotion to the running app. The existing home thresholds, financial ledger, provider boundaries and original art/runtime files are preserved.

@@ -85,7 +85,7 @@ test('full journey: house and crest, example plan, adult approval, receipt, boar
   await expect(receipt).toContainText('$60.00 → $75.00 (25%)');
   await expect(receipt).toContainText('Manor raised');
   await expect(page.locator('#progress-amount')).toHaveText('$75.00');
-  await expect(page.locator('#board-title')).toHaveText('A place to grow');
+  await expect(page.locator('#board-title')).toHaveText('Your connected realm');
   await settled(page);
   expect(await scene(page)).toMatchObject({ position: 5, tier: 1, crest: { field: 'violet', charge: 'tower' }, playMode: 'family' });
   await expect(page.locator('#celebration')).toContainText('The Manor rises!');

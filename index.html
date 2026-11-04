@@ -34,8 +34,9 @@
       <section class="board-shell" aria-labelledby="board-title">
         <div class="board-heading">
           <div>
-            <p class="eyebrow">One house. A shared journey.</p>
-            <h2 id="board-title">The first cottage</h2>
+            <p class="eyebrow">One house. A connected realm.</p>
+            <h2 id="board-title">Your connected realm</h2>
+            <p id="realm-progress-summary" class="realm-progress-summary"></p>
           </div>
           <div class="board-tools">
             <button type="button" id="sound-toggle" class="chip" aria-pressed="false">Sound off</button>
@@ -43,15 +44,18 @@
           </div>
         </div>
         <p id="world-preview" class="world-preview" hidden><strong id="preview-title"></strong><span>Art preview · this does not unlock a reward or change your goal.</span><button type="button" id="end-preview">Return to my estate</button></p>
-        <div id="world" class="world" aria-busy="true"></div>
         <div class="world-navigation" role="group" aria-label="Explore the estate" aria-describedby="view-hint">
           <button type="button" class="chip" data-view="out" aria-label="Zoom out">−</button>
           <button type="button" class="chip" data-view="in" aria-label="Zoom in">+</button>
           <button type="button" class="chip" data-view="left" aria-label="Turn the estate left">↶</button>
           <button type="button" class="chip" data-view="right" aria-label="Turn the estate right">↷</button>
           <button type="button" class="chip" data-view="reset">Reset view</button>
+          <button type="button" class="chip" data-view="overview">Whole realm</button>
           <span id="view-hint">Drag to turn · Shift-drag or two fingers to pan · scroll or pinch to zoom</span>
         </div>
+        <p id="realm-focus-status" class="realm-focus-status" role="status" aria-live="polite">Select a district to inspect its buildings and unlock condition.</p>
+        <div class="realm-map"><div id="world" class="world" aria-busy="true"></div><div id="realm-markers" class="realm-markers" aria-label="Districts on the map"></div></div>
+        <nav id="realm-districts" class="realm-districts" aria-label="Inspect realm districts"></nav>
         <p id="world-fallback" class="world-fallback" hidden>The 3D board is unavailable in this browser. Your progress and every action below still work. <a href="references/images/our-house-castle.png">See the board art.</a></p>
         <div id="celebration" class="celebration" hidden></div>
         <div class="board-foot">

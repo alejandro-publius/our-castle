@@ -62,7 +62,7 @@ test.beforeEach(async ({ request }) => {
 test('the wider estate keeps every route space and the travelers visible and clear of the controls at any turn and zoom', async ({ page }) => {
   const errors = trackErrors(page);
   await ready(page);
-  expect(await scene(page)).toMatchObject({ region: { width: 42, depth: 30 }, estateLevel: 1, tier: 0, position: 4 });
+  expect(await scene(page)).toMatchObject({ region: { width: 164, depth: 114 }, estateLevel: 1, tier: 0, position: 4 });
   await expectRouteClear(page);
   for (let i = 0; i < 3; i++) await page.getByRole('button', { name: 'Turn the estate right' }).click();
   await expectRouteClear(page);

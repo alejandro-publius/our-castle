@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { courtForTier, courtPose, courtResidents } from '../core/court.js';
+import { courtForTier, courtWorldPose, courtResidents } from '../core/court.js';
 
 // All articulated guests share instanced geometry/material batches. Twenty guests do not mean twenty model graphs
 // or a second animation loop: the board's existing low-rate ambient clock drives this entire court.
@@ -98,7 +98,7 @@ export function createEstateCourt(group, builder, colours) {
   function setTier(nextTier, crest) {
     if (tier === nextTier && flag === crest) return;
     clear(); tier = nextTier; flag = crest;
-    actors = courtResidents(tier).map((person) => ({ person, pose: courtPose(person, elapsed) }));
+    actors = courtResidents(tier).map((person) => ({ person, pose: courtWorldPose(person, elapsed) }));
     const buckets = new Map();
     actors.forEach((actor, index) => {
       for (const piece of pieces(actor.person, crest)) {
@@ -117,7 +117,7 @@ export function createEstateCourt(group, builder, colours) {
   }
   function tick(seconds) {
     elapsed = seconds;
-    for (const actor of actors) actor.pose = courtPose(actor.person, seconds);
+    for (const actor of actors) actor.pose = courtWorldPose(actor.person, seconds);
     for (const { mesh, pieces: parts } of batches) {
       parts.forEach((p, i) => {
         const actor = actors[p.actor], { person, pose } = actor;

@@ -1,0 +1,60 @@
+// One connected world. District access is a presentation of existing earned achievements, never a payment decision.
+export const REALM_SIZE = Object.freeze({ width: 164, depth: 114 });
+export const REALM_DISTRICTS = Object.freeze([
+  { id: 'cottage', name: 'Hearth Village', x: -60, z: 26, width: 34, depth: 32, height: 6, homeTier: 0, percent: 0, scale: 1 },
+  { id: 'manor', name: 'Manor Gardens', x: -10, z: 26, width: 40, depth: 36, height: 10, homeTier: 1, percent: 25, scale: 1.2 },
+  { id: 'market', name: 'Market Town', x: 44, z: 26, width: 32, depth: 30, height: 9, homeTier: null, percent: 40, scale: 1 },
+  { id: 'garden', name: 'Woodland Garden', x: -60, z: -28, width: 34, depth: 38, height: 9, homeTier: null, percent: null, scale: 1 },
+  { id: 'keep', name: 'Stone Keep', x: -10, z: -28, width: 42, depth: 38, height: 13, homeTier: 2, percent: 60, scale: 1.35 },
+  { id: 'castle', name: 'Royal Citadel', x: 47, z: -28, width: 50, depth: 46, height: 22, homeTier: 3, percent: 100, scale: 1.65 },
+].map(Object.freeze));
+export const homeDistrict = (tier) => REALM_DISTRICTS.find((d) => d.homeTier === tier) ?? REALM_DISTRICTS[0];
+export const districtById = (id) => REALM_DISTRICTS.find((d) => d.id === id);
+export const REALM_BRIDGES = Object.freeze([
+  { id: 'manor-bridge', from: 'cottage', to: 'manor', a: [-43, 26], b: [-30, 26] },
+  { id: 'keep-bridge', from: 'manor', to: 'keep', a: [-10, 8], b: [-10, -9] },
+  { id: 'citadel-bridge', from: 'keep', to: 'castle', a: [11, -28], b: [22, -28] },
+  { id: 'market-bridge', from: 'manor', to: 'market', a: [10, 26], b: [28, 26] },
+  { id: 'garden-bridge', from: 'cottage', to: 'garden', a: [-60, 10], b: [-60, -9] },
+  { id: 'royal-procession', from: 'market', to: 'castle', a: [44, 11], b: [44, -5] },
+].map((b) => Object.freeze({ ...b, a: Object.freeze(b.a), b: Object.freeze(b.b) })));
+
+export function realmAccess({ builtTier = 0, estateLevel = 0, gardens = 0, previewFeature = null } = {}) {
+  return REALM_DISTRICTS.map((district) => {
+    const open = district.homeTier !== null ? district.homeTier <= builtTier
+      : district.id === 'market' ? estateLevel >= 2
+        : gardens > 0 || ['habit-garden', 'water'].includes(previewFeature);
+    return { ...district, open, status: open ? 'open' : 'locked', condition: district.percent === null
+      ? 'Record an on-time bill habit (reported by you, not provider verified)'
+      : district.percent === 0 ? 'Your starting village' : `Reach ${district.percent}% of the shared goal` };
+  });
+}
+export function bridgeAccess(state) {
+  const regions = new Map(realmAccess(state).map((d) => [d.id, d.open]));
+  return REALM_BRIDGES.map((bridge) => ({ ...bridge, open: regions.get(bridge.from) && regions.get(bridge.to) }));
+}
+
+// The same twenty financial steps now cross the world. The village, manor, keep and citadel still arrive at 0/5/12/20.
+export const REALM_ROUTE = Object.freeze([
+  [-64, 34], [-72, 27], [-67, 17], [-52, 17], [-45, 26], [-26, 26],
+  [-24, 34], [-10, 36], [4, 34], [5, 23], [2, 12], [-10, 9], [-10, -11],
+  [-23, -15], [-25, -30], [-13, -42], [5, -40], [7, -29], [6, -14], [10, -28], [47, -16.3],
+].map((p) => Object.freeze({ x: p[0], z: p[1] })));
+export function journeyLeg(index) {
+  const n = Math.max(0, Math.min(19, index));
+  if (n === 19) return [REALM_ROUTE[19], { x: 25, z: -28 }, { x: 29, z: -14 }, { x: 47, z: -14 }, REALM_ROUTE[20]];
+  return [REALM_ROUTE[n], REALM_ROUTE[n + 1]];
+}
+export function journeyPosition(position) {
+  const value = Math.max(0, Math.min(20, Number.isFinite(position) ? position : 0));
+  if (value === 20) return { ...REALM_ROUTE[20] };
+  const index = Math.floor(value), points = journeyLeg(index);
+  const lengths = points.slice(1).map((p, i) => Math.hypot(p.x - points[i].x, p.z - points[i].z));
+  let distance = (value - index) * lengths.reduce((a, b) => a + b, 0);
+  for (let i = 0; i < lengths.length; i++) {
+    if (distance > lengths[i]) { distance -= lengths[i]; continue; }
+    const t = distance / lengths[i];
+    return { x: points[i].x + (points[i + 1].x - points[i].x) * t, z: points[i].z + (points[i + 1].z - points[i].z) * t };
+  }
+  return { ...points.at(-1) };
+}

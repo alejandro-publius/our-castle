@@ -221,8 +221,8 @@ export function createEstateModels({part,builder,colours:c}) {
     deer(land,-9.4,-5.6,-.4);deer(land,-9.6,-2.1,-.9,.7);deer(land,9,-.4,2.6);deer(land,9.5,11.5,.25);butterflies(land);
     builder.flush();return land;
   }
-  function extras(g,level,flag,previewFeature=null){
-    if(level>=2){
+  function extras(g,level,flag,previewFeature=null,{market=true,ramparts=true}={}){
+    if(level>=2&&market){
       cottage(g,9,2.8,{w:2.4,h:2,d:2.1,roofColor:C.slate});
       for(let i=0;i<2;i++){
         const x=7.7+i*3.3,z=6;
@@ -234,7 +234,7 @@ export function createEstateModels({part,builder,colours:c}) {
       }
       box(g,7,.55,3,1.4,.6,1.7,C.wood);for(const x of[6.3,7.7])for(const z of[2.5,3.5])round(g,x,.42,z,.5,.16,.5,C.soil);
     }
-    if(level>=3){
+    if(level>=3&&ramparts){
       for(const x of[-8.3,8.3])wall(g,x,0,13,1.7,false);wall(g,0,-6.5,16.6,1.7);
       for(const x of[-5,5])wall(g,x,6.5,6.5,1.7);
       for(const x of[-8.3,8.3])for(const z of[-6.5,6.5]){round(g,x,1.3,z,1.2,2.2,1.2,C.stone);part(g,'cone',x,3,z,1.7,1.4,1.7,flag);}
@@ -247,5 +247,5 @@ export function createEstateModels({part,builder,colours:c}) {
     }
     builder.flush();
   }
-  return {landscape,home,extras};
+  return {landscape,home,extras,cottage,roof,wall,tower,well,vegetables,lantern,banner,villager};
 }

@@ -1,8 +1,10 @@
 import * as THREE from 'three';
 import { PixelRenderer } from '../graphics/pixel-renderer.js';
 import { CREST_FIELDS, ROUTE_LENGTH } from '../core/rules.js';
-import { addEstateGeometry, createEstateModels, ESTATE_SIZE } from './estate-models.js';
+import { addEstateGeometry, createEstateModels } from './estate-models.js';
 import { createEstateCourt } from './court.js';
+import { createRealmModels } from './realm-models.js';
+import { REALM_SIZE, REALM_DISTRICTS, REALM_ROUTE, homeDistrict, districtById, journeyLeg, journeyPosition } from '../core/realm.js';
 
 // The playable woodland board. It extends the original art-preview vocabulary (MiniBuilder,
 // layered trees, antlered deer, stone towers) and renders through the original 90-colour
@@ -55,13 +57,7 @@ class MiniBuilder {
 
 /** World position of a route waypoint (0–19; 20 is home again). Same layout as the art starter. */
 export function spacePosition(index) {
-  const i = ((index % ROUTE_LENGTH) + ROUTE_LENGTH) % ROUTE_LENGTH;
-  const side = Math.floor(i / 5);
-  const t = (i % 5) / 5;
-  if (side === 0) return { x: -13.8 + 27.6 * t, z: -9.6, side };
-  if (side === 1) return { x: 13.8, z: -9.6 + 19.2 * t, side };
-  if (side === 2) return { x: 13.8 - 27.6 * t, z: 9.6, side };
-  return { x: -13.8, z: 9.6 - 19.2 * t, side };
+  return { ...journeyPosition(index), side: 0 };
 }
 
 const disposeGroup = (group) => {
@@ -71,10 +67,11 @@ const disposeGroup = (group) => {
 const easeInOut = (t) => (t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2);
 const easeOutBack = (t) => 1 + 2.2 * (t - 1) ** 3 + 1.2 * (t - 1) ** 2;
 
-export function createBoardScene(container, { reducedMotion = false, onEvent = () => {}, insets = null } = {}) {
+export function createBoardScene(container, { reducedMotion = false, onEvent = () => {}, onViewChange = () => {}, insets = null } = {}) {
   let renderer; let pipeline; let scene; let camera; let builder; let observer; let models; let court;
   const part = (...args) => builder.part(...args);
   const groups = {};
+  let realmModels; let realm = { districts: [], bridges: [] };
   let state = { builtTier: 0, position: 0, crest: { field: 'cobalt', charge: 'stag' }, gardens: 0, playMode: 'family', milestoneSpaces: [5, 12, 20], reached: [], estateLevel: 0, previewFeature: null };
   let shownPosition = 0;
   let queue = Promise.resolve();
@@ -83,7 +80,7 @@ export function createBoardScene(container, { reducedMotion = false, onEvent = (
   // Ambient life (Hollybrook-style principle: the world keeps living at a low, cheap frame rate).
   const grazers = [];
   const rotators = [];
-  const view = { angle: 0.66, zoom: 1, panX: 0, panY: 0, worldPerPixel: null };
+  const view = { angle: 0.66, zoom: 1, panX: 0, panY: 0, worldPerPixel: null, focus: null };
   const pointers = new Map();
   const interactions = [];
   const flutterers = [];
@@ -107,7 +104,7 @@ export function createBoardScene(container, { reducedMotion = false, onEvent = (
     for (const lx of [-0.29, 0.29]) for (const lz of [-0.12, 0.12]) part(d, 'box', lx, 0.28, lz, 0.08, 0.55, 0.08, colours.soil);
     part(d, 'box', -0.47, 0.82, 0, 0.1, 0.16, 0.14, colours.cream);
     // Neck, head, antlers and eye pivot at the shoulder so the deer can lower its head to graze.
-    const head = new THREE.Group(); head.position.set(0.36, 0.78, 0); d.add(head);
+    const head = new THREE.Group(); head.userData.live = true; head.position.set(0.36, 0.78, 0); d.add(head);
     part(head, 'box', 0.07, 0.22, 0, 0.25, 0.58, 0.26, colours.wood); part(head, 'box', 0.2, 0.45, 0, 0.38, 0.26, 0.26, colours.wood);
     if (scale >= 1) for (const az of [-0.1, 0.1]) { part(head, 'box', 0.11, 0.72, az, 0.04, 0.4, 0.04, colours.cream, 0, -0.2); part(head, 'box', 0.19, 0.82, az, 0.17, 0.04, 0.04, colours.cream, 0, 0.5); }
     part(head, 'box', 0.35, 0.47, 0.14, 0.045, 0.045, 0.025, colours.dark);
@@ -134,27 +131,37 @@ export function createBoardScene(container, { reducedMotion = false, onEvent = (
     part(h, 'box', 0.15, 0.42, 0.51, 0.3, 0.55, 0.04, colours.soil);
   }
   function buildLandscape() {
-    groups.land = models.landscape(scene, { tree, deer, butterflies, rotators });
+    disposeGroup(groups.land); grazers.length = 0; rotators.length = 0; flutterers.length = 0;
+    flutterGeo?.dispose(); flutterGeo = null;
+    realm = realmModels.build(groups.land, state, { tree, deer, butterflies, rotators }, crestColour(state.crest.field));
   }
 
   // ---------- Route, milestones and gardens (rebuilt from state) ----------
   function buildRoute() {
     disposeGroup(groups.route);
-    const milestoneSet = new Set(state.milestoneSpaces.map((s) => s % ROUTE_LENGTH));
+    const milestoneSet = new Set(state.milestoneSpaces);
     const flag = crestColour(state.crest.field);
-    // One continuous road under the stones, so the loop reads as a single journey. It breaks for the
-    // plank bridge where the west side crosses the brook.
-    for (const [x, z, w, d] of [[0, -9.6, 29.2, 1.3], [13.8, 0, 1.3, 20.5], [0, 9.6, 29.2, 1.3], [-13.8, -7.7, 1.3, 5.1], [-13.8, 3.85, 1.3, 12.8]]) {
-      part(groups.route, 'box', x, 0.19, z, w, 0.06, d, colours.road);
+    // Roads end at the shores. The bridge models, including raised locked halves, carry the crossings.
+    for (let i=0;i<ROUTE_LENGTH;i++) {
+      const points=journeyLeg(i),locked=(i>=19?3:i>=11?2:i>=4?1:0)>state.builtTier;
+      for(let j=1;j<points.length;j++){
+        const a=points[j-1],b=points[j],length=Math.hypot(b.x-a.x,b.z-a.z),steps=Math.ceil(length/1.1);
+        for(let k=0;k<steps;k++){
+          const t=(k+.5)/steps,x=a.x+(b.x-a.x)*t,z=a.z+(b.z-a.z)*t;
+          if(!REALM_DISTRICTS.some(d=>Math.abs(x-d.x)<d.width/2-.7&&Math.abs(z-d.z)<d.depth/2-.7))continue;
+          part(groups.route,'box',x,.275,z,1.25,.065,length/steps+.05,locked?0x737d80:colours.road,Math.atan2(b.x-a.x,b.z-a.z));
+        }
+      }
     }
-    for (let i = 0; i < ROUTE_LENGTH; i++) {
+    for (let i = 0; i <= ROUTE_LENGTH; i++) {
       const { x, z, side } = spacePosition(i);
       const visited = i < state.position || state.position >= ROUTE_LENGTH;
       const milestone = milestoneSet.has(i);
-      const colour = milestone ? colours.gold : visited ? colours.cream : colours.path;
-      part(groups.route, 'box', x, 0.23, z, side % 2 ? 2.15 : 4.0, 0.16, side % 2 ? 2.6 : 2.1, colour);
+      const locked=(i>=20?3:i>=12?2:i>=5?1:0)>state.builtTier;
+      const colour = locked ? 0x7c8588 : milestone ? colours.gold : visited ? colours.cream : colours.path;
+      part(groups.route, 'box', x, 0.34, z, 2.2, 0.16, 2.2, colour);
       if (milestone) {
-        const spaceIndex = i === 0 ? ROUTE_LENGTH : i;
+        const spaceIndex = i;
         const reached = state.position >= spaceIndex;
         const ox = side % 2 ? 0.55 : -0.85; const oz = side % 2 ? -0.5 : -0.45;
         part(groups.route, 'round', x + ox, 1.0, z + oz, 0.07, 1.6, 0.07, colours.gold);
@@ -166,7 +173,8 @@ export function createBoardScene(container, { reducedMotion = false, onEvent = (
   }
   function buildGardens() {
     disposeGroup(groups.gardens);
-    const spots = [[-6.7, 1], [6.7, -3.4], [6.7, -1.3], [-6.7, 3.3]].slice(0, state.gardens);
+    const garden = districtById('garden');
+    const spots = [[1,8],[4,8],[7,8],[10,8]].slice(0, state.gardens).map(([x,z])=>[garden.x+x,garden.z+z]);
     for (const [x, z] of spots) {
       part(groups.gardens, 'box', x, 0.26, z, 1.2, 0.2, 1.0, colours.soil);
       for (let r = -1; r <= 1; r++) for (let c = -1; c <= 1; c++) {
@@ -179,16 +187,19 @@ export function createBoardScene(container, { reducedMotion = false, onEvent = (
   // ---------- Home tiers (cottage → manor → keep → castle) ----------
   function buildCastle() {
     disposeGroup(groups.castle);
-    models.home(groups.castle, state.builtTier, crestColour(state.crest.field), state.estateLevel);
+    const district = homeDistrict(state.builtTier);
+    groups.castle.position.set(district.x,0,district.z); groups.castle.scale.setScalar(district.scale);
+    groups.fx.position.set(district.x,0,district.z);
+    models.home(groups.castle, state.builtTier, crestColour(state.crest.field), state.builtTier===0?Math.min(1,state.estateLevel):0);
+    realmModels.finish(groups.castle);
   }
   function buildEstate() {
     disposeGroup(groups.estate);
-    models.extras(groups.estate, state.estateLevel, crestColour(state.crest.field), state.previewFeature);
   }
   function buildCourt() {
     court.setTier(state.builtTier, crestColour(state.crest.field));
     const profile = court.debug();
-    renderer.domElement.setAttribute('aria-label', `Woodland estate with ${profile.capacity} wandering guests. ${profile.description}`);
+    renderer.domElement.setAttribute('aria-label', `Connected realm with six districts, bridges and ${profile.capacity} wandering guests. Locked districts are grey and their bridges raised. ${profile.description}`);
   }
 
   // ---------- Household travelers ----------
@@ -217,17 +228,11 @@ export function createBoardScene(container, { reducedMotion = false, onEvent = (
     placeToken(shownPosition, 0);
   }
   // When the goal is complete (position 20) the travelers stand at the castle gate, home.
-  const GATE = { x: 0.9, z: 6.5 };
-  const stop = (p) => (p >= ROUTE_LENGTH ? GATE : spacePosition(p));
   function placeToken(position, lift) {
-    const base = Math.min(Math.floor(position), ROUTE_LENGTH);
-    const a = stop(base);
-    const b = stop(Math.min(base + 1, ROUTE_LENGTH));
-    const t = position - Math.floor(position);
-    const x = a.x + (b.x - a.x) * t; const z = a.z + (b.z - a.z) * t;
+    const { x, z } = journeyPosition(position);
     groups.token.position.set(x, 0.31 + lift, z);
     if (position >= ROUTE_LENGTH) { groups.token.rotation.y = 0.35; return; }
-    const ahead = stop(Math.min(Math.round(position) + 1, ROUTE_LENGTH));
+    const ahead = journeyPosition(Math.min(position+.02, ROUTE_LENGTH));
     groups.token.rotation.y = Math.atan2(ahead.x - x, ahead.z - z) - Math.PI / 2 + 0.6;
   }
 
@@ -247,9 +252,9 @@ export function createBoardScene(container, { reducedMotion = false, onEvent = (
   async function walk(from, to) {
     const dir = Math.sign(to - from);
     for (let p = from; p !== to; p += dir) {
-      // The last step home is a bound over the walls to the castle gate.
-      const homeward = Math.max(p, p + dir) === ROUTE_LENGTH;
-      await run(homeward ? 750 : dir > 0 ? 300 : 220, (t) => { const e = easeInOut(t); placeToken(p + dir * e, Math.sin(Math.PI * t) * (homeward ? 6.5 : 0.55)); });
+      // Follow the road and the opened bridges, including the bend around the citadel moat.
+      const homeward = Math.max(p,p+dir)===ROUTE_LENGTH;
+      await run(homeward?1000:dir>0?440:300,(t)=>{placeToken(p+dir*easeInOut(t),Math.sin(Math.PI*t)*.35);});
       shownPosition = p + dir;
       emit('hop', { position: shownPosition, direction: dir, home: shownPosition === ROUTE_LENGTH });
     }
@@ -264,16 +269,17 @@ export function createBoardScene(container, { reducedMotion = false, onEvent = (
       m.userData.v = [Math.cos(a) * (2 + (i % 3)), 3 + (i % 4), Math.sin(a) * (2 + (i % 3))];
       groups.fx.add(m); return m;
     });
+    const size = homeDistrict(state.builtTier).scale;
     await run(1100, (t) => {
       const s = Math.max(0.05, easeOutBack(Math.min(1, t * 1.3)));
-      groups.castle.scale.set(1, s, 1);
+      groups.castle.scale.set(size, s*size, size);
       for (const m of sparks) { const [vx, vy, vz] = m.userData.v; m.position.set(vx * t, 3.2 + vy * t - 3 * t * t, vz * t); m.scale.setScalar(Math.max(0.01, 1 - t)); }
     });
-    groups.castle.scale.set(1, 1, 1);
+    groups.castle.scale.setScalar(size);
     groups.fx.clear(); sparkGeo.dispose(); sparkMat.dispose();
   }
 
-  function draw() { if (renderer && pipeline) { pipeline.render(scene, camera); frames++; } }
+  function draw() { if (renderer && pipeline) { pipeline.render(scene, camera); frames++; onViewChange(districtsOnScreen()); } }
 
   function ambientStep(seconds) {
     court.tick(seconds);
@@ -299,16 +305,16 @@ export function createBoardScene(container, { reducedMotion = false, onEvent = (
       if (document.hidden) return;
       ambientStep((performance.now() - start) / 1000);
       ambientFrames++;
-      if (!animating) draw();
+      if (!animating && (view.focus || view.zoom>1.1 || ambientFrames%2===0)) draw();
     }, 125);
   }
   // ---------- Camera: fit the whole island, then let people turn, zoom and pan ----------
   // The default view frames the entire island (its earth sides, edge trees and the tallest castle tower) at any
   // rotation, in the part of the canvas not covered by the heading, view controls or caption. Zoom in for detail.
   const FRAME_POINTS = [];
-  const half = { x: ESTATE_SIZE.width / 2 + 0.2, z: ESTATE_SIZE.depth / 2 + 0.2 };
+  const half = { x: REALM_SIZE.width / 2 + 0.2, z: REALM_SIZE.depth / 2 + 0.2 };
   for (const x of [-half.x, half.x]) for (const z of [-half.z, half.z]) for (const y of [-1.9, 3.6]) FRAME_POINTS.push(new THREE.Vector3(x, y, z));
-  FRAME_POINTS.push(new THREE.Vector3(0, 11, 0));
+  for (const d of REALM_DISTRICTS) FRAME_POINTS.push(new THREE.Vector3(d.x,d.height,d.z));
   const ZOOM = { min: 0.55, max: 2.8 };
   const scratch = new THREE.Vector3();
   function resize() {
@@ -317,7 +323,9 @@ export function createBoardScene(container, { reducedMotion = false, onEvent = (
     const aspect = width / height; const narrow = width < 640;
     camera.updateMatrixWorld();
     let minX = Infinity; let maxX = -Infinity; let minY = Infinity; let maxY = -Infinity;
-    for (const point of FRAME_POINTS) {
+    const focused = districtById(view.focus);
+    const frame = focused ? [-1,1].flatMap(x=>[-1,1].flatMap(z=>[-2,focused.height].map(y=>new THREE.Vector3(focused.x+x*(focused.width/2+2),y,focused.z+z*(focused.depth/2+2))))) : FRAME_POINTS;
+    for (const point of frame) {
       scratch.copy(point).applyMatrix4(camera.matrixWorldInverse);
       minX = Math.min(minX, scratch.x); maxX = Math.max(maxX, scratch.x); minY = Math.min(minY, scratch.y); maxY = Math.max(maxY, scratch.y);
     }
@@ -336,13 +344,14 @@ export function createBoardScene(container, { reducedMotion = false, onEvent = (
     renderer.setSize(width, height, false); pipeline.setSize(width, height); draw();
   }
   function updateCamera() {
-    camera.position.set(Math.sin(view.angle) * 70, 60, Math.cos(view.angle) * 70);
-    camera.lookAt(0, 1.2, 0); camera.updateMatrixWorld();
+    const focus = districtById(view.focus), x=focus?.x??0,z=focus?.z??0;
+    camera.position.set(x+Math.sin(view.angle)*180,150,z+Math.cos(view.angle)*180);
+    camera.lookAt(x,1.2,z);camera.updateMatrixWorld();
   }
   const clampZoom = (z) => Math.min(ZOOM.max, Math.max(ZOOM.min, z));
   function pan(dxPixels, dyPixels) {
     // Keep at least the middle of the estate in view.
-    const limit = 14;
+    const limit = view.focus ? 25 : 90;
     view.panX = Math.max(-limit, Math.min(limit, view.panX + dxPixels * (view.worldPerPixel ?? 0.05)));
     view.panY = Math.max(-limit, Math.min(limit, view.panY - dyPixels * (view.worldPerPixel ?? 0.05)));
   }
@@ -378,7 +387,8 @@ export function createBoardScene(container, { reducedMotion = false, onEvent = (
 
   // ---------- Setup ----------
   renderer = new THREE.WebGLRenderer({ antialias: false, alpha: false, preserveDrawingBuffer: true });
-  renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
+  // The post-process defines art pixels in CSS pixels. Rendering its output at retina density adds no detail.
+  renderer.setPixelRatio(1);
   renderer.outputColorSpace = THREE.LinearSRGBColorSpace; renderer.toneMapping = THREE.NoToneMapping;
   renderer.domElement.setAttribute('role', 'img');
   renderer.domElement.setAttribute('aria-label', 'Woodland board with deer, a brook and the household home');
@@ -386,17 +396,17 @@ export function createBoardScene(container, { reducedMotion = false, onEvent = (
   scene = new THREE.Scene(); scene.background = new THREE.Color(0x112830);
   scene.add(new THREE.HemisphereLight(0xeaf6ff, 0x65714f, 2.7));
   const sun = new THREE.DirectionalLight(0xffe9bf, 3.4); sun.position.set(-12, 25, 17); scene.add(sun);
-  camera = new THREE.OrthographicCamera(-28, 28, 20, -20, 0.1, 220); updateCamera();
+  camera = new THREE.OrthographicCamera(-90, 90, 60, -60, 0.1, 800); updateCamera();
   builder = new MiniBuilder();
   addEstateGeometry(builder);
   models = createEstateModels({ part, builder, colours });
+  realmModels = createRealmModels({part,builder,models,colours});
   pipeline = new PixelRenderer(renderer);
   pipeline.configure({ pixelSize: 2, pixelMode: true, outlines: true, dither: true, exposure: 1.05 });
-  buildLandscape();
-  for (const name of ['route', 'gardens', 'token', 'fx', 'estate', 'court']) { groups[name] = new THREE.Group(); scene.add(groups[name]); }
+  for (const name of ['land', 'route', 'gardens', 'token', 'fx', 'estate', 'court']) { groups[name] = new THREE.Group(); scene.add(groups[name]); }
   court = createEstateCourt(groups.court, builder, colours);
-  groups.castle = new THREE.Group(); groups.castle.position.z = 0.15; scene.add(groups.castle);
-  buildRoute(); buildGardens(); buildCastle(); buildEstate(); buildToken(); buildCourt();
+  groups.castle = new THREE.Group(); scene.add(groups.castle);
+  buildLandscape();buildRoute(); buildGardens(); buildCastle(); buildEstate(); buildToken(); buildCourt();
   observer = new ResizeObserver(resize); observer.observe(container); resize();
   startAmbient();
   bindView();
@@ -413,6 +423,13 @@ export function createBoardScene(container, { reducedMotion = false, onEvent = (
         const tierUp = state.builtTier > prev.builtTier;
         animating = true;
         try {
+          const rebuild = crestChanged || prev.builtTier!==state.builtTier || prev.estateLevel!==state.estateLevel || prev.gardens!==state.gardens || prev.previewFeature!==state.previewFeature;
+          if(rebuild){
+            const oldOpen = new Set(realm.bridges.filter(b=>b.open).map(b=>b.id));
+            buildLandscape();buildCastle();
+            const opening = realm.bridges.filter(b=>b.open&&!oldOpen.has(b.id));
+            if(animate&&opening.length)await run(600,(t)=>{for(const bridge of opening)for(const panel of bridge.panels)panel.group.rotation.z=panel.sign*1.03*(1-easeInOut(t));});
+          }
           if (shownPosition !== state.position) {
             // Keep the old path/banners while walking; they update when the travelers arrive.
             const target = state.position;
@@ -423,7 +440,6 @@ export function createBoardScene(container, { reducedMotion = false, onEvent = (
             state = { ...state, position: target };
           }
           buildRoute();
-          if (crestChanged || prev.builtTier !== state.builtTier || prev.estateLevel !== state.estateLevel) buildCastle();
           if (crestChanged || prev.estateLevel !== state.estateLevel || prev.previewFeature !== state.previewFeature) buildEstate();
           if (crestChanged || prev.builtTier !== state.builtTier) buildCourt();
           if (tierUp && animate) await rise();
@@ -445,9 +461,13 @@ export function createBoardScene(container, { reducedMotion = false, onEvent = (
       if (action === 'pan-right') pan(-step, 0);
       if (action === 'pan-up') pan(0, step);
       if (action === 'pan-down') pan(0, -step);
-      if (action === 'reset') Object.assign(view, { angle: 0.66, zoom: 1, panX: 0, panY: 0 });
+      if (action === 'reset' || action === 'overview') Object.assign(view, { angle: 0.66, zoom: 1, panX: 0, panY: 0, focus: null });
       updateCamera(); resize();
       return { ...view };
+    },
+    focusDistrict(id) {
+      if(!districtById(id))return;
+      Object.assign(view,{focus:id,zoom:1,panX:0,panY:0});updateCamera();resize();
     },
     setPixelMode(on) { pipeline.configure({ pixelMode: on }); draw(); },
     /** Test hook: where each route space and the travelers sit on the canvas, in CSS pixels. */
@@ -461,7 +481,15 @@ export function createBoardScene(container, { reducedMotion = false, onEvent = (
       const t = groups.token.position;
       return { spaces, travelers: toScreen(t.x, t.y + 1.5, t.z), canvas: { left: rect.left, top: rect.top, width: rect.width, height: rect.height } };
     },
-    debug: () => ({ region: ESTATE_SIZE, estateLevel: state.estateLevel, view: { ...view }, previewFeature: state.previewFeature, tier: state.builtTier, position: state.position, shownPosition, gardens: state.gardens, crest: { ...state.crest }, playMode: state.playMode, animating, frames, ambient: Boolean(ambientTimer), ambientFrames, grazers: grazers.length, butterflies: flutterers.length, court: court.debug() }),
+    debug: () => ({ region: REALM_SIZE, estateLevel: state.estateLevel, view: { ...view }, previewFeature: state.previewFeature, tier: state.builtTier, position: state.position, shownPosition, gardens: state.gardens, crest: { ...state.crest }, playMode: state.playMode, animating, frames, ambient: Boolean(ambientTimer), ambientFrames, grazers: grazers.length, butterflies: flutterers.length, court: court.debug(), districts: realm.districts.map(({id,open,status,greyPaint,drawMeshes})=>({id,open,status,greyPaint,drawMeshes})), bridges: realm.bridges.map(({id,open,panels})=>({id,open,raised:panels.some(p=>Math.abs(p.group.rotation.z)>.01)})) }),
     dispose() { for (const [name,fn,options] of interactions) renderer.domElement.removeEventListener(name,fn,options); clearInterval(ambientTimer); observer?.disconnect(); court?.dispose(); for (const g of Object.values(groups)) disposeGroup(g); flutterGeo?.dispose(); builder?.dispose(); pipeline?.dispose(); renderer?.dispose(); },
   };
+
+  function districtsOnScreen(){
+    const rect=container.getBoundingClientRect();
+    return {focus:view.focus,points:REALM_DISTRICTS.map(d=>{
+      const point=new THREE.Vector3(d.x,d.height+1,d.z).project(camera);
+      return {id:d.id,x:(point.x+1)/2*rect.width,y:(1-point.y)/2*rect.height,width:rect.width,height:rect.height};
+    })};
+  }
 }

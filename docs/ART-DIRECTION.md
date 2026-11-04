@@ -1,5 +1,23 @@
 # Art direction — preserve this visual family
 
+## Current map target: a connected realm
+
+The owner corrected the small-plot interpretation: larger buildings should be separate, connected destinations, visible in grey across bridges/moats until unlocked. This supersedes the earlier replace-one-building composition and explicitly permits grey treatment for locked **district artwork**. Functional amounts, payment controls and earned progress remain readable and truthful.
+
+Primary visual source remains the actual Tiny Castle/Our Castle native miniature art. Bounded Refero references: [MekaVerse](https://themekaverse.com) supplies only the map-led panoramic composition and lightweight exploration controls; [Wayfinder](https://wayfinder.nfb.ca) supplies only the continuous landscape/journey principle. Their sci-fi themes, fonts, tokens, illustrations and source code are not copied.
+
+Current rendered layout references: `docs/screenshots/realm-overview.png`, `realm-locked-citadel.png`, `realm-citadel-preview.png`, `realm-phone-overview.png` and `realm-phone-locked-citadel.png`. These supersede the single-plot composition of the older captures while preserving their miniature materials and renderer. On phones the overview leaves the landscape unobscured and the six district controls below it provide names and lock conditions; a focused district has its own larger detail view.
+
+| Decision | Source | Role |
+| --- | --- | --- |
+| Six separate shores across a 164×114 realm | Owner's connected-building correction | Hearth Village, Manor Gardens, Market Town, Woodland Garden, Stone Keep and Royal Citadel all remain visible |
+| Larger architecture in later districts, earlier buildings retained | Owner expected connected buildings | Manor, keep and citadel occupy their own grounds rather than replacing the starting cottage |
+| Detailed grey locked districts, raised connecting bridges and portcullis barriers | Owner explicitly requested grey future unlocks and moats/bridges | The original geometry is visible before it can be reached; the earned state opens the crossing |
+| Full-width world with inspectable district names and a whole-realm view | MekaVerse's map-first composition, adapted to existing art | Overview establishes geography; district focus reveals architectural and character detail |
+| Same twenty financial steps cross the shores and bridges | Existing financial rules + owner's board-map brief | Existing 0/25/60/100% thresholds remain unchanged |
+| Guests remain in the district that welcomed them | Connected-world clarification + existing court progression | The starting village stays inhabited as later courts open |
+| Original renderer, fonts, crest colors and payment panels | Existing visual lock | Grey treatment belongs to locked map regions, not the whole UI |
+
 This is a direct continuation of the user's original Tiny Castle / Crown & Dust art, adapted to their new woodland household-board concept. Open the files below. Text alone is not an adequate visual reference.
 
 ## Primary references

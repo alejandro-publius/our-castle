@@ -359,3 +359,68 @@ button { font: inherit; }
   .meter-fill { transition: none; }
   .celebration { animation: none; }
 }
+
+/* The connected realm occupies the full width; financial actions remain together below the map. */
+.layout { grid-template-columns:minmax(0,1fr); }
+.board-shell { position:relative;top:0; }
+.board-heading { position:static;padding:18px 22px 10px; }
+.board-heading h2 { font-size:28px; }
+.realm-progress-summary { margin:5px 0 0;color:var(--muted);font-size:16px; }
+.realm-map { position:relative;isolation:isolate; }
+.world, #world[data-preview='true'] { height:clamp(560px,72vh,860px); }
+.world-navigation { position:static;max-width:none;padding:10px 20px;justify-content:flex-start;gap:7px;border-top:1px solid var(--rule); }
+.world-navigation button { min-height:38px;padding:6px 13px; }
+.world-navigation span { width:auto;flex:1;text-align:right; }
+.world-preview { margin:4px 20px 10px; }
+.board-foot { margin-top:0;padding:10px 20px 18px;align-items:center; }
+.board-status { max-width:720px; }
+.realm-districts { display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px;padding:4px 20px; }
+.realm-stop { min-width:0;text-align:left;border:1px solid #667778;background:#172e35;color:var(--ivory);padding:10px 12px;min-height:64px; }
+.realm-stop strong { display:block;font-size:17px; }
+.realm-stop small { display:block;margin-top:3px;color:var(--muted); }
+.realm-stop[data-status='open'] { border-color:var(--brass); }
+.realm-stop[aria-pressed='true'] { background:var(--paper);color:var(--ink);box-shadow:inset 0 -3px var(--brass); }
+.realm-stop[aria-pressed='true'] small { color:var(--ink-muted); }
+.realm-focus-status { color:var(--muted);margin:9px 20px;font-size:16px;min-height:1.5em; }
+.realm-markers { position:absolute;inset:0;pointer-events:none;overflow:hidden; }
+.realm-marker { position:absolute;pointer-events:auto;transform:translate(-50%,-100%);background:#10252eea;color:var(--ivory);border:1px solid #8a9899;border-radius:2px;padding:5px 9px;max-width:150px;min-height:39px;font-size:13px;line-height:1.15;text-align:center;box-shadow:0 3px 8px #0004; }
+.realm-marker::after { content:'';position:absolute;left:50%;bottom:-7px;width:1px;height:7px;background:#b6baba; }
+.realm-marker strong,.realm-marker small { display:block; }
+.realm-marker small { margin-top:3px;font-size:11px;color:#c6cbcb; }
+.realm-marker[data-status='open'] { border-color:var(--brass); }
+.realm-marker[data-status='open'] small { color:var(--brass); }
+.journey { grid-template-columns:minmax(280px,360px) minmax(0,1fr);align-items:start;margin:0 6px; }
+.journey>.quest { grid-column:1;grid-row:1/span 2; }
+.journey>.steps { grid-column:2;grid-row:1; }
+.journey>.panel { grid-column:2;grid-row:2; }
+@media(max-width:800px){
+  .world,#world[data-preview='true'] { height:480px; }
+  .realm-districts { grid-template-columns:repeat(3,minmax(0,1fr));padding:4px 12px; }
+  .realm-stop { padding:8px; }
+  .realm-stop strong { font-size:15px; }
+  .journey { grid-template-columns:minmax(0,1fr); }
+  .journey>.quest,.journey>.steps,.journey>.panel { grid-column:auto;grid-row:auto; }
+  .world-navigation { justify-content:center;padding:8px 12px; }
+  .world-navigation span { flex-basis:100%;text-align:center; }
+  .board-heading { padding:14px; }
+  .board-heading h2 { font-size:22px; }
+  .board-foot { padding:10px 12px;flex-direction:column;align-items:stretch; }
+  .world-preview { margin:4px 12px 8px; }
+  .realm-marker { max-width:104px;font-size:11px;padding:4px 6px; }
+  .realm-marker small { font-size:10px; }
+}
+@media(max-width:640px){
+  .board-heading { display:block;padding:12px 14px; }
+  .board-heading h2 { font-size:21px;line-height:1.2; }
+  .board-heading .eyebrow { margin-bottom:7px;font-size:10px; }
+  .board-tools { margin-top:9px;justify-content:flex-start; }
+  .board-tools button { min-height:32px;padding:5px 9px;font-size:13px; }
+  .realm-progress-summary { font-size:14px; }
+  .world-navigation { gap:5px;padding:7px 10px; }
+  .world-navigation button { min-width:32px;min-height:36px;font-size:13px;padding:5px 8px; }
+  .world-navigation span { font-size:11px;line-height:1.3; }
+  .realm-focus-status { margin:5px 12px 9px;font-size:14px; }
+  .world,#world[data-preview='true'] { height:280px; }
+  .realm-map[data-focused='true'] .world,.realm-map[data-focused='true'] #world[data-preview='true'] { height:400px; }
+  .realm-map[data-focused='false'] .realm-markers { display:none; }
+}

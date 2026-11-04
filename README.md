@@ -1,6 +1,6 @@
 # Our Castle
 
-A cooperative household savings journey. A family (or one person) founds a house, chooses a crest, and travels a pixel woodland board past deer, a brook and a plank bridge. As real, adult-approved contributions reach shared milestones, their cottage grows into a manor, a keep and finally a castle.
+A cooperative household savings journey. A family (or one person) founds a house, chooses a crest, and travels a connected pixel realm. Their starting village stays in place as milestones open separate manor grounds, a keep and a royal citadel across waterways and drawbridges. Future districts remain visible in grey until unlocked.
 
 Formerly the working name "Our House". The original art starter (`/art-preview.html`) and its reference captures (`references/images/our-house-*.png`) keep that name as preserved references.
 
@@ -27,9 +27,9 @@ Built for the PayPal AI Hackathon as a local prototype, with PayPal at the cente
 | AI house steward with PayPal Agent Toolkit (read-only) | **Verified live (Nov 3, 2026)**: Claude reads the household ledger and lists sandbox transactions through the Agent Toolkit, with no unverified figures. Specific-order `get_order` reconciliation still needs an in-app payment |
 | AG Grid ledger | Working (AG Grid Community, MIT), with a plain-table fallback |
 | Living world and sound | Grazing deer and butterflies at a low idle frame rate (off for reduced motion); synthesized Web Audio cues, off until turned on |
-| Wider estate (second version) | Working: a 42×30 island with a waterfall bluff, river, mill, bridges, pond, orchard, farms, windmill and hamlet around the route. Detailed homes for every tier. Zoom, turn, pan and reset controls; the default view fits the whole island on desktop and phone. Screenshots in [docs/screenshots](docs/screenshots) |
+| Connected realm (current world) | Working: six separate districts across a 164×114 map, joined by six drawbridges over blue waterways. Future buildings and grounds remain visible in grey with raised bridges. Earned destinations open their crossings while earlier buildings remain. Full-width overview, district inspection, zoom, turn, pan and reset. Screenshots in [docs/screenshots](docs/screenshots) |
 | Estate additions and Rewards view | Working: porch, village quarter and outer ramparts at 10/40/80% of the goal, earned from the goal ledger. Kept as keepsakes after a refund and announced when newly reached. The Rewards tab shows each condition, its exact progress and the evidence source, with labeled art-only previews |
-| Living royal court | Cottage/manor/keep/castle welcome 2/6/12/20 wandering guests. Three original princesses arrive across the tiers among musicians, nobles, gardeners, merchants, pages and ceremonial guards. Shared instanced models stroll and visit on the existing ambient clock; reduced motion keeps the complete cast still. Future courts are available as labeled art previews |
+| Living royal court | Cottage/manor/keep/castle welcome 2/6/12/20 wandering guests in total, distributed across the districts that welcomed them. Three original princesses arrive across the tiers among musicians, nobles, gardeners, merchants, pages and ceremonial guards. Shared instanced models stroll and visit on the existing ambient clock; reduced motion keeps the complete cast still. Future courts are available as labeled art previews |
 | Bill-confirmed rewards (e.g. SDG&E) | **Not built; proposal only.** No bill provider is connected. These rewards are shown locked as "needs a provider connection", and the app cannot mark a bill verified. See [docs/BILL-VERIFICATION-RESEARCH.md](docs/BILL-VERIFICATION-RESEARCH.md) |
 | Postman collection | Example-mode folder run with Newman: 10 requests, 21/21 assertions passed. Sandbox folder needs credentials |
 | Verified webhooks | Implemented with PayPal signature verification; **unverified live** (needs a public tunnel and `PAYPAL_WEBHOOK_ID`) |

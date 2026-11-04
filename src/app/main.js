@@ -8,6 +8,7 @@ import { createLedgerGrid } from './ledger-grid.js';
 import { sound } from './sound.js';
 import { newlyEarnedEstate } from '../core/rewards.js';
 import { courtForTier } from '../core/court.js';
+import { REALM_DISTRICTS, realmAccess, districtById, homeDistrict } from '../core/realm.js';
 
 // ---------- small helpers ----------
 const $ = (selector, root = document) => root.querySelector(selector);
@@ -97,6 +98,7 @@ async function boot() {
       reducedMotion: matchMedia('(prefers-reduced-motion: reduce)').matches,
       onEvent: (type, detail) => bus.emit(`scene:${type}`, detail),
       insets: worldInsets,
+      onViewChange: syncRealmMarkers,
     });
   } catch (error) {
     console.warn('[our-castle] 3D board unavailable', error);
@@ -189,7 +191,8 @@ function renderQuest() {
 function renderBoard({ animate, result, added = [] }) {
   const { board, household, goal, progress } = state;
   const built = TIERS[board.builtTier];
-  $('#board-title').textContent = board.tierTitle;
+  $('#board-title').textContent = 'Your connected realm';
+  $('#realm-progress-summary').textContent = `${goal.name} · ${money(progress.progressCents)} of ${money(goal.targetCents)} tracked`;
   $('#world-preview').hidden = true;
   $('#world').dataset.preview = 'false';
   let status = board.position >= ROUTE_LENGTH
@@ -197,10 +200,11 @@ function renderBoard({ animate, result, added = [] }) {
     : `Travelers on space ${board.position} of ${ROUTE_LENGTH} · ${board.spaceName}. `;
   status += board.builtTierCommemorative
     ? `The ${built.name} commemorates a milestone reached earlier; current progress is ${formatPercent(progress.progressCents, goal.targetCents)}.`
-    : `The ${built.name.toLowerCase()} stands at the center.`;
+    : `The ${built.name.toLowerCase()} district is open; future districts remain grey beyond raised bridges.`;
   if (board.gardens) status += ` ${board.gardens} garden bed${board.gardens === 1 ? '' : 's'} for bill habits.`;
   status += ` ${courtForTier(board.builtTier).capacity} guests roam the grounds.`;
   $('#board-status').textContent = status;
+  renderRealmNavigation();
   $('#tier-track').replaceChildren(...board.tiers.map((t) => h('li', {
     class: [t.built ? 'built' : '', t.index === board.currentTier ? 'current' : ''].join(' ').trim(),
     'aria-current': t.index === board.currentTier ? 'step' : false,
@@ -260,8 +264,38 @@ function previewReward(reward) {
     estateLevel: reward.previewEstateLevel ?? state.board.estateLevel,
     gardens: reward.previewFeature === 'habit-garden' ? 4 : state.board.gardens,
     previewFeature: reward.previewFeature ?? null,
-  }, { animate: false });
-  if (matchMedia('(max-width: 1180px)').matches) $('#world-preview').scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth', block: 'center' });
+  }, { animate: false }).then(()=>{
+    const id = reward.id==='estate:market'?'market':reward.previewFeature==='water'||reward.previewFeature==='habit-garden'?'garden':homeDistrict(previewTier).id;
+    scene.focusDistrict(id);
+  });
+  $('.board-shell').scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth', block: 'start' });
+}
+
+function districtCondition(district) {
+  if(district.percent===null)return 'Record an on-time bill habit · reported by you';
+  if(district.percent===0)return 'Starting district';
+  const required=Math.ceil(state.goal.targetCents*district.percent/100),remaining=Math.max(0,required-state.progress.progressCents);
+  return `${district.percent}% · ${money(required)} tracked${remaining?` · ${money(remaining)} to go`:''}`;
+}
+function renderRealmNavigation(){
+  const regions=realmAccess({builtTier:state.board.builtTier,estateLevel:state.board.estateLevel,gardens:state.board.gardens});
+  $('#realm-districts').replaceChildren(...regions.map(d=>h('button',{type:'button',class:'realm-stop','data-district':d.id,'data-status':d.status,'aria-pressed':'false'},h('strong',{},d.name),h('small',{},d.open?'Open district':`Locked · ${d.percent===null?'bill habit':`${d.percent}%`}`))));
+  $('#realm-markers').replaceChildren(...regions.map(d=>h('button',{type:'button',class:'realm-marker','data-district':d.id,'data-status':d.status,'aria-label':`Inspect ${d.name} on the map`,hidden:true},h('strong',{},d.name),h('small',{},d.open?'Open':`Locked · ${d.percent===null?'bill habit':`${d.percent}%`}`))));
+  $('#realm-focus-status').textContent='Six connected districts · grey buildings and raised bridges show what is still locked. Select a district to look closer.';
+}
+function syncRealmMarkers({focus,points}){
+  const map=$('.realm-map'),focused=focus?'true':'false';if(map.dataset.focused!==focused)map.dataset.focused=focused;
+  for(const point of points){
+    const el=$(`#realm-markers [data-district="${point.id}"]`);if(!el)continue;
+    const visible=(!focus||point.id===focus)&&point.x>40&&point.x<point.width-40&&point.y>45&&point.y<point.height;
+    el.hidden=!visible;if(visible){const x=`${point.x}px`,y=`${point.y}px`;if(el.style.left!==x)el.style.left=x;if(el.style.top!==y)el.style.top=y;}
+  }
+  for(const button of $$('#realm-districts button')){const value=String(button.dataset.district===focus);if(button.getAttribute('aria-pressed')!==value)button.setAttribute('aria-pressed',value);}
+  if(!state)return;
+  const regions=realmAccess({builtTier:state.board.builtTier,estateLevel:state.board.estateLevel,gardens:state.board.gardens});
+  const d=regions.find(d=>d.id===focus);
+  const message=focus?`${d.name} · ${d.open?'Open district':'Locked'} · ${districtCondition(d)}${ui.preview?' · Viewing an art preview':''}`:`${ui.preview?'Art preview · ':''}Whole realm · ${regions.filter(d=>d.open).length}/6 districts earned. Select a grey destination to inspect its lock.`;
+  if($('#realm-focus-status').textContent!==message)$('#realm-focus-status').textContent=message;
 }
 
 function celebrate(awarded, added = []) {
@@ -893,6 +927,7 @@ function renderFooter() {
 }
 
 function bindEvents() {
+  for(const root of [$('#realm-districts'),$('#realm-markers')])root.addEventListener('click',e=>{const button=e.target.closest('[data-district]');if(button){scene?.focusDistrict(button.dataset.district);$('.board-shell').scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth',block:'start'});}});
   $('#tabs').addEventListener('click', (e) => { const b = e.target.closest('[role="tab"]'); if (b) selectTab(b.id.slice(4), { focus: false }); });
   $('#tabs').addEventListener('keydown', (e) => {
     const i = TABS.indexOf(ui.tab);

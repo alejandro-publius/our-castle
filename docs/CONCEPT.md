@@ -1,5 +1,11 @@
 # Our Castle — concept and decisions
 
+## Latest owner correction: a connected realm
+
+The owner expected bigger buildings to remain visible as **separate connected destinations**, greyed out behind bridges/moats until unlocked. They explicitly rejected continuing to replace one central building on a small plot. This replaces that part of the earlier spatial proposal below.
+
+The current implementation arranges six districts across a 164×114 world: the starting village, manor gardens, market town, woodland garden, keep and royal citadel. These names, dimensions and arrangement are implementation choices for that direction. The existing financial thresholds, private/sandbox scope and evidence distinctions stay intact. Earlier homes remain, bridges lower as their destinations are earned, and later courts add inhabitants to their own districts. Locked destinations can be inspected without unlocking them; art previews are explicitly labeled.
+
 ## User's direction
 
 Adapt the existing pixelated medieval art family to a Monopoly-like board game. A person can save alone or alongside family as one "house" with a crest. Progress unlocks larger houses and castles. The token moves around a map past deer, plants, trees and wilderness. Paid bills, money sent and savings are possible inputs; the user explicitly said the exact financial rules were not decided yet. This is for the PayPal AI Hackathon.
@@ -24,7 +30,7 @@ Choose a house/crest → set a shared goal → review an AI plan → approve a s
 
 ## Keep out of the first build
 
-Real savings custody, interest, investments, bank-account balances, arbitrary automatic bill discovery, real-money transfers, punitive house demolition, public financial leaderboards, property gambling, RPS combat, multiplayer AR, a broad open world and a general financial chatbot. (The second version's wider estate is still one bounded board around the route, not an open world.)
+Real savings custody, interest, investments, bank-account balances, arbitrary automatic bill discovery, real-money transfers, punitive house demolition, public financial leaderboards, property gambling, RPS combat, multiplayer AR and a general financial chatbot. The current realm is a bounded, explorable six-district map; it preserves the twenty-step financial journey.
 
 PayPal sandbox is the required demonstration environment. The app tracks goal progress; it must not imply that the internal goal ledger is a regulated savings account or that Checkout proves a family's overall savings balance. Check product support before proposing any real-world family pooling arrangement.
 
