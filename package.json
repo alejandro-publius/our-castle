@@ -14,7 +14,8 @@
     "test:unit": "node --test \"test/unit/**/*.test.mjs\"",
     "test:e2e": "playwright test",
     "reset-demo": "node scripts/reset-demo.mjs",
-    "verify:live": "node scripts/verify-live.mjs"
+    "verify:live": "node scripts/verify-live.mjs",
+    "set-ai-key": "node scripts/set-ai-key.mjs"
   },
   "engines": {
     "node": ">=22.16"

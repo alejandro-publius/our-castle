@@ -3,6 +3,11 @@
 // mismatch checks, PayPal's own view of the order, the AI steward's Agent Toolkit check and a refund.
 // The only manual step is approving the order in a browser with a sandbox BUYER account.
 // Writes docs/LIVE-VERIFICATION.md. Uses a temporary database, never the app's data files.
+//
+// --ai-only: check only the runtime AI (planner and steward, with the steward's read-only PayPal Agent Toolkit
+// tools). No PayPal order is created, so nothing needs approval. Writes docs/LIVE-VERIFICATION-AI.md, so the
+// payment evidence in LIVE-VERIFICATION.md is never overwritten. Without AI_API_KEY it reports the AI checks as
+// pending and exits cleanly, without retrying.
 import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -23,6 +28,13 @@ const root = fileURLToPath(new URL('../', import.meta.url));
 const { env, envFileLoaded } = readEnvironment({ root });
 const config = loadConfig(env, { root });
 const approvalMinutes = Number(process.argv.find((a) => a.startsWith('--wait='))?.slice(7) ?? 10);
+const aiOnly = process.argv.includes('--ai-only');
+const reportName = aiOnly ? 'LIVE-VERIFICATION-AI.md' : 'LIVE-VERIFICATION.md';
+if (aiOnly && config.ai.mode !== 'live') {
+  console.log('AI checks: PENDING — no AI_API_KEY in .env (run npm run set-ai-key in your own terminal).');
+  console.log('Nothing was called, no PayPal order was created and no report was written.');
+  process.exit(0);
+}
 const report = [];
 const results = [];
 const log = (line = '') => { console.log(line); report.push(line); };
@@ -38,7 +50,7 @@ setupHousehold(db, DEMO_HOUSEHOLD_ID, { playMode: 'family', name: 'House of Alde
 const goalInput = { name: 'Camping trip fund', targetCents: 30000, startingCents: 6000, weeklyBudgetCents: 3000, targetDate: addDays(clock.today(), 56) };
 updateGoal(db, DEMO_GOAL_ID, goalInput, clock);
 
-log(`# Live verification — ${new Date().toISOString()}`);
+log(`# Live verification${aiOnly ? ' (AI only)' : ''} — ${new Date().toISOString()}`);
 log();
 log(`.env loaded: ${envFileLoaded ? 'yes' : 'no'} · payments: ${config.payments.mode} · AI: ${config.ai.mode}${config.ai.mode === 'live' ? ` (${config.ai.model})` : ''}`);
 log('Sandbox only. Temporary database; the app\'s own data files were not touched. No secrets are printed.');
@@ -70,7 +82,8 @@ let captureId = null;
 let orderId = null;
 let service = null;
 let paypal = null;
-if (config.payments.mode !== 'sandbox') record('Sandbox order, approval and capture', null, 'no PayPal sandbox credentials in .env');
+if (aiOnly) log('Not run (--ai-only): no PayPal order was created and nothing needed approval. The buyer-approved payment is verified separately (see VALIDATION.md).');
+else if (config.payments.mode !== 'sandbox') record('Sandbox order, approval and capture', null, 'no PayPal sandbox credentials in .env');
 else {
   paypal = createPayPalSdkClient({ clientId: config.payments.clientId, clientSecret: config.payments.clientSecret });
   service = createContributionService({ db, clock, mode: 'sandbox', paypal, webhookId: config.payments.webhookId });
@@ -114,7 +127,32 @@ log();
 
 // ---------- Steward ----------
 log('## AI house steward (PayPal Agent Toolkit, read-only)');
-if (config.ai.mode !== 'live' || !service) record('Steward verifies the payment with PayPal', null, 'needs both AI_API_KEY and PayPal sandbox credentials');
+if (aiOnly) {
+  const sandbox = config.payments.mode === 'sandbox';
+  const readService = createContributionService({ db, clock, mode: sandbox ? 'sandbox' : 'example', paypal: sandbox ? createPayPalSdkClient({ clientId: config.payments.clientId, clientSecret: config.payments.clientSecret }) : null, webhookId: config.payments.webhookId });
+  const paypalTools = sandbox ? createPayPalReadTools({ clientId: config.payments.clientId, clientSecret: config.payments.clientSecret }) : null;
+  const steward = createSteward({ db, contributions: readService, householdId: DEMO_HOUSEHOLD_ID, ai: { apiKey: config.ai.apiKey, model: config.ai.model }, paypalTools, clock });
+  const question = sandbox
+    ? 'How close are we to the Manor? Please also check PayPal for any sandbox transactions in the last 7 days.'
+    : 'How close are we to the Manor?';
+  try {
+    const { value: res, ms } = await timed(() => steward.ask({ question, memberId: 'm_wren' }));
+    if (res.status !== 'ok') record('Steward answered with live AI', false, `${res.error.kind}: ${res.error.message}`);
+    else {
+      record('Steward answered with live AI', true, `${res.model}, ${ms} ms`);
+      const ledgerCheck = res.checks.find((c) => c.tool === 'read_household_ledger');
+      record('Steward read the household ledger', Boolean(ledgerCheck), ledgerCheck?.summary);
+      if (sandbox) {
+        const txCheck = res.checks.find((c) => c.tool === 'list_transactions');
+        record('Steward listed PayPal transactions through the Agent Toolkit (read-only)', Boolean(txCheck), txCheck?.summary ?? 'the model did not call list_transactions');
+      } else record('Steward used the PayPal Agent Toolkit', null, 'no PayPal sandbox credentials in .env');
+      record('Steward answer had no unverified figures', res.warnings.length === 0, res.warnings.join(' '));
+      log(`  Question: "${question}"`);
+      log(`  Answer: "${res.answer}"`);
+    }
+  } catch (error) { record('Steward answered with live AI', false, error.message); }
+  record('Steward reconciles a real household order with PayPal (get_order)', null, 'needs a household PayPal order; check it in the app after the next in-page payment (Ledger tab → "Did PayPal confirm our last contribution?")');
+} else if (config.ai.mode !== 'live' || !service) record('Steward verifies the payment with PayPal', null, 'needs both AI_API_KEY and PayPal sandbox credentials');
 else if (!captureId) record('Steward verifies the payment with PayPal', null, 'no captured order to verify');
 else {
   const steward = createSteward({ db, contributions: service, householdId: DEMO_HOUSEHOLD_ID, ai: { apiKey: config.ai.apiKey, model: config.ai.model }, paypalTools: createPayPalReadTools({ clientId: config.payments.clientId, clientSecret: config.payments.clientSecret }), clock });
@@ -131,8 +169,9 @@ else {
 log();
 
 // ---------- Refund ----------
-log('## Sandbox refund');
-if (!service || !captureId) record('Refund reverses progress once', null, 'no captured order');
+if (!aiOnly) log('## Sandbox refund');
+if (aiOnly) { /* no order, so nothing to refund */ }
+else if (!service || !captureId) record('Refund reverses progress once', null, 'no captured order');
 else {
   try {
     const before = progressFor(db, DEMO_GOAL_ID).progressCents;
@@ -140,12 +179,12 @@ else {
     record('Refund reverses progress once', refunded.outcome === 'refunded' && refunded.progress.progressCents === before - 1500, `${refunded.outcome}, progress ${formatCents(before)} → ${formatCents(refunded.progress.progressCents)}`);
   } catch (error) { record('Refund reverses progress once', false, error.message); }
 }
-log();
+if (!aiOnly) log();
 
 const failed = results.filter((r) => r.ok === false).length;
 const skipped = results.filter((r) => r.ok === null).length;
-log(`**${results.length - failed - skipped} passed, ${failed} failed, ${skipped} skipped.** Still manual: the browser PayPal button (JS SDK v6) and webhooks through a tunnel.`);
-writeFileSync(path.join(root, 'docs/LIVE-VERIFICATION.md'), `${report.join('\n')}\n`);
-console.log('\nReport written to docs/LIVE-VERIFICATION.md');
+log(`**${results.length - failed - skipped} passed, ${failed} failed, ${skipped} skipped.** Still manual: the browser PayPal button (JS SDK v6)${aiOnly ? ', the steward\'s get_order reconciliation after a real in-app payment' : ''} and webhooks through a tunnel.`);
+writeFileSync(path.join(root, 'docs', reportName), `${report.join('\n')}\n`);
+console.log(`\nReport written to docs/${reportName}`);
 db.close();
 process.exit(failed ? 1 : 0);

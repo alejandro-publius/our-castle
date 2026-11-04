@@ -49,7 +49,10 @@ With no `.env` file the app runs in **example mode**: payments are simulated by 
 
 1. Copy `.env.example` to `.env` (server-side only; it is git-ignored and never served).
 2. PayPal: create a **sandbox** REST app at developer.paypal.com and put its client id and secret in `PAYPAL_CLIENT_ID` / `PAYPAL_CLIENT_SECRET`. `PAYPAL_ENV` must be `sandbox`; the code has no live endpoint (the Server SDK is fixed to `Environment.Sandbox` and the Agent Toolkit to `sandbox: true`).
-3. AI: set `AI_PROVIDER=anthropic`, `AI_MODEL=claude-opus-5-5` and an application API key from the Anthropic Console in `AI_API_KEY`. The server reads only `AI_API_KEY`; it never uses `ANTHROPIC_API_KEY` or a coding assistant's login.
+3. AI: create an API key in the Anthropic Console (https://console.anthropic.com/settings/keys), then run `npm run set-ai-key` in your own terminal and paste it.
+   - The script hides the key as you paste and accepts only Console API keys (`sk-ant-api…`). It refuses Claude subscription/OAuth tokens, like the one Claude Code signs in with.
+   - It writes `AI_API_KEY` to `.env` with owner-only permissions. Every other line, including the PayPal settings, is kept. `AI_PROVIDER=anthropic` and `AI_MODEL=claude-opus-5-5` are filled in if missing.
+   - The server reads only `AI_API_KEY`. It never uses `ANTHROPIC_API_KEY` or a coding assistant's login.
 4. Restart `npm start`. The startup log and the header badges show "PayPal sandbox" and "AI planner"; the Ledger tab's steward shows "PayPal Agent Toolkit". Sandbox data is kept in a separate database file from example data.
 5. Pay with a **sandbox personal (buyer) account** from the PayPal developer dashboard.
 
@@ -61,6 +64,11 @@ With no `.env` file the app runs in **example mode**: payments are simulated by 
 - a refund.
 
 It uses a temporary database and writes the evidence to `docs/LIVE-VERIFICATION.md`.
+
+**AI-only check.** `npm run verify:live -- --ai-only` runs the AI plan, the impossible-target plan and a steward question that reads the ledger and lists recent sandbox transactions through the Agent Toolkit.
+- No PayPal order is created, so nothing needs approval.
+- It writes `docs/LIVE-VERIFICATION-AI.md`, leaving the payment evidence alone.
+- Without `AI_API_KEY`, it reports the AI checks as pending and exits.
 
 Optional webhooks: expose the local server through a tunnel, add a webhook in the sandbox app pointing to `https://<tunnel>/api/paypal/webhook` for `PAYMENT.CAPTURE.COMPLETED`, `PAYMENT.CAPTURE.PENDING`, `PAYMENT.CAPTURE.DENIED`, `PAYMENT.CAPTURE.REFUNDED` and `PAYMENT.CAPTURE.REVERSED`, then set `PAYPAL_WEBHOOK_ID`. Without it, captures still complete synchronously; unverified webhook deliveries are always refused.
 
@@ -85,6 +93,7 @@ npm test              # integrity check + unit tests + browser end-to-end tests
 npm run test:unit     # node --test (ledger, payments on both PayPal adapters, planner, steward, HTTP, Postman files)
 npm run test:e2e      # Playwright, desktop 1440px and phone 390px, example mode
 npm run check         # asset hashes, 90-color palette, renderer wiring, JS syntax
+npm run set-ai-key    # store an Anthropic Console API key in .env, hidden as you paste (run in your own terminal)
 npm run reset-demo    # erase the local example household (add --include-sandbox to also erase sandbox records)
 npm run art-preview   # the original static art preview server
 ```
