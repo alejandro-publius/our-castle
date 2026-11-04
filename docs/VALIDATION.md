@@ -1,5 +1,43 @@
 # Validation
 
+## November 4, 2026: the Postman sandbox folder is off by default
+
+**The gap.** The example-folder guard (next section) stops at its own folder. Running the whole collection after a successful folder 1 would have continued into folder 2. Folder 2 calls the app on `baseUrl` (the owner's sandbox app on 3010) and PayPal directly on `paypalApiBase`, and its steps 2.2 and 2.10 create sandbox orders.
+
+**The fix.**
+- Folder 2 has a folder-level pre-request guard with no network call of its own.
+- Unless `allowSandboxRequests` is exactly `"yes"` for the run, the guard uses the same mechanism tested for folder 1. It records a failing `BLOCKED "<request>" (not sent)` assertion, calls `pm.execution.setNextRequest(null)`, then calls `pm.execution.skipRequest()`.
+- The committed environment and collection defaults are empty strings, so folder 2 is off.
+- The opt-in is a developer test permission only. Adult approval in the app and sandbox buyer approval in PayPal are unchanged.
+- Docs now pin the tested runtime as `npx --yes newman@6.2.1`. On this Mac, `npx --offline --yes newman@6.2.1` resolved to the cached 6.2.1 with no download and no new cache entry. The check script refuses any other Newman version.
+
+**Real Newman 6.2.1, `npm run check:postman-guard`: 16 passed, 0 failed.** That is the 12 folder-1 cases from the next section plus four new cases. In every folder-2 case, both destinations pointed at local logging stubs: the app (`baseUrl`) and the PayPal API (`paypalApiBase`).
+
+| Case | Result |
+| --- | --- |
+| **Whole collection, no opt-in** (what an accident looks like) | Folder 1 ran against a fresh example server: temporary database, no `.env`, empty keys, behind a logging proxy. It sent its 10 requests. Folder 2 stopped at 2.1. **App stub 0 requests, PayPal stub 0.** Newman counted 20 requests, and exactly 20 were logged locally, so nothing went anywhere else. The only failure was `BLOCKED "2.1 Server is in PayPal sandbox mode" (not sent)`; exit 1 |
+| Folder 2 alone, no opt-in | App stub 0, PayPal stub 0, Newman 0 requests; exit 1; stopped after 2.1 |
+| Folder 2 alone, `allowSandboxRequests=true` (not exactly `yes`) | Same: 0 requests anywhere; exit 1 |
+| Folder 2, `allowSandboxRequests=yes`, **stubs only** | The guard let the run through: app stub 8 requests, PayPal stub 3 (token, order lookup, direct order create). Newman counted 11. There was no `BLOCKED` failure. The stubs' fake replies fail folder 2's own assertions, as expected: this proves the opt-in path, not the sandbox |
+
+**Visible CLI result:** the whole collection ran with the pinned `npx --offline --yes newman@6.2.1`, against a throwaway example server on 3134, with `baseUrl` and `paypalApiBase` pointed at a closed local port.
+- Output showed `BLOCKED "2.1 Server is in PayPal sandbox mode" (not sent): sandbox requests are off by default; allowSandboxRequests is "", not "yes".`
+- Newman's table: 20 requests, 32 assertions with 1 failed; exit 1.
+- The server was then stopped.
+
+**Unit tests:** `node --test test/unit/postman.test.mjs`, 8 passed. New tests check that:
+- the committed defaults are empty;
+- each folder has its own guard, and the sandbox guard sends nothing of its own;
+- ten non-`yes` values all block (missing, empty, `no`, `true`, `1`, `YES`, `Yes`, padded, `y`), and only `yes` passes.
+
+Loosening the comparison to `!optIn` failed the guard test, and committing `"yes"` as the default failed the defaults test. Both files were restored.
+
+**Not done:**
+- Folder 2 was never run against the app on 3010 or against PayPal.
+- No sandbox order was created and no AI call was made.
+- The owner's household was read only through `GET /api/status` and `GET /api/state`, and matched the saved baseline.
+- Other suites were not rerun.
+
 ## November 4, 2026: fail-closed guard for the Postman example folder
 
 **The gap.** Folder 1 of the Postman collection writes and calls the planner and steward. It used the same `baseUrl` default as folder 2, `http://localhost:3010`, which is where the owner's sandbox app with live AI runs. Run as documented on that Mac, it would have renamed the sandbox household, logged a bill and made paid AI calls.

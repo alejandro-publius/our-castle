@@ -27,7 +27,7 @@ The app already runs at **http://localhost:3010**. It was started from `~/projec
   OUR_CASTLE_ENV_FILE=none OUR_CASTLE_DATA_DIR="$(mktemp -d)" PAYPAL_CLIENT_ID= PAYPAL_CLIENT_SECRET= AI_API_KEY= PORT=3134 npm start
   ```
 
-  If it prints `Error: listen EADDRINUSE` instead of `Payments: EXAMPLE mode`, stop. Something else owns the port, so don't reuse or reset it. Pick another free port.
+  If it prints `Error: listen EADDRINUSE` instead of `Payments: EXAMPLE mode`, stop. Something else owns the port; don't reuse it, reset it or run Postman against it.
 
 ### From a clean clone
 
@@ -65,8 +65,9 @@ npm start          # http://localhost:3010, example mode
 | `npm run test:e2e` / `npm test` | Its own example-mode server on port 3111 with `test-results/e2e-data`; ignores `.env` | Safe; takes several minutes |
 | `npm start` | Reads `.env`, opens `data/our-castle-sandbox.sqlite` | Only when 3010 is not already running |
 | The throwaway example-mode command above | A new temporary folder | Safe |
-| `npx newman run … --folder "1 · …"` | **Writes** to `exampleBaseUrl` (default `localhost:3134`): resets, founds a house, logs a bill, asks the planner and steward. A guard refuses to send anything unless that server reports example payments and example AI | Against the throwaway copy, with `--env-var "exampleBaseUrl=http://localhost:3134"` (see the [README](../README.md#postman)). Always pass `--folder`: folder 2 creates a sandbox order on `baseUrl` (3010) |
-| `npm run check:postman-guard` | Logging mock servers and its own temporary example server on free ports; never 3010 | Safe; no PayPal or AI calls |
+| `npx --yes newman@6.2.1 run … --folder "1 · …"` | **Writes** to `exampleBaseUrl` (default `localhost:3134`): resets, founds a house, logs a bill, asks the planner and steward. A guard refuses to send anything unless that server reports example payments and example AI | Against the throwaway copy, with `--env-var "exampleBaseUrl=http://localhost:3134"` (see the [README](../README.md#postman)) |
+| Postman folder 2, or the whole collection | Folder 2 creates sandbox orders on `baseUrl` (3010) and calls PayPal directly. It is **off by default** and sends nothing unless `allowSandboxRequests=yes` is set for that run | Don't opt in without the owner; a run without the opt-in stops with a `BLOCKED` failure |
+| `npm run check:postman-guard` | Logging mock servers and its own temporary example server on free ports; never 3010 or PayPal | Safe; no PayPal or AI calls. Needs Newman 6.2.1 |
 | `npm run reset-demo` | **Deletes** `data/our-castle-example.sqlite`, if present | Avoid unless you mean it. **Never** add `--include-sandbox` (it deletes the sandbox household) |
 | `npm run set-ai-key` | Rewrites `.env`, keeping the other lines | Not needed: the key is already configured |
 | `npm run verify:live` | Creates a **new sandbox order** that a sandbox buyer must approve, and calls the AI | Owner's decision. It already passed (7/0/2); don't repeat it without a reason |

@@ -1,12 +1,13 @@
 {
   "info": {
     "name": "Our Castle — local API and PayPal sandbox",
-    "description": "Step-by-step requests for the Our Castle prototype.\n\nFolder 1 runs against a throwaway server in example mode (no credentials) at {{exampleBaseUrl}}, default http://localhost:3134: every payment is simulated and labeled. Its guard refuses to send anything unless GET /api/status reports example payments and example AI.\nFolder 2 needs the server running with PayPal sandbox credentials in its .env file, plus the same sandbox client id/secret in the Postman environment for the direct PayPal requests. Open the approveUrl from step 2.2 in a browser and approve with a sandbox buyer account before running 2.3.\n\nNever put real (live) credentials here. Sandbox only.",
+    "description": "Step-by-step requests for the Our Castle prototype.\n\nFolder 1 runs against a throwaway server in example mode (no credentials) at {{exampleBaseUrl}}, default http://localhost:3134: every payment is simulated and labeled. Its guard refuses to send anything unless GET /api/status reports example payments and example AI.\nFolder 2 is off by default: it sends nothing unless allowSandboxRequests is exactly \"yes\" for the run. It needs the server running with PayPal sandbox credentials in its .env file, plus the same sandbox client id/secret in the Postman environment for the direct PayPal requests. Open the approveUrl from step 2.2 in a browser and approve with a sandbox buyer account before running 2.3.\n\nNever put real (live) credentials here. Sandbox only.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
     { "key": "baseUrl", "value": "http://localhost:3010" },
     { "key": "exampleBaseUrl", "value": "http://localhost:3134" },
+    { "key": "allowSandboxRequests", "value": "" },
     { "key": "householdId", "value": "hh_demo" },
     { "key": "goalId", "value": "goal_demo" },
     { "key": "adultId", "value": "m_rowan" },
@@ -148,6 +149,21 @@
     },
     {
       "name": "2 · PayPal sandbox walkthrough (needs sandbox credentials)",
+      "description": "Off by default. Sends real PayPal sandbox requests (through {{baseUrl}} and directly to {{paypalApiBase}}) and creates sandbox orders, so a folder-level guard skips every request, fails the run and stops it unless allowSandboxRequests is exactly \"yes\" for this run. The opt-in is a developer test permission; adult approval in the app and sandbox buyer approval in PayPal are still required.",
+      "event": [{ "listen": "prerequest", "script": { "type": "text/javascript", "exec": [
+            "// Default-off developer opt-in. Every request in this folder reaches the PayPal sandbox, through the app or directly,",
+            "// and 2.2 and 2.10 create sandbox orders. Nothing here is sent unless allowSandboxRequests is exactly \"yes\" for this",
+            "// run, so running the whole collection by accident stops here. This is only a test permission: the app still needs an",
+            "// adult's approval for each contribution, and PayPal still needs a sandbox buyer to approve each order.",
+            "const optIn = pm.variables.get('allowSandboxRequests');",
+            "if (optIn !== 'yes') {",
+            "  pm.test(`BLOCKED \"${pm.info.requestName}\" (not sent): sandbox requests are off by default; allowSandboxRequests is ${JSON.stringify(optIn)}, not \"yes\".`, () => { throw new Error('Folder 2 calls the PayPal sandbox and creates sandbox orders. Run it only on purpose, with --folder \"2 · PayPal sandbox walkthrough (needs sandbox credentials)\" and --env-var \"allowSandboxRequests=yes\".'); });",
+            "  pm.execution.setNextRequest(null);",
+            "  pm.execution.skipRequest();",
+            "} else {",
+            "  pm.test('sandbox requests explicitly allowed for this run (allowSandboxRequests=yes)', () => {});",
+            "}"
+          ] } }],
       "item": [
         {
           "name": "2.1 Server is in PayPal sandbox mode",

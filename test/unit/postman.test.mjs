@@ -42,23 +42,38 @@ test('the example folder targets its own throwaway server, never the sandbox app
   }
   for (const r of exampleFolder.item) assert.match(urlOf(r), /^\{\{exampleBaseUrl\}\}\//, `${r.name} must use exampleBaseUrl`);
   for (const r of sandboxFolder.item) assert.doesNotMatch(urlOf(r), /exampleBaseUrl/, `${r.name} is a sandbox request`);
-  assert.ok(!sandboxFolder.event, 'the example guard is not attached to the sandbox folder');
 });
 
-// Run the folder-level guard exactly as written, against a stubbed pm API.
-const guard = exampleFolder.event.find((e) => e.listen === 'prerequest').script.exec.join('\n');
-function runGuard(exampleBaseUrl, answer) {
+const prerequest = (folder) => folder.event.find((e) => e.listen === 'prerequest').script.exec.join('\n');
+
+test('each folder has its own guard: the example guard checks modes, the sandbox guard only checks the opt-in', () => {
+  assert.match(prerequest(exampleFolder), /exampleBaseUrl/);
+  assert.doesNotMatch(prerequest(exampleFolder), /allowSandboxRequests/);
+  assert.match(prerequest(sandboxFolder), /allowSandboxRequests/);
+  assert.doesNotMatch(prerequest(sandboxFolder), /exampleBaseUrl|sendRequest/, 'the sandbox guard sends nothing of its own');
+});
+
+test('sandbox requests are off in every committed default', () => {
+  const values = Object.fromEntries(environment.values.map((v) => [v.key, v.value]));
+  const collectionVars = Object.fromEntries(collection.variable.map((v) => [v.key, v.value]));
+  assert.equal(values.allowSandboxRequests, '');
+  assert.equal(collectionVars.allowSandboxRequests, '');
+});
+
+// Run a folder-level guard exactly as written, against a stubbed pm API.
+function runScript(script, variables, requestName, answer) {
   const seen = { tests: [], skipped: false, next: undefined, sent: [] };
   const pm = {
-    variables: { get: (key) => (key === 'exampleBaseUrl' ? exampleBaseUrl : undefined) },
-    info: { requestName: '1.1 Reset the example household' },
+    variables: { get: (key) => variables[key] },
+    info: { requestName },
     test: (name, fn) => { try { fn(); seen.tests.push({ name, passed: true }); } catch { seen.tests.push({ name, passed: false }); } },
     execution: { setNextRequest: (v) => { seen.next = v; }, skipRequest: () => { seen.skipped = true; } },
     sendRequest: (request, callback) => { seen.sent.push(request); answer(callback); },
   };
-  vm.runInNewContext(guard, { pm, JSON });
+  vm.runInNewContext(script, { pm, JSON });
   return seen;
 }
+const runGuard = (exampleBaseUrl, answer) => runScript(prerequest(exampleFolder), { exampleBaseUrl }, '1.1 Reset the example household', answer);
 const reply = (code, body) => (cb) => cb(null, { code, json: () => (typeof body === 'function' ? body() : body) });
 const blocked = (seen) => seen.skipped && seen.next === null && seen.tests.length === 1 && !seen.tests[0].passed && seen.tests[0].name.startsWith('BLOCKED "1.1 Reset the example household" (not sent)');
 
@@ -91,4 +106,20 @@ test('the example folder guard fails closed: skips the request, fails the run an
     assert.ok(blocked(seen), `exampleBaseUrl ${JSON.stringify(value)} must block`);
     assert.equal(seen.sent.length, 0);
   }
+});
+
+test('the sandbox folder guard sends nothing unless allowSandboxRequests is exactly "yes"', () => {
+  const noRequest = () => assert.fail('the sandbox guard must not send a request of its own');
+  for (const value of [undefined, '', 'no', 'true', '1', 'YES', 'Yes', ' yes', 'yes ', 'y']) {
+    const seen = runScript(prerequest(sandboxFolder), { allowSandboxRequests: value }, '2.2 Create a sandbox order (the server sets the amount)', noRequest);
+    assert.ok(seen.skipped && seen.next === null, `${JSON.stringify(value)} must skip and stop`);
+    assert.equal(seen.tests.length, 1);
+    assert.equal(seen.tests[0].passed, false);
+    assert.ok(seen.tests[0].name.startsWith('BLOCKED "2.2 Create a sandbox order (the server sets the amount)" (not sent)'));
+    assert.equal(seen.sent.length, 0);
+  }
+  const allowed = runScript(prerequest(sandboxFolder), { allowSandboxRequests: 'yes' }, '2.2 Create a sandbox order (the server sets the amount)', noRequest);
+  assert.equal(allowed.skipped, false);
+  assert.equal(allowed.next, undefined);
+  assert.deepEqual(allowed.tests, [{ name: 'sandbox requests explicitly allowed for this run (allowSandboxRequests=yes)', passed: true }]);
 });

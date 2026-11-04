@@ -33,7 +33,7 @@ Built for the PayPal AI Hackathon as a local prototype, with PayPal at the cente
 | Estate additions and Rewards view | Working: porch, village quarter and outer ramparts at 10/40/80% of the goal, earned from the goal ledger. Kept as keepsakes after a refund and announced when newly reached. The Rewards tab shows each condition, its exact progress and the evidence source, with labeled art-only previews |
 | Living royal court | Cottage/manor/keep/castle welcome 2/6/12/20 wandering guests in total, distributed across the districts that welcomed them. Three original princesses arrive across the tiers among musicians, nobles, gardeners, merchants, pages and ceremonial guards. Shared instanced models stroll and visit on the existing ambient clock; reduced motion keeps the complete cast still. Future courts are available as labeled art previews |
 | Bill-confirmed rewards (e.g. SDG&E) | **Not built; proposal only.** No bill provider is connected. These rewards are shown locked as "needs a provider connection", and the app cannot mark a bill verified. See [docs/BILL-VERIFICATION-RESEARCH.md](docs/BILL-VERIFICATION-RESEARCH.md) |
-| Postman collection | Example-mode folder run with Newman against a fresh example server: 10 requests, 31/31 assertions passed. A fail-closed guard refuses to send anything unless the server reports example payments and example AI (checked with Newman against logging mock servers; see [docs/VALIDATION.md](docs/VALIDATION.md)). Sandbox folder needs credentials |
+| Postman collection | Example-mode folder run with Newman against a fresh example server: 10 requests, 31/31 assertions passed. A fail-closed guard refuses to send anything unless the server reports example payments and example AI. The sandbox folder is off by default and sends nothing without an explicit `allowSandboxRequests=yes`. Both guards were checked with Newman 6.2.1 against logging mock servers; see [docs/VALIDATION.md](docs/VALIDATION.md). The sandbox folder also needs credentials |
 | Verified webhooks | Implemented with PayPal signature verification; **unverified live** (needs a public tunnel and `PAYPAL_WEBHOOK_ID`) |
 
 See [docs/VALIDATION.md](docs/VALIDATION.md) for exactly which tests ran and the remaining credential-dependent checks.
@@ -87,6 +87,10 @@ Import `postman/our-castle.postman_collection.json` and `postman/our-castle.post
 - **Folder 1** walks the example-mode API: found the house, plan, adult-approved contribution, replay safety, child refusal, bills not counting, steward status and the cross-site guard.
 - **Folder 2** walks the real sandbox. Create an order through Our Castle and open its `approveUrl` to approve with a sandbox buyer. Then capture, replay, try a mismatched household, compare with PayPal's own `GET /v2/checkout/orders`, ask the steward to verify, refund, and confirm that an order created outside Our Castle is refused.
 
+  Folder 2 is **off by default**. Its folder-level guard sends nothing, records a `BLOCKED … (not sent)` failure and stops the run unless `allowSandboxRequests` is exactly `yes` for that run.
+  - **Opt in on purpose:** in the Postman app, set `allowSandboxRequests` to `yes` in the environment for that session, then clear it. With Newman, add `--env-var "allowSandboxRequests=yes"` to a `--folder "2 · PayPal sandbox walkthrough (needs sandbox credentials)"` run.
+  - **What the opt-in is not:** it is only a developer test permission. It does not replace an adult's approval in the app or a sandbox buyer's approval in PayPal, and step 2.2 still creates a sandbox order.
+
 Folder 1 writes. It resets the example household, founds a house, logs a bill, and asks the planner and steward. Run it only against a **throwaway example-mode server**:
 
 - Folder 1 uses its own `exampleBaseUrl` variable (default `http://localhost:3134`). It no longer uses `baseUrl` (default `http://localhost:3010`), which folder 2 uses for the sandbox app.
@@ -101,15 +105,17 @@ This blocks:
 # Terminal 1: start a new example-mode server on a free port, with a temporary database and no keys.
 OUR_CASTLE_ENV_FILE=none OUR_CASTLE_DATA_DIR="$(mktemp -d)" PAYPAL_CLIENT_ID= PAYPAL_CLIENT_SECRET= AI_API_KEY= PORT=3134 npm start
 # Terminal 2: run folder 1 against that server.
-npx newman run postman/our-castle.postman_collection.json -e postman/our-castle.postman_environment.json \
+npx --yes newman@6.2.1 run postman/our-castle.postman_collection.json -e postman/our-castle.postman_environment.json \
   --env-var "exampleBaseUrl=http://localhost:3134" --folder "1 · Example mode walkthrough (no credentials)"
 ```
 
-**If terminal 1 does not show `Payments: EXAMPLE mode`, stop.** For example, it may print `Error: listen EADDRINUSE`, meaning another server already owns the port. Do not run Newman. Choose another free port and use it in both commands.
+**If terminal 1 does not show `Payments: EXAMPLE mode`, stop.** For example, it may print `Error: listen EADDRINUSE`, meaning another server already owns port 3134. Do not run Newman, and never point it at the server that already owns the port.
 
 The guard confirms the server's modes, not that it is the server you just started. Pointed at someone else's example-mode server, folder 1 would still reset that server's example household.
 
-Always pass `--folder`. Running the whole collection continues into folder 2, which creates a sandbox order on `baseUrl`.
+Newman is pinned to 6.2.1, the version the guards were tested with. An unpinned `npx newman` would fetch whatever is latest.
+
+Pass `--folder` anyway. A whole-collection run without the opt-in stops at folder 2's first request with a `BLOCKED` failure and exit code 1, and sends nothing to `baseUrl` or PayPal.
 
 ### Other commands
 
@@ -118,8 +124,8 @@ npm test              # integrity check + unit tests + browser end-to-end tests
 npm run test:unit     # node --test (ledger, payments on both PayPal adapters, planner, steward, HTTP, Postman files)
 npm run test:e2e      # Playwright, desktop 1440px and phone 390px, example mode
 npm run check         # asset hashes, 90-color palette, renderer wiring, JS syntax
-npm run check:postman-guard  # runs Newman against logging mock servers and a throwaway example server
-                      # (needs a cached Newman or NEWMAN_BIN; never uses port 3010, no PayPal or AI calls)
+npm run check:postman-guard  # proves both Postman guards with Newman 6.2.1, logging mocks and a throwaway example server
+                      # (`npx --yes newman@6.2.1 --version` once, or set NEWMAN_BIN; never uses port 3010, PayPal or AI)
 npm run set-ai-key    # store an Anthropic Console API key in .env, hidden as you paste (run in your own terminal)
 npm run reset-demo    # erase the local example household (add --include-sandbox to also erase sandbox records)
 npm run art-preview   # the original static art preview server

@@ -1,11 +1,20 @@
-// Prove the Postman example folder's fail-closed guard with the real Newman runtime, using only local stand-ins:
-// - logging mock servers that report sandbox payments, live AI or a broken status must receive no request other than
-//   GET /api/status, and each run must exit unsuccessfully;
+// Prove the Postman collection's guards with the real Newman runtime (pinned to the tested 6.2.1), using only local
+// stand-ins.
+//
+// Folder 1, example walkthrough:
+// - logging mocks that report sandbox payments, live AI or a broken status must receive nothing but GET /api/status,
+//   and each run must exit unsuccessfully;
 // - a closed port and a malformed exampleBaseUrl must also block;
-// - a fresh example-mode server (temporary database, no .env, no keys), behind a logging proxy, must pass the whole
-//   folder with a status check before every request.
-// It never targets port 3010, makes no PayPal or AI call, and creates no sandbox order.
-// Newman is not a dependency: set NEWMAN_BIN to newman/bin/newman.js, or it is looked up in the npx cache.
+// - a fresh example-mode server (temporary database, no .env, no keys) behind a logging proxy must pass the folder,
+//   with a status check before every request.
+//
+// Folder 2, sandbox walkthrough:
+// - it is off by default. A whole-collection run, and a folder-2 run without allowSandboxRequests=yes, must send zero
+//   requests to the logging stubs standing in for the app (baseUrl) and the PayPal API (paypalApiBase);
+// - the opt-in path is exercised only against those stubs.
+//
+// It never targets port 3010 or PayPal, makes no AI call, and creates no sandbox order.
+// Newman is not a dependency: set NEWMAN_BIN to newman/bin/newman.js, or `npx --yes newman@6.2.1 --version` once.
 import http from 'node:http';
 import net from 'node:net';
 import os from 'node:os';
@@ -18,15 +27,18 @@ const root = fileURLToPath(new URL('../', import.meta.url));
 const collection = path.join(root, 'postman/our-castle.postman_collection.json');
 const environment = path.join(root, 'postman/our-castle.postman_environment.json');
 const FOLDER = '1 · Example mode walkthrough (no credentials)';
+const SANDBOX_FOLDER = '2 · PayPal sandbox walkthrough (needs sandbox credentials)';
+const NEWMAN_VERSION = '6.2.1';
 const OWNER_APP_PORT = 3010;
 const isStatusCall = (r) => r.method === 'GET' && r.url === '/api/status';
 
+const versionOf = (bin) => JSON.parse(readFileSync(path.join(path.dirname(bin), '../package.json'), 'utf8')).version;
 function findNewman() {
   if (process.env.NEWMAN_BIN) return process.env.NEWMAN_BIN;
   const cache = path.join(os.homedir(), '.npm/_npx');
   for (const entry of existsSync(cache) ? readdirSync(cache) : []) {
     const bin = path.join(cache, entry, 'node_modules/newman/bin/newman.js');
-    if (existsSync(bin)) return bin;
+    if (existsSync(bin) && versionOf(bin) === NEWMAN_VERSION) return bin;
   }
   return null;
 }
@@ -74,9 +86,11 @@ async function loggingServer({ statusReply = null, forwardPort = null } = {}) {
   return { log, port, close: () => new Promise((r) => server.close(r)) };
 }
 
-function runNewman(newman, exampleBaseUrl, reportFile) {
-  const args = [newman, 'run', collection, '-e', environment, '--folder', FOLDER,
-    '--env-var', `exampleBaseUrl=${exampleBaseUrl}`, '--reporters', 'json', '--reporter-json-export', reportFile];
+/** Run Newman. `folder` null runs the whole collection; `vars` become --env-var overrides. */
+function runNewman(newman, exampleBaseUrl, reportFile, { folder = FOLDER, vars = {} } = {}) {
+  const overrides = Object.entries({ exampleBaseUrl, ...vars }).flatMap(([k, v]) => ['--env-var', `${k}=${v}`]);
+  const args = [newman, 'run', collection, '-e', environment, ...(folder ? ['--folder', folder] : []),
+    ...overrides, '--reporters', 'json', '--reporter-json-export', reportFile];
   return new Promise((resolve) => {
     const child = spawn(process.execPath, args, { cwd: root, stdio: ['ignore', 'pipe', 'pipe'] });
     let out = '';
@@ -91,6 +105,7 @@ function runNewman(newman, exampleBaseUrl, reportFile) {
         assertions: run.stats?.assertions?.total ?? 0,
         failedAssertions: run.stats?.assertions?.failed ?? 0,
         blocked: (run.failures ?? []).map((f) => f.error?.test ?? '').find((t) => t.startsWith('BLOCKED')) ?? null,
+        blockedCount: (run.failures ?? []).filter((f) => (f.error?.test ?? '').startsWith('BLOCKED')).length,
         failures: (run.failures ?? []).map((f) => f.error?.test ?? f.error?.message ?? String(f.error)),
       });
     });
@@ -118,10 +133,14 @@ async function startExampleServer(port, dataDir) {
 
 const newman = findNewman();
 if (!newman) {
-  console.error('Newman was not found. Set NEWMAN_BIN to newman/bin/newman.js (for example after `npx newman --version`).');
+  console.error(`Newman ${NEWMAN_VERSION} was not found. Run \`npx --yes newman@${NEWMAN_VERSION} --version\` once, or set NEWMAN_BIN.`);
   process.exit(2);
 }
-const newmanVersion = JSON.parse(readFileSync(path.join(path.dirname(newman), '../package.json'), 'utf8')).version;
+const newmanVersion = versionOf(newman);
+if (newmanVersion !== NEWMAN_VERSION) {
+  console.error(`These guards were proven with Newman ${NEWMAN_VERSION}; NEWMAN_BIN points at ${newmanVersion}.`);
+  process.exit(2);
+}
 const work = mkdtempSync(path.join(os.tmpdir(), 'our-castle-postman-guard-'));
 const results = [];
 const check = (name, ok, detail) => { results.push({ name, ok, detail }); };
@@ -188,6 +207,58 @@ try {
     await proxy.close();
     server.child.kill('SIGTERM');
     await new Promise((r) => server.child.once('close', r));
+  }
+
+  // Folder 2. Stubs stand in for every folder-2 destination: the app (baseUrl) and the PayPal API (paypalApiBase).
+  // Newman's request count must equal what the local servers logged, so no request can have gone anywhere else.
+  const sandboxStatus = { code: 200, body: JSON.stringify({ payments: { mode: 'sandbox' }, ai: { mode: 'example' } }) };
+  const stubs = async () => {
+    const app = await loggingServer({ statusReply: sandboxStatus });
+    const paypal = await loggingServer({ statusReply: sandboxStatus });
+    const vars = { baseUrl: `http://127.0.0.1:${app.port}`, paypalApiBase: `http://127.0.0.1:${paypal.port}` };
+    return { app, paypal, vars, close: () => Promise.all([app.close(), paypal.close()]) };
+  };
+
+  // A. The whole collection by accident: folder 1 against a fresh example server, then folder 2 must stop at once.
+  {
+    const port2 = await freePort();
+    const example = await startExampleServer(port2, mkdtempSync(path.join(work, 'data-')));
+    const exampleProxy = await loggingServer({ forwardPort: port2 });
+    const s = await stubs();
+    try {
+      const r = await runNewman(newman, `http://127.0.0.1:${exampleProxy.port}`, report(), { folder: null, vars: s.vars });
+      const folder1 = exampleProxy.log.filter((x) => !isStatusCall(x)).length;
+      const accounted = exampleProxy.log.length + s.app.log.length + s.paypal.log.length;
+      check('whole collection, no opt-in: folder 1 runs, folder 2 sends nothing',
+        r.code !== 0 && folder1 === 10 && s.app.log.length === 0 && s.paypal.log.length === 0 && r.requests === accounted
+          && r.blockedCount === 1 && r.blocked.startsWith('BLOCKED "2.1 ') && r.failures.length === 1,
+        `exit ${r.code}; example server received ${folder1} folder-1 requests; app stub ${s.app.log.length}, PayPal stub ${s.paypal.log.length}; Newman counted ${r.requests} requests, ${accounted} logged locally; only failure: "${r.failures[0]}"`);
+    } finally {
+      await s.close();
+      await exampleProxy.close();
+      example.child.kill('SIGTERM');
+      await new Promise((r) => example.child.once('close', r));
+    }
+  }
+
+  // B and C. Folder 2 alone: with no opt-in, and with a value that is not exactly "yes".
+  for (const [label, extra] of [['folder 2, no opt-in', {}], ['folder 2, allowSandboxRequests="true"', { allowSandboxRequests: 'true' }]]) {
+    const s = await stubs();
+    const r = await runNewman(newman, 'http://127.0.0.1:9', report(), { folder: SANDBOX_FOLDER, vars: { ...s.vars, ...extra } });
+    await s.close();
+    check(`${label}: blocked`, r.code !== 0 && s.app.log.length === 0 && s.paypal.log.length === 0 && r.requests === 0 && r.blocked?.startsWith('BLOCKED "2.1 '),
+      `exit ${r.code}; app stub ${s.app.log.length}, PayPal stub ${s.paypal.log.length}, Newman ${r.requests} requests; stopped after ${r.items} item(s)`);
+  }
+
+  // D. Opt-in acceptance, only against the stubs. Assertions fail on the stubs' fake replies; this proves the guard
+  //    lets a deliberate run through, not that the sandbox works.
+  {
+    const s = await stubs();
+    const r = await runNewman(newman, 'http://127.0.0.1:9', report(), { folder: SANDBOX_FOLDER, vars: { ...s.vars, allowSandboxRequests: 'yes' } });
+    await s.close();
+    const accounted = s.app.log.length + s.paypal.log.length;
+    check('folder 2, allowSandboxRequests=yes, stubs only: requests pass the guard', s.app.log.length === 8 && s.paypal.log.length === 3 && r.requests === accounted && !r.blocked,
+      `app stub ${s.app.log.length} (${s.app.log.slice(0, 2).map((x) => `${x.method} ${x.url}`).join(', ')}, …), PayPal stub ${s.paypal.log.length} (${s.paypal.log.map((x) => `${x.method} ${x.url.replace(/\/orders\/.+$/, '/orders/…')}`).join(', ')}); Newman counted ${r.requests}; no BLOCKED failure`);
   }
 } finally {
   rmSync(work, { recursive: true, force: true });
