@@ -42,7 +42,16 @@
             <button type="button" id="pixel-toggle" class="chip" aria-pressed="true">Pixel art</button>
           </div>
         </div>
+        <p id="world-preview" class="world-preview" hidden><strong id="preview-title"></strong><span>Art preview · this does not unlock a reward or change your goal.</span><button type="button" id="end-preview">Return to my estate</button></p>
         <div id="world" class="world" aria-busy="true"></div>
+        <div class="world-navigation" role="group" aria-label="Explore the estate" aria-describedby="view-hint">
+          <button type="button" class="chip" data-view="out" aria-label="Zoom out">−</button>
+          <button type="button" class="chip" data-view="in" aria-label="Zoom in">+</button>
+          <button type="button" class="chip" data-view="left" aria-label="Turn the estate left">↶</button>
+          <button type="button" class="chip" data-view="right" aria-label="Turn the estate right">↷</button>
+          <button type="button" class="chip" data-view="reset">Reset view</button>
+          <span id="view-hint">Drag to turn · Shift-drag or two fingers to pan · scroll or pinch to zoom</span>
+        </div>
         <p id="world-fallback" class="world-fallback" hidden>The 3D board is unavailable in this browser. Your progress and every action below still work. <a href="references/images/our-house-castle.png">See the board art.</a></p>
         <div id="celebration" class="celebration" hidden></div>
         <div class="board-foot">
@@ -71,6 +80,7 @@
           <button type="button" role="tab" id="tab-plan" aria-controls="panel-plan" aria-selected="false" tabindex="-1"><span class="step-n">2</span> Plan</button>
           <button type="button" role="tab" id="tab-give" aria-controls="panel-give" aria-selected="false" tabindex="-1"><span class="step-n">3</span> Contribute</button>
           <button type="button" role="tab" id="tab-ledger" aria-controls="panel-ledger" aria-selected="false" tabindex="-1"><span class="step-n">4</span> Ledger</button>
+          <button type="button" role="tab" id="tab-rewards" aria-controls="panel-rewards" aria-selected="false" tabindex="-1"><span class="step-n">5</span> Rewards</button>
         </div>
 
         <!-- 1. House: solo or family, name and crest -->
@@ -232,6 +242,18 @@
           <div class="actions" id="reset-row" hidden>
             <button type="button" class="link-button" id="reset-demo">Reset the example household</button>
           </div>
+        </section>
+        <section class="panel parchment" id="panel-rewards" role="tabpanel" aria-labelledby="tab-rewards" hidden>
+          <p class="eyebrow ink">An estate built together</p>
+          <h3>Every milestone adds something</h3>
+          <p class="lede">Grow from a timber cottage to a castle and a living village. Each addition shows its condition and where the progress comes from.</p>
+          <p class="reward-evidence-note" id="reward-evidence-note"></p>
+          <div id="reward-list" class="reward-list"></div>
+          <details class="reward-proof">
+            <summary>What counts as a confirmed bill?</summary>
+            <p>A connected bill provider must confirm the right household bill and its payment status. A bill you type here is recorded by you. Paying a bill never adds to your savings total.</p>
+            <p>SDG&amp;E accepts PayPal through My Energy Center. Our Castle does not yet have a connection to confirm your SDG&amp;E bills.</p>
+          </details>
         </section>
       </aside>
     </main>

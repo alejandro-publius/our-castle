@@ -6,6 +6,7 @@ import { TIERS, formatCents, formatPercent, parseAmountToCents, ROUTE_LENGTH } f
 import { mountPayPalButton } from './paypal-checkout.js';
 import { createLedgerGrid } from './ledger-grid.js';
 import { sound } from './sound.js';
+import { newlyEarnedEstate } from '../core/rewards.js';
 
 // ---------- small helpers ----------
 const $ = (selector, root = document) => root.querySelector(selector);
@@ -66,10 +67,26 @@ const ui = {
   celebrationTimer: null,
   ledgerFilter: 'all',
   stewardBusy: false,
+  preview: null,
 };
 const persona = () => state?.members.find((m) => m.id === ui.personaId) ?? null;
 const isSandbox = () => state?.modes.payments.mode === 'sandbox';
 const ownership = () => ({ householdId: state.household.id, goalId: state.goal.id });
+
+// How much of the world canvas the overlaid heading, view controls and caption cover, as fractions of its height.
+// The board frames the island in the uncovered part, so nothing important hides behind them.
+function worldInsets() {
+  const world = $('#world').getBoundingClientRect();
+  if (!world.height) return null;
+  let top = 0; let bottom = 0;
+  for (const el of $$('.board-heading, .world-navigation')) {
+    const r = el.getBoundingClientRect();
+    if (r.height && r.bottom > world.top && r.top < world.top + world.height / 2) top = Math.max(top, r.bottom - world.top);
+  }
+  const foot = $('.board-foot').getBoundingClientRect();
+  if (foot.height && foot.top < world.bottom) bottom = world.bottom - foot.top;
+  return { top: (top + 8) / world.height, bottom: (bottom + 6) / world.height };
+}
 
 // ---------- boot ----------
 async function boot() {
@@ -78,6 +95,7 @@ async function boot() {
     scene = createBoardScene($('#world'), {
       reducedMotion: matchMedia('(prefers-reduced-motion: reduce)').matches,
       onEvent: (type, detail) => bus.emit(`scene:${type}`, detail),
+      insets: worldInsets,
     });
   } catch (error) {
     console.warn('[our-castle] 3D board unavailable', error);
@@ -96,7 +114,7 @@ async function boot() {
     $('#honesty').textContent = `Could not load the household: ${error.message}`;
   }
   document.body.dataset.ready = 'true';
-  window.__ourCastle = { get state() { return state; }, scene: () => scene?.debug() ?? null, bus, sound: () => ({ enabled: sound.enabled, played: sound.played() }) };
+  window.__ourCastle = { get state() { return state; }, scene: () => scene?.debug() ?? null, route: () => scene?.routeOnScreen() ?? null, bus, sound: () => ({ enabled: sound.enabled, played: sound.played() }) };
   window.__booted = true;
 }
 
@@ -106,19 +124,25 @@ function defaultTab() {
   return 'give';
 }
 
+// Announce only additions earned between two authoritative server states for the same goal (see rewards.js).
+const newlyEarned = (previous, next) => (previous?.goal?.id === next?.goal?.id ? newlyEarnedEstate(previous?.rewards, next?.rewards) : []);
+
 function applyState(next, { animate = true, result = null } = {}) {
+  const added = newlyEarned(state, next);
   state = next;
+  ui.preview = null;
   if (!persona()) ui.personaId = state.members.find((m) => m.role === 'adult')?.id ?? state.members[0]?.id;
   renderHeader();
   renderQuest();
-  renderBoard({ animate, result });
+  renderBoard({ animate, result, added });
   renderHouse();
   renderPlan();
   renderGive();
   renderLedger();
+  renderRewards();
   renderTabs();
   renderFooter();
-  bus.emit('state:applied', { result });
+  bus.emit('state:applied', { result, added: added.map((r) => r.id) });
 }
 
 // ---------- header, quest, board ----------
@@ -161,10 +185,12 @@ function renderQuest() {
   $('#progress-breakdown').textContent = `${parts.join(' · ')}. ${progress.note}`;
 }
 
-function renderBoard({ animate, result }) {
+function renderBoard({ animate, result, added = [] }) {
   const { board, household, goal, progress } = state;
   const built = TIERS[board.builtTier];
   $('#board-title').textContent = board.tierTitle;
+  $('#world-preview').hidden = true;
+  $('#world').dataset.preview = 'false';
   let status = board.position >= ROUTE_LENGTH
     ? `Travelers are home at the castle gate (space ${ROUTE_LENGTH} of ${ROUTE_LENGTH}). `
     : `Travelers on space ${board.position} of ${ROUTE_LENGTH} · ${board.spaceName}. `;
@@ -183,20 +209,67 @@ function renderBoard({ animate, result }) {
     position: board.position,
     crest: household.crest,
     gardens: board.gardens,
+    estateLevel: board.estateLevel ?? 0,
+    previewFeature: null,
     playMode: household.playMode,
     milestoneSpaces: board.milestoneSpaces.map((m) => m.space),
   }, { animate }).then(() => {
-    if (result?.awarded?.length) celebrate(result.awarded);
+    if (result?.awarded?.length || added.length) celebrate(result?.awarded ?? [], added);
   });
 }
 
-function celebrate(awarded) {
+// ---------- Rewards and explicit, presentation-only previews ----------
+const REWARD_LABELS = { unlocked: 'Unlocked', keepsake: 'Keepsake', locked: 'Locked', connection_required: 'Needs a provider connection' };
+function renderRewards() {
+  if (!state.rewards) { $('#reward-list').replaceChildren(h('p', { class: 'fine' }, 'Restart the server to load rewards.')); return; }
+  $('#reward-evidence-note').textContent = `${state.rewards.billVerification.note} ${state.rewards.paymentEvidenceLabel}`;
+  $('#reward-list').replaceChildren(...state.rewards.entries.map((reward) => {
+    const card = h('article', { class: `reward-card reward-${reward.status}`, 'data-reward': reward.id, 'data-status': reward.status },
+      h('div', { class: 'reward-heading' }, h('h4', {}, reward.name), h('span', { class: 'reward-state' }, REWARD_LABELS[reward.status] ?? reward.status)),
+      h('p', { class: 'reward-detail' }, reward.detail),
+      h('p', { class: 'reward-condition' }, `Unlocks when: ${reward.condition}`));
+    if (reward.source === 'goal_progress' && reward.requiredCents > 0) {
+      card.append(h('p', { class: 'reward-progress' }, 'Progress: ', h('strong', {}, money(reward.progressCents)), ` of ${money(reward.requiredCents)}`,
+        reward.remainingCents > 0 ? ` · ${money(reward.remainingCents)} to go` : ' · reached'));
+    }
+    if (reward.source === 'self_reported') card.append(h('p', { class: 'reward-progress' }, `${reward.count} of 4 garden beds planted`));
+    card.append(h('p', { class: 'reward-source' }, `Evidence: ${reward.sourceLabel}`));
+    if (reward.status === 'keepsake') card.append(h('p', { class: 'fine' }, 'Reached earlier and kept after a refund. Current goal progress is shown above and in the ledger.'));
+    card.append(h('button', { type: 'button', class: 'reward-preview', onclick: () => previewReward(reward) },
+      reward.status === 'unlocked' ? 'Show it in the world' : 'Preview in the world (art only)'));
+    return card;
+  }));
+}
+// A preview only redraws the board. It never calls the server, so it cannot change rewards, achievements or money.
+function previewReward(reward) {
+  if (!scene) return;
+  ui.preview = reward.id;
+  $('#world-preview').hidden = false;
+  $('#preview-title').textContent = `${reward.status === 'unlocked' ? 'Showing' : 'Preview'}: ${reward.name}`;
+  $('#world').dataset.preview = 'true';
+  $('#board-title').textContent = reward.status === 'unlocked' ? reward.name : 'Previewing a reward';
+  scene.update({
+    builtTier: reward.previewTier ?? state.board.builtTier,
+    estateLevel: reward.previewEstateLevel ?? state.board.estateLevel,
+    gardens: reward.previewFeature === 'habit-garden' ? 4 : state.board.gardens,
+    previewFeature: reward.previewFeature ?? null,
+  }, { animate: false });
+  if (matchMedia('(max-width: 1180px)').matches) $('#world-preview').scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth', block: 'center' });
+}
+
+function celebrate(awarded, added = []) {
   const tiers = awarded.filter((a) => typeof a === 'number').sort();
   const gardens = awarded.filter((a) => typeof a === 'string' && a.startsWith('garden:'));
   const box = $('#celebration');
+  const additions = added.map((r) => h('p', { class: 'celebration-addition', 'data-reward': r.id }, h('strong', {}, `${r.name}: `), r.detail));
   if (tiers.length) {
     const tier = TIERS[tiers.at(-1)];
-    box.replaceChildren(h('h3', {}, `The ${tier.name} rises!`), h('p', {}, `${tier.percent}% of ${state.goal.name} reached. A keepsake was added to your ledger.`));
+    box.replaceChildren(h('h3', {}, `The ${tier.name} rises!`), h('p', {}, `${tier.percent}% of ${state.goal.name} reached. A keepsake was added to your ledger.`), ...additions);
+  } else if (added.length) {
+    const top = added.at(-1);
+    box.replaceChildren(h('h3', {}, added.length === 1 ? `${top.name} added to your estate` : 'New additions to your estate'),
+      h('p', {}, `${top.percent}% of ${state.goal.name} reached.`), ...additions);
+    sound.cue('sprout');
   } else if (gardens.length) {
     box.replaceChildren(h('h3', {}, 'A garden bed is planted'), h('p', {}, 'For the bill habit you logged. Habits grow gardens; they are not savings.'));
   } else return;
@@ -784,7 +857,7 @@ async function logEntry(event, kind) {
 }
 
 // ---------- tabs, footer, events ----------
-const TABS = ['house', 'plan', 'give', 'ledger'];
+const TABS = ['house', 'plan', 'give', 'ledger', 'rewards'];
 function selectTab(name, { focus = true } = {}) {
   ui.tab = name;
   for (const tab of TABS) {
@@ -807,7 +880,7 @@ function renderFooter() {
   const parts = [];
   parts.push(modes.payments.mode === 'sandbox' ? 'PayPal sandbox only: test accounts and test money; nothing here moves real money.' : 'Example payments: simulated and labeled; no PayPal call is made.');
   parts.push(modes.ai.mode === 'live' ? `Plans are proposed by ${modes.ai.model} and checked by the server.` : 'Plans come from built-in rules; no AI is called.');
-  parts.push('Goal progress is this app’s own ledger, not a bank balance, and PayPal does not see your other household bills.');
+  parts.push('Goal progress is this app’s own ledger, not a bank balance. Household bills are recorded by you; no utility-bill verification provider is connected.');
   if (modes.warnings?.length) parts.push(`Server notes: ${modes.warnings.join(' ')}`);
   $('#honesty').textContent = parts.join(' ');
 }
@@ -816,7 +889,7 @@ function bindEvents() {
   $('#tabs').addEventListener('click', (e) => { const b = e.target.closest('[role="tab"]'); if (b) selectTab(b.id.slice(4), { focus: false }); });
   $('#tabs').addEventListener('keydown', (e) => {
     const i = TABS.indexOf(ui.tab);
-    const next = { ArrowRight: (i + 1) % 4, ArrowLeft: (i + 3) % 4, Home: 0, End: 3 }[e.key];
+    const next = { ArrowRight: (i + 1) % TABS.length, ArrowLeft: (i + TABS.length - 1) % TABS.length, Home: 0, End: TABS.length - 1 }[e.key];
     if (next === undefined) return;
     e.preventDefault();
     selectTab(TABS[next]);
@@ -826,6 +899,15 @@ function bindEvents() {
     e.currentTarget.setAttribute('aria-pressed', String(on));
     e.currentTarget.textContent = on ? 'Sound on' : 'Sound off';
   });
+  for (const button of $$('[data-view]')) button.addEventListener('click', () => scene?.adjustView(button.dataset.view));
+  // Arrow keys pan the view while the view controls have focus (handy after zooming in).
+  $('.world-navigation').addEventListener('keydown', (e) => {
+    const action = { ArrowLeft: 'pan-left', ArrowRight: 'pan-right', ArrowUp: 'pan-up', ArrowDown: 'pan-down' }[e.key];
+    if (!action || !scene) return;
+    e.preventDefault();
+    scene.adjustView(action);
+  });
+  $('#end-preview').addEventListener('click', () => { ui.preview = null; renderBoard({ animate: false, result: null }); });
   bus.on('scene:hop', (detail) => sound.cue('hop', detail));
   bus.on('scene:rise', (detail) => sound.cue('fanfare', detail));
   $('#pixel-toggle').addEventListener('click', (e) => {
