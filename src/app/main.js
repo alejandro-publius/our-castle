@@ -78,6 +78,8 @@ const ui = {
   preview: null,
   receiptReviewed: null,
   next: null,
+  navigation: 0,
+  ledgerLayout: Promise.resolve(),
 };
 const persona = () => state?.members.find((m) => m.id === ui.personaId) ?? null;
 const isSandbox = () => state?.modes.payments.mode === 'sandbox';
@@ -190,8 +192,32 @@ function renderNextStep() {
 function openPaymentRecord(e) {
   const id = $('#next-step-record').dataset.contribution;
   selectTab('ledger', { focus: false });
-  const target = $(`#ledger-contributions [data-contribution="${CSS.escape(id)}"]`) ?? $('#ledger-contrib-title');
-  revealFocus(target, e?.detail === 0);
+  revealInLedger(() => $(`#ledger-contributions [data-contribution="${CSS.escape(id)}"]`) ?? $('#ledger-contrib-title'), e?.detail === 0);
+}
+// The Ledger grid loads and sizes itself lazily (started by selectTab), and the contributions below it move when it
+// does. Measure and reveal a Ledger destination only after that layout has settled, and only if the family is still on
+// the Ledger and has not moved focus elsewhere in the meantime.
+async function revealInLedger(target, keyboard) {
+  const navigation = ui.navigation, origin = document.activeElement;
+  await ui.ledgerLayout;
+  await layoutSettled($('#ledger-goal'));
+  if (navigation !== ui.navigation || ui.tab !== 'ledger') return;
+  if (document.activeElement !== origin && document.activeElement !== document.body) return;
+  revealFocus(target(), keyboard);
+}
+// Resolves when an element keeps the same height for two animation frames (the grid's auto-height rows are measured).
+// Bounded, so a page that never settles still gets its focus.
+function layoutSettled(el, maxFrames = 120) {
+  return new Promise((resolve) => {
+    let last = -1, same = 0, frames = 0;
+    const tick = () => {
+      const height = el.getBoundingClientRect().height;
+      same = height === last ? same + 1 : 0;
+      last = height;
+      if (same >= 2 || ++frames >= maxFrames) resolve(); else requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  });
 }
 function revealFocus(target, keyboard) {
   target.focus({ preventScroll: true });
@@ -208,7 +234,8 @@ function openNextStep(e) {
   let target = $(next.target);
   if (!target || target.hidden || target.closest('[hidden]')) target = $(`#panel-${next.step} h3`);
   if (next.key === 'receipt-ready') ui.receiptReviewed = receiptKey();
-  revealFocus(target, e?.detail === 0);
+  if (next.step === 'ledger') revealInLedger(() => target, e?.detail === 0);
+  else revealFocus(target, e?.detail === 0);
   renderNextStep();
 }
 
@@ -852,10 +879,12 @@ function ledgerRows() {
   });
 }
 
+// Returns (and keeps in ui.ledgerLayout) the grid's load-and-fill work, so a Ledger destination can wait for it.
 function renderLedgerGrid() {
-  if (ui.tab !== 'ledger') return; // grids are sized while visible
+  if (ui.tab !== 'ledger') return ui.ledgerLayout; // grids are sized while visible
   if (!ledgerGrid) ledgerGrid = createLedgerGrid($('#ledger-goal'), { formatMoney: money });
-  ledgerGrid.update(ledgerRows(), state.progress.progressCents).then(() => ledgerGrid.setFilter(ui.ledgerFilter));
+  ui.ledgerLayout = ledgerGrid.update(ledgerRows(), state.progress.progressCents).then(() => ledgerGrid.setFilter(ui.ledgerFilter)).catch(() => {});
+  return ui.ledgerLayout;
 }
 
 function renderLedger() {
@@ -997,6 +1026,7 @@ async function logEntry(event, kind) {
 const TABS = ['house', 'plan', 'give', 'ledger', 'rewards'];
 function selectTab(name, { focus = true, remember = true } = {}) {
   ui.tab = name;
+  ui.navigation++; // a pending Ledger reveal stands down once the family navigates again
   if (remember) sessionTab.set(name);
   for (const tab of TABS) {
     const button = $(`#tab-${tab}`);

@@ -168,3 +168,71 @@ test.describe('at 320 by 568', () => {
     expect(await page.evaluate(() => [...document.querySelectorAll('.steps button')].every((b) => b.scrollWidth <= b.clientWidth))).toBe(true);
   });
 });
+
+// The Ledger's AG Grid script loads lazily on the first visit and then sizes itself, pushing the contributions list
+// down. A saved-record or Ledger destination must be focused and fully on screen after that layout, not before it.
+// The grid script is held back deterministically until the test releases it.
+async function householdWithPayment(request) {
+  const json = async (res) => { expect(res.ok()).toBeTruthy(); return res.json(); };
+  let state = (await json(await request.post('/api/setup', { data: { playMode: 'family', name: 'House of Rivergate', crest: { field: 'cobalt', charge: 'stag' } } }))).state;
+  const { goal, progress } = state;
+  state = (await json(await request.post('/api/plans', { data: { goal: { name: goal.name, targetCents: goal.targetCents, startingCents: progress.startingCents, targetDate: goal.targetDate, weeklyBudgetCents: goal.weeklyBudgetCents }, commitments: [] } }))).state;
+  state = (await json(await request.post(`/api/plans/${state.plan.id}/accept`, { data: {} }))).state;
+  const adult = state.members.find((m) => m.role === 'adult');
+  return (await json(await request.post('/api/example/contributions', { data: { householdId: state.household.id, goalId: state.goal.id, amountCents: 1500, approverId: adult.id, approvalConfirmed: true, requestId: `record-focus-${Date.now()}`, outcome: 'completed' } }))).state;
+}
+async function holdLedgerGrid(page) {
+  let release;
+  const gate = new Promise((resolve) => { release = resolve; });
+  await page.route('**/vendor/ag-grid/**', async (route) => { await gate; await route.continue(); });
+  return release;
+}
+const gridState = (page) => page.locator('#ledger-goal').getAttribute('data-grid');
+
+for (const [label, viewport, project] of [['1760 by 760', { width: 1760, height: 760 }, 'desktop'], ['320 by 568', { width: 320, height: 568 }, 'phone']]) {
+  test.describe(`saved record after the lazy Ledger grid, at ${label}`, () => {
+    test.use({ viewport });
+    test.beforeEach(({}, testInfo) => test.skip(testInfo.project.name !== project, `checked on the ${project} project`));
+
+    test('the record is focused and fully visible once the grid has loaded and sized', async ({ page, request }) => {
+      await householdWithPayment(request);
+      const release = await holdLedgerGrid(page);
+      const writes = trackWrites(page);
+      await ready(page);
+      await expect(page.locator('#next-step-record')).toContainText('Last payment: $15.00 · Completed — counted · simulated.');
+      await page.locator('#next-step-record-go').focus();
+      await page.keyboard.press('Enter');
+      await expect(selectedTab(page)).toHaveId('tab-ledger');
+      expect(await gridState(page)).toBeNull(); // still loading
+      release();
+      await expect.poll(() => gridState(page)).toBe('ag-grid');
+      const row = page.locator('#ledger-contributions li[data-contribution]').first();
+      await expect(row).toBeFocused();
+      await expect.poll(() => fullyVisible(row), { message: 'the focused record is fully on screen after the grid settles' }).toBe(true);
+      // It stays there: nothing below the settled grid moves it off screen afterwards.
+      await page.waitForTimeout(500);
+      expect(await fullyVisible(row)).toBe(true);
+      await expect(row).toContainText('Completed — counted');
+      expect(writes).toEqual([]);
+    });
+
+    test('choosing another tab while the grid loads keeps the family there', async ({ page, request }) => {
+      await householdWithPayment(request);
+      const release = await holdLedgerGrid(page);
+      const writes = trackWrites(page);
+      await ready(page);
+      await page.locator('#next-step-record-go').click();
+      await expect(selectedTab(page)).toHaveId('tab-ledger');
+      await page.getByRole('tab', { name: /Contribute/ }).click();
+      const scrollBefore = await page.evaluate(() => scrollY);
+      release();
+      // The grid finishes loading in the background; it must not pull the family back to the Ledger or its record.
+      await page.waitForResponse('**/vendor/ag-grid/**');
+      await page.waitForTimeout(800);
+      await expect(selectedTab(page)).toHaveId('tab-give');
+      expect(await page.evaluate(() => document.activeElement?.closest('#panel-ledger') === null)).toBe(true);
+      expect(await page.evaluate(() => scrollY)).toBe(scrollBefore);
+      expect(writes).toEqual([]);
+    });
+  });
+}
