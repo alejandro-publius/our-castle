@@ -154,5 +154,5 @@ export function transaction(db, fn) {
 }
 
 export function databaseFile(dataDir, paymentsMode) {
-  return path.join(dataDir, `our-house-${paymentsMode === 'sandbox' ? 'sandbox' : 'example'}.sqlite`);
+  return path.join(dataDir, `our-castle-${paymentsMode === 'sandbox' ? 'sandbox' : 'example'}.sqlite`);
 }

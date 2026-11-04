@@ -1,7 +1,7 @@
 {
   "info": {
-    "name": "Our House — local API and PayPal sandbox",
-    "description": "Step-by-step requests for the Our House prototype.\n\nFolder 1 runs against a server in example mode (no credentials): every payment is simulated and labeled.\nFolder 2 needs the server running with PayPal sandbox credentials in its .env file, plus the same sandbox client id/secret in the Postman environment for the direct PayPal requests. Open the approveUrl from step 2.2 in a browser and approve with a sandbox buyer account before running 2.3.\n\nNever put real (live) credentials here. Sandbox only.",
+    "name": "Our Castle — local API and PayPal sandbox",
+    "description": "Step-by-step requests for the Our Castle prototype.\n\nFolder 1 runs against a server in example mode (no credentials): every payment is simulated and labeled.\nFolder 2 needs the server running with PayPal sandbox credentials in its .env file, plus the same sandbox client id/secret in the Postman environment for the direct PayPal requests. Open the approveUrl from step 2.2 in a browser and approve with a sandbox buyer account before running 2.3.\n\nNever put real (live) credentials here. Sandbox only.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -134,7 +134,7 @@
             { "listen": "prerequest", "script": { "type": "text/javascript", "exec": ["pm.collectionVariables.set('requestId', 'pm-' + pm.variables.replaceIn('{{$guid}}'));"] } },
             { "listen": "test", "script": { "type": "text/javascript", "exec": [
               "const body = pm.response.json();",
-              "pm.test('order created by Our House', () => pm.expect(body.orderId).to.match(/^[A-Z0-9]{17,32}$/));",
+              "pm.test('order created by Our Castle', () => pm.expect(body.orderId).to.match(/^[A-Z0-9]{17,32}$/));",
               "pm.test('approval link points at the PayPal sandbox', () => pm.expect(body.approveUrl).to.match(/^https:\\/\\/www\\.sandbox\\.paypal\\.com\\//));",
               "pm.test('nothing counted before capture', () => pm.expect(body.contribution.status).to.eql('created'));",
               "pm.collectionVariables.set('orderId', body.orderId);",
@@ -190,7 +190,7 @@
           "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
             "const order = pm.response.json();",
             "pm.test('PayPal reports the order completed', () => pm.expect(order.status).to.eql('COMPLETED'));",
-            "pm.test('same capture id as the Our House receipt', () => pm.expect(order.purchase_units[0].payments.captures[0].id).to.eql(pm.collectionVariables.get('captureId')));",
+            "pm.test('same capture id as the Our Castle receipt', () => pm.expect(order.purchase_units[0].payments.captures[0].id).to.eql(pm.collectionVariables.get('captureId')));",
             "pm.test('amount and currency match', () => pm.expect(order.purchase_units[0].payments.captures[0].amount).to.eql({ currency_code: 'USD', value: '15.00' }));"
           ] } }],
           "request": { "method": "GET", "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{paypalAccessToken}}", "type": "string" }] }, "url": "{{paypalApiBase}}/v2/checkout/orders/{{orderId}}" }
@@ -216,7 +216,7 @@
           "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"householdId\": \"{{householdId}}\",\n  \"approverId\": \"{{adultId}}\",\n  \"approvalConfirmed\": true\n}" }, "url": "{{baseUrl}}/api/paypal/captures/{{captureId}}/refund" }
         },
         {
-          "name": "2.10 PayPal: create an order directly (outside Our House)",
+          "name": "2.10 PayPal: create an order directly (outside Our Castle)",
           "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
             "pm.test('PayPal created it', () => pm.response.to.have.status(201));",
             "pm.collectionVariables.set('foreignOrderId', pm.response.json().id);"
@@ -230,7 +230,7 @@
           }
         },
         {
-          "name": "2.11 Our House refuses an order it did not create",
+          "name": "2.11 Our Castle refuses an order it did not create",
           "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
             "pm.test('refused with 404', () => pm.response.to.have.status(404));",
             "pm.test('unknown order', () => pm.expect(pm.response.json().error.code).to.eql('unknown_order'));"

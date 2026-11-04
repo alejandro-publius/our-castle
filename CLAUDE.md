@@ -1,6 +1,6 @@
 # Claude project instructions
 
-This is the Our House build handoff requested by the repository owner. Follow AGENTS.md and read the documents in README's order. The visual source is concrete and bundled: inspect the PNGs and run the art preview. Preserve the Tiny Castle miniature family and 90-color renderer. Do not substitute an unrelated design system.
+This is the Our Castle build handoff requested by the repository owner. Follow AGENTS.md and read the documents in README's order. The visual source is concrete and bundled: inspect the PNGs and run the art preview. Preserve the Tiny Castle miniature family and 90-color renderer. Do not substitute an unrelated design system.
 
 Build the financial board game described here. The previous card battler and Lens Studio projects are outside this repository and must not be modified. This is a browser project; no SPECS/Meta hardware is required for this hackathon.
 

@@ -30,8 +30,8 @@ const dateLabel = (iso) => {
 };
 const timeLabel = (iso) => new Date(iso).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
 const pref = {
-  get(key) { try { return localStorage.getItem(`our-house:${key}`); } catch { return null; } },
-  set(key, value) { try { localStorage.setItem(`our-house:${key}`, value); } catch { /* private mode: fine */ } },
+  get(key) { try { return localStorage.getItem(`our-castle:${key}`); } catch { return null; } },
+  set(key, value) { try { localStorage.setItem(`our-castle:${key}`, value); } catch { /* private mode: fine */ } },
 };
 
 function setStatus(target, kind, message, extra = {}) {
@@ -80,7 +80,7 @@ async function boot() {
       onEvent: (type, detail) => bus.emit(`scene:${type}`, detail),
     });
   } catch (error) {
-    console.warn('[our-house] 3D board unavailable', error);
+    console.warn('[our-castle] 3D board unavailable', error);
     $('#world').hidden = true;
     $('#world-fallback').hidden = false;
     $('#pixel-toggle').hidden = true;
@@ -96,7 +96,7 @@ async function boot() {
     $('#honesty').textContent = `Could not load the household: ${error.message}`;
   }
   document.body.dataset.ready = 'true';
-  window.__ourHouse = { get state() { return state; }, scene: () => scene?.debug() ?? null, bus, sound: () => ({ enabled: sound.enabled, played: sound.played() }) };
+  window.__ourCastle = { get state() { return state; }, scene: () => scene?.debug() ?? null, bus, sound: () => ({ enabled: sound.enabled, played: sound.played() }) };
   window.__booted = true;
 }
 

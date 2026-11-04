@@ -7,7 +7,7 @@ const ready = async (page) => {
   await page.goto('/');
   await page.waitForFunction(() => document.body.dataset.ready === 'true');
 };
-const scene = (page) => page.evaluate(() => window.__ourHouse.scene());
+const scene = (page) => page.evaluate(() => window.__ourCastle.scene());
 const settled = (page) => expect.poll(async () => (await scene(page)).animating, { timeout: 20_000 }).toBe(false);
 const isPhone = (testInfo) => testInfo.project.name === 'phone';
 
@@ -280,18 +280,18 @@ test('the world keeps living, and board events drive synthesized sound through t
   await toggle.click();
   await expect(toggle).toHaveAttribute('aria-pressed', 'true');
   await expect(toggle).toHaveText('Sound on');
-  expect((await page.evaluate(() => window.__ourHouse.sound())).enabled).toBe(true);
-  await page.evaluate(() => { window.__ourHouse.bus.log = []; });
+  expect((await page.evaluate(() => window.__ourCastle.sound())).enabled).toBe(true);
+  await page.evaluate(() => { window.__ourCastle.bus.log = []; });
   await foundHouse(page);
   await acceptExamplePlan(page);
   await contribute(page);
   await expect(page.locator('#progress-amount')).toHaveText('$75.00');
   await settled(page);
-  const types = await page.evaluate(() => window.__ourHouse.bus.log.map((e) => e.type));
+  const types = await page.evaluate(() => window.__ourCastle.bus.log.map((e) => e.type));
   expect(types).toContain('scene:hop');
   expect(types).toContain('scene:rise');
   expect(types).toContain('contribution:result');
-  const played = (await page.evaluate(() => window.__ourHouse.sound())).played;
+  const played = (await page.evaluate(() => window.__ourCastle.sound())).played;
   expect(played).toEqual(expect.arrayContaining(['chime', 'hop', 'fanfare']));
   expect(errors).toEqual([]);
 });

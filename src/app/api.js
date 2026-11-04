@@ -19,7 +19,7 @@ async function request(method, url, body) {
       body: body === undefined ? undefined : JSON.stringify(body),
     });
   } catch {
-    throw new ApiError(0, { code: 'network', message: 'Could not reach the Our House server. Is it still running?' });
+    throw new ApiError(0, { code: 'network', message: 'Could not reach the Our Castle server. Is it still running?' });
   }
   const data = await response.json().catch(() => ({}));
   if (!response.ok) throw new ApiError(response.status, data.error);

@@ -1,4 +1,4 @@
-# Our House — concept and decisions
+# Our Castle — concept and decisions
 
 ## User's direction
 

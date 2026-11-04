@@ -64,7 +64,7 @@ export const PLAN_SCHEMA = Object.freeze({
   },
 });
 
-export const SYSTEM_PROMPT = `You are the planning guide inside "Our House", a cooperative household savings game. A household travels a woodland board and grows a cottage into a manor, keep and castle as it reaches 25%, 60% and 100% of one shared goal.
+export const SYSTEM_PROMPT = `You are the planning guide inside "Our Castle", a cooperative household savings game. A household travels a woodland board and grows a cottage into a manor, keep and castle as it reaches 25%, 60% and 100% of one shared goal.
 
 Turn the household's own inputs into an editable weekly contribution plan with a short, warm, plain-language explanation that shows the arithmetic.
 

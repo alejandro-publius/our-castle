@@ -2,8 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
-const collection = JSON.parse(readFileSync(new URL('../../postman/our-house.postman_collection.json', import.meta.url), 'utf8'));
-const environment = JSON.parse(readFileSync(new URL('../../postman/our-house.postman_environment.json', import.meta.url), 'utf8'));
+const collection = JSON.parse(readFileSync(new URL('../../postman/our-castle.postman_collection.json', import.meta.url), 'utf8'));
+const environment = JSON.parse(readFileSync(new URL('../../postman/our-castle.postman_environment.json', import.meta.url), 'utf8'));
 const requests = collection.item.flatMap((folder) => folder.item);
 
 test('Postman collection is a v2.1 collection whose requests all carry assertions', () => {

@@ -295,7 +295,7 @@ export function createContributionService({ db, clock, mode, paypal = null, webh
       try {
         ({ data } = await paypal.createOrder({
           localId: id, amountCents: input.amountCents, currency: goal.currency,
-          description: `Our House sandbox contribution toward ${goal.name}`, requestId: `create-${id}`,
+          description: `Our Castle sandbox contribution toward ${goal.name}`, requestId: `create-${id}`,
         }));
       } catch (error) {
         if (error instanceof PayPalError) throw paypalFailure(row, error, 'PayPal sandbox could not create the order.');

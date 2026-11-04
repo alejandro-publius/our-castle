@@ -12,7 +12,7 @@ test('SDK adapter sends PayPal’s official request model with idempotency and r
   const controllers = fakeSdkControllers(fake);
   const paypal = createPayPalSdkClient({ ...credentials, controllers, restFetch: fake.fetch });
   assert.equal(paypal.implementation, 'paypal-server-sdk');
-  const { data } = await paypal.createOrder({ localId: 'ctb_local_1', amountCents: 1500, currency: 'USD', description: 'Our House sandbox contribution toward Camping trip fund', requestId: 'create-ctb_local_1' });
+  const { data } = await paypal.createOrder({ localId: 'ctb_local_1', amountCents: 1500, currency: 'USD', description: 'Our Castle sandbox contribution toward Camping trip fund', requestId: 'create-ctb_local_1' });
   const [call] = controllers.sdkCalls;
   assert.equal(call.name, 'createOrder');
   assert.equal(call.args.paypalRequestId, 'create-ctb_local_1');
@@ -20,7 +20,7 @@ test('SDK adapter sends PayPal’s official request model with idempotency and r
   assert.equal(call.args.body.intent, 'CAPTURE');
   assert.deepEqual(call.args.body.purchaseUnits[0].amount, { currencyCode: 'USD', value: '15.00' });
   assert.equal(call.args.body.purchaseUnits[0].customId, 'ctb_local_1');
-  assert.deepEqual(call.args.body.paymentSource.paypal.experienceContext, { brandName: 'Our House (sandbox demo)', shippingPreference: 'NO_SHIPPING', userAction: 'PAY_NOW' });
+  assert.deepEqual(call.args.body.paymentSource.paypal.experienceContext, { brandName: 'Our Castle (sandbox demo)', shippingPreference: 'NO_SHIPPING', userAction: 'PAY_NOW' });
   // The service receives PayPal's raw REST JSON, exactly as the REST client would return it.
   assert.equal(data.purchase_units[0].custom_id, 'ctb_local_1');
   assert.equal(data.status, 'CREATED');

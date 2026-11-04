@@ -54,7 +54,7 @@ test('secrets from the server env never reach the browser', async () => {
     }
     const config = await s.call('GET', '/api/paypal/config');
     assert.deepEqual(config.json, { mode: 'sandbox', clientId: 'public-sandbox-client-id', sdkUrl: 'https://www.sandbox.paypal.com/web-sdk/v6/core', currency: 'USD' });
-    for (const path of ['/.env', '/.env.example', '/server/config.mjs', '/data/our-house-sandbox.sqlite', '/package.json', '/node_modules/@anthropic-ai/sdk/package.json', '/src/../server/app.mjs']) {
+    for (const path of ['/.env', '/.env.example', '/server/config.mjs', '/data/our-castle-sandbox.sqlite', '/package.json', '/node_modules/@anthropic-ai/sdk/package.json', '/src/../server/app.mjs']) {
       assert.equal((await s.call('GET', path)).status, 404, path);
     }
   } finally { await s.close(); }

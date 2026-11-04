@@ -2,7 +2,7 @@ import { CREST_CHARGES, CREST_FIELDS } from '../core/rules.js';
 
 // Household crest: heater shield, dark contour, double gold frame and a single charge.
 // Crown and leaf adapt the owner's original sigil paths (references/source/heraldry.reference.js);
-// stag and tower are new for Our House. Families share one crest; there are no opposing armies.
+// stag and tower are new for Our Castle. Families share one crest; there are no opposing armies.
 const CHARGES = {
   crown: '<path d="M22 78 13 34 40 52 60 20 80 52 107 34 98 78Z"/><path d="M24 92H96M28 102H92"/><circle cx="60" cy="65" r="5"/>',
   leaf: '<path d="M24 96Q10 37 100 16 105 100 24 96ZM24 96 83 34M44 75 40 51M44 75 73 77M62 57 64 36M62 57 88 58M24 96 16 108"/>',

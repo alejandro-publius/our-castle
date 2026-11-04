@@ -15,4 +15,4 @@ http.createServer(async(req,res)=>{
     res.writeHead(200,{'Content-Type':mime[path.extname(file)]||'application/octet-stream','X-Content-Type-Options':'nosniff'});
     res.end(await readFile(file));
   }catch{res.writeHead(404).end('Not found');}
-}).listen(port,'127.0.0.1',()=>console.log(`Our House art preview: http://localhost:${port}/art-preview.html`));
+}).listen(port,'127.0.0.1',()=>console.log(`Our Castle art preview: http://localhost:${port}/art-preview.html`));

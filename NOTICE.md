@@ -4,7 +4,7 @@ The MIT license at the repository root covers the application source authored fo
 
 Tiny Castle brand artwork is the repository owner's existing material, supplied for this project at the owner's request. Original miniatures, portraits, renderer, palette and reference screenshots were created for the owner's Crown & Dust project. Their precise copies/source commit/hashes are recorded in `assets/manifest.json`; original brand provenance is retained unchanged. Their inclusion does not grant a general license to use the Tiny Castle name or brand artwork for unrelated products. The owner should settle any broader original-art licensing before public distribution.
 
-Hollybrook Open and Nightshoal are inspiration links/descriptions only. Their source, screenshots, models, music and other art are not bundled. The owner later supplied a written description of Hollybrook Open's code structure; only general principles from it were applied: an event bus between systems, logic testable without the renderer, test hooks, pixel-snapped orthographic rendering, a world that keeps living at a cheap idle frame rate, and sound synthesized live with Web Audio (no samples), silent until enabled. No Hollybrook code was copied, and the original Our House renderer and palette files are unchanged. No Monopoly artwork, branding or source is included.
+Hollybrook Open and Nightshoal are inspiration links/descriptions only. Their source, screenshots, models, music and other art are not bundled. The owner later supplied a written description of Hollybrook Open's code structure; only general principles from it were applied: an event bus between systems, logic testable without the renderer, test hooks, pixel-snapped orthographic rendering, a world that keeps living at a cheap idle frame rate, and sound synthesized live with Web Audio (no samples), silent until enabled. No Hollybrook code was copied, and the original Our Castle renderer and palette files are unchanged. No Monopoly artwork, branding or source is included.
 
 ## Dependencies added for the application
 
@@ -21,4 +21,4 @@ Loaded or used elsewhere, not bundled:
 - The PayPal JavaScript SDK v6 is loaded at runtime from PayPal's sandbox host only when sandbox credentials are configured.
 - Newman (Postman's CLI, Apache-2.0) was run through `npx` to verify the Postman collection. It is not a dependency.
 
-The board scene (`src/world/board-scene.js`), crest SVG (`src/app/crest.js`) and application code are new source written for Our House under the root MIT license. The crest's crown and leaf charges adapt the owner's original sigil paths from `references/source/heraldry.reference.js`.
+The board scene (`src/world/board-scene.js`), crest SVG (`src/app/crest.js`) and application code are new source written for Our Castle under the root MIT license. The crest's crown and leaf charges adapt the owner's original sigil paths from `references/source/heraldry.reference.js`.

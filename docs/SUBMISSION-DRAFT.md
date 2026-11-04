@@ -4,7 +4,7 @@ Draft text for the owner to edit. Items in **[brackets]** must be confirmed or r
 
 ## Name and tagline
 
-**Our House** (working name) — save together as a family, and watch your cottage grow into a castle.
+**Our Castle** — save together as a family, and watch your cottage grow into a castle.
 
 ## Inspiration
 

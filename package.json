@@ -1,8 +1,8 @@
 {
-  "name": "our-house",
+  "name": "our-castle",
   "version": "0.2.0",
   "private": true,
-  "description": "Our House: a cooperative household savings board journey with an adult-approved PayPal sandbox checkout and an AI milestone planner",
+  "description": "Our Castle: a cooperative household savings board journey with an adult-approved PayPal sandbox checkout and an AI milestone planner",
   "type": "module",
   "license": "MIT",
   "scripts": {

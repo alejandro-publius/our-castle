@@ -38,7 +38,7 @@ Original bounded craft references from the earlier project: Haley Park (https://
 
 Use the original code-native board/island vocabulary for layered grass, earth/stone sides, rounded tree canopies, conifers, wooden bridges, rocks, flowers, antlered deer and colorful roof tiles. Show real castle silhouette changes: cottage → larger manor → walled keep → multi-tower castle. Gardens and banners reward habits. Crest slots can use crown/leaf/stag/tower motifs; small details should survive the pixel pass.
 
-The original brand kit stays available as reference. Our House should use its own wordmark and household crest, not the old "your chat, your army" tagline or opposing army identities. Preserve the crest craftsmanship without making family members enemies.
+The original brand kit stays available as reference. Our Castle should use its own wordmark and household crest, not the old "your chat, your army" tagline or opposing army identities. Preserve the crest craftsmanship without making family members enemies.
 
 ## Code and assets
 

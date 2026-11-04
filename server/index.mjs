@@ -28,7 +28,7 @@ const server = http.createServer(app.handler);
 
 server.listen(config.port, config.host, () => {
   const mask = (id) => `${id.slice(0, 4)}…${id.slice(-4)}`;
-  console.log(`Our House: http://localhost:${config.port}/`);
+  console.log(`Our Castle: http://localhost:${config.port}/`);
   console.log(`  Art reference: http://localhost:${config.port}/art-preview.html`);
   console.log(`  .env file: ${envFileLoaded ? 'loaded (server-side only)' : 'not found — using example modes'}`);
   console.log(`  Payments: ${config.payments.mode === 'sandbox'

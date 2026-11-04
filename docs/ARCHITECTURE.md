@@ -32,7 +32,7 @@ src/core/rules.js  shared pure rules        paypal-sdk-client  Server SDK   ─�
 | `plans` | Proposed/accepted/superseded plans with their inputs, the arithmetic basis and the validated plan JSON. |
 | `achievements` | Tier keepsakes (`tier:1..3`) and habit gardens (`garden:1..4`), unique per goal. |
 
-Example mode and sandbox mode use different database files (`data/our-house-example.sqlite`, `data/our-house-sandbox.sqlite`), so simulated entries can never mix with PayPal-confirmed ones.
+Example mode and sandbox mode use different database files (`data/our-castle-example.sqlite`, `data/our-castle-sandbox.sqlite`), so simulated entries can never mix with PayPal-confirmed ones.
 
 Current tracked progress = Σ effect × amount over the goal's ledger rows. Board position = ⌊progress × 20 ÷ target⌋, clamped to 0–20. Tiers are reached at 25%, 60% and 100% (milestone cents rounded up). The built home shows the highest tier ever reached (a keepsake); the travelers and amounts always show current progress.
 
@@ -79,7 +79,7 @@ The planner proposes only. Each contribution still needs an adult's explicit app
 
 | Tool | Source | Limits |
 | --- | --- | --- |
-| `read_household_ledger` | Our House database | Goal, progress, milestones, contributions with PayPal ids and statuses; bills and gifts marked "not savings" |
+| `read_household_ledger` | Our Castle database | Goal, progress, milestones, contributions with PayPal ids and statuses; bills and gifts marked "not savings" |
 | `get_order` | PayPal Agent Toolkit | Only offered in sandbox mode; `order_id` is a JSON-schema enum of this household's PayPal order ids, re-checked by the server |
 | `list_transactions` | PayPal Agent Toolkit | Only offered in sandbox mode; the server turns `days` (clamped 1–31) and a status into the toolkit's date range |
 
@@ -95,7 +95,7 @@ The server records what the steward actually checked. For each `get_order` it co
 - The board lives between events: an idle loop at about 8 frames per second lowers the deer's heads to graze and flutters a few butterflies. It pauses for hidden tabs, and is off when the person prefers reduced motion. The board emits `scene:hop` and `scene:rise` on the event bus.
 - `sound.js` synthesizes every cue with Web Audio: footstep taps, a confirmation chime, a tier fanfare through a generated-noise reverb, a sprout for gardens and a soft tone for declines. It is silent until the Sound toggle is pressed, and main.js routes bus events to it, so the board never calls audio directly.
 - `paypal-checkout.js` loads the sandbox JS SDK v6, starts a one-time payment session with a server-created order, reports approval to the server and shows whatever the server decides.
-- Test hooks: `window.__ourHouse.state`, `window.__ourHouse.scene()` (tier, position, animation and ambient counters), `window.__ourHouse.sound()` (enabled flag and recent cues), `window.__ourHouse.bus` (set `bus.log = []` to record events), `document.body.dataset.ready`.
+- Test hooks: `window.__ourCastle.state`, `window.__ourCastle.scene()` (tier, position, animation and ambient counters), `window.__ourCastle.sound()` (enabled flag and recent cues), `window.__ourCastle.bus` (set `bus.log = []` to record events), `document.body.dataset.ready`.
 
 ## Security notes
 

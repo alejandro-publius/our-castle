@@ -89,7 +89,7 @@ export function createPayPalClient({ clientId, clientSecret, fetch = globalThis.
           payment_source: {
             paypal: {
               experience_context: {
-                brand_name: 'Our House (sandbox demo)',
+                brand_name: 'Our Castle (sandbox demo)',
                 shipping_preference: 'NO_SHIPPING',
                 user_action: 'PAY_NOW',
               },
@@ -116,7 +116,7 @@ export function createPayPalClient({ clientId, clientSecret, fetch = globalThis.
         requestId,
         body: {
           amount: { currency_code: currency, value: centsToDecimalString(amountCents) },
-          note_to_payer: (note ?? 'Our House sandbox refund').slice(0, 255),
+          note_to_payer: (note ?? 'Our Castle sandbox refund').slice(0, 255),
         },
       });
     },

@@ -26,8 +26,8 @@ export default defineConfig({
     timeout: 30_000,
     env: {
       PORT: String(port),
-      OUR_HOUSE_ENV_FILE: 'none',
-      OUR_HOUSE_DATA_DIR: 'test-results/e2e-data',
+      OUR_CASTLE_ENV_FILE: 'none',
+      OUR_CASTLE_DATA_DIR: 'test-results/e2e-data',
       PAYPAL_CLIENT_ID: '',
       PAYPAL_CLIENT_SECRET: '',
       AI_API_KEY: '',

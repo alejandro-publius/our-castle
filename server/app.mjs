@@ -288,7 +288,7 @@ export function createApp({ config, db, clock, paypal = null, aiProvider = null,
       if (error instanceof DomainError || error instanceof HttpError || error instanceof PlanInputError) {
         return sendJson(res, error.status, { error: { code: error.code, message: error.message, issues: error.issues, debugId: error.debugId } });
       }
-      console.error('[our-house] unexpected error', error);
+      console.error('[our-castle] unexpected error', error);
       sendJson(res, 500, { error: { code: 'server_error', message: 'Unexpected server error. No payment was credited.' } });
     }
   }

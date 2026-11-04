@@ -30,7 +30,7 @@ const record = (name, ok, detail) => { results.push({ name, ok }); log(`- ${ok =
 const timed = async (fn) => { const t = Date.now(); const value = await fn(); return { value, ms: Date.now() - t }; };
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-const dir = mkdtempSync(path.join(tmpdir(), 'our-house-live-'));
+const dir = mkdtempSync(path.join(tmpdir(), 'our-castle-live-'));
 const db = openDatabase(path.join(dir, 'live.sqlite'));
 const clock = createClock();
 ensureDemoHousehold(db, clock);

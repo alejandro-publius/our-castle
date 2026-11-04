@@ -39,7 +39,7 @@ test('the database itself refuses a bill or gift entry that would count toward t
 });
 
 test('ledger, receipts and milestones persist after the database is closed and reopened', () => {
-  const dir = mkdtempSync(path.join(tmpdir(), 'our-house-'));
+  const dir = mkdtempSync(path.join(tmpdir(), 'our-castle-'));
   const file = path.join(dir, 'persist.sqlite');
   try {
     const first = setupDomain({ file });

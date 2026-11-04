@@ -95,7 +95,7 @@ export function createPayPalSdkClient({ clientId, clientSecret, controllers = nu
           paymentSource: {
             paypal: {
               experienceContext: {
-                brandName: 'Our House (sandbox demo)',
+                brandName: 'Our Castle (sandbox demo)',
                 shippingPreference: PaypalWalletContextShippingPreference.NoShipping,
                 userAction: PaypalExperienceUserAction.PayNow,
               },
@@ -124,7 +124,7 @@ export function createPayPalSdkClient({ clientId, clientSecret, controllers = nu
         prefer: 'return=representation',
         body: {
           amount: { currencyCode: currency, value: centsToDecimalString(amountCents) },
-          noteToPayer: (note ?? 'Our House sandbox refund').slice(0, 255),
+          noteToPayer: (note ?? 'Our Castle sandbox refund').slice(0, 255),
         },
       }));
     },

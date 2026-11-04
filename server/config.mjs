@@ -11,7 +11,7 @@ const SUPPORTED_AI_PROVIDERS = new Set(['anthropic']);
  * Read the local, server-only `.env` file without copying its secrets into process.env.
  * Values already in the process environment win, so a test or shell can override them.
  */
-export function readEnvironment({ root, envFile = process.env.OUR_HOUSE_ENV_FILE, processEnv = process.env } = {}) {
+export function readEnvironment({ root, envFile = process.env.OUR_CASTLE_ENV_FILE, processEnv = process.env } = {}) {
   const file = envFile === 'none' ? null : path.resolve(root, envFile || '.env');
   const fromFile = file && existsSync(file) ? parseEnv(readFileSync(file, 'utf8')) : {};
   const merged = { ...fromFile };
@@ -66,7 +66,7 @@ export function loadConfig(env = {}, { root = process.cwd() } = {}) {
     }
   }
 
-  const dataDir = path.resolve(root, trimmed('OUR_HOUSE_DATA_DIR') || 'data');
+  const dataDir = path.resolve(root, trimmed('OUR_CASTLE_DATA_DIR') || 'data');
   return { port: Number.isFinite(port) ? port : 3010, host, payments, ai, dataDir, warnings };
 }
 

@@ -1,4 +1,4 @@
-// Shared, dependency-free rules for Our House. Imported by the browser and the Node server,
+// Shared, dependency-free rules for Our Castle. Imported by the browser and the Node server,
 // so it must not touch Three.js, the DOM or Node APIs. Every amount is an integer number of cents.
 
 export const CURRENCY = 'USD';

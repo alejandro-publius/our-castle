@@ -9,7 +9,7 @@ import { dollarFigures } from '../planner/validate.mjs';
 // Toolkit (get_order, list_transactions). What it checked, and whether PayPal agrees with the
 // ledger, is recorded by the server from the actual tool results — not taken from the model's prose.
 
-export const STEWARD_SYSTEM = `You are the house steward in "Our House", a cooperative household savings game where a family grows a cottage into a castle by reaching one shared goal.
+export const STEWARD_SYSTEM = `You are the house steward in "Our Castle", a cooperative household savings game where a family grows a cottage into a castle by reaching one shared goal.
 
 Answer the family's question in 2–5 short, warm sentences suitable for parents and children. No tables or markdown headings.
 
@@ -146,7 +146,7 @@ export function createSteward({ db, contributions, householdId, ai = null, paypa
       const shown = [ledger];
       const executeTool = async (name, input) => {
         if (name === 'read_household_ledger') {
-          checks.push({ tool: name, source: 'Our House ledger', summary: `Read the ledger: ${formatCents(decimalStringToCents(ledger.tracked_progress))} tracked, ${ledger.contributions.length} contribution${ledger.contributions.length === 1 ? '' : 's'}.` });
+          checks.push({ tool: name, source: 'Our Castle ledger', summary: `Read the ledger: ${formatCents(decimalStringToCents(ledger.tracked_progress))} tracked, ${ledger.contributions.length} contribution${ledger.contributions.length === 1 ? '' : 's'}.` });
           return ledger;
         }
         if (name === 'get_order' && paypalTools) {

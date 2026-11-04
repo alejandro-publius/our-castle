@@ -18,7 +18,7 @@ Build or update an application that integrates the PayPal developer platform usi
 
 - Text description of features and functionality.
 - Functional demo: complete setup and run instructions in the repository, or a hosted demo URL. Mockups, static prototypes or non-functional demos do not qualify.
-- Tools: identify the AI model/service used and explain how it is used. (Our House: Anthropic Claude via the Messages API, as the runtime milestone planner with server-side validation. A coding assistant's involvement in building the project is not the runtime AI feature.)
+- Tools: identify the AI model/service used and explain how it is used. (Our Castle: Anthropic Claude via the Messages API, as the runtime milestone planner with server-side validation. A coding assistant's involvement in building the project is not the runtime AI feature.)
 - Public code repository on GitHub, GitLab or Bitbucket with all source, assets and instructions, open source, with a visible license file.
 - Demo video under three minutes, on YouTube and publicly visible, showing the project working on its target device, with no third-party trademarks or copyrighted music/material used without permission.
 

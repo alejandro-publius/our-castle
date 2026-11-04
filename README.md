@@ -1,6 +1,8 @@
-# Our House
+# Our Castle
 
-A cooperative household savings journey. A family (or one person) founds a house, chooses a crest, and travels a pixel woodland board past deer, a brook and a plank bridge. As real, adult-approved contributions reach shared milestones, their cottage grows into a manor, a keep and finally a castle. **Our House is a working name.**
+A cooperative household savings journey. A family (or one person) founds a house, chooses a crest, and travels a pixel woodland board past deer, a brook and a plank bridge. As real, adult-approved contributions reach shared milestones, their cottage grows into a manor, a keep and finally a castle.
+
+Formerly the working name "Our House". The original art starter (`/art-preview.html`) and its reference captures (`references/images/our-house-*.png`) keep that name as preserved references.
 
 Built for the PayPal AI Hackathon as a local prototype, with PayPal at the center:
 
@@ -64,15 +66,15 @@ Optional webhooks: expose the local server through a tunnel, add a webhook in th
 
 ### Postman
 
-Import `postman/our-house.postman_collection.json` and `postman/our-house.postman_environment.json`.
+Import `postman/our-castle.postman_collection.json` and `postman/our-castle.postman_environment.json`.
 
 - **Folder 1** walks the example-mode API: found the house, plan, adult-approved contribution, replay safety, child refusal, bills not counting, steward status and the cross-site guard.
-- **Folder 2** walks the real sandbox. Create an order through Our House and open its `approveUrl` to approve with a sandbox buyer. Then capture, replay, try a mismatched household, compare with PayPal's own `GET /v2/checkout/orders`, ask the steward to verify, refund, and confirm that an order created outside Our House is refused.
+- **Folder 2** walks the real sandbox. Create an order through Our Castle and open its `approveUrl` to approve with a sandbox buyer. Then capture, replay, try a mismatched household, compare with PayPal's own `GET /v2/checkout/orders`, ask the steward to verify, refund, and confirm that an order created outside Our Castle is refused.
 
 Run folder 1 from the terminal:
 
 ```sh
-npx newman run postman/our-house.postman_collection.json -e postman/our-house.postman_environment.json \
+npx newman run postman/our-castle.postman_collection.json -e postman/our-castle.postman_environment.json \
   --folder "1 · Example mode walkthrough (no credentials)"
 ```
 
@@ -99,7 +101,7 @@ Default demo numbers (editable, synthetic): a $300 goal, $60 already set aside, 
 
 ## PayPal and sponsor tools used
 
-| Tool | How Our House uses it |
+| Tool | How Our Castle uses it |
 | --- | --- |
 | PayPal JavaScript SDK v6 | One-time payment session in the browser; the order comes from the server |
 | PayPal Server SDK (APIMatic-generated) | Orders v2 create/capture/get and Payments v2 refunds, with `PayPal-Request-Id` idempotency |
@@ -114,7 +116,7 @@ Default demo numbers (editable, synthetic): a $300 goal, $60 already set aside, 
 - Integer cents everywhere; amounts are real HTML text in Alegreya Sans, never pixel art.
 - The browser cannot credit a payment. Redirects, callbacks, pending, canceled and declined orders never count.
 - Unique capture and refund ids plus `PayPal-Request-Id` idempotency keys mean replays, double clicks and repeated webhooks cannot double-credit.
-- A capture for a different household or goal, or with a different amount, currency or `custom_id`, is rejected. Orders created outside Our House are refused.
+- A capture for a different household or goal, or with a different amount, currency or `custom_id`, is rejected. Orders created outside Our Castle are refused.
 - The database refuses bill or gift entries that would count toward the goal.
 - AI output is validated before it is shown or stored. For plans, the server checks the schema, whole nonnegative cents, exact dates, totals and feasibility claims. For both plans and steward answers, every dollar figure must come from the household's data or PayPal's. AI never authorizes, schedules or refunds a payment. The steward only gets read-only PayPal tools, limited to this household's order ids, with arguments rebuilt by the server.
 - Secrets stay in the server `.env`; tests check that no secret reaches any page or API response. The server binds to `127.0.0.1` and refuses cross-site writes and rebinding hosts.
