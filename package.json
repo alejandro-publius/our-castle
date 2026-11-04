@@ -1,13 +1,27 @@
 {
   "name": "our-house",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
-  "description": "Claude handoff and original pixel-art starter for a cooperative household goals adventure",
+  "description": "Our House: a cooperative household savings board journey with an adult-approved PayPal sandbox checkout and an AI milestone planner",
   "type": "module",
   "license": "MIT",
   "scripts": {
-    "start": "node scripts/serve.mjs",
-    "check": "node scripts/check.mjs"
+    "start": "node server/index.mjs",
+    "dev": "node --watch server/index.mjs",
+    "art-preview": "node scripts/serve.mjs",
+    "check": "node scripts/check.mjs",
+    "test": "npm run check && npm run test:unit && npm run test:e2e",
+    "test:unit": "node --test \"test/unit/**/*.test.mjs\"",
+    "test:e2e": "playwright test",
+    "reset-demo": "node scripts/reset-demo.mjs"
   },
-  "engines": { "node": ">=20" }
+  "engines": {
+    "node": ">=22.16"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "1.4.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.64.1"
+  }
 }
