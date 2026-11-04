@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { closeDeedsWhenTheyAppear } from './support/deeds.mjs';
 
 // The family's next step through the existing House → Plan → Contribute → receipt flow. Example mode only: payments
 // here are simulated by the server. Opening a step must never write; making, accepting and paying stay explicit.
@@ -30,6 +31,8 @@ async function foundHouse(page) {
   await expect(page.locator('#house-status')).toContainText('is founded');
 }
 
+// District deeds are tested in area-cards.spec.mjs; here a deed that opens is closed like a family would.
+test.beforeEach(({ page }) => closeDeedsWhenTheyAppear(page));
 test.beforeEach(async ({ request }) => {
   expect((await request.post('/api/demo/reset', { data: {} })).ok()).toBeTruthy();
 });

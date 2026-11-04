@@ -12,9 +12,9 @@ export const ESTATE_MILESTONES = Object.freeze([
   Object.freeze({ key: 'ramparts', percent: 80, level: 3, name: 'The outer ramparts', detail: 'An outer wall around the estate with corner turrets in your crest color.' }),
 ]);
 
-const HOME_DETAILS = Object.freeze({
+export const HOME_DETAILS = Object.freeze({
   cottage: 'Timber framing, tiled roof, brick chimney, mullioned windows with flower boxes and the household pennant.',
-  manor: 'A two-storey hall with a slate-roofed wing, crest banner, fenced courtyard and kitchen garden.',
+  manor: 'A two-storey timber hall under a cobalt roof with a crimson-roofed wing, crest banner, fenced courtyard and kitchen garden.',
   keep: 'A stone keep with four towers, battlements, arrow slits and a gatehouse with an iron portcullis.',
   castle: 'Tall spired towers, a great hall, moat and drawbridge, courtyard fountain and planted gardens.',
 });

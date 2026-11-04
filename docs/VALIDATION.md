@@ -1,5 +1,63 @@
 # Validation
 
+## November 4, 2026: district deeds, a card when a new area opens (branch `feature/area-unlock-cards`)
+
+The owner asked for *"a card that indicates when you unlock a new area pixelated like a monopoly card."* Built in the worktree `our-castle-district-guide` from `7918113`; not yet promoted. The reference lock and ledger are in the district-deeds section of [ART-DIRECTION.md](ART-DIRECTION.md).
+
+**What it does:**
+- **When it appears:** after the board animation, a portrait deed card (a native modal dialog) appears for each district that the server's state newly opened for the same household and goal. The rule is `newlyOpenedDistricts` in `src/core/deeds.js`, which compares `rewards.realm.districts` between server states.
+- **When it never appears:** first loads, reloads, replays, refunds and keepsakes, re-crossing a milestone, pending or canceled payments, and art previews.
+- **Several at once:** they queue as "Deed 1 of 3", with Next and Close all.
+- **Card face:**
+  - the exact condition the server reports;
+  - one line on the main buildings, one line on the court guest count with any princess;
+  - the server's evidence label;
+  - a "Realm keepsake" stamp ("Example mode · simulated payments", "PayPal sandbox · test money", or for the Woodland Garden "self-reported habit, not verified by any bill provider");
+  - Visit and Close.
+- **Deed details:** the full building description, guest names, estate additions with their real status, and the provider-required water garden (still locked).
+- **Picture:** root's original 320 × 176 render of the district (`assets/area-cards/`, provenance in that folder), shown at 1× with pixelated rendering and cropped, not resampled, on narrow screens; its alt text says it is a pixel portrait. The household crest is the seal.
+- **Visit** leaves any art preview, focuses that district on the map and keeps keyboard focus on its control.
+- **Close or Escape** returns focus to where it was.
+- **Reopening:** Rewards → District deeds reopens earned and keepsake deeds, and shows locked ones with their exact condition.
+- **Nothing writes:** viewing, visiting and closing make no server request. There are no backend, threshold, entitlement or persisted-data changes.
+- **Race fixed during review:** an open dialog is updated in place instead of being closed and reopened. A close event that arrives late is ignored once the dialog is open again, so it cannot clear newer deeds.
+- **Copy:** the manor's reward text now matches the current model: a cobalt main roof and a crimson-roofed wing.
+
+**Checks run** (Playwright example server and an isolated example server on 3143; no keys, no PayPal or AI calls):
+- **Unit:** `test/unit/deeds.test.mjs`, **2/2**, against a real in-memory example server.
+  - Only newly opened districts count. Nothing opens on a first load, an unchanged state, a canceled payment or a pending payment; the manor opens when the server completes the pending one.
+  - A replayed request and a refund to a keepsake open nothing, and re-crossing announces nothing.
+  - A $120 jump opens the market and the keep; a self-reported bill opens the garden; a different goal is never compared.
+  - The content of each deed: the exact conditions, evidence, stamps (example, sandbox, self-reported), the provider-locked water garden, no invented guests for the market or garden, and addition statuses.
+  - The related unit tests (`journey`, `rewards`, `realm`, `court`) also pass: 22 tests in total.
+- **Browser:** `test/e2e/area-cards.spec.mjs`, desktop and phone projects, 8 scenarios. All pass.
+  - The deed opens only after the board stops animating, with focus on its title, and the picture is 320×176 and pixelated.
+  - Escape returns focus to the receipt, and a reload shows no deed.
+  - Pending, refund, re-crossing and art previews show none.
+  - The collection reopens a deed with keyboard focus returned on Escape, and locked entries show their conditions.
+  - A three-deed queue with Next works, and Visit focuses the Stone Keep fully on screen with no writes.
+  - Visit from the collection ends an art preview.
+  - A new area arriving while a collection deed is open replaces it in place and is not lost.
+  - At 390×844 Visit and Close are on screen without scrolling. At 320×568 the card scrolls inside itself with Close reachable. Buttons are at least 44 px and nothing overflows horizontally.
+  - Reduced motion removes the entrance animation.
+- **Existing specs:** `journey`, `family-journey`, `estate`, `realm`, `court` and `realm-focus` pass (all non-skipped tests; skips are by project). In specs where deeds are not under test, `test/e2e/support/deeds.mjs` closes an opened deed with its real Close button before the next action; no assertion was removed.
+- `npm run check` and the whitespace check passed. The full suite, Postman guards and PayPal/AI verifiers were not run.
+
+**Visual review:** root reviewed the actual card on its own example fixture (port 3153), checking:
+- a $15 simulated payment unlocking the Manor;
+- a quiet reload;
+- collection Enter and Escape returning focus;
+- Visit focusing the Manor;
+- zero writes from navigation, no page errors and no external requests;
+- a closed card 614 px tall at 390×844, scrolling inside itself at 320 px.
+
+The approved crop is `docs/screenshots/deed-manor.png`.
+
+**Limitations:**
+- **Not covered:** Chromium emulation only; no real phone, Safari, Firefox or screen reader.
+- **Sandbox wording not exercised:** the stamp's PayPal sandbox wording is unit-tested but was not seen in a browser, and the live checkout/`get_order` gap is unchanged.
+- **Session-only queue:** if a family reloads before reading a queued deed, it is not shown again automatically. It remains in Rewards → District deeds.
+
 ## November 4, 2026: current woodland/family review video
 
 The private [2:51 review kit](demos/woodland-review/README.md) shows new recorded example-mode family steps, the green woodland, a simulated $15 Manor unlock, a saved record after refresh and a labelled castle art preview. Earlier live-AI footage and historical PayPal verifier evidence remain separately labelled. The approved sandbox popup/receipt/same-order get_order insert is still **unfilmed at 2:17–2:41**. No missing outcome was reconstructed and nothing was submitted.

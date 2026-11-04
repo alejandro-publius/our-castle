@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { closeDeedsWhenTheyAppear } from './support/deeds.mjs';
 
 // The wider estate, reward view, previews and estate announcements, in example mode through the real server.
 // These prove presentation and honesty rules; they do not prove any bill-provider integration (none exists).
@@ -54,6 +55,8 @@ async function expectRouteClear(page) {
   }
 }
 
+// District deeds are tested in area-cards.spec.mjs; here a deed that opens is closed like a family would.
+test.beforeEach(({ page }) => closeDeedsWhenTheyAppear(page));
 test.beforeEach(async ({ request }) => {
   const response = await request.post('/api/demo/reset', { data: {} });
   expect(response.ok()).toBeTruthy();

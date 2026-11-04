@@ -1,4 +1,5 @@
 import {test,expect} from '@playwright/test';
+import { closeDeedsWhenTheyAppear } from './support/deeds.mjs';
 const scene=(page)=>page.evaluate(()=>window.__ourCastle.scene());
 // Classify the rendered map: the share of drawn pixels (not background or outline) that are green or water blue.
 const mapColours=(page)=>page.evaluate(()=>{
@@ -12,6 +13,8 @@ const mapColours=(page)=>page.evaluate(()=>{
   }
   return {drawn,green:green/drawn,blue:blue/drawn};
 });
+// District deeds are tested in area-cards.spec.mjs; here a deed that opens is closed like a family would.
+test.beforeEach(({ page }) => closeDeedsWhenTheyAppear(page));
 test.beforeEach(async({page,request})=>{
   expect((await request.post('/api/demo/reset',{data:{}})).ok()).toBeTruthy();
   await page.goto('/');await page.waitForFunction(()=>document.body.dataset.ready==='true');

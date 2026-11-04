@@ -9,6 +9,7 @@ import { sound } from './sound.js';
 import { newlyEarnedEstate } from '../core/rewards.js';
 import { courtForTier } from '../core/court.js';
 import { contributionProjection, isCounted, nextAction } from '../core/journey.js';
+import { districtDeed, newlyOpenedDistricts } from '../core/deeds.js';
 import { REALM_DISTRICTS, realmAccess, districtById, homeDistrict } from '../core/realm.js';
 
 // ---------- small helpers ----------
@@ -80,6 +81,7 @@ const ui = {
   next: null,
   navigation: 0,
   ledgerLayout: Promise.resolve(),
+  deeds: { queue: [], index: 0, mode: 'new', origin: null, visiting: false },
 };
 const persona = () => state?.members.find((m) => m.id === ui.personaId) ?? null;
 const isSandbox = () => state?.modes.payments.mode === 'sandbox';
@@ -144,13 +146,17 @@ const newlyEarned = (previous, next) => (previous?.goal?.id === next?.goal?.id ?
 
 function applyState(next, { animate = true, result = null } = {}) {
   const added = newlyEarned(state, next);
+  // Areas the server newly opened for this household and goal (never on a first load, reload or replay).
+  const opened = newlyOpenedDistricts(state, next);
+  const scope = { householdId: next.household.id, goalId: next.goal.id };
   state = next;
   ui.preview = null;
   if (!persona()) ui.personaId = state.members.find((m) => m.role === 'adult')?.id ?? state.members[0]?.id;
   renderHeader();
   renderQuest();
   renderNextStep();
-  renderBoard({ animate, result, added });
+  const boardDone = renderBoard({ animate, result, added });
+  if (opened.length) Promise.resolve(boardDone).then(() => queueDeeds(opened, scope));
   renderHouse();
   renderPlan();
   renderGive();
@@ -300,8 +306,9 @@ function renderBoard({ animate, result, added = [] }) {
     class: [t.built ? 'built' : '', t.index === board.currentTier ? 'current' : ''].join(' ').trim(),
     'aria-current': t.index === board.currentTier ? 'step' : false,
   }, h('strong', {}, `${t.numeral} · ${t.name}`), t.percent ? money(t.targetCents) : 'Start')));
-  if (!scene) return;
-  scene.update({
+  if (!scene) return null;
+  // Returned so a new-area deed can wait until the board has finished moving.
+  return scene.update({
     builtTier: board.builtTier,
     position: board.position,
     crest: household.crest,
@@ -317,8 +324,21 @@ function renderBoard({ animate, result, added = [] }) {
 
 // ---------- Rewards and explicit, presentation-only previews ----------
 const REWARD_LABELS = { unlocked: 'Unlocked', keepsake: 'Keepsake', locked: 'Locked', connection_required: 'Needs a provider connection' };
+function renderDeedList() {
+  const labels = { earned: 'Earned', keepsake: 'Keepsake', locked: 'Locked' };
+  $('#deed-list').replaceChildren(...state.rewards.realm.districts.map((district) => {
+    const deed = districtDeed(state, district.id);
+    if (!deed) return null;
+    return h('li', { class: `deed-entry deed-${deed.status}`, style: `--deed:var(--${deed.colour})` },
+      h('span', { class: 'deed-entry-name' }, h('strong', {}, deed.name), h('small', {}, labels[deed.status])),
+      deed.status === 'locked'
+        ? h('span', { class: 'deed-entry-condition' }, deed.condition)
+        : h('button', { type: 'button', 'data-deed': deed.id, onclick: (e) => openDeedFromCollection(deed.id, e.currentTarget) }, 'View deed'));
+  }));
+}
 function renderRewards() {
   if (!state.rewards) { $('#reward-list').replaceChildren(h('p', { class: 'fine' }, 'Restart the server to load rewards.')); return; }
+  renderDeedList();
   $('#reward-evidence-note').textContent = `${state.rewards.billVerification.note} ${state.rewards.paymentEvidenceLabel}`;
   $('#reward-list').replaceChildren(...state.rewards.entries.map((reward) => {
     const card = h('article', { class: `reward-card reward-${reward.status}`, 'data-reward': reward.id, 'data-status': reward.status },
@@ -421,6 +441,91 @@ function celebrate(awarded, added = []) {
   box.hidden = false;
   clearTimeout(ui.celebrationTimer);
   ui.celebrationTimer = setTimeout(() => { box.hidden = true; }, 7000);
+}
+
+// ---------- District deeds: a card when the server newly opens an area ----------
+// Queue newly opened districts after the board animation. Each is re-checked against the current household, goal and
+// access, so a later state (a reset, another goal) cannot show a stale card.
+// An open dialog is never closed and reopened here: its close event arrives later and would clear the new deeds. New
+// deeds join an open queue, or replace a deed opened from the collection, in place; focus later returns to the origin
+// that opened the dialog first.
+function queueDeeds(ids, scope) {
+  if (state.household.id !== scope.householdId || state.goal.id !== scope.goalId) return;
+  const open = new Set(state.rewards.realm.districts.filter((d) => d.open).map((d) => d.id));
+  const d = ui.deeds, dialog = $('#deed-dialog');
+  const fresh = ids.filter((id) => open.has(id) && !(d.mode === 'new' && dialog.open && d.queue.includes(id)));
+  if (!fresh.length) return;
+  if (dialog.open && d.mode === 'new') { d.queue.push(...fresh); renderDeed(); return; }
+  if (dialog.open) Object.assign(d, { queue: fresh, index: 0, mode: 'new', visiting: false });
+  else Object.assign(d, { queue: fresh, index: 0, mode: 'new', origin: document.activeElement, visiting: false });
+  showDeed();
+}
+function openDeedFromCollection(id, origin) {
+  const dialog = $('#deed-dialog');
+  Object.assign(ui.deeds, { queue: [id], index: 0, mode: 'collection', visiting: false, ...(dialog.open ? {} : { origin }) });
+  showDeed();
+}
+function showDeed() {
+  const dialog = $('#deed-dialog');
+  $('#deed-more').open = false;
+  renderDeed();
+  if (!dialog.open) dialog.showModal();
+  $('#deed-name').focus();
+}
+function renderDeed() {
+  const d = ui.deeds, id = d.queue[d.index], deed = districtDeed(state, id);
+  if (!deed) return;
+  const card = $('#deed');
+  card.dataset.district = id;
+  card.dataset.status = deed.status;
+  card.style.setProperty('--deed', `var(--${deed.colour})`);
+  $('#deed-kicker').textContent = d.mode === 'new' ? 'New area unlocked' : deed.status === 'keepsake' ? 'District deed · keepsake' : 'District deed';
+  $('#deed-name').textContent = deed.name;
+  $('#deed-count').textContent = d.queue.length > 1 ? `Deed ${d.index + 1} of ${d.queue.length} · all are kept in Rewards` : '';
+  const art = $('#deed-art');
+  if (art.getAttribute('src') !== deed.art) art.setAttribute('src', deed.art);
+  art.alt = `Pixel portrait of ${deed.name}`; // an illustration of the area, not a live view of the earned realm
+  $('#deed-seal').innerHTML = crestSvg(state.household.crest, { title: `${state.household.name} seal` });
+  $('#deed-earned').textContent = deed.earned;
+  $('#deed-summary').replaceChildren(h('li', {}, deed.summary), h('li', {}, deed.court.short));
+  $('#deed-evidence').textContent = `Evidence: ${deed.evidence}`;
+  const facts = [['What stands here', deed.stands.join(' ')], ['Guests', deed.court.text]];
+  if (deed.additions.length) facts.push(['Also here', deed.additions.map((a) => `${a.name}: ${a.status === 'unlocked' ? 'added' : a.status === 'keepsake' ? 'kept as a keepsake' : `not yet (${a.condition})`}`).join('. ') + '.']);
+  if (deed.providerLocked.length) facts.push(['Still locked', `${deed.providerLocked.join(', ')}: needs a connected bill provider, and none is connected.`]);
+  $('#deed-facts').replaceChildren(...facts.flatMap(([dt, dd]) => [h('dt', {}, dt), h('dd', {}, dd)]));
+  $('#deed-stamp').textContent = deed.stamp;
+  const visit = $('#deed-visit');
+  visit.textContent = `Visit ${deed.name}`;
+  visit.hidden = !deed.open;
+  const more = d.index < d.queue.length - 1;
+  $('#deed-next').hidden = !more;
+  $('#deed-next').textContent = more ? `Next deed (${d.index + 2} of ${d.queue.length})` : 'Next deed';
+  $('#deed-close').textContent = more ? 'Close all' : 'Close';
+}
+// Visit: leave any art preview, focus the district on the map and keep keyboard focus on its control. No writes.
+function visitDeed(e) {
+  const id = ui.deeds.queue[ui.deeds.index];
+  ui.deeds.visiting = true;
+  $('#deed-dialog').close();
+  if (ui.preview) { ui.preview = null; renderBoard({ animate: false, result: null }); }
+  const button = $(`#realm-districts [data-district="${CSS.escape(id)}"]`);
+  if (!button) return;
+  scene?.focusDistrict(id);
+  $('.realm-map').dataset.focused = 'true';
+  button.focus({ preventScroll: true });
+  revealRealm(button, { instant: e?.detail === 0 });
+}
+// Closing (button or Escape) returns focus to where it was, or to the same deed in the collection if that re-rendered.
+// A close event that arrives after the dialog was opened again belongs to the earlier deed and is ignored.
+function deedClosed() {
+  if ($('#deed-dialog').open) return;
+  const d = ui.deeds, id = d.queue[d.index];
+  const visiting = d.visiting;
+  Object.assign(d, { queue: [], index: 0, visiting: false });
+  if (visiting) return;
+  let target = d.origin;
+  if (!target?.isConnected || target.closest('[hidden]')) target = d.mode === 'collection' ? $(`#deed-list [data-deed="${CSS.escape(id ?? '')}"]`) : null;
+  (target ?? $('#next-step-go')).focus();
 }
 
 // ---------- 1. House ----------
@@ -1102,6 +1207,10 @@ function bindEvents() {
   });
   $('#persona').addEventListener('change', (e) => { ui.personaId = e.target.value; pref.set('persona', ui.personaId); ui.refundArm = null; renderGive(); renderLedger(); renderNextStep(); });
   $('#next-step-go').addEventListener('click', openNextStep);
+  $('#deed-visit').addEventListener('click', visitDeed);
+  $('#deed-next').addEventListener('click', () => { ui.deeds.index++; $('#deed-more').open = false; renderDeed(); $('#deed-name').focus(); });
+  $('#deed-close').addEventListener('click', () => $('#deed-dialog').close());
+  $('#deed-dialog').addEventListener('close', deedClosed);
   $('#next-step-record-go').addEventListener('click', openPaymentRecord);
   $('#receipt').addEventListener('focus', () => { if (ui.receipt && ui.receiptReviewed !== receiptKey()) { ui.receiptReviewed = receiptKey(); renderNextStep(); } });
 

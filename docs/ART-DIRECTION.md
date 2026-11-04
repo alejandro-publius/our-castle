@@ -62,6 +62,33 @@ The root's flow research ([SavvyCal flow](https://refero.design/flows/3346)) con
 | Honest money states | Product rules | Pending, canceled, declined and refunded payments never read as credit; keepsakes never imply the money is still there; reported, simulated and PayPal sandbox amounts stay labelled |
 | A way back to the saved payment record | Root review: a durable return path after refresh | Under the next step, a small line names the latest payment and its saved status, with a link that opens its record in the Ledger. It reads loaded state only; it is never the primary action |
 
+## District deeds: a card when a new area opens (November 4, 2026)
+
+The owner asked: *"there needs to be a card that indicates when you unlock a new area pixelated like a monopoly card basically."* When the server's state newly opens a district, a portrait deed card appears after the board animation. Every deed earned so far can be reopened from Rewards → District deeds. The forest, rivers, colourful buildings and all six districts are unchanged.
+
+**Reference lock.**
+
+| Source | Role | Not taken |
+| --- | --- | --- |
+| Our Castle's own parchment, ink and gold, the household crest, Uncial Antiqua titles and Alegreya Sans text | Primary. The deed is parchment on the dark teal frame with ink and gold; the crest is the household's seal | Nothing replaced; no new font or dependency |
+| Root's six stills of the actual game districts, `assets/area-cards/*.png`, drawn by the 90-colour renderer | The deed's miniature illustration, shown pixel-sharp at an integer scale where it fits | No generated or external art |
+| FRANKY'S (Refero style `d07c7449-98d8-4a89-82f0-de3fe2ec2144`) | Only paper on a dark ground, crisp pixel framing and a compact illustrated card | Its palette, type and layout |
+| Cards Against Humanity (Refero style `42bafff0-1938-4fef-a7dc-65c7cb062c79`) | Only a physical rectangular collectible with a strong title hierarchy | Its typography and colours |
+| WishWish success screen (Refero `a8fe3af8-13df-41df-8f52-a87b14d788a0`) | Only a centred illustration, an unambiguous "earned" message and one main action | Its rounded glossy gift style |
+
+The deed is an original property-deed shape: no Monopoly logos, characters, wording or board.
+
+**Decision ledger.**
+
+| Decision | Source | Implementation |
+| --- | --- | --- |
+| A portrait deed, about 370 px wide, as a native modal dialog | Owner: "a card… like a monopoly card"; WishWish one main action | Stepped pixel corners, a double ink rule with small gold corner squares, a title band in the district's heraldic colour, "New area unlocked", the district name in Uncial, the pixel still, and the household crest as a seal. Escape and Close return focus to where it was |
+| A compact face, details on request | Root review of the first render (about 780 px tall) | The face shows the exact condition it met, two short lines (main buildings; guest count with any princess), the evidence and a "Realm keepsake" stamp, then Visit and Close: about 630 px tall at 390×844. Full architecture, guest names, estate additions and provider locks are under "Deed details". All text is readable Alegreya Sans, not pixel type |
+| Honest evidence | Product rules | Goal districts quote the server's evidence label. The stamp reads "Realm keepsake · Example mode · simulated payments" or "… PayPal sandbox · test money". The Woodland Garden's stamp says it is a self-reported habit, not verified by any bill provider, and its details keep the provider-required water garden locked |
+| Shown only for districts the server newly opens, for the same household and goal | Product rules on previews, keepsakes and replays | A page load, a reload, a replayed capture, a refund, re-crossing a keepsake, a pending or canceled payment, and an art preview never produce a deed. Several new districts queue as "Deed 1 of 3" with Next. An open dialog is updated in place rather than closed and reopened, so a late close event cannot clear newer deeds |
+| One district colour per deed band, from the existing tokens | Monopoly-like colour bands, in the Our Castle palette | Village emerald, Manor cobalt, Market crimson, Garden leaf, Keep timber, Citadel violet |
+| Visit and Close write nothing | Product rules | Visit leaves any art preview, focuses that district on the map and keeps keyboard focus visible. The collection reopens the same deeds from loaded state |
+
 ## Earlier map target: a connected realm (historical)
 
 The grey-island treatment described in this section was superseded by the woodland revision above. Its captures (`docs/screenshots/realm-*.png`) and the demo clips recorded from it are historical.

@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { closeDeedsWhenTheyAppear } from './support/deeds.mjs';
 
 // Example-mode journeys through the real server and browser. These prove the product flow, the
 // board wiring and the ledger rules. They do not prove a live PayPal sandbox or AI integration.
@@ -42,6 +43,8 @@ async function contribute(page, button = 'Simulate approved payment') {
   await page.getByRole('button', { name: button }).click();
 }
 
+// District deeds are tested in area-cards.spec.mjs; here a deed that opens is closed like a family would.
+test.beforeEach(({ page }) => closeDeedsWhenTheyAppear(page));
 test.beforeEach(async ({ request }) => {
   const response = await request.post('/api/demo/reset', { data: {} });
   expect(response.ok()).toBeTruthy();

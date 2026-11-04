@@ -261,6 +261,11 @@
           <h3 id="rewards-heading" tabindex="-1">Every milestone adds something</h3>
           <p class="lede">Grow from a timber cottage to a castle and a living village. Each addition shows its condition and where the progress comes from.</p>
           <p class="reward-evidence-note" id="reward-evidence-note"></p>
+          <section class="deed-collection" aria-labelledby="deeds-title">
+            <h4 id="deeds-title">District deeds</h4>
+            <p class="fine">A deed card marks each area your household has opened. Open one to see what stands there, who lives there and what earned it.</p>
+            <ul class="deed-list" id="deed-list"></ul>
+          </section>
           <div id="reward-list" class="reward-list"></div>
           <details class="reward-proof">
             <summary>What counts as a confirmed bill?</summary>
@@ -277,5 +282,34 @@
     </footer>
   </div>
   <script type="module" src="src/app/main.js"></script>
+  <!-- A district deed: shown when the server newly opens an area, and reopened from Rewards. It never writes anything. -->
+  <dialog id="deed-dialog" class="deed-dialog" aria-labelledby="deed-name" aria-describedby="deed-earned">
+    <article class="deed" id="deed">
+      <div class="deed-paper">
+        <header class="deed-band">
+          <p class="deed-kicker" id="deed-kicker">New area unlocked</p>
+          <h2 id="deed-name" tabindex="-1"></h2>
+          <p class="deed-count" id="deed-count"></p>
+        </header>
+        <div class="deed-picture">
+          <img id="deed-art" alt="" width="320" height="176" decoding="async">
+          <div class="deed-seal" id="deed-seal"></div>
+        </div>
+        <p class="deed-earned" id="deed-earned"></p>
+        <ul class="deed-summary" id="deed-summary"></ul>
+        <p class="deed-evidence" id="deed-evidence"></p>
+        <p class="deed-stamp" id="deed-stamp"></p>
+        <details class="deed-more" id="deed-more">
+          <summary>Deed details</summary>
+          <dl class="deed-facts" id="deed-facts"></dl>
+        </details>
+        <div class="deed-actions">
+          <button type="button" class="deed-visit" id="deed-visit"></button>
+          <button type="button" id="deed-next" hidden>Next deed</button>
+          <button type="button" id="deed-close">Close</button>
+        </div>
+      </div>
+    </article>
+  </dialog>
 </body>
 </html>

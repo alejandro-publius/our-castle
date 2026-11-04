@@ -1,0 +1,92 @@
+{
+  "createdAt": "2026-11-04T21:37:48.071Z",
+  "sourceCommit": "7918113b391c363b7652f9b956cd333431b3e07b",
+  "sourceFiles": [
+    {
+      "file": "src/world/board-scene.js",
+      "sha256": "4b144341b5f60f73d6eba464dde79f8371d1eb6a5ba830712c40c7c886896468"
+    },
+    {
+      "file": "src/world/realm-models.js",
+      "sha256": "0a508171823e3bc84a4fc19e9a60177241db2db16a2185d637ea86870e069095"
+    },
+    {
+      "file": "src/world/estate-models.js",
+      "sha256": "a07bd05c2fe40f9c7e2dc65b01cc9c3ba414a6079471394e3b4de799e0f7e17e"
+    },
+    {
+      "file": "src/graphics/pixel-renderer.js",
+      "sha256": "a9db4189e63820353acf3b6068186977a1c3970e3230f92b1d854d76e11ef0b2"
+    }
+  ],
+  "author": "Original Our Castle code-rendered art; no external image or generated model",
+  "license": "Same as repository LICENSE; preserve bundled source notices",
+  "method": "Actual existing 90-colour miniature scene, district-focused orthographic camera, pixel size 2 at 640x352; exact nearest-neighbour 2:1 reduction to 320x176. All six districts depicted as an art preview; illustrations do not grant access.",
+  "previewState": {
+    "builtTier": 3,
+    "estateLevel": 4,
+    "gardens": 4,
+    "crest": "cobalt/stag"
+  },
+  "images": [
+    {
+      "id": "cottage",
+      "file": "cottage.png",
+      "width": 320,
+      "height": 176,
+      "sha256": "2d983aa07dbe26ea1d03d74636257e94b5d4418cc32f64f1295ccd7b433e0c6a"
+    },
+    {
+      "id": "manor",
+      "file": "manor.png",
+      "width": 320,
+      "height": 176,
+      "sha256": "78367f7b71e311dc37ceca0a8127c54de11853edf69da8616cc45c99970546bc"
+    },
+    {
+      "id": "market",
+      "file": "market.png",
+      "width": 320,
+      "height": 176,
+      "sha256": "2a7d7085058b531a61a02046393b95e8d194447ade0a9b78f560ca2f3281d200"
+    },
+    {
+      "id": "garden",
+      "file": "garden.png",
+      "width": 320,
+      "height": 176,
+      "sha256": "e499c40e01b9414f0f9fa60a4a4233d491f1d3ae039f7cbb595fa2924c78effc"
+    },
+    {
+      "id": "keep",
+      "file": "keep.png",
+      "width": 320,
+      "height": 176,
+      "sha256": "eb63f6b4e8cc6fa6a6e6c19aa9f251d85190b65f5ef9b4490f4b48e60f21f44a"
+    },
+    {
+      "id": "castle",
+      "file": "castle.png",
+      "width": 320,
+      "height": 176,
+      "sha256": "809f60d8d8d4f33de3bb198986a6936bc7cd8f2e9749f90186b9404eac13f69c"
+    }
+  ],
+  "verification": {
+    "pageErrors": [],
+    "externalRequests": [],
+    "paymentCalls": 0,
+    "aiCalls": 0,
+    "serverWrites": 0,
+    "ownerBrowserUsed": false,
+    "originalSceneColours": true,
+    "allSixDistricts": [
+      "cottage",
+      "manor",
+      "market",
+      "garden",
+      "keep",
+      "castle"
+    ]
+  }
+}
