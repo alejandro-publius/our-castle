@@ -1,0 +1,260 @@
+import { test, expect } from '@playwright/test';
+
+// Example-mode journeys through the real server and browser. These prove the product flow, the
+// board wiring and the ledger rules. They do not prove a live PayPal sandbox or AI integration.
+
+const ready = async (page) => {
+  await page.goto('/');
+  await page.waitForFunction(() => document.body.dataset.ready === 'true');
+};
+const scene = (page) => page.evaluate(() => window.__ourHouse.scene());
+const settled = (page) => expect.poll(async () => (await scene(page)).animating, { timeout: 20_000 }).toBe(false);
+const isPhone = (testInfo) => testInfo.project.name === 'phone';
+
+function trackErrors(page) {
+  const errors = [];
+  page.on('pageerror', (e) => errors.push(`pageerror: ${e.message}`));
+  page.on('console', (m) => { if (m.type() === 'error') errors.push(`console: ${m.text()}`); });
+  return errors;
+}
+
+async function foundHouse(page, { mode = 'family', name = 'House of Fernhill', field = 'violet', charge = 'tower' } = {}) {
+  await page.locator(`input[name="playMode"][value="${mode}"]`).check();
+  await page.locator('#house-name').fill(name);
+  await page.locator(`input[name="crestField"][value="${field}"]`).check({ force: true });
+  await page.locator(`input[name="crestCharge"][value="${charge}"]`).check({ force: true });
+  await page.getByRole('button', { name: 'Raise our banner' }).click();
+  await expect(page.locator('#house-status')).toContainText('is founded');
+}
+
+async function acceptExamplePlan(page) {
+  await page.getByRole('button', { name: 'Make an example plan' }).click();
+  await expect(page.locator('#plan-source')).toContainText('no AI');
+  await page.getByRole('button', { name: 'Use this plan' }).click();
+  await expect(page.getByRole('tab', { name: /Contribute/ })).toHaveAttribute('aria-selected', 'true');
+}
+
+async function contribute(page, button = 'Simulate approved payment') {
+  await page.locator('#give-approve').check();
+  if (button !== 'Simulate approved payment' && !(await page.locator('#give-action details').evaluate((d) => d.open))) {
+    await page.locator('#give-action summary').click();
+  }
+  await page.getByRole('button', { name: button }).click();
+}
+
+test.beforeEach(async ({ request }) => {
+  const response = await request.post('/api/demo/reset', { data: {} });
+  expect(response.ok()).toBeTruthy();
+});
+
+test('full journey: house and crest, example plan, adult approval, receipt, board move and Manor, persists after reload', async ({ page }) => {
+  const errors = trackErrors(page);
+  await ready(page);
+  await expect(page.getByText('Example payments · simulated')).toBeVisible();
+  await expect(page.getByText('Example planner · no AI')).toBeVisible();
+  await expect(page.locator('#progress-amount')).toHaveText('$60.00');
+  await expect(page.locator('#target-amount')).toHaveText('$300.00');
+  expect(await scene(page)).toMatchObject({ position: 4, tier: 0 });
+
+  await foundHouse(page);
+  await expect(page.getByRole('tab', { name: /Plan/ })).toHaveAttribute('aria-selected', 'true');
+  await expect(page.locator('#house-eyebrow')).toContainText('House of Fernhill · Family');
+
+  await page.getByRole('button', { name: 'Make an example plan' }).click();
+  await expect(page.locator('#plan-source')).toHaveText('Example plan (built-in rules, no AI)');
+  await expect(page.locator('#plan-headline')).toHaveText('Eight weeks of $30.00 reaches the Castle');
+  await expect(page.locator('#plan-schedule tr')).toHaveCount(8);
+  await expect(page.locator('#plan-total')).toHaveText('$240.00');
+  await expect(page.locator('#plan-explanation')).toContainText('Goal $300.00 − tracked progress $60.00 = $240.00 still to save.');
+  await expect(page.locator('#plan-milestones')).toContainText('Manor ($75.00) — week 1');
+  await page.getByRole('button', { name: 'Use this plan' }).click();
+  await expect(page.getByRole('tab', { name: /Contribute/ })).toHaveAttribute('aria-selected', 'true');
+
+  await expect(page.locator('#give-context')).toContainText('week 1');
+  await expect(page.locator('#give-amount')).toHaveValue('15.00');
+  await expect(page.locator('#quick-picks')).toContainText('Raises the Manor');
+  await expect(page.getByRole('button', { name: 'Simulate approved payment' })).toBeDisabled();
+  await expect(page.locator('#give-approve-text')).toContainText('I’m Rowan, an adult in House of Fernhill. I approve a $15.00 USD simulated payment');
+
+  const before = await page.locator('#world canvas').screenshot();
+  await contribute(page);
+  await expect(page.locator('#give-status')).toContainText('Confirmed by the server');
+  const receipt = page.locator('#receipt');
+  await expect(receipt).toContainText('Simulated · example mode · no PayPal transaction');
+  await expect(receipt).toContainText('$15.00 USD');
+  await expect(receipt).toContainText('$60.00 → $75.00 (25%)');
+  await expect(receipt).toContainText('Manor raised');
+  await expect(page.locator('#progress-amount')).toHaveText('$75.00');
+  await expect(page.locator('#board-title')).toHaveText('A place to grow');
+  await settled(page);
+  expect(await scene(page)).toMatchObject({ position: 5, tier: 1, crest: { field: 'violet', charge: 'tower' }, playMode: 'family' });
+  await expect(page.locator('#celebration')).toContainText('The Manor rises!');
+  await expect(receipt).toBeVisible(); // the celebration never hides the receipt
+  const after = await page.locator('#world canvas').screenshot();
+  expect(Buffer.compare(before, after)).not.toBe(0);
+  await expect(page.locator('#board-status')).toContainText('space 5 of 20 · Manor Gate');
+
+  await page.reload();
+  await page.waitForFunction(() => document.body.dataset.ready === 'true');
+  await expect(page.locator('#progress-amount')).toHaveText('$75.00');
+  expect(await scene(page)).toMatchObject({ position: 5, tier: 1 });
+  await expect(page.getByRole('tab', { name: /Contribute/ })).toHaveAttribute('aria-selected', 'true');
+  await page.getByRole('tab', { name: /Ledger/ }).click();
+  await expect(page.locator('#ledger-goal')).toContainText('Current tracked progress');
+  await expect(page.locator('#ledger-goal')).toContainText('you reported');
+  await expect(page.locator('#ledger-contributions')).toContainText('Completed — counted');
+  await expect(page.locator('#achievements')).toContainText('Manor raised');
+  expect(errors).toEqual([]);
+});
+
+test('keyboard only: found the house, plan, approve and contribute', async ({ page }, testInfo) => {
+  test.skip(isPhone(testInfo), 'keyboard path is checked on desktop');
+  await ready(page);
+  const tabTo = async (selector, max = 80) => {
+    for (let i = 0; i < max; i++) {
+      if (await page.evaluate((s) => document.activeElement?.matches(s), selector)) return;
+      await page.keyboard.press('Tab');
+    }
+    throw new Error(`Could not reach ${selector} with the keyboard`);
+  };
+  await tabTo('#save-house');
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('tab', { name: /Plan/ })).toHaveAttribute('aria-selected', 'true');
+  await tabTo('#ask-planner');
+  await page.keyboard.press('Enter');
+  await expect(page.locator('#plan-total')).toHaveText('$240.00');
+  await tabTo('#accept-plan');
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('tab', { name: /Contribute/ })).toHaveAttribute('aria-selected', 'true');
+  await tabTo('#give-approve');
+  await page.keyboard.press('Space');
+  await tabTo('#simulate-pay');
+  await page.keyboard.press('Enter');
+  await expect(page.locator('#receipt')).toBeFocused();
+  await expect(page.locator('#progress-amount')).toHaveText('$75.00');
+  // Arrow keys move between journey tabs.
+  await page.locator('#tab-give').focus();
+  await page.keyboard.press('ArrowRight');
+  await expect(page.locator('#tab-ledger')).toBeFocused();
+  await expect(page.locator('#panel-ledger')).toBeVisible();
+});
+
+test('a child persona cannot approve a payment', async ({ page }) => {
+  await ready(page);
+  await foundHouse(page);
+  await acceptExamplePlan(page);
+  await page.locator('#persona').selectOption('m_wren');
+  await expect(page.locator('#give-approve')).toBeDisabled();
+  await expect(page.locator('#give-approve-text')).toContainText('Wren is a child persona');
+  await expect(page.getByRole('button', { name: 'Simulate approved payment' })).toBeDisabled();
+  await page.locator('#persona').selectOption('m_rowan');
+  await expect(page.locator('#give-approve')).toBeEnabled();
+});
+
+test('an impossible target shows the exact shortfall and how to close it', async ({ page }) => {
+  await ready(page);
+  await foundHouse(page);
+  await page.locator('#goal-weekly').fill('10.00');
+  await page.getByRole('button', { name: 'Make an example plan' }).click();
+  await expect(page.locator('#plan-headline')).toHaveText(/\$160\.00 short/);
+  await expect(page.locator('#plan-shortfall')).toContainText('$160.00 short of the goal');
+  await expect(page.locator('#plan-cautions')).toContainText('raise the weekly amount to $30.00');
+  await expect(page.locator('#plan-milestones')).toContainText('Castle ($300.00) — not reached by this schedule');
+});
+
+test('household edits are re-checked and saved as an edited plan', async ({ page }) => {
+  await ready(page);
+  await foundHouse(page);
+  await page.getByRole('button', { name: 'Make an example plan' }).click();
+  await page.getByLabel('Week 2 amount').fill('10.00');
+  await expect(page.locator('#plan-total')).toHaveText('$220.00');
+  await expect(page.getByRole('button', { name: 'Use this plan' })).toBeDisabled();
+  await page.getByRole('button', { name: 'Save my edits' }).click();
+  await expect(page.locator('#plan-source')).toContainText('Edited by your household');
+  await expect(page.locator('#plan-shortfall')).toContainText('$20.00 short');
+  await page.getByLabel('Week 3 amount').fill('-5');
+  await page.getByRole('button', { name: 'Save my edits' }).click();
+  await expect(page.locator('#plan-status')).toContainText('Each week needs an amount');
+});
+
+test('bills and gifts are logged separately, grow a garden, and never move the travelers', async ({ page }) => {
+  await ready(page);
+  await foundHouse(page);
+  await page.getByRole('tab', { name: /Ledger/ }).click();
+  const bill = page.locator('#bill-form');
+  await bill.getByLabel('Bill').fill('Internet bill');
+  await bill.getByLabel('Amount').fill('60.00');
+  await bill.getByRole('button', { name: 'Log bill' }).click();
+  await expect(page.locator('#ledger-status')).toContainText('do not count toward the goal');
+  const gift = page.locator('#gift-form');
+  await gift.getByLabel('Gift').fill('Birthday gift');
+  await gift.getByLabel('Amount').fill('25.00');
+  await gift.getByRole('button', { name: 'Log gift' }).click();
+  await expect(page.locator('#ledger-gifts')).toContainText('Birthday gift');
+  await expect(page.locator('#progress-amount')).toHaveText('$60.00');
+  await settled(page);
+  expect(await scene(page)).toMatchObject({ position: 4, tier: 0, gardens: 1 });
+  await expect(page.locator('#achievements')).toContainText('Garden bed 1 planted');
+});
+
+test('cancel, decline and pending outcomes leave progress unchanged until completion', async ({ page }) => {
+  await ready(page);
+  await foundHouse(page);
+  await acceptExamplePlan(page);
+  await contribute(page, 'Simulate cancel');
+  await expect(page.locator('#give-status')).toContainText('Nothing was charged');
+  await contribute(page, 'Simulate decline');
+  await expect(page.locator('#give-status')).toContainText('Declined');
+  await contribute(page, 'Simulate pending');
+  await expect(page.locator('#give-status')).toContainText('Pending');
+  await expect(page.locator('#receipt')).toContainText('Pending — not counted');
+  await expect(page.locator('#progress-amount')).toHaveText('$60.00');
+  await page.getByRole('tab', { name: /Ledger/ }).click();
+  await page.getByRole('button', { name: 'Simulate PayPal completing it' }).click();
+  await expect(page.locator('#progress-amount')).toHaveText('$75.00');
+  await expect(page.locator('#ledger-contributions')).toContainText('Canceled — nothing charged');
+  await expect(page.locator('#ledger-contributions')).toContainText('Declined — not counted');
+});
+
+test('a refund lowers progress and moves the travelers back; the Manor stays as an explained keepsake', async ({ page }) => {
+  await ready(page);
+  await foundHouse(page);
+  await acceptExamplePlan(page);
+  await contribute(page);
+  await expect(page.locator('#progress-amount')).toHaveText('$75.00');
+  await settled(page);
+  await page.getByRole('tab', { name: /Ledger/ }).click();
+  await page.getByRole('button', { name: 'Simulate refund' }).click();
+  await page.getByRole('button', { name: 'Confirm refund of $15.00' }).click();
+  await expect(page.locator('#ledger-status')).toContainText('went down by exactly that amount');
+  await expect(page.locator('#progress-amount')).toHaveText('$60.00');
+  await settled(page);
+  expect(await scene(page)).toMatchObject({ position: 4, tier: 1 });
+  await expect(page.locator('#board-status')).toContainText('commemorates a milestone reached earlier');
+  await expect(page.locator('#achievements')).toContainText('Raised buildings stay as keepsakes');
+  await expect(page.locator('#ledger-contributions')).toContainText('Refunded — progress reversed');
+});
+
+test('layout: no horizontal overflow in any step and amounts stay readable', async ({ page }) => {
+  await ready(page);
+  for (const tab of ['House', 'Plan', 'Contribute', 'Ledger']) {
+    await page.getByRole('tab', { name: new RegExp(tab) }).click();
+    const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+    expect(overflow, `${tab} overflow`).toBeLessThanOrEqual(0);
+  }
+  const size = async (selector) => page.locator(selector).evaluate((el) => parseFloat(getComputedStyle(el).fontSize));
+  expect(await size('#progress-amount')).toBeGreaterThanOrEqual(24);
+  await page.getByRole('tab', { name: /Contribute/ }).click();
+  expect(await size('#give-amount')).toBeGreaterThanOrEqual(16);
+  const box = await page.locator('#world canvas').boundingBox();
+  expect(box.width).toBeGreaterThan(300);
+});
+
+test('the original art preview is preserved and still renders', async ({ page }) => {
+  const errors = trackErrors(page);
+  await page.goto('/art-preview.html');
+  await expect(page.locator('#world canvas[data-ready="true"]')).toBeVisible();
+  await page.getByRole('button', { name: 'IV · Castle' }).click();
+  await expect(page.locator('#tier-name')).toHaveText('A castle built together');
+  expect(errors).toEqual([]);
+});
