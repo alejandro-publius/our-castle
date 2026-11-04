@@ -1,18 +1,37 @@
 import {test,expect} from '@playwright/test';
 const scene=(page)=>page.evaluate(()=>window.__ourCastle.scene());
+// Classify the rendered map: the share of drawn pixels (not background or outline) that are green or water blue.
+const mapColours=(page)=>page.evaluate(()=>{
+  const source=document.querySelector('#world canvas'),c=document.createElement('canvas');c.width=source.width;c.height=source.height;
+  const g=c.getContext('2d');g.drawImage(source,0,0);const px=g.getImageData(0,0,c.width,c.height).data,bg=[px[0],px[1],px[2]];
+  let drawn=0,green=0,blue=0;
+  for(let i=0;i<px.length;i+=4){
+    const r=px[i],gg=px[i+1],b=px[i+2];
+    if(Math.abs(r-bg[0])+Math.abs(gg-bg[1])+Math.abs(b-bg[2])<10||Math.abs(r-14)+Math.abs(gg-18)+Math.abs(b-21)<8)continue;
+    drawn++;if(gg>=r+10&&gg>=b+5)green++;else if(b>=gg+10&&b>=r+25)blue++;
+  }
+  return {drawn,green:green/drawn,blue:blue/drawn};
+});
 test.beforeEach(async({page,request})=>{
   expect((await request.post('/api/demo/reset',{data:{}})).ok()).toBeTruthy();
   await page.goto('/');await page.waitForFunction(()=>document.body.dataset.ready==='true');
 });
 
-test('future castles are separate grey destinations with raised bridges; inspecting them cannot unlock them',async({page,request})=>{
+test('future castles are separate locked destinations in one green woodland behind raised bridges and gates; inspecting them cannot unlock them',async({page,request})=>{
   const errors=[];page.on('pageerror',e=>errors.push(e.message));
   const initial=await scene(page),before=await(await request.get('/api/state')).json();
   expect(initial.region).toEqual({width:164,depth:114});
   expect(initial.districts).toHaveLength(6);
   expect(initial.districts.filter(d=>d.open).map(d=>d.id)).toEqual(['cottage']);
-  expect(initial.districts.filter(d=>!d.open).every(d=>d.greyPaint&&d.drawMeshes>0)).toBe(true);
-  expect(initial.bridges.every(b=>!b.open&&b.raised)).toBe(true);
+  // Locked is shown by labels, raised leaves and closed gates. Every district keeps its full colours.
+  expect(initial.districts.every(d=>!d.greyPaint&&d.drawMeshes>0&&d.hues>=4)).toBe(true);
+  expect(initial.bridges.every(b=>!b.open&&b.raised&&b.gate)).toBe(true);
+  expect(new Set(initial.bridges.map(b=>b.river))).toEqual(new Set(['main','west','east']));
+  expect(initial.landscape.rivers.count).toBe(3);
+  expect(initial.landscape.forest.trees).toBeGreaterThan(300);
+  const colours=await mapColours(page);
+  expect(colours.green,'the starting realm reads green').toBeGreaterThan(.4);
+  expect(colours.blue,'rivers, not an ocean').toBeLessThan(.15);
   await expect(page.locator('.realm-stop[data-district="castle"]')).toContainText('Locked · 100%');
   const writes=[];page.on('request',r=>{if(r.method()!=='GET')writes.push(r.url())});
   await page.locator('.realm-stop[data-district="castle"]').click();
@@ -41,7 +60,10 @@ test('reaching the manor milestone opens its real district and lowers its bridge
   const actual=await scene(page);
   expect(actual.districts.filter(d=>d.open).map(d=>d.id)).toEqual(['cottage','manor']);
   expect(actual.bridges.find(b=>b.id==='manor-bridge')).toMatchObject({open:true,raised:false});
-  expect(actual.districts.find(d=>d.id==='castle')).toMatchObject({open:false,greyPaint:true});
+  expect(actual.districts.find(d=>d.id==='castle')).toMatchObject({open:false,greyPaint:false});
+  expect(actual.bridges.filter(b=>b.open).map(b=>b.id)).toEqual(['manor-bridge']);
+  expect(actual.bridges.find(b=>b.id==='keep-bridge')).toMatchObject({open:false,raised:true,gate:true});
+  expect(actual.bridges.find(b=>b.id==='manor-bridge')).toMatchObject({gate:false});
   expect(actual.court.guests.filter(p=>p.district==='cottage')).toHaveLength(2);
   expect(actual.court.guests.filter(p=>p.district==='manor')).toHaveLength(4);
   await expect(page.locator('.realm-stop[data-district="manor"]')).toContainText('Open district');
@@ -53,6 +75,7 @@ test('an explicit art preview opens its bridge and keeps earlier districts; retu
   await expect.poll(async()=>(await scene(page)).districts.find(d=>d.id==='castle').open).toBe(true);
   expect((await scene(page)).districts.filter(d=>d.open).map(d=>d.id)).toEqual(['cottage','manor','market','keep','castle']);
   expect((await scene(page)).bridges.find(b=>b.id==='citadel-bridge')).toMatchObject({open:true,raised:false});
+  expect((await scene(page)).bridges.find(b=>b.id==='garden-bridge')).toMatchObject({open:false,raised:true,gate:true});
   expect((await scene(page)).court.guests.some(p=>p.district==='cottage')).toBe(true);
   expect((await scene(page)).court.guests.some(p=>p.district==='castle')).toBe(true);
   await expect(page.locator('#world-preview')).toContainText('Art preview');

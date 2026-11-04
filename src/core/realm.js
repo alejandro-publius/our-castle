@@ -19,6 +19,44 @@ export const REALM_BRIDGES = Object.freeze([
   { id: 'royal-procession', from: 'market', to: 'castle', a: [44, 11], b: [44, -5] },
 ].map((b) => Object.freeze({ ...b, a: Object.freeze(b.a), b: Object.freeze(b.b) })));
 
+// Narrow, connected rivers through one continuous forest (presentation geography). Each passes under the middle of its
+// bridges: the main river under the garden, keep and royal-procession crossings; a west tributary under the manor
+// crossing; an east tributary under the citadel and market crossings. Control points are joined by Catmull-Rom curves.
+export const REALM_RIVERS = Object.freeze([
+  { id: 'main', halfWidth: 2.4, points: [[-86, 3], [-72, -2.5], [-60, .5], [-49, 4], [-38, 1.5], [-24, -3], [-10, -.5], [3, 2.5], [17, -.5], [30, .5], [44, 3], [57, .5], [70, 3.5], [86, 1]] },
+  { id: 'west', halfWidth: 1.9, points: [[-38, 1.5], [-35.5, 9], [-37.5, 17], [-36.5, 26], [-34.5, 35], [-37.5, 45], [-36, 61]] },
+  { id: 'east', halfWidth: 1.9, points: [[16, -61], [18, -47], [15, -38], [16.5, -28], [18, -18], [15.5, -9], [17, -.5], [20, 8], [17.5, 17], [19, 26], [21.5, 35], [18, 45], [20, 61]] },
+].map((r) => Object.freeze({ ...r, points: Object.freeze(r.points.map((p) => Object.freeze(p))) })));
+function sampleRiver(points, steps = 10) {
+  const out = [], at = (i) => points[Math.max(0, Math.min(points.length - 1, i))];
+  for (let i = 0; i < points.length - 1; i++) {
+    const [p0, p1, p2, p3] = [at(i - 1), at(i), at(i + 1), at(i + 2)];
+    for (let s = 0; s < steps; s++) {
+      const t = s / steps, t2 = t * t, t3 = t2 * t;
+      out.push([0, 1].map((k) => .5 * (2 * p1[k] + (-p0[k] + p2[k]) * t + (2 * p0[k] - 5 * p1[k] + 4 * p2[k] - p3[k]) * t2 + (-p0[k] + 3 * p1[k] - 3 * p2[k] + p3[k]) * t3)));
+    }
+  }
+  out.push([...points.at(-1)]);
+  return out;
+}
+export const RIVER_PATHS = Object.freeze(REALM_RIVERS.map((r) => Object.freeze({ id: r.id, halfWidth: r.halfWidth, path: Object.freeze(sampleRiver(r.points)) })));
+/** Distance from (x, z) to the nearest river centre line, that river's half width, and how far inside the water the point is. */
+export function riverAt(x, z) {
+  let best = { distance: Infinity, halfWidth: 0, river: null, depth: -Infinity };
+  for (const river of RIVER_PATHS) {
+    const path = river.path;
+    for (let i = 1; i < path.length; i++) {
+      const [ax, az] = path[i - 1], [bx, bz] = path[i], dx = bx - ax, dz = bz - az;
+      const t = Math.max(0, Math.min(1, ((x - ax) * dx + (z - az) * dz) / (dx * dx + dz * dz || 1)));
+      const distance = Math.hypot(x - ax - dx * t, z - az - dz * t);
+      // Wider rivers win where channels meet, so confluences stay open water.
+      if (river.halfWidth - distance > best.depth) best = { distance, halfWidth: river.halfWidth, river: river.id, depth: river.halfWidth - distance };
+    }
+  }
+  return best;
+}
+export const inRiver = (x, z, margin = 0) => riverAt(x, z).depth > -margin;
+
 export function realmAccess({ builtTier = 0, estateLevel = 0, gardens = 0, previewFeature = null } = {}) {
   return REALM_DISTRICTS.map((district) => {
     const open = district.homeTier !== null ? district.homeTier <= builtTier

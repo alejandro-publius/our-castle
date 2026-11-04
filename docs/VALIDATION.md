@@ -1,5 +1,68 @@
 # Validation
 
+## November 4, 2026: woodland realm with rivers and colourful locked castles (branch `art/woodland-realm`)
+
+The owner's visual correction: *"it should be all green the landscape is a forest separated by rivers under the bridge not this big ocean and why are the castles so bland?"* Built in the separate worktree `our-castle-woodland` from `da82bad`; not yet promoted to `expansion/wider-estate`. Brief, reference lock and ledger: the woodland section of [ART-DIRECTION.md](ART-DIRECTION.md).
+
+**What changed (presentation only):**
+- **Ground:** one continuous forest floor. The districts are meadow clearings; there are no island slabs or rock-cliff shores.
+- **Rivers:** three narrow connected rivers (`REALM_RIVERS` in `src/core/realm.js`). The main river runs under the garden, keep and royal-procession bridges, the west tributary under the manor bridge, and the east tributary under the citadel and market bridges.
+- **Bridges:** stone approaches on the banks, bank piers clear of the channel, and two wooden leaves meeting over mid-river. Locked crossings have raised leaves and a closed gate on the far bank.
+- **Colour:** the blanket desaturation of locked districts is removed. Added crimson, cobalt and gold roofs and spires, shutters, quoins and string courses, long banners, crest shields, planters, a fountain and bunting. The manor, keep and citadel are distinct.
+- **Copy:** the UI and canvas text no longer promises grey districts.
+- **Unchanged:** earned access, milestones, court sizes, payments and rewards. Previews make no writes.
+
+**Rendered evidence** (headless Chromium + SwiftShader, isolated example server on 3138; before = `da82bad`). Share of drawn map pixels, background and outlines excluded:
+
+| View | Green before → after | Blue water before → after |
+| --- | --- | --- |
+| Desktop 1440×1000, whole realm, 1/6 open | 7.2% → 54.0% | 44.2% → 6.3% |
+| Desktop, locked Royal Citadel close-up | 5.7% → 59.3% | 39.6% → 8.3% |
+| Phone 390×844, whole realm | 6.9% → 54.9% | 38.6% → 4.7% |
+
+- **Outline pixels:** desktop 13% → 22%, phone 25.7% → 30.1%. These are the forest silhouettes; at phone scale the forest reads as green canopy with dark texture.
+- **Geometry** (unit-tested): water covers 7.7% of the realm (the test requires under 10%). River half-widths are 2.4 and 1.9 units, against the old 11–19-unit gaps between shores.
+  - Every bridge centre lies on its river's centre line, and both ends land at least 3.5 units onto dry bank.
+  - Every clearing stays at least 2 units from water.
+  - Both tributaries join the main river, and all three run off the board edge.
+- **Captures:** `docs/screenshots/forest-*.png` (overview, locked citadel, phone overview, citadel preview, simulated manor). Before/after pairs, pixel reports and scripts are in git-ignored `test-results/woodland-realm/`.
+
+**Lock truth:**
+- **Start:** only Hearth Village is open. All six bridges are raised with gates, and no district has grey paint; each has at least 4 hue families.
+- **Simulated progression** (example mode, no PayPal call): a simulated $15 contribution, $60 → $75, opens the manor and lowers only `manor-bridge`, with 2 village and 4 manor guests.
+- **Castle art preview:** labelled; opens five districts and five crossings, and `garden-bridge` stays raised and gated. Returning restores 1/6 and 2 guests.
+- **Reset:** the 3138 demo was afterwards returned to its starting $60 / $300, 1/6 state with `/api/demo/reset`.
+
+**Performance** (one finished frame forced by a pixel read-back, whole realm, SwiftShader software rendering; a stress proxy, not device timings):
+
+| Build | Draw calls | Triangles | Desktop frame | Phone frame |
+| --- | --- | --- | --- | --- |
+| Before (`da82bad`) | 354 | 79,142 | 157 ms | 57 ms |
+| First woodland pass, standard material | 422 | 202,230 | 483 ms | 128 ms |
+| Final: forest and ground in flat Lambert batches, hidden trunks dropped | 422 | 188,650 | 197 ms | 98 ms |
+
+- **Woodland contents:** one ground mesh (21,199 vertices, 38,504 triangles), plus the forest and river details in 22 instanced meshes (3,441 instances):
+  - 473 trees (249 conifers, 215 broadleaf, 9 birches);
+  - 120 shrubs and 163 fern clumps;
+  - 123 floor details;
+  - 75 reed clusters and 61 bank stones.
+- **Build cost:** the woodland is built once, 423 ms in a headless run, and kept. A milestone or preview rebuild of the districts and bridges took 7 ms.
+- **What went wrong first:** the standard-material pass starved the compositor under software rendering. Smooth scrolling then stalled for 1–2 s, and the keyboard preview check failed 6/6 (the unchanged `da82bad` code passed 24/24).
+
+**Keyboard follow-up:** a keyboard activation (`click` with `detail` 0) of a reward preview or a district now scrolls **instantly** to the realm. Focus has already moved, so the focused control is on screen at once. Pointer navigation keeps the smooth scroll. The `d869f1b` visibility assertions are unchanged.
+
+**Checks run:**
+- `npm run check`: 47 art/runtime files, the 90-colour palette, renderer wiring and syntax passed.
+- Unit `realm` and `court`: **8/8**, including the new river test.
+- Browser: `realm.spec`, `court.spec` and `estate.spec` **18/18**; the journey tests "full journey", "world keeps living" and "original art preview" **6/6**; `realm-focus.spec` **16/16** over two repeats. These ran before the final ground-material side fix, which only restores the board's soil edge; captures and the progression run after it had no page errors and no unexpected writes.
+- Not run: the full suite, Postman/Newman guards, PayPal or AI verifiers. No paid call, order or refund.
+- Not checked: real devices, Safari or Firefox.
+
+**Owner data:**
+- The primary checkout stayed clean at `da82bad`. `.env` and `data/` modification times are unchanged.
+- The servers on 3010, 3020 and 3021 were left running and untouched.
+- The temporary before-baseline server (3139) was stopped. Its data folder was left in place.
+
 ## November 4, 2026: playable judge review draft and focused keyboard/device fix
 
 **Judge review draft:** `docs/demos/judge-review/our-castle-judge-review-draft.mp4` is a **2:36.36 private draft**, not a submitted or fully live end-to-end video. It reuses the current example-mode connected-realm footage, labelled earlier live-AI UI recordings, and separately labelled historical verifier reports. A visible **24-second unfilmed owner insert at 2:00.36–2:24.36** remains for the actual in-app popup approval, receipt/bridge and household `get_order` reconciliation. No missing outcome was reconstructed. Editable timeline, narration, SRT/WebVTT, source excerpts/hashes and an exact insert guide accompany it.
@@ -140,6 +203,8 @@ The server was then stopped.
 - Other suites were not rerun; only the Postman files, a new check script, `package.json` scripts and docs changed.
 
 ## November 4, 2026 — connected districts, grey future areas and gated bridges
+
+*Visual target superseded by the woodland revision above. Its grey-paint browser assertions were replaced with full-colour, raised-bridge and gate assertions; the lock, access and non-mutation checks were kept.*
 
 Implemented in the isolated `expansion/connected-realm` worktree, keeping the previous running household available during development. The owner's corrected visual direction is now a six-district 164×114 realm rather than one upgraded building on a small plot.
 

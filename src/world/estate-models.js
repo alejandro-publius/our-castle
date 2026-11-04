@@ -22,7 +22,8 @@ export function createEstateModels({part,builder,colours:c}) {
   const box=(g,x,y,z,w,h,d,color,ry=0,rz=0)=>part(g,'box',x,y,z,w,h,d,color,ry,rz);
   const round=(g,x,y,z,w,h,d,color)=>part(g,'round',x,y,z,w,h,d,color);
   const rock=(g,x,y,z,w,h,d,color)=>part(g,'rock',x,y,z,w,h,d,color);
-  function window(g,x,y,z,w=.48,h=.64,lit=true){
+  function window(g,x,y,z,w=.48,h=.64,lit=true,shutters=null){
+    if(shutters)for(const s of[-1,1]){box(g,x+s*(w/2+.2),y,z+.04,.26,h+.08,.06,shutters);box(g,x+s*(w/2+.2),y,z+.08,.04,h-.1,.02,C.dark);}
     box(g,x,y,z,w+.16,h+.16,.13,C.wood);box(g,x,y,z+.075,w,h,.04,C.dark);
     box(g,x,y,z+.105,w-.08,h-.08,.035,lit?C.pale:C.blue);
     box(g,x,y,z+.14,.055,h,.035,C.soil);box(g,x,y,z+.14,w,.055,.035,C.soil);
@@ -35,15 +36,17 @@ export function createEstateModels({part,builder,colours:c}) {
     box(g,x,y-h*.06,z+.17,w*.9,.075,.03,C.iron);box(g,x,y-h*.32,z+.17,w*.9,.075,.03,C.iron);
     round(g,x+w*.25,y-h*.08,z+.2,.08,.08,.07,C.gold);
   }
-  function roof(g,x,y,z,w,h,d,color=C.roof){
-    part(g,'gable',x,y,z,w,h,d,color);
+  const roofShade=(color)=>color===C.blue||color===C.slate?0x26405f:C.roofDark;
+  function roof(g,x,y,z,w,h,d,color=C.roof,finials=false){
+    part(g,'gable',x,y,z,w,h,d,color);const shade=roofShade(color);
     const pitch=Math.atan2(h,w/2);
     for(const sign of[-1,1])for(let row=1;row<=5;row++){
       const xx=x+sign*(row-.5)/5*w/2, yy=y+h/2-(row-.5)/5*h;
-      box(g,xx,yy+.035,z,w/9,.085,d+.06,row%2?color:C.roofDark,0,-sign*pitch);
+      box(g,xx,yy+.035,z,w/9,.085,d+.06,row%2?color:shade,0,-sign*pitch);
     }
-    for(let i=0;i<7;i++)for(const sign of[-1,1])box(g,x+sign*w*.25,y+.035,z-d/2+i*d/6,w*.55,.035,.035,C.roofDark,0,-sign*pitch);
-    box(g,x,y+h/2+.065,z,.17,.14,d+.2,C.cream);
+    for(let i=0;i<7;i++)for(const sign of[-1,1])box(g,x+sign*w*.25,y+.035,z-d/2+i*d/6,w*.55,.035,.035,shade,0,-sign*pitch);
+    box(g,x,y+h/2+.065,z,.17,.14,d+.2,finials?C.gold:C.cream);
+    if(finials)for(const sign of[-1,1]){round(g,x,y+h/2+.35,z+sign*(d/2+.05),.07,.5,.07,C.gold);rock(g,x,y+h/2+.66,z+sign*(d/2+.05),.24,.24,.24,C.gold);}
     for(const sign of[-1,1])box(g,x,y,z+sign*d/2,w+.12,.075,.1,C.soil,0,sign*.0);
   }
   function chimney(g,x,y,z){
@@ -59,18 +62,23 @@ export function createEstateModels({part,builder,colours:c}) {
     box(g,x,y,z,w+.14,h+.1,.1,C.gold);box(g,x,y,z+.065,w,h,.045,flag);
     box(g,x,y+.08,z+.105,w*.27,h*.36,.035,C.gold);for(const dx of[-.16,0,.16])box(g,x+dx*w,y+h*.28,z+.11,.12,.18,.035,C.gold);
   }
-  function cottage(g,x,z,{w=3.2,h=2,d=2.6,color=C.cream,roofColor=C.roof,timber=true,scale=1}={}){
+  function cottage(g,x,z,{w=3.2,h=2,d=2.6,color=C.cream,roofColor=C.roof,timber=true,scale=1,shutters=null,quoins=!timber,finials=Boolean(shutters)}={}){
     const house=new THREE.Group();house.position.set(x,.18,z);house.scale.setScalar(scale);g.add(house);
     box(house,0,.05,0,w+.4,.18,d+.4,C.stone2);box(house,0,h/2+.15,0,w,h,d,color);
+    if(quoins){
+      // Dark corner courses and a string course separate the stone walls and the window rows.
+      for(const xx of[-w/2,w/2])for(const zz of[-d/2,d/2])for(let yy=.4;yy<h;yy+=.6)box(house,xx,yy,zz,yy%1.2<.6?.3:.22,.26,yy%1.2<.6?.22:.3,C.stone2);
+      if(h>2.6){box(house,0,h*.62,d/2+.03,w+.04,.1,.08,C.stone2);box(house,0,h+.12,d/2+.03,w+.04,.12,.08,C.gold);}
+    }
     if(timber){
       for(const xx of[-w/2,0,w/2])box(house,xx,h/2+.15,d/2+.025,.14,h,.12,C.soil);
       for(const yy of[.35,h*.52,h])box(house,0,yy,d/2+.055,w,.12,.12,C.soil);
       for(const xx of[-w/2,w/2])for(const zz of[-d/2,d/2])box(house,xx,h/2,zz,.15,h,.15,C.soil);
     }
-    roof(house,0,h+.85,0,w+.7,1.5,d+.7,roofColor);chimney(house,-w*.28,h+1.4,-d*.23);
+    roof(house,0,h+.85,0,w+.7,1.5,d+.7,roofColor,finials);chimney(house,-w*.28,h+1.4,-d*.23);
     doorway(house,0,.99,d/2+.09,.8,1.65);
-    for(const xx of[-w*.3,w*.3])window(house,xx,1.38,d/2+.08,.48,.62);
-    if(h>2.6)for(const xx of[-w*.3,0,w*.3])window(house,xx,h-.45,d/2+.09,.56,.72);
+    for(const xx of[-w*.3,w*.3])window(house,xx,1.38,d/2+.08,.48,.62,true,shutters);
+    if(h>2.6)for(const xx of[-w*.3,0,w*.3])window(house,xx,h-.45,d/2+.09,.56,.72,true,shutters);
     return house;
   }
   function fence(g,x,z,w,d,gate=true){
@@ -99,27 +107,60 @@ export function createEstateModels({part,builder,colours:c}) {
     round(g,x,.75,z,.44,.85,.44,color);rock(g,x,1.38,z,.46,.46,.46,C.skin);part(g,'cone',x,1.67,z,.68,.3,.68,C.wheat);
     for(const xx of[-.13,.13])box(g,x+xx,.3,z,.13,.4,.17,C.soil);
   }
-  function wall(g,x,z,length,h,alongX=true){
-    box(g,x,h/2+.18,z,alongX?length:.48,h,alongX?.48:length,C.stone2);
+  function wall(g,x,z,length,h,alongX=true,{body=C.stone2,course=C.stone}={}){
+    box(g,x,h/2+.18,z,alongX?length:.48,h,alongX?.48:length,body);
     box(g,x,h+.15,z,alongX?length+.12:.68,.22,alongX?.68:length+.12,C.cream);
     for(let i=0;i<=Math.floor(length/.7);i++)box(g,x+(alongX?i*.7-length/2:0),h+.48,z+(alongX?0:i*.7-length/2),alongX?.35:.62,.48,alongX?.62:.35,C.cream);
-    for(let j=1;j<Math.floor(h/.55);j++)box(g,x,.25+j*.55,z+(alongX?.25:0),alongX?length:.51,.035,alongX?.025:length,C.stone);
+    for(let j=1;j<Math.floor(h/.55);j++)box(g,x,.25+j*.55,z+(alongX?.25:0),alongX?length:.51,.035,alongX?.025:length,course);
   }
-  function tower(g,x,z,height,flag,pointed=false){
-    round(g,x,height/2+.2,z,1.75,height,1.75,C.stone);round(g,x,.35,z,2.1,.4,2.1,C.stone2);
-    for(let y=.9;y<height;y+=.65)round(g,x,y,z,1.79,.07,1.79,C.stone2);
-    for(const y of[height*.38,height*.7]){box(g,x,y,z+.87,.22,.68,.045,C.dark);box(g,x+.86,y,z,.045,.68,.22,C.dark);}
-    round(g,x,height+.2,z,2,.35,2,C.cream);
+  // A heraldic shield: gold border, the household field and a gold cross, facing +z unless turned.
+  function shield(g,x,y,z,field,size=1,ry=0){
+    const s=new THREE.Group();s.position.set(x,y,z);s.rotation.y=ry;g.add(s);
+    box(s,0,0,0,.66*size,.62*size,.06,C.gold);box(s,0,-.33*size,0,.46*size,.46*size,.06,C.gold,0,Math.PI/4);
+    box(s,0,.02*size,.035,.52*size,.5*size,.04,field);box(s,0,-.29*size,.035,.33*size,.33*size,.04,field,0,Math.PI/4);
+    box(s,0,-.02*size,.065,.09*size,.42*size,.02,C.gold);box(s,0,.06*size,.065,.32*size,.09*size,.02,C.gold);
+  }
+  function tower(g,x,z,height,flag,pointed=false,{body=C.stone,course=C.stone2,roof=C.slate,banner:hanging=false}={}){
+    round(g,x,height/2+.2,z,1.75,height,1.75,body);round(g,x,.35,z,2.1,.4,2.1,course);
+    for(let y=.9;y<height;y+=.65)round(g,x,y,z,1.79,.07,1.79,course);
+    for(const y of[height*.38,height*.7]){
+      box(g,x,y,z+.87,.22,.68,.045,C.dark);box(g,x+.86,y,z,.045,.68,.22,C.dark);
+      box(g,x,y-.38,z+.88,.36,.07,.06,C.gold);box(g,x+.87,y-.38,z,.06,.07,.36,C.gold);
+    }
+    round(g,x,height-.02,z,1.83,.1,1.83,C.gold);round(g,x,height+.2,z,2,.35,2,C.cream);
     for(let j=0;j<8;j++){const a=j*Math.PI/4;box(g,x+Math.cos(a)*.8,height+.62,z+Math.sin(a)*.8,.36,.5,.36,C.cream,a);}
-    if(pointed)part(g,'cone',x,height+1.6,z,2.15,2.2,2.15,C.slate);
+    if(pointed){
+      part(g,'cone',x,height+1.6,z,2.15,2.2,2.15,roof);round(g,x,height+.55,z,2.2,.1,2.2,roofShade(roof));
+      round(g,x,height+2.85,z,.1,.4,.1,C.gold);rock(g,x,height+3.05,z,.3,.3,.3,C.gold);
+    }
     const pole=height+(pointed?3:1.65);round(g,x,pole,z,.065,1.8,.065,C.gold);box(g,x+.43,pole+.55,z,.85,.47,.07,flag);
+    // A long heraldic banner hangs from the parapet on the front face.
+    if(hanging){box(g,x,height-.3,z+.95,.95,.07,.07,C.gold);banner(g,x,height-1.45,z+.92,flag,.6,2.1);box(g,x,height-2.62,z+.98,.35,.2,.03,C.gold,0,Math.PI/4);}
+  }
+  function fountain(g,x,z,size=1){
+    round(g,x,.42,z,2.8*size,.5,2.8*size,C.cream);round(g,x,.69,z,2.9*size,.06,2.9*size,C.gold);round(g,x,.7,z,2.4*size,.06,2.4*size,C.water2);
+    round(g,x,1.25,z,.32,1.2,.32,C.stone);round(g,x,1.85,z,1.2*size,.16,1.2*size,C.cream);round(g,x,1.95,z,.9*size,.04,.9*size,C.water2);
+    round(g,x,2.3,z,.12,.7,.12,C.pale);rock(g,x,2.7,z,.26,.26,.26,C.gold);
+  }
+  // A string of pennants between two gold poles, sagging slightly.
+  function bunting(g,x1,z1,x2,z2,colors,y=2.7){
+    const length=Math.hypot(x2-x1,z2-z1),ry=-Math.atan2(z2-z1,x2-x1),n=Math.max(3,Math.floor(length/.75));
+    for(const[x,z]of[[x1,z1],[x2,z2]]){round(g,x,y/2+.2,z,.12,y,.12,C.gold);rock(g,x,y+.25,z,.24,.24,.24,C.gold);}
+    for(let i=1;i<n;i++){
+      const t=i/n,sag=Math.sin(Math.PI*t)*.45;
+      box(g,x1+(x2-x1)*t,y-sag-.2,z1+(z2-z1)*t,.34,.34,.03,colors[i%colors.length],ry,Math.PI/4);
+    }
+    for(let i=0;i<n;i++){const t=(i+.5)/n;box(g,x1+(x2-x1)*t,y-Math.sin(Math.PI*t)*.45,z1+(z2-z1)*t,length/n+.05,.04,.04,C.cream,ry,0);}
   }
   function home(g,tier,flag,estateLevel=0){
     box(g,0,.18,0,tier<2?9.4:12,.2,tier<2?7:10,C.stone2);
     for(let i=0;i<8;i++)for(let j=0;j<5;j++)box(g,-3.8+i*1.05,.295,-2.5+j*1.1,.97,.045,1.03,(i+j)%2?C.cream:C.stone);
     if(tier<2){
-      cottage(g,0,-.5,{w:tier===0?4.5:6.4,h:tier===0?2.45:4,d:tier===0?3.4:4.4});
-      if(tier===1){cottage(g,4,-.4,{w:2.2,h:2.6,d:3.3,roofColor:C.slate});banner(g,0,3.2,1.84,flag,.8,1.3);fence(g,0,2.6,9.2,2.2);vegetables(g,-3.6,2.2,1.5,1.5);}
+      cottage(g,0,-.5,tier===0?{w:4.5,h:2.45,d:3.4}:{w:6.4,h:4,d:4.4,roofColor:C.blue,shutters:C.red});
+      if(tier===1){
+        cottage(g,4,-.4,{w:2.2,h:2.6,d:3.3,roofColor:C.roof,shutters:C.blue});banner(g,0,3.2,1.84,flag,.8,1.3);fence(g,0,2.6,9.2,2.2);vegetables(g,-3.6,2.2,1.5,1.5);
+        for(const x of[2.4,3.6])for(let k=0;k<3;k++){rock(g,x-.3+k*.3,.55,2.2,.32,.32,.32,C.leaf);rock(g,x-.3+k*.3,.72,2.25,.16,.16,.16,[C.roof,C.gold,C.flower][k]);}
+      }
       if(estateLevel>=1||tier>0){
         roof(g,0,2.6,tier===0?2.3:3,2.9,.8,1.8,C.slate);
         for(const x of[-1.2,1.2])box(g,x,1.35,tier===0?2.8:3.5,.17,2.3,.17,C.soil);
@@ -128,16 +169,20 @@ export function createEstateModels({part,builder,colours:c}) {
       }
       round(g,-3.4,1.3,1.3,.07,2.3,.07,C.gold);box(g,-3,2.15,1.3,.75,.48,.07,flag);
     }else{
-      const high=tier===3;
-      cottage(g,0,-1.4,{w:high?6.6:6,h:high?5.2:3.8,d:4.4,color:C.stone,roofColor:high?C.roof:C.slate,timber:false});
-      for(const x of[-4.5,4.5])for(const z of[-3.4,3.4])tower(g,x,z,high?(z<0?7.1:5.5):(z<0?4.8:3.8),flag,high&&z<0);
-      for(const x of[-4.5,4.5])wall(g,x,0,6.9,high?3.1:2.2,false);wall(g,0,-3.5,9,high?3.2:2.1);
-      for(const x of[-3,3])wall(g,x,3.5,3.2,high?3.3:2.5);
-      box(g,0,2.4,3.6,2.5,4.3,1.2,C.stone);doorway(g,0,1.7,4.26,1.8,2.8);banner(g,0,3.65,4.27,flag,.75,.8);
+      // The keep is cool stone with crimson roofs; the citadel is warm cream stone with dark courses and mixed spires.
+      const high=tier===3,stone=high?C.pale:C.stone,walls=high?{body:0xe2cfa4,course:C.stone2}:{};
+      cottage(g,0,-1.4,{w:high?6.6:6,h:high?5.2:3.8,d:4.4,color:stone,roofColor:C.roof,timber:false,shutters:high?C.blue:C.roof,finials:true});
+      for(const x of[-4.5,4.5])for(const z of[-3.4,3.4])tower(g,x,z,high?(z<0?7.1:5.5):(z<0?4.8:3.8),flag,z<0,
+        {body:stone,roof:high?(x<0?C.blue:C.roof):C.roof,banner:z>0});
+      for(const x of[-4.5,4.5])wall(g,x,0,6.9,high?3.1:2.2,false,walls);wall(g,0,-3.5,9,high?3.2:2.1,true,walls);
+      for(const x of[-3,3]){wall(g,x,3.5,3.2,high?3.3:2.5,true,walls);shield(g,x,high?2.1:1.6,3.78,flag,high?1.1:.9);}
+      box(g,0,2.4,3.6,2.5,4.3,1.2,stone);doorway(g,0,1.7,4.26,1.8,2.8);banner(g,0,3.65,4.27,flag,.75,.8);
+      for(const x of[-1.32,1.32])for(let yy=.6;yy<4.4;yy+=.6)box(g,x,yy,4.2,.12,.26,.1,C.stone2);
       for(let i=0;i<5;i++)box(g,-.68+i*.34,1.8,4.45,.055,2.4,.045,C.iron);
-      roof(g,0,4.95,3.6,3,1.1,1.9,C.slate);
+      roof(g,0,4.95,3.6,3,1.1,1.9,high?C.blue:C.roof,true);
+      for(const x of[-2.2,2.2]){box(g,x,.42,4.35,1.1,.32,.5,C.cream);for(let k=0;k<3;k++){rock(g,x-.3+k*.3,.7,4.35,.3,.3,.3,C.leaf);rock(g,x-.3+k*.3,.86,4.4,.15,.15,.15,[C.roof,C.gold,C.flower][k]);}}
       if(high){
-        tower(g,1.5,-2.4,8.9,flag,true);window(g,-1.5,3.8,.86,.65,1.2);window(g,1.5,3.8,.86,.65,1.2);
+        tower(g,1.5,-2.4,8.9,flag,true,{body:stone,roof:C.blue});window(g,-1.5,3.8,.86,.65,1.2,true,C.roof);window(g,1.5,3.8,.86,.65,1.2,true,C.roof);
         for(const x of[-6.2,6.2])box(g,x,.19,0,.75,.08,11.2,C.water);for(const z of[-5.6,5.6])box(g,0,.19,z,13,.08,.75,C.water);
         for(let i=0;i<7;i++)box(g,0,.33,4.8+i*.3,2.3,.13,.25,C.wood);
         round(g,-2.5,.5,1.6,1.8,.4,1.8,C.cream);round(g,-2.5,.73,1.6,1.45,.06,1.45,C.water);round(g,-2.5,1.15,1.6,.2,.9,.2,C.stone);
@@ -221,7 +266,7 @@ export function createEstateModels({part,builder,colours:c}) {
     deer(land,-9.4,-5.6,-.4);deer(land,-9.6,-2.1,-.9,.7);deer(land,9,-.4,2.6);deer(land,9.5,11.5,.25);butterflies(land);
     builder.flush();return land;
   }
-  function extras(g,level,flag,previewFeature=null,{market=true,ramparts=true}={}){
+  function extras(g,level,flag,previewFeature=null,{market=true,ramparts=true,shields=false}={}){
     if(level>=2&&market){
       cottage(g,9,2.8,{w:2.4,h:2,d:2.1,roofColor:C.slate});
       for(let i=0;i<2;i++){
@@ -237,7 +282,8 @@ export function createEstateModels({part,builder,colours:c}) {
     if(level>=3&&ramparts){
       for(const x of[-8.3,8.3])wall(g,x,0,13,1.7,false);wall(g,0,-6.5,16.6,1.7);
       for(const x of[-5,5])wall(g,x,6.5,6.5,1.7);
-      for(const x of[-8.3,8.3])for(const z of[-6.5,6.5]){round(g,x,1.3,z,1.2,2.2,1.2,C.stone);part(g,'cone',x,3,z,1.7,1.4,1.7,flag);}
+      for(const x of[-8.3,8.3])for(const z of[-6.5,6.5]){round(g,x,1.3,z,1.2,2.2,1.2,C.stone);round(g,x,2.35,z,1.3,.08,1.3,C.gold);part(g,'cone',x,3,z,1.7,1.4,1.7,flag);rock(g,x,3.8,z,.22,.22,.22,C.gold);}
+      if(shields){[-6.5,-3.5,3.5,6.5].forEach((x,i)=>shield(g,x,1.3,6.78,i%2?C.roof:flag,.8));for(const x of[-8.58,8.58])for(const z of[-3,3])shield(g,x,1.3,z,z>0?C.roof:flag,.8,x<0?-Math.PI/2:Math.PI/2);}
     }
     if(previewFeature==='electricity')for(const[x,z]of[[-10,7],[10,7],[-10,-7],[10,-7],[-5,10],[5,10]])lantern(g,x,z,.2,true);
     if(previewFeature==='water'){
@@ -247,5 +293,5 @@ export function createEstateModels({part,builder,colours:c}) {
     }
     builder.flush();
   }
-  return {landscape,home,extras,cottage,roof,wall,tower,well,vegetables,lantern,banner,villager};
+  return {landscape,home,extras,cottage,roof,wall,tower,well,vegetables,lantern,banner,villager,shield,fountain,bunting};
 }

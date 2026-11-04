@@ -88,3 +88,10 @@ Nothing about money, rewards or server state changed. Previews still make no ser
 
 - **VALIDATION.md:** a dated entry summarizing the fix and the test counts above, linking to this review.
 - **JUDGE-HANDOFF.md:** where it lists unverified items, link this review and keep "real phone, Safari/Firefox and screen-reader passes" listed as not yet done.
+
+## Addendum: woodland revision (branch `art/woodland-realm`)
+
+The world art changed after this review: one green forest with rivers instead of grey islands (see VALIDATION.md). Under software rendering, the heavier first pass of that revision stalled the smooth scroll that brings the realm into view. The keyboard-preview check then failed even though focus moved correctly.
+
+- **Fix:** a keyboard activation (`click` with `detail` 0) of a reward preview or a district now scrolls instantly, so the newly focused control is on screen at once. Pointer navigation keeps the smooth scroll; reduced motion was already instant.
+- **Tests:** the assertions in `test/e2e/realm-focus.spec.mjs` are unchanged and pass 16/16 over two repeats.

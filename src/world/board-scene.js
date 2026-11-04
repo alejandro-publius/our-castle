@@ -14,6 +14,8 @@ import { REALM_SIZE, REALM_DISTRICTS, REALM_ROUTE, homeDistrict, districtById, j
 const colours = {
   grass: 0x527557, leaf: 0x86a56c, pine: 0x425b47, dark: 0x1d3030, soil: 0x65402e, wood: 0x9e714b, stone: 0xacb7a2,
   cream: 0xeddcb4, gold: 0xddba79, red: 0x9d3e46, blue: 0x355f93, water: 0x6ca8b1, skin: 0xd9a67f, path: 0x8e9a8a, road: 0xa48b5f,
+  // Not-yet-travelled road and stones: pale dust and weathered stone, warm rather than grey.
+  dust: 0xc4b58e, dustStone: 0xa99a7a,
 };
 const crestColour = (field) => Number.parseInt((CREST_FIELDS[field]?.hex ?? '#355F93').slice(1), 16);
 
@@ -71,7 +73,8 @@ export function createBoardScene(container, { reducedMotion = false, onEvent = (
   let renderer; let pipeline; let scene; let camera; let builder; let observer; let models; let court;
   const part = (...args) => builder.part(...args);
   const groups = {};
-  let realmModels; let realm = { districts: [], bridges: [] };
+  let realmModels; let realm = { districts: [], bridges: [], landscape: null };
+  const perf = { lastMs: 0, maxMs: 0, totalMs: 0, draws: 0, calls: 0, triangles: 0 };
   let state = { builtTier: 0, position: 0, crest: { field: 'cobalt', charge: 'stag' }, gardens: 0, playMode: 'family', milestoneSpaces: [5, 12, 20], reached: [], estateLevel: 0, previewFeature: null };
   let shownPosition = 0;
   let queue = Promise.resolve();
@@ -141,7 +144,7 @@ export function createBoardScene(container, { reducedMotion = false, onEvent = (
     disposeGroup(groups.route);
     const milestoneSet = new Set(state.milestoneSpaces);
     const flag = crestColour(state.crest.field);
-    // Roads end at the shores. The bridge models, including raised locked halves, carry the crossings.
+    // Roads end at the clearing edges. The bridge models, including their raised leaves, carry the crossings.
     for (let i=0;i<ROUTE_LENGTH;i++) {
       const points=journeyLeg(i),locked=(i>=19?3:i>=11?2:i>=4?1:0)>state.builtTier;
       for(let j=1;j<points.length;j++){
@@ -149,7 +152,7 @@ export function createBoardScene(container, { reducedMotion = false, onEvent = (
         for(let k=0;k<steps;k++){
           const t=(k+.5)/steps,x=a.x+(b.x-a.x)*t,z=a.z+(b.z-a.z)*t;
           if(!REALM_DISTRICTS.some(d=>Math.abs(x-d.x)<d.width/2-.7&&Math.abs(z-d.z)<d.depth/2-.7))continue;
-          part(groups.route,'box',x,.275,z,1.25,.065,length/steps+.05,locked?0x737d80:colours.road,Math.atan2(b.x-a.x,b.z-a.z));
+          part(groups.route,'box',x,.275,z,1.25,.065,length/steps+.05,locked?colours.dust:colours.road,Math.atan2(b.x-a.x,b.z-a.z));
         }
       }
     }
@@ -158,7 +161,7 @@ export function createBoardScene(container, { reducedMotion = false, onEvent = (
       const visited = i < state.position || state.position >= ROUTE_LENGTH;
       const milestone = milestoneSet.has(i);
       const locked=(i>=20?3:i>=12?2:i>=5?1:0)>state.builtTier;
-      const colour = locked ? 0x7c8588 : milestone ? colours.gold : visited ? colours.cream : colours.path;
+      const colour = locked ? colours.dustStone : milestone ? colours.gold : visited ? colours.cream : colours.path;
       part(groups.route, 'box', x, 0.34, z, 2.2, 0.16, 2.2, colour);
       if (milestone) {
         const spaceIndex = i;
@@ -199,7 +202,7 @@ export function createBoardScene(container, { reducedMotion = false, onEvent = (
   function buildCourt() {
     court.setTier(state.builtTier, crestColour(state.crest.field));
     const profile = court.debug();
-    renderer.domElement.setAttribute('aria-label', `Connected realm with six districts, bridges and ${profile.capacity} wandering guests. Locked districts are grey and their bridges raised. ${profile.description}`);
+    renderer.domElement.setAttribute('aria-label', `Connected woodland realm: six districts in one forest, joined by bridges over winding rivers, with ${profile.capacity} wandering guests. Locked districts keep their colours behind raised bridges and closed gates. ${profile.description}`);
   }
 
   // ---------- Household travelers ----------
@@ -279,7 +282,15 @@ export function createBoardScene(container, { reducedMotion = false, onEvent = (
     groups.fx.clear(); sparkGeo.dispose(); sparkMat.dispose();
   }
 
-  function draw() { if (renderer && pipeline) { pipeline.render(scene, camera); frames++; onViewChange(districtsOnScreen()); } }
+  function draw() {
+    if (!renderer || !pipeline) return;
+    // Measured per frame so the forest's cost stays visible in the test hooks.
+    const start = performance.now(); renderer.info.reset();
+    pipeline.render(scene, camera); frames++;
+    const ms = performance.now() - start;
+    Object.assign(perf, { lastMs: ms, maxMs: Math.max(perf.maxMs, ms), totalMs: perf.totalMs + ms, draws: perf.draws + 1, calls: renderer.info.render.calls, triangles: renderer.info.render.triangles });
+    onViewChange(districtsOnScreen());
+  }
 
   function ambientStep(seconds) {
     court.tick(seconds);
@@ -309,11 +320,11 @@ export function createBoardScene(container, { reducedMotion = false, onEvent = (
     }, 125);
   }
   // ---------- Camera: fit the whole island, then let people turn, zoom and pan ----------
-  // The default view frames the entire island (its earth sides, edge trees and the tallest castle tower) at any
+  // The default view frames the entire realm (its earth sides, edge trees and the tallest castle tower) at any
   // rotation, in the part of the canvas not covered by the heading, view controls or caption. Zoom in for detail.
   const FRAME_POINTS = [];
   const half = { x: REALM_SIZE.width / 2 + 0.2, z: REALM_SIZE.depth / 2 + 0.2 };
-  for (const x of [-half.x, half.x]) for (const z of [-half.z, half.z]) for (const y of [-1.9, 3.6]) FRAME_POINTS.push(new THREE.Vector3(x, y, z));
+  for (const x of [-half.x, half.x]) for (const z of [-half.z, half.z]) for (const y of [-2.4, 4.2]) FRAME_POINTS.push(new THREE.Vector3(x, y, z));
   for (const d of REALM_DISTRICTS) FRAME_POINTS.push(new THREE.Vector3(d.x,d.height,d.z));
   const ZOOM = { min: 0.55, max: 2.8 };
   const scratch = new THREE.Vector3();
@@ -389,7 +400,7 @@ export function createBoardScene(container, { reducedMotion = false, onEvent = (
   renderer = new THREE.WebGLRenderer({ antialias: false, alpha: false, preserveDrawingBuffer: true });
   // The post-process defines art pixels in CSS pixels. Rendering its output at retina density adds no detail.
   renderer.setPixelRatio(1);
-  renderer.outputColorSpace = THREE.LinearSRGBColorSpace; renderer.toneMapping = THREE.NoToneMapping;
+  renderer.outputColorSpace = THREE.LinearSRGBColorSpace; renderer.toneMapping = THREE.NoToneMapping; renderer.info.autoReset = false;
   renderer.domElement.setAttribute('role', 'img');
   renderer.domElement.setAttribute('aria-label', 'Woodland board with deer, a brook and the household home');
   container.append(renderer.domElement);
@@ -403,9 +414,10 @@ export function createBoardScene(container, { reducedMotion = false, onEvent = (
   realmModels = createRealmModels({part,builder,models,colours});
   pipeline = new PixelRenderer(renderer);
   pipeline.configure({ pixelSize: 2, pixelMode: true, outlines: true, dither: true, exposure: 1.05 });
-  for (const name of ['land', 'route', 'gardens', 'token', 'fx', 'estate', 'court']) { groups[name] = new THREE.Group(); scene.add(groups[name]); }
+  for (const name of ['woodland', 'land', 'route', 'gardens', 'token', 'fx', 'estate', 'court']) { groups[name] = new THREE.Group(); scene.add(groups[name]); }
   court = createEstateCourt(groups.court, builder, colours);
   groups.castle = new THREE.Group(); scene.add(groups.castle);
+  realmModels.woodland(groups.woodland);
   buildLandscape();buildRoute(); buildGardens(); buildCastle(); buildEstate(); buildToken(); buildCourt();
   observer = new ResizeObserver(resize); observer.observe(container); resize();
   startAmbient();
@@ -481,7 +493,7 @@ export function createBoardScene(container, { reducedMotion = false, onEvent = (
       const t = groups.token.position;
       return { spaces, travelers: toScreen(t.x, t.y + 1.5, t.z), canvas: { left: rect.left, top: rect.top, width: rect.width, height: rect.height } };
     },
-    debug: () => ({ region: REALM_SIZE, estateLevel: state.estateLevel, view: { ...view }, previewFeature: state.previewFeature, tier: state.builtTier, position: state.position, shownPosition, gardens: state.gardens, crest: { ...state.crest }, playMode: state.playMode, animating, frames, ambient: Boolean(ambientTimer), ambientFrames, grazers: grazers.length, butterflies: flutterers.length, court: court.debug(), districts: realm.districts.map(({id,open,status,greyPaint,drawMeshes})=>({id,open,status,greyPaint,drawMeshes})), bridges: realm.bridges.map(({id,open,panels})=>({id,open,raised:panels.some(p=>Math.abs(p.group.rotation.z)>.01)})) }),
+    debug: () => ({ region: REALM_SIZE, estateLevel: state.estateLevel, view: { ...view }, previewFeature: state.previewFeature, tier: state.builtTier, position: state.position, shownPosition, gardens: state.gardens, crest: { ...state.crest }, playMode: state.playMode, animating, frames, ambient: Boolean(ambientTimer), ambientFrames, grazers: grazers.length, butterflies: flutterers.length, court: court.debug(), districts: realm.districts.map(({id,open,status,greyPaint,drawMeshes,hues})=>({id,open,status,greyPaint,drawMeshes,hues})), bridges: realm.bridges.map(({id,open,panels,gate,river})=>({id,open,gate,river,raised:panels.some(p=>Math.abs(p.group.rotation.z)>.01)})), landscape: realm.landscape, render: { ...perf, averageMs: perf.draws ? perf.totalMs / perf.draws : 0, geometries: renderer.info.memory.geometries } }),
     dispose() { for (const [name,fn,options] of interactions) renderer.domElement.removeEventListener(name,fn,options); clearInterval(ambientTimer); observer?.disconnect(); court?.dispose(); for (const g of Object.values(groups)) disposeGroup(g); flutterGeo?.dispose(); builder?.dispose(); pipeline?.dispose(); renderer?.dispose(); },
   };
 

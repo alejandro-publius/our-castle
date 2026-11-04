@@ -2,7 +2,7 @@
 
 ## Latest owner correction: a connected realm
 
-The owner expected bigger buildings to remain visible as **separate connected destinations**, greyed out behind bridges/moats until unlocked. They explicitly rejected continuing to replace one central building on a small plot. This replaces that part of the earlier spatial proposal below.
+The owner expected bigger buildings to remain visible as **separate connected destinations**, greyed out behind bridges/moats until unlocked. They explicitly rejected continuing to replace one central building on a small plot. This replaces that part of the earlier spatial proposal below. A later owner correction (November 4, 2026) replaced the grey treatment and the open water: the realm is one green forest separated by narrow rivers under the bridges, and locked castles stay colourful (see the woodland section of ART-DIRECTION.md).
 
 The current implementation arranges six districts across a 164×114 world: the starting village, manor gardens, market town, woodland garden, keep and royal citadel. These names, dimensions and arrangement are implementation choices for that direction. The existing financial thresholds, private/sandbox scope and evidence distinctions stay intact. Earlier homes remain, bridges lower as their destinations are earned, and later courts add inhabitants to their own districts. Locked destinations can be inspected without unlocking them; art previews are explicitly labeled.
 

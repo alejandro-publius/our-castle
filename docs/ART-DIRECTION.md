@@ -1,6 +1,44 @@
 # Art direction — preserve this visual family
 
-## Current map target: a connected realm
+## Current map target: a woodland realm with rivers (November 4, 2026)
+
+The owner corrected the connected-realm captures directly: *"it should be all green the landscape is a forest separated by rivers under the bridge not this big ocean and why are the castles so bland? shouldn't they be embelished with colors and little accent colors?"* This supersedes the grey-island target below. Do not ask for that choice again.
+
+**Brief.** One continuous green wooded realm. The six districts and their earlier buildings stay in their separate locations as clearings in the forest. Narrow winding rivers, connected to each other, run below the six bridges with green banks on both sides; there is no blue sheet around the plots. Every castle, including locked ones, is painted in full colour with accents. Locked means a named label, a raised bridge and a closed gate. It does not mean grey grass, grey trees or a grey castle.
+
+**Reference lock.**
+
+| Source | Role | Not taken |
+| --- | --- | --- |
+| The owner's Tiny Castle / Crown & Dust art: `references/images/our-house-castle.png`, `color-and-heraldry.png`, `mountain-world.png`, plus the current realm captures | Primary. Orthographic miniature world, rounded and conical trees, soil-sided board, enamel crimson/cobalt/gold heraldry with dark separation, cream stone with dark courses | Nothing replaced: same 90-colour PixelRenderer, Uncial/Alegreya fonts, palette, brand assets and notices |
+| [MekaVerse](https://themekaverse.com) (Refero) | Map-first panoramic composition only | Its sci-fi theme, palette, fonts and imagery |
+| [Wayfinder](https://wayfinder.nfb.ca) (Refero) | Layered organic woodland density only: groves and glades instead of a tree fence | Its autumn and desaturated palette |
+| [Karl](https://karlgonsalves.com) (Refero) | Distinct, colourful architectural silhouettes only | Its page palette and fonts |
+
+No external game art and no generated or screenshot background. The financial UI is not redesigned.
+
+**Decision ledger (woodland revision).**
+
+| Decision | Source | Implementation |
+| --- | --- | --- |
+| One continuous forest floor across the whole 164×114 realm | Owner: "all green… a forest" | A single heightfield ground mesh with soil sides at the board edge. Districts are lighter meadow clearings in it, not raised islands with rock-cliff shores |
+| Layered forest between the clearings | Owner + Wayfinder density principle | Instanced broadleaf trees, conifers, shrubs, ferns, birches and small details (mushrooms, flowers, stones), scattered by a deterministic noise field into groves and glades; no square tree border |
+| Narrow connected rivers under every bridge | Owner: "separated by rivers under the bridge not this big ocean" | One east–west river through the garden, keep and royal-procession bridge centres; a west tributary under the manor bridge; an east tributary under the citadel and market bridges. Channels are cut into the ground over a shallow water bed, with banks, reeds and stones |
+| Bridges cross the water, raised leaves over the river | Existing open/raised bridge logic | Stone approaches on the banks, bank piers clear of the channel, two wooden leaves that meet over the middle of the river and lift when the crossing is locked; the portcullis barrier stays on locked crossings |
+| Locked districts keep their full colours | Owner: castles should be "embelished with colors"; locked areas are no longer greyed | The blanket desaturation of locked regions is removed. Labels, raised leaves and closed gates carry the lock |
+| Embellished, distinct architecture | Owner + `color-and-heraldry.png` enamel and gold craft; Karl silhouettes | Crimson and cobalt roofs, gold finials and trim, coloured shutters, long heraldic banners and crest shields, flowering planters, entrance details. The manor is timber and cobalt, the keep is cool stone with crimson roofs, the citadel is warm cream stone with dark courses and mixed crimson/cobalt spires |
+| Guests, earned access, milestones and court sizes unchanged | Existing financial rules | Presentation only. No payment, provider or reward rule changes; previews stay art-only and non-mutating |
+
+**Current rendered references:** `docs/screenshots/forest-overview.png`, `forest-locked-citadel.png`, `forest-phone-overview.png`, `forest-citadel-preview.png` and `forest-simulated-manor.png`.
+
+**Notes for later work:**
+- **Outlines at a distance:** at phone scale one world unit is about one art pixel, and the outline pass draws every isolated tree silhouette black. The forest therefore uses broad understory mounds under every crown and a near-continuous canopy. Small, separate, tall trees turn the phone overview dark.
+- **Forest shading:** the forest and ground use flat Lambert paint in shared instanced batches, built once. The full standard material over that much screen area tripled software-rendered frame time.
+- **Locked roads:** roads and route stones on locked legs are pale dust and weathered stone, not grey.
+
+## Earlier map target: a connected realm (historical)
+
+The grey-island treatment described in this section was superseded by the woodland revision above. Its captures (`docs/screenshots/realm-*.png`) and the demo clips recorded from it are historical.
 
 The owner corrected the small-plot interpretation: larger buildings should be separate, connected destinations, visible in grey across bridges/moats until unlocked. This supersedes the earlier replace-one-building composition and explicitly permits grey treatment for locked **district artwork**. Functional amounts, payment controls and earned progress remain readable and truthful.
 

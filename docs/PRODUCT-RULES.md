@@ -4,7 +4,7 @@
 
 The realm retains the starting village and every later home as separate destinations. The manor opens at 25%, keep at 60% and citadel at 100%; the market district opens with the existing 40% village-quarter reward. The woodland garden is the existing self-reported bill-habit reward, clearly identified as reported by the household. It is not utility-provider verification.
 
-All six districts are visible before unlocking. Locked destinations are grey and their connecting drawbridges raised. An earned destination lowers its crossing; keepsake destinations remain accessible after a refund while the progress ledger updates truthfully. Inspecting a district only changes the camera. A separately labeled art preview can temporarily show a future district in color and lower its bridge without earning it or writing to the server. Returning restores the real locks.
+All six districts are visible before unlocking. Locked destinations keep their full colours; their named labels, raised drawbridge leaves and closed gates show the lock. An earned destination lowers its crossing; keepsake destinations remain accessible after a refund while the progress ledger updates truthfully. Inspecting a district only changes the camera. A separately labeled art preview can temporarily show a future district in color and lower its bridge without earning it or writing to the server. Returning restores the real locks.
 
 ## Living court rewards
 

@@ -200,7 +200,7 @@ function renderBoard({ animate, result, added = [] }) {
     : `Travelers on space ${board.position} of ${ROUTE_LENGTH} · ${board.spaceName}. `;
   status += board.builtTierCommemorative
     ? `The ${built.name} commemorates a milestone reached earlier; current progress is ${formatPercent(progress.progressCents, goal.targetCents)}.`
-    : `The ${built.name.toLowerCase()} district is open; future districts remain grey beyond raised bridges.`;
+    : `The ${built.name.toLowerCase()} district is open; locked districts wait across the rivers behind raised bridges.`;
   if (board.gardens) status += ` ${board.gardens} garden bed${board.gardens === 1 ? '' : 's'} for bill habits.`;
   status += ` ${courtForTier(board.builtTier).capacity} guests roam the grounds.`;
   $('#board-status').textContent = status;
@@ -242,22 +242,24 @@ function renderRewards() {
     if (reward.source === 'self_reported') card.append(h('p', { class: 'reward-progress' }, `${reward.count} of 4 garden beds planted`));
     card.append(h('p', { class: 'reward-source' }, `Evidence: ${reward.sourceLabel}`));
     if (reward.status === 'keepsake') card.append(h('p', { class: 'fine' }, 'Reached earlier and kept after a refund. Current goal progress is shown above and in the ledger.'));
-    card.append(h('button', { type: 'button', class: 'reward-preview', onclick: () => previewReward(reward) },
+    card.append(h('button', { type: 'button', class: 'reward-preview', onclick: (e) => previewReward(reward, { keyboard: e.detail === 0 }) },
       reward.status === 'unlocked' ? 'Show it in the world' : 'Preview in the world (art only)'));
     return card;
   }));
 }
 // Bring the realm into view (as before: the top of the board) without stranding keyboard focus. `keep` is the control
-// that has focus afterwards; the scroll is limited so that it stays fully inside the viewport.
-function revealRealm(keep) {
+// that has focus afterwards; the scroll is limited so that it stays fully inside the viewport. A keyboard activation
+// (`instant`) jumps straight there: focus has already moved, so the focused control must be on screen at once, even when
+// a busy renderer would stall a smooth scroll. Pointer navigation keeps the smooth scroll.
+function revealRealm(keep, { instant = false } = {}) {
   const margin = 8, r = keep?.getBoundingClientRect();
   let delta = $('.board-shell').getBoundingClientRect().top - margin;
   if (r) delta = Math.min(Math.max(delta, r.bottom + margin - innerHeight), r.top - margin);
-  if (Math.abs(delta) >= 1) window.scrollBy({ top: delta, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' });
+  if (Math.abs(delta) >= 1) window.scrollBy({ top: delta, behavior: instant || matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' });
 }
 
 // A preview only redraws the board. It never calls the server, so it cannot change rewards, achievements or money.
-function previewReward(reward) {
+function previewReward(reward, { keyboard = false } = {}) {
   if (!scene) return;
   ui.preview = reward.id;
   $('#world-preview').hidden = false;
@@ -279,7 +281,7 @@ function previewReward(reward) {
   });
   // The reward card is far below the board: move focus to the preview's own exit so it is visible and one key away.
   $('#end-preview').focus({ preventScroll: true });
-  revealRealm($('#end-preview'));
+  revealRealm($('#end-preview'), { instant: keyboard });
 }
 
 function districtCondition(district) {
@@ -292,7 +294,7 @@ function renderRealmNavigation(){
   const regions=realmAccess({builtTier:state.board.builtTier,estateLevel:state.board.estateLevel,gardens:state.board.gardens});
   $('#realm-districts').replaceChildren(...regions.map(d=>h('button',{type:'button',class:'realm-stop','data-district':d.id,'data-status':d.status,'aria-pressed':'false'},h('strong',{},d.name),h('small',{},d.open?'Open district':`Locked · ${d.percent===null?'bill habit':`${d.percent}%`}`))));
   $('#realm-markers').replaceChildren(...regions.map(d=>h('button',{type:'button',class:'realm-marker','data-district':d.id,'data-status':d.status,'aria-label':`Inspect ${d.name} on the map`,hidden:true},h('strong',{},d.name),h('small',{},d.open?'Open':`Locked · ${d.percent===null?'bill habit':`${d.percent}%`}`))));
-  $('#realm-focus-status').textContent='Six connected districts · grey buildings and raised bridges show what is still locked. Select a district to look closer.';
+  $('#realm-focus-status').textContent='Six districts in one woodland · raised bridges, closed gates and the labels show what is still locked. Select a district to look closer.';
 }
 function syncRealmMarkers({focus,points}){
   const map=$('.realm-map'),focused=focus?'true':'false';if(map.dataset.focused!==focused)map.dataset.focused=focused;
@@ -305,7 +307,7 @@ function syncRealmMarkers({focus,points}){
   if(!state)return;
   const regions=realmAccess({builtTier:state.board.builtTier,estateLevel:state.board.estateLevel,gardens:state.board.gardens});
   const d=regions.find(d=>d.id===focus);
-  const message=focus?`${d.name} · ${d.open?'Open district':'Locked'} · ${districtCondition(d)}${ui.preview?' · Viewing an art preview':''}`:`${ui.preview?'Art preview · ':''}Whole realm · ${regions.filter(d=>d.open).length}/6 districts earned. Select a grey destination to inspect its lock.`;
+  const message=focus?`${d.name} · ${d.open?'Open district':'Locked'} · ${districtCondition(d)}${ui.preview?' · Viewing an art preview':''}`:`${ui.preview?'Art preview · ':''}Whole realm · ${regions.filter(d=>d.open).length}/6 districts earned. Select a locked district to inspect its condition.`;
   if($('#realm-focus-status').textContent!==message)$('#realm-focus-status').textContent=message;
 }
 
@@ -940,7 +942,7 @@ function renderFooter() {
 function bindEvents() {
   // Selecting a district keeps focus on the button that was used. The focused map is taller on phones, so set that
   // layout before measuring, then reveal the realm without scrolling the button out of view.
-  for(const root of [$('#realm-districts'),$('#realm-markers')])root.addEventListener('click',e=>{const button=e.target.closest('[data-district]');if(button&&scene){scene.focusDistrict(button.dataset.district);$('.realm-map').dataset.focused='true';revealRealm(button);}});
+  for(const root of [$('#realm-districts'),$('#realm-markers')])root.addEventListener('click',e=>{const button=e.target.closest('[data-district]');if(button&&scene){scene.focusDistrict(button.dataset.district);$('.realm-map').dataset.focused='true';revealRealm(button,{instant:e.detail===0});}});
   $('#tabs').addEventListener('click', (e) => { const b = e.target.closest('[role="tab"]'); if (b) selectTab(b.id.slice(4), { focus: false }); });
   $('#tabs').addEventListener('keydown', (e) => {
     const i = TABS.indexOf(ui.tab);

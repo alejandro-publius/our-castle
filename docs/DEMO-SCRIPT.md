@@ -15,6 +15,7 @@ File: [`docs/demos/our-castle-connected-realm.mp4`](demos/our-castle-connected-r
 - **Format:** 1920×1080 H.264 with burned-in titles and captions and no audio.
 - **Source:** an isolated example database on port 3134, not the owner's sandbox household.
 - **What it shows:** the world and how progress opens it.
+- **Historical visuals:** recorded before the woodland revision, so it shows the earlier grey-island revision (six islands in open blue water, locked districts painted grey). It is kept unchanged. The picture descriptions below describe the clip as recorded, not the current forest.
 - **What it does not show:** PayPal, the AI planner or the steward. Never describe it as proof of a live integration or as the submitted video.
 
 The talk track is optional narration for a voiceover. It has not been recorded. Each line fits its section at a calm pace (about two words a second) and keeps the clip's "example mode" and "simulated" wording.
@@ -39,7 +40,7 @@ The plan assumes a household at $60 of a $300 goal. That is the owner's House of
 
 | Time | Screen | Say | Readiness |
 | --- | --- | --- | --- |
-| 0:00–0:15 | Press "Whole realm": the village open, five grey districts behind raised bridges; the header badges | "Saving as a family is hard to see and easy to abandon. Our Castle turns one shared goal into a connected realm. Each real milestone opens a new district." | Working |
+| 0:00–0:15 | Press "Whole realm": the village open in the forest, five colourful locked districts behind raised bridges over the rivers; the header badges | "Saving as a family is hard to see and easy to abandon. Our Castle turns one shared goal into a connected realm. Each real milestone opens a new district." | Working |
 | 0:15–0:25 | House tab: Family, house name, crest (found it first on a fresh copy) | "Solo or family: one crest, one house. These are example personas; this prototype doesn't claim real sign-in." | Working |
 | 0:25–0:55 | Plan tab: $300 goal, $60 set aside, target date, $30 a week, a bill; "Ask the planner", then "Use this plan" | "Claude turns our own numbers into a weekly plan and shows its arithmetic. The server re-checks every cent, and bills stay separate, never counted as savings." Each live plan takes about 14 seconds: trim the wait in editing, or talk over it. Showing a shortfall needs a second plan request | **Verified** (AI-only run, Nov 3) |
 | 0:55–1:35 | Contribute tab: "$15.00 Raises the Manor", tick Rowan's adult approval, press the PayPal button, approve in the popup as the sandbox buyer | "An adult approves a specific amount, and PayPal handles the payment. Our server captures the order with PayPal's Server SDK, and progress moves only after it checks the amount, currency, household and goal with PayPal." | **Rehearse first:** the in-page popup approval is unverified. The server capture was verified through PayPal's hosted approval link |

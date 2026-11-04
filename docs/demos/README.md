@@ -18,6 +18,8 @@
 
 The talk track and timings are in [DEMO-SCRIPT.md](../DEMO-SCRIPT.md).
 
+**Historical visuals.** Both this clip and the 2:36 judge draft in `judge-review/` were recorded before the November 4, 2026 woodland revision. They show the earlier grey-island revision (six islands in open blue water, locked districts painted grey). The current world is one green forest with narrow rivers under the bridges and colourful locked castles (`docs/screenshots/forest-*.png`). The clips are kept unchanged as a record and must not be described as showing the current art.
+
 **What it is not.**
 - It does not show PayPal, the AI planner or the steward, and it is not evidence of any live integration. That evidence is in [VALIDATION.md](../VALIDATION.md).
 - It is not the hackathon video. It has not been uploaded, published or submitted.

@@ -15,7 +15,7 @@ Start here to run, evaluate or present Our Castle. State as of **November 4, 202
 | Live payment evidence | [LIVE-VERIFICATION.md](LIVE-VERIFICATION.md) |
 | Live AI evidence | [LIVE-VERIFICATION-AI.md](LIVE-VERIFICATION-AI.md) |
 | Every check run, with dates | [VALIDATION.md](VALIDATION.md) |
-| Current world captures | [`docs/screenshots/realm-*.png`](screenshots/) |
+| Current world captures | [`docs/screenshots/forest-*.png`](screenshots/) (woodland revision). The older `realm-*.png` captures show the superseded grey-island revision |
 | Focused keyboard/device review | [ACCESSIBILITY-DEVICE-REVIEW.md](ACCESSIBILITY-DEVICE-REVIEW.md): 8 focused checks and 12 affected existing checks passed; Chromium emulation only |
 | Talk tracks | [DEMO-SCRIPT.md](DEMO-SCRIPT.md) |
 
@@ -27,7 +27,7 @@ The app already runs at **http://localhost:3010**. It was started from `~/projec
 
 - **Check it, read-only:** `curl -s http://localhost:3010/api/status` should report `"mode":"sandbox"` for payments and `"mode":"live"` with `claude-opus-5-5` for AI. The page header shows the badges **PayPal sandbox** and **AI planner · claude-opus-5-5**.
 - **If it is not running:** `cd ~/projects/our-house && npm start`. It does not modify `.env` or any ledger or payment record. While the app is up, a second `npm start` fails because port 3010 is in use.
-- **Current household:** House of Alder, $60.00 tracked, all of it reported starting progress. No PayPal contribution has been confirmed in this household yet; one early order attempt failed with a 401 before the new sandbox credentials started working. Hearth Village is open and the other five districts are grey.
+- **Current household:** House of Alder, $60.00 tracked, all of it reported starting progress. No PayPal contribution has been confirmed in this household yet; one early order attempt failed with a 401 before the new sandbox credentials started working. Hearth Village is open and the other five districts are locked.
 - **A throwaway example-mode copy**, for touring or Postman without touching `.env` or the household. Port 3134 is the Postman example folder's default; 3010 and 3020 are already in use on this Mac:
 
   ```sh
@@ -128,6 +128,8 @@ The [precise insert guide](demos/judge-review/OWNER-INSERT.md) needs one owner-l
 ### Preserved world clip (36.36 s)
 
 [`docs/demos/our-castle-connected-realm.mp4`](demos/our-castle-connected-realm.mp4); see the [provenance note](demos/README.md).
+
+- **Historical visuals:** recorded before the woodland revision, so it shows the earlier grey-island revision (six islands in open blue water, locked districts painted grey). The clip and the 2:36 judge draft are kept unchanged; neither shows the current forest and rivers.
 
 - **Format:** 36.36 s, 1920×1080 H.264, 25 fps, no audio, burned-in captions. 1,932,194 bytes, SHA-256 `33dd65316e28ee6e059cb856deccaaebfe8eb071e00750ab18f4d3b51beb2fc1`.
 - **Original:** `test-results/realm-promotion/` on the owner's Mac, with the capture reports (`recording-report.json`, `timeline.json`, `export-manifest.json`). That folder is git-ignored; the tracked copy is byte-identical.

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { REALM_SIZE, REALM_DISTRICTS, REALM_ROUTE, homeDistrict, realmAccess, bridgeAccess, journeyPosition } from '../../src/core/realm.js';
+import { REALM_SIZE, REALM_DISTRICTS, REALM_BRIDGES, REALM_RIVERS, RIVER_PATHS, REALM_ROUTE, homeDistrict, realmAccess, bridgeAccess, journeyPosition, riverAt } from '../../src/core/realm.js';
 import { courtResidents, courtWorldPose } from '../../src/core/court.js';
 
 test('six separate districts remain on the world map while only earned destinations and bridges open',()=>{
@@ -21,7 +21,7 @@ test('six separate districts remain on the world map while only earned destinati
   assert.match(start.find(d=>d.id==='garden').condition,/reported by you, not provider verified/);
 });
 
-test('districts occupy separate ground across real water gaps and later buildings have larger grounds',()=>{
+test('districts are separate clearings in one woodland and later buildings have larger grounds',()=>{
   for(let i=0;i<REALM_DISTRICTS.length;i++)for(let j=i+1;j<REALM_DISTRICTS.length;j++){
     const a=REALM_DISTRICTS[i],b=REALM_DISTRICTS[j];
     assert.ok(Math.abs(a.x-b.x)>(a.width+b.width)/2||Math.abs(a.z-b.z)>(a.depth+b.depth)/2,`${a.id} and ${b.id} have separate shores`);
@@ -57,4 +57,28 @@ test('each generation of guests remains in its own open district as the realm ex
   assert.equal(courtWorldPose(residents[0],42).district,'cottage');
   assert.equal(courtWorldPose(residents.find(p=>p.id==='elowen'),42).district,'manor');
   assert.equal(courtWorldPose(residents.find(p=>p.id==='sorrel'),42).district,'castle');
+});
+
+test('narrow connected rivers pass under the middle of every bridge and leave the clearings and most of the realm dry',()=>{
+  assert.deepEqual(REALM_RIVERS.map(r=>r.id),['main','west','east']);
+  for(const river of REALM_RIVERS)assert.ok(river.halfWidth<=2.5,`${river.id} is a narrow river, not an open sea`);
+  const crossing={'garden-bridge':'main','keep-bridge':'main','royal-procession':'main','manor-bridge':'west','citadel-bridge':'east','market-bridge':'east'};
+  for(const bridge of REALM_BRIDGES){
+    const middle=riverAt((bridge.a[0]+bridge.b[0])/2,(bridge.a[1]+bridge.b[1])/2);
+    assert.equal(middle.river,crossing[bridge.id],`${bridge.id} crosses the expected river`);
+    assert.ok(middle.depth>middle.halfWidth*.9,`water passes under the middle of ${bridge.id}`);
+    for(const end of[bridge.a,bridge.b])assert.ok(riverAt(...end).depth< -2,`${bridge.id} lands on a dry bank`);
+  }
+  for(const d of REALM_DISTRICTS)for(let x=d.x-d.width/2;x<=d.x+d.width/2;x+=1)for(let z=d.z-d.depth/2;z<=d.z+d.depth/2;z+=1)
+    assert.ok(riverAt(x,z).depth< -1.5,`${d.id} clearing stays dry at ${x},${z}`);
+  // The tributaries join the main river, and every river runs off the board edge rather than ending in a pond.
+  const main=RIVER_PATHS.find(r=>r.id==='main');
+  for(const id of['west','east']){
+    const path=RIVER_PATHS.find(r=>r.id===id).path;
+    assert.ok(Math.min(...path.map(([x,z])=>Math.min(...main.path.map(([mx,mz])=>Math.hypot(x-mx,z-mz)))))<main.halfWidth,`${id} joins the main river`);
+  }
+  for(const river of RIVER_PATHS)assert.ok(river.path.filter(([x,z])=>Math.abs(x)>=REALM_SIZE.width/2||Math.abs(z)>=REALM_SIZE.depth/2).length>=2,`${river.id} reaches the edge`);
+  let wet=0,total=0;
+  for(let x=-82;x<=82;x+=.5)for(let z=-57;z<=57;z+=.5){total++;if(riverAt(x,z).depth>0)wet++;}
+  assert.ok(wet/total<.1,`water covers ${(wet/total*100).toFixed(1)}% of the realm, so green land is the great majority`);
 });
