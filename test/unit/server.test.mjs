@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import http from 'node:http';
 import { fileURLToPath } from 'node:url';
-import { createApp } from '../../server/app.mjs';
+import { clientTokenDomains, createApp } from '../../server/app.mjs';
 import { loadConfig } from '../../server/config.mjs';
 import { openDatabase } from '../../server/db.mjs';
 import { createClock } from '../../server/household.mjs';
@@ -120,6 +120,26 @@ test('sandbox HTTP flow: server-created order, capture credits once, mismatches 
     assert.equal(forged.json.error.code, 'wrong_mode');
     assert.equal((await s.call('POST', '/api/demo/reset', {})).status, 403);
     assert.equal((await s.call('GET', '/api/state')).json.progress.progressCents, 7500);
+  } finally { await s.close(); }
+});
+
+test('client-token domains follow PayPal\'s format: bare domain names only, none for local hosts', async () => {
+  assert.deepEqual(clientTokenDomains('localhost:3010'), []);
+  assert.deepEqual(clientTokenDomains('127.0.0.1:3010'), []);
+  assert.deepEqual(clientTokenDomains('[::1]:3010'), []);
+  assert.deepEqual(clientTokenDomains('house.localhost'), []);
+  assert.deepEqual(clientTokenDomains(undefined), []);
+  assert.deepEqual(clientTokenDomains('Our-Castle.example.com:443'), ['our-castle.example.com']);
+
+  const s = await startServer({ sandbox: true });
+  try {
+    const token = await s.call('POST', '/api/paypal/client-token', {});
+    assert.equal(token.status, 200, token.text);
+    assert.equal(token.json.accessToken, 'client-token-fake');
+    const sent = s.fake.requests.findLast((r) => r.pathname === '/v1/oauth2/token');
+    const params = new URLSearchParams(String(sent.body));
+    assert.equal(params.get('response_type'), 'client_token');
+    assert.deepEqual(params.getAll('domains[]'), [], 'a local host must not be sent as a domain');
   } finally { await s.close(); }
 });
 

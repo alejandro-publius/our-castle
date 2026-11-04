@@ -56,6 +56,17 @@ export class HttpError extends Error {
   constructor(status, code, message) { super(message); this.status = status; this.code = code; }
 }
 
+/**
+ * Domains for a PayPal v6 client token. PayPal accepts bare domain names only and rejects
+ * localhost and IP addresses, so a local prototype sends none (PayPal then issues an unrestricted sandbox token).
+ */
+export function clientTokenDomains(hostHeader) {
+  const hostname = String(hostHeader ?? '').replace(/:\d+$/, '').replace(/^\[|\]$/g, '').toLowerCase();
+  if (!hostname || hostname === 'localhost' || hostname.endsWith('.localhost')) return [];
+  if (/^[\d.]+$/.test(hostname) || hostname.includes(':')) return [];
+  return [hostname];
+}
+
 function sendJson(res, status, body) {
   const payload = JSON.stringify(body);
   res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' });
@@ -152,7 +163,7 @@ export function createApp({ config, db, clock, paypal = null, aiProvider = null,
       return { mode: 'sandbox', clientId: config.payments.clientId, sdkUrl: config.payments.sdkUrl, currency: 'USD' };
     }],
     ['POST', '/api/paypal/client-token', async ({ req }) => {
-      const token = await contributions.clientToken({ domains: [`http://${req.headers.host}`] });
+      const token = await contributions.clientToken({ domains: clientTokenDomains(req.headers.host) });
       return { accessToken: token.accessToken, expiresIn: token.expiresIn };
     }],
     ['POST', '/api/paypal/orders', async ({ body }) => {

@@ -142,9 +142,10 @@ export function createPayPalClient({ clientId, clientSecret, fetch = globalThis.
     },
 
     /** Browser-safe client token for the JavaScript SDK v6 (used only if clientId init is refused). */
-    async generateClientToken({ domains }) {
+    async generateClientToken({ domains = [] } = {}) {
       const params = new URLSearchParams({ grant_type: 'client_credentials', response_type: 'client_token' });
-      params.append('domains[]', domains.join(','));
+      // PayPal accepts bare domain names only (example.com); it rejects schemes, ports, localhost and IPs.
+      for (const domain of domains) params.append('domains[]', domain);
       const data = await oauth(params);
       return { accessToken: data.access_token, expiresIn: Number(data.expires_in ?? 900) };
     },

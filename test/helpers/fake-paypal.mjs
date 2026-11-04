@@ -37,6 +37,9 @@ export function createFakePayPal(options = {}) {
       tokenCalls++;
       if (!headers.authorization?.startsWith('Basic ')) return json(401, { error: 'invalid_client' });
       const params = new URLSearchParams(String(init.body));
+      // Mirrors the real sandbox (checked Nov 3, 2026): bare domains only; schemes, ports, localhost and IPs are refused.
+      const badDomain = params.getAll('domains[]').some((d) => !/^(?!localhost$)(?=.*[a-z])[a-z0-9.-]+\.[a-z]{2,}$/i.test(d));
+      if (params.get('response_type') === 'client_token' && badDomain) return json(401, { error: 'invalid_domain', error_description: 'Domain format not valid' });
       return json(200, { access_token: params.get('response_type') === 'client_token' ? 'client-token-fake' : `access-${tokenCalls}`, expires_in: 32400 });
     }
     if (!headers.authorization?.startsWith('Bearer ')) return json(401, { name: 'AUTHENTICATION_FAILURE' });
