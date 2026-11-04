@@ -2,7 +2,7 @@
 
 ## November 4, 2026: woodland realm with rivers and colourful locked castles (branch `art/woodland-realm`)
 
-The owner's visual correction: *"it should be all green the landscape is a forest separated by rivers under the bridge not this big ocean and why are the castles so bland?"* Built in the separate worktree `our-castle-woodland` from `da82bad`; not yet promoted to `expansion/wider-estate`. Brief, reference lock and ledger: the woodland section of [ART-DIRECTION.md](ART-DIRECTION.md).
+The owner's visual correction: *"it should be all green the landscape is a forest separated by rivers under the bridge not this big ocean and why are the castles so bland?"* Built in the separate worktree `our-castle-woodland` from `da82bad`, reviewed, and promoted locally to `expansion/wider-estate` at `ce43a0f`. Brief, reference lock and ledger: the woodland section of [ART-DIRECTION.md](ART-DIRECTION.md).
 
 **What changed (presentation only):**
 - **Ground:** one continuous forest floor. The districts are meadow clearings; there are no island slabs or rock-cliff shores.
@@ -59,9 +59,18 @@ The owner's visual correction: *"it should be all green the landscape is a fores
 - Not checked: real devices, Safari or Firefox.
 
 **Owner data:**
-- The primary checkout stayed clean at `da82bad`. `.env` and `data/` modification times are unchanged.
+- During development the primary checkout stayed clean at `da82bad`. `.env` and `data/` modification times are unchanged; the later local promotion is recorded below.
 - The servers on 3010, 3020 and 3021 were left running and untouched.
 - The temporary before-baseline server (3139) was stopped. Its data folder was left in place.
+
+**Local promotion check (November 4, 2026, 12:05 PM Pacific):**
+- The reviewed woodland commit `ce43a0f` is now in the primary local branch `expansion/wider-estate`. Nothing was pushed or published.
+- The existing app on `http://localhost:3010` serves all five changed JavaScript modules byte-identically to the checked source. Refresh the page to load the new art; no server was restarted.
+- All baseline `.env` and household files retained their content hashes, modification times and permissions. The selected household, goal, progress, ledger, contribution, achievement and plan state also hashed identically.
+- The owner app on 3010 (PID 57180) and the separately coordinated sandbox rehearsal on 3021 (PID 67124) kept their original processes. No checkout, AI call or rehearsal action was performed for this art change.
+- The example preview remains available on `http://localhost:3138`, with $60 of $300 and 1/6 districts earned. Its progression is simulated, separate from the owner's records.
+- The original 36-second realm clip and the 2:36 judge draft retain their original SHA-256 hashes. They still show the historical island visuals.
+- Machine-readable preservation and served-source checks: git-ignored `test-results/woodland-promotion/after.json`. No already-passed browser or unit suite was repeated after promotion of the identical code.
 
 ## November 4, 2026: playable judge review draft and focused keyboard/device fix
 
