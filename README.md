@@ -21,10 +21,10 @@ Built for the PayPal AI Hackathon as a local prototype, with PayPal at the cente
 | Board, crest, house tiers, travelers, gardens | Working in the browser on the original 90-color pixel renderer |
 | Household / goal / plan / ledger / milestones | Working, stored in SQLite, survives restarts |
 | Example mode (no credentials) | Working and labeled everywhere: simulated payments, built-in rules planner, steward off |
-| PayPal sandbox order → approval → capture → verified credit | Implemented on the official Server SDK, tested against a fake sandbox through both the SDK adapter and a REST adapter. **No real sandbox transaction yet** (no credentials here) |
-| PayPal JS SDK v6 button | Implemented exactly as PayPal's Oct 2026 Node guide shows; **unverified** until run with a sandbox client id |
+| PayPal sandbox order → approval → capture → verified credit | Implemented on the official Server SDK and tested against a fake sandbox through both adapters. **Live sandbox:** sign-in, order creation, PayPal's own order record and the refusal to capture an unapproved order are verified. **A buyer-approved capture has not been run yet** |
+| PayPal JS SDK v6 button | Implemented as PayPal's Oct 2026 Node guide shows. **Live sandbox:** eligibility passes and PayPal's button renders with the real client id, with no CSP violations. The popup approval is not yet verified |
 | AI planner (Claude, structured output, server validation) | Implemented and tested against a fake transport. **No live AI call yet** |
-| AI house steward with PayPal Agent Toolkit (read-only) | Implemented and tested with a scripted fake model and fake PayPal. **No live AI + PayPal toolkit run yet** |
+| AI house steward with PayPal Agent Toolkit (read-only) | Implemented and tested with a scripted fake model and fake PayPal. The toolkit's read-only `list_transactions` works against the live sandbox. **No live AI run yet** (needs `AI_API_KEY`) |
 | AG Grid ledger | Working (AG Grid Community, MIT), with a plain-table fallback |
 | Living world and sound | Grazing deer and butterflies at a low idle frame rate (off for reduced motion); synthesized Web Audio cues, off until turned on |
 | Postman collection | Example-mode folder run with Newman: 10 requests, 21/21 assertions passed. Sandbox folder needs credentials |

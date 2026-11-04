@@ -1,5 +1,34 @@
 # Validation
 
+## November 3, 2026 (evening) — live PayPal sandbox checks with the owner's credentials
+
+The owner's sandbox REST credentials were added to the local, git-ignored `.env` (`PAYPAL_ENV=sandbox`). Every call below reached the **real PayPal sandbox**. No real money moved, and no buyer approved anything, so nothing was captured or charged. No AI key is configured yet, so the AI checks are **blocked**.
+
+- **OAuth.** The first attempt returned `401 invalid_client`. A later attempt with the same `.env` returned **200** and an access token. Nothing was changed in between, so the new sandbox app was most likely still activating.
+- **Server SDK order** (temporary database, not the app's data):
+  - `@paypal/paypal-server-sdk` created a real $15.00 USD order;
+  - PayPal returned an approval link on `www.sandbox.paypal.com`;
+  - PayPal's own `GET /v2/checkout/orders` showed `PAYER_ACTION_REQUIRED`, `15.00 USD` and the expected `custom_id`.
+- **Capture before approval.** PayPal answered `ORDER_NOT_APPROVED`. The app recorded `not_approved`, credited nothing, and progress stayed at the $60.00 already set aside. This confirms against the real sandbox that a redirect or click alone cannot credit a contribution.
+- **PayPal Agent Toolkit (read-only, `sandbox: true`).** `list_transactions` returned the sandbox merchant's real history (the $5,000.00 starting balance).
+- **JS SDK v6 in the browser** (headless Chromium, real client ID):
+  - the core, `paypal-payments`, pixel and locale scripts loaded;
+  - `find-eligible-methods` passed on the client ID alone;
+  - PayPal's `<paypal-button>` rendered (428×48). It stays disabled until an adult ticks the approval box;
+  - zero CSP violations and no page errors.
+
+  The button was not pressed.
+- **Client-token fallback: one bug found and fixed.**
+  - PayPal accepts only bare domain names (`example.com`). It rejects schemes, ports, `localhost` and IP addresses with `401 invalid_domain`, so the fallback always failed locally.
+  - Local hosts now send no domain, and the app's `/api/paypal/client-token` returns a real sandbox token.
+  - The fake sandbox now enforces the same rule, with a unit test.
+
+**Still to verify live:**
+- one buyer approval → capture → credit → replay → refund, using `npm run verify:live` with a sandbox buyer account (or the browser button);
+- everything that needs `AI_API_KEY` (the planner and the steward).
+
+After these checks and the rename to Our Castle, the earlier suites still pass: `npm test` (47 verified files, 82 unit tests passed and 1 skipped by design, 25 browser tests passed) and Newman folder 1 (10 requests, 21/21 assertions).
+
 ## November 3, 2026 — PayPal tooling pass (official Server SDK, Agent Toolkit steward, AG Grid, Postman)
 
 Environment: macOS, Node 26.0.0 (SQLite 3.53.0), Playwright 1.64.1 with Chromium 156 (software WebGL via SwiftShader), Newman 6.2.1 via `npx`. No `.env` file and no PayPal or AI credentials were present, so every run below used example mode or test doubles.
@@ -82,13 +111,13 @@ These are implemented but have **no live evidence yet**. Test doubles, the harne
 
 Items 1 and 3–5 are automated by `npm run verify:live`. The only manual step is approving one order with a sandbox buyer; the script writes `docs/LIVE-VERIFICATION.md`. It was smoke-tested here with no credentials (all sections skipped) and with invalid placeholders (each section failed cleanly, including a real PayPal sandbox debug id, with no progress recorded). Items 2, 6, 7 and 8 stay manual.
 
-1. **Real PayPal sandbox transaction through the Server SDK.** Approve a $15 order with a sandbox buyer. Then confirm:
+1. **Real PayPal sandbox transaction through the Server SDK.** Order creation, PayPal's own record and the refusal to capture an unapproved order are now verified live (see the evening section). Still needed: approve a $15 order with a sandbox buyer. Then confirm:
    - the receipt shows real order and capture ids, matching the sandbox dashboard;
    - progress moves once;
    - replaying capture and refreshing do not double-credit.
 
    Postman folder 2 walks this, including PayPal's own `GET /v2/checkout/orders`.
-2. **JS SDK v6 in the browser with a real client id:** eligibility passes, the `<paypal-button>` renders, the popup approval works, and `onApprove`/`onCancel` reach the server. Script loading under the CSP is already confirmed (see the reachability checks above).
+2. **JS SDK v6 in the browser with a real client id:** eligibility and the `<paypal-button>` rendering are now verified live. Still needed: the popup approval works and `onApprove`/`onCancel` reach the server.
 3. **Live house steward:** with `AI_API_KEY` and sandbox credentials, the steward calls PayPal's Agent Toolkit `get_order` for a real order and reports "PayPal and the ledger agree." Check whether real answers trigger false "unverified figure" warnings.
 4. **Live AI plan:** `claude-opus-5-5` returns a plan that passes validation for the demo inputs and for an impossible target; note the latency.
 5. **Sandbox refund** through the Ledger's "Refund in sandbox" button (or Postman 2.9) reduces progress exactly once.
