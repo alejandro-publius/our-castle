@@ -1,6 +1,6 @@
 # Devpost submission draft (not submitted)
 
-Draft text for the owner to edit. Items in **[brackets]** must be confirmed or replaced after the live sandbox and AI checks in [VALIDATION.md](VALIDATION.md). Do not submit until the repository is public by the owner's choice and the video shows the real integrations, not example mode.
+Draft text for the owner to edit. Items in **[brackets]** still need the owner's confirmation or the remaining in-app check listed in [JUDGE-HANDOFF.md](JUDGE-HANDOFF.md). Evidence for everything stated as verified is in [VALIDATION.md](VALIDATION.md). Do not submit until the repository is public by the owner's choice and the video shows the real integrations. The finished 36-second clip is an example-mode world tour and does not.
 
 ## Name and tagline
 
@@ -14,7 +14,7 @@ Families and households often save toward one shared thing — a trip, a repair,
 
 A household (or one person) founds a "house", chooses a crest, and sets one shared goal. An AI planner turns the household's own numbers — goal, what is already set aside, target date, the weekly amount they choose, and bills they already pay — into an editable weekly plan with the arithmetic shown, and says plainly when a target is out of reach and how to close the gap.
 
-When an adult approves a contribution, it is paid through PayPal (sandbox). The server captures the order and checks it before anything moves. Then the board answers: the family's travelers walk a pixel woodland route past deer and a brook, and at 25%, 60% and 100% the cottage becomes a manor, a keep and a castle. Bills paid on time grow garden beds as a habit reward but are never counted as savings. A refund lowers progress exactly once; the building stays as a keepsake while the travelers walk back.
+When an adult approves a contribution, it is paid through PayPal (sandbox). The server captures the order and checks it before anything moves. Then the world answers. The family's travelers walk a twenty-step route across a connected pixel realm of six districts. At 25%, 60% and 100%, the Manor Gardens, Stone Keep and Royal Citadel open across their drawbridges. The starting village and every earlier home remain, and future districts stay visible in grey until they are reached. Bills paid on time grow garden beds as a habit reward but are never counted as savings. A refund lowers progress exactly once; the building stays as a keepsake while the travelers walk back.
 
 ## How we built it
 
@@ -32,23 +32,23 @@ When an adult approves a contribution, it is paid through PayPal (sandbox). The 
   - the refund reversed progress once.
 
   **[Confirm the in-page button's popup approval live before submitting; the verified payment used PayPal's hosted approval link.]**
-- **AI planner:** Anthropic Claude (`claude-opus-5-5`) with structured JSON output writes the schedule, the plain-language explanation and the milestone notes. The server computes the arithmetic independently. It rejects any plan with wrong totals, dates, cents or feasibility claims, or with a dollar figure not derived from the household's inputs. Every week is editable and re-checked. **[Add one real example plan after the live AI check.]**
+- **AI planner:** Anthropic Claude (`claude-opus-5-5`) with structured JSON output writes the schedule, the plain-language explanation and the milestone notes. The server computes the arithmetic independently. It rejects any plan with wrong totals, dates, cents or feasibility claims, or with a dollar figure not derived from the household's inputs. Every week is editable and re-checked. In the live check on Nov 3, 2026, it planned eight $30 weeks covering the remaining $240 exactly. For an impossible target, it reported the $160 shortfall.
 - **AI house steward + PayPal Agent Toolkit:**
   - Family members ask questions like "Did PayPal confirm our last contribution?"
   - Claude reads the household ledger and looks the order up with PayPal's Agent Toolkit. Only the read-only `get_order` and `list_transactions` tools are enabled, limited to this household's orders.
   - The server shows what was actually checked and whether PayPal and the ledger agree.
   - It can't create, pay or refund: agentic, with a human in the loop.
 
-  **[Add one real steward answer after the live check.]**
+  In the live check, it read the ledger, listed the sandbox account's transactions through the Agent Toolkit, and said that the one transaction found was the sandbox starting balance, not household savings. **[Reconciling a specific household order with `get_order` still needs one in-app payment.]**
 - **Ledger:** AG Grid Community, themed in the game's parchment style, keeps goal progress, bills and gifts in one view with filters. Bills and gifts are marked "not savings".
 - **Postman:** a collection walks the example and sandbox flows end to end, including replay and mismatch checks and PayPal's own view of the order.
 - **Stack:** Node.js with built-in `node:http` and `node:sqlite`; a framework-free browser app; Three.js rendered through our own 90-color palette pixel pipeline (orthographic camera, depth outlines, Bayer dither), carrying over art from our earlier Tiny Castle project.
 - **Tests:**
   - Node unit tests covering every payment-safety scenario on both the Server SDK adapter and a REST adapter, plus planner validation, steward tool boundaries, HTTP security, the Postman files and the AI key setup;
-  - 13 Playwright end-to-end journeys at desktop and phone sizes;
+  - Playwright browser checks at desktop and phone sizes. At commit `7468b57`: 104 unit tests passed and 43 browser cases passed, each with 1 skipped by design;
   - a live sandbox verification script.
 
-  **[Update the counts from VALIDATION.md before submitting.]**
+  **[Recheck the counts against VALIDATION.md at the final commit.]**
 
 ## Tools used (AI disclosure)
 
@@ -71,8 +71,8 @@ Making payments trustworthy in a game: the browser can never award progress, so 
 
 ## What's next
 
-Real multi-member sign-in, more goals per household, shared household views for each member, and — only after checking the right PayPal products and rules — any real-money use.
+Real multi-member sign-in, more goals per household, shared household views for each member, and confirmed-bill rewards once an authorized bill provider can be connected. Real-money use would come only after checking the right PayPal products and rules.
 
 ## Honest scope notes for judges
 
-This is a sandbox prototype that tracks progress toward one goal. It is not a bank or savings account, it does not hold funds, and PayPal does not see the household's other bills. The example personas are not secure authentication. An example mode (labeled "simulated" and "no AI") lets anyone preview the experience without keys; the real integrations need a PayPal sandbox app and an Anthropic API key as described in the README.
+This is a sandbox prototype that tracks progress toward one goal. It is not a bank or savings account, it does not hold funds, and PayPal does not see the household's other bills. The example personas are not secure authentication. Utility-bill rewards stay locked because no bill provider is connected; household-recorded bills are labeled as reported, never verified. An example mode (labeled "simulated" and "no AI") lets anyone preview the experience without keys; the real integrations need a PayPal sandbox app and an Anthropic API key as described in the README.

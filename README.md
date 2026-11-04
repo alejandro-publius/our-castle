@@ -14,6 +14,8 @@ Built for the PayPal AI Hackathon as a local prototype, with PayPal at the cente
 
 > Private repository, sandbox only. No real money moves, nothing is deployed, and no hackathon entry has been submitted.
 
+**Judges and demo:** start with [docs/JUDGE-HANDOFF.md](docs/JUDGE-HANDOFF.md). It covers how to run the app, what is verified and by which evidence, the finished clip, and what still needs the owner.
+
 ## Status — what works and what is not yet verified
 
 | Area | State |
@@ -46,6 +48,8 @@ npm start
 # Open http://localhost:3010/
 # The original art reference stays at http://localhost:3010/art-preview.html
 ```
+
+If the app is already running on port 3010, a second `npm start` fails. To run a separate example-mode copy that leaves `.env` and the household untouched, see [docs/JUDGE-HANDOFF.md](docs/JUDGE-HANDOFF.md#1-run-it).
 
 With no `.env` file the app runs in **example mode**: payments are simulated by the server and labeled "simulated" on every badge, receipt and ledger line; plans come from built-in rules and are labeled "no AI"; the steward explains that it is off. Example mode previews the product. It is not proof of either integration.
 
@@ -83,11 +87,13 @@ Import `postman/our-castle.postman_collection.json` and `postman/our-castle.post
 - **Folder 1** walks the example-mode API: found the house, plan, adult-approved contribution, replay safety, child refusal, bills not counting, steward status and the cross-site guard.
 - **Folder 2** walks the real sandbox. Create an order through Our Castle and open its `approveUrl` to approve with a sandbox buyer. Then capture, replay, try a mismatched household, compare with PayPal's own `GET /v2/checkout/orders`, ask the steward to verify, refund, and confirm that an order created outside Our Castle is refused.
 
-Run folder 1 from the terminal:
+Folder 1 writes: it resets the example household, founds a house, logs a bill and asks the planner and steward. The environment file points at `http://localhost:3010`. If that port runs your sandbox household, point folder 1 at a throwaway example-mode server instead:
 
 ```sh
+OUR_CASTLE_ENV_FILE=none OUR_CASTLE_DATA_DIR="$(mktemp -d)" PAYPAL_CLIENT_ID= PAYPAL_CLIENT_SECRET= AI_API_KEY= PORT=3020 npm start
+# in a second terminal:
 npx newman run postman/our-castle.postman_collection.json -e postman/our-castle.postman_environment.json \
-  --folder "1 · Example mode walkthrough (no credentials)"
+  --env-var "baseUrl=http://localhost:3020" --folder "1 · Example mode walkthrough (no credentials)"
 ```
 
 ### Other commands
@@ -107,7 +113,7 @@ npm run art-preview   # the original static art preview server
 1. **House:** choose solo or family (example personas: Rowan, an adult, and Wren, a child), name the house and compose a crest (field color plus crown, leaf, stag or tower).
 2. **Plan:** enter the goal, what is already set aside (self-reported), a target date, the weekly amount you choose, and bills you already pay (context only). The planner proposes a weekly schedule, shows the arithmetic and projects when the Manor, Keep and Castle are reached. Every week is editable; impossible targets show the exact shortfall and how to close it.
 3. **Contribute:** an adult persona ticks an explicit approval for a specific amount, then pays in the PayPal sandbox. The server captures the order with the Server SDK, checks amount, currency, goal and household against its own record, and only then credits progress. The receipt shows the PayPal order and capture ids.
-4. **The board answers:** the travelers walk to the new space. When a milestone is crossed, the next home tier rises with a celebration banner. Refresh or restart, and the same result is there. Turn on **Sound** to hear synthesized footsteps, a chime for a confirmed payment and a fanfare when the home grows. All of it is generated in the browser; there are no audio files.
+4. **The realm answers:** the travelers walk to the new space. When a milestone is crossed, that district's bridge lowers, its home turns from grey to full color, and a celebration banner names it. Earlier districts stay. Refresh or restart, and the same result is there. Turn on **Sound** to hear synthesized footsteps, a chime for a confirmed payment and a fanfare when the home grows. All of it is generated in the browser; there are no audio files.
 5. **Ledger and steward:** ask "Did PayPal confirm our last contribution?" The steward reads the ledger, looks the order up through PayPal's Agent Toolkit, and the server shows what was checked and whether PayPal and the ledger agree. The AG Grid ledger keeps goal progress, bills and gifts apart. Bills grow garden beds as a habit reward but never count as savings. A refund lowers progress exactly once and walks the travelers back; the raised building stays as an explained keepsake.
 
 6. **Rewards:** the Rewards tab lists every home tier and estate addition. Each card shows what unlocks it, the exact progress toward it and where that progress comes from. Additions announce themselves when newly reached. "Preview in the world (art only)" redraws the board without touching rewards or money. Bill-provider rewards stay locked because no bill provider is connected.
@@ -137,7 +143,7 @@ Default demo numbers (editable, synthetic): a $300 goal, $60 already set aside, 
 - Secrets stay in the server `.env`; tests check that no secret reaches any page or API response. The server binds to `127.0.0.1` and refuses cross-site writes and rebinding hosts.
 - The internal ledger is goal progress, not a bank balance, and PayPal does not see the household's other bills.
 
-Architecture, data model and payment states: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). Demo script: [docs/DEMO-SCRIPT.md](docs/DEMO-SCRIPT.md). Submission draft: [docs/SUBMISSION-DRAFT.md](docs/SUBMISSION-DRAFT.md).
+Architecture, data model and payment states: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). Judge handoff: [docs/JUDGE-HANDOFF.md](docs/JUDGE-HANDOFF.md). Demo script: [docs/DEMO-SCRIPT.md](docs/DEMO-SCRIPT.md). Submission draft (not submitted): [docs/SUBMISSION-DRAFT.md](docs/SUBMISSION-DRAFT.md).
 
 ## Background documents
 

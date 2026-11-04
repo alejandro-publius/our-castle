@@ -1,16 +1,56 @@
-# Demo script (under 3 minutes)
+# Demo script
 
-Record only after the live checks in [VALIDATION.md](VALIDATION.md) pass with real sandbox and AI credentials, so the video shows the real integrations, not example mode. Use the sandbox app and a sandbox buyer account. Never show the `.env` file, client secret or API key. Use no third-party music or trademarks beyond the PayPal sandbox checkout the product integrates. Turn on the app's **Sound** toggle: every sound is synthesized live in the browser, so the video's audio is original. Publishing, uploading and submitting are the repository owner's decisions.
+There are two pieces:
 
-| Time | Screen | Say |
-| --- | --- | --- |
-| 0:00–0:15 | Board with the first cottage, deer and brook | "Saving as a family is hard to see and easy to abandon. Our Castle turns one shared goal into a journey: a woodland board where your cottage grows into a castle as you hit real milestones." |
-| 0:15–0:30 | House tab: choose Family, name the house, pick a crest | "Solo or family — one crest, one home. These are example personas; this prototype doesn't claim real sign-in." |
-| 0:30–1:00 | Plan tab: $300 goal, $60 set aside, date, $30 a week, internet bill; ask the AI planner | "Claude turns our own numbers into a weekly plan and shows its arithmetic. The server re-checks every cent: dates, totals, feasibility, and that every dollar it mentions came from our inputs. Bills stay separate — never counted as savings." Briefly lower the weekly amount to show the shortfall, then restore and use the plan. |
-| 1:00–1:35 | Contribute tab: $15 "Raises the Manor", adult approval, PayPal sandbox button, approve as the sandbox buyer | "An adult approves a specific amount, and PayPal handles the payment. Our server creates and captures the order with PayPal's Server SDK, and progress moves only after it confirms the amount, currency and goal with PayPal." |
-| 1:35–1:55 | Receipt with PayPal order and capture ids; travelers walk to Manor Gate; the Manor rises | "Here's the receipt, and the board answers: the family walks to Manor Gate and the house grows." |
-| 1:55–2:25 | Ledger tab: tap "Did PayPal confirm our last contribution?"; show "What it checked" and "PayPal and the ledger agree" | "Anyone in the family can ask the house steward. It reads our ledger and checks PayPal itself through PayPal's Agent Toolkit — read-only, so it can look but never pay or refund. The checks it lists come from the server, not from the AI's words." |
-| 2:25–2:45 | AG Grid ledger with the Bills filter; refresh the page | "One ledger keeps savings, bills and gifts apart. Refresh — it's durable, and replaying a capture can't double-count it. It's goal progress, not a bank balance." |
-| 2:45–2:58 | Board close-up | "Our Castle: PayPal for the trusted payment, AI for a plan a family can follow and a steward that checks the facts, and a world worth coming back to." |
+- **Part A** describes the clip that already exists. It is a silent 36-second world tour recorded in example mode.
+- **Part B** is a proposed judge demo, under three minutes, showing the PayPal and AI features. It has **not been recorded**, and two of its steps are not yet verified live.
 
-Fallback if live credentials are unavailable: do not present example mode as the PayPal or AI integration. Its badges and receipts say "simulated" and "no AI" on purpose, and the steward says it is off.
+Status and evidence: [JUDGE-HANDOFF.md](JUDGE-HANDOFF.md). Publishing, uploading and submitting are the repository owner's decisions.
+
+## Part A: the finished world clip (36 s, silent)
+
+File: `test-results/realm-promotion/our-castle-connected-realm.mp4` (local only; `test-results/` is git-ignored).
+
+- **Format:** 1920×1080 H.264 with burned-in titles and captions and no audio.
+- **Source:** an isolated example database on port 3134, not the owner's sandbox household.
+- **What it shows:** the world and how progress opens it.
+- **What it does not show:** PayPal, the AI planner or the steward. Never describe it as proof of a live integration or as the submitted video.
+
+The talk track is optional narration for a voiceover. It has not been recorded. Each line fits its section at a calm pace (about two words a second) and keeps the clip's "example mode" and "simulated" wording.
+
+| Clip time | On-screen title | Picture | Optional narration |
+| --- | --- | --- | --- |
+| 0:00–0:09 | 1/4 One connected realm, six distinct districts | Whole realm: Hearth Village open, five grey districts beyond raised bridges | "Our Castle turns one shared family savings goal into a connected realm: six districts joined by bridges, waiting in grey." |
+| 0:09–0:16 | 2/4 Inspect the locked Royal Citadel | Camera focuses on the grey citadel and its 100% lock | "Inspect any locked district, like the Royal Citadel at one hundred percent. Looking never unlocks it." |
+| 0:16–0:28 | 3/4 The Manor bridge opens at the 25% milestone | Contribute tab, a simulated $15.00 payment; $60 → $75; "The Manor rises!"; Manor Gardens turn green and the bridge lowers | "Here, in example mode, a simulated fifteen-dollar contribution takes the goal from sixty to seventy-five dollars, and the Manor bridge lowers." |
+| 0:28–0:36 | 4/4 The village remains as your realm expands | Overview with village and manor open, 2/6 districts | "The village stays. Each milestone opens a new district, and its guests move in." |
+
+## Part B: judge demo plan (under 3 minutes, proposed)
+
+Record this on the real sandbox app with live AI, so that the badges read **PayPal sandbox** and **AI planner · claude-opus-5-5**. Never record example mode for this part.
+
+The plan assumes a household at $60 of a $300 goal. That is the owner's House of Alder on http://localhost:3010, or a fresh rehearsal copy (see [JUDGE-HANDOFF.md, next actions](JUDGE-HANDOFF.md#5-next-actions)). Every take creates one sandbox order (test money) and makes a few paid Anthropic calls.
+
+**Readiness boundary.**
+- Steps marked **Verified** have live evidence.
+- Steps marked **Rehearse first** are implemented but unverified live.
+- Run one full rehearsal before recording. If a "Rehearse first" step fails, do not record around it or present it as working. Fix it first, or leave the step out and say what is not shown.
+
+| Time | Screen | Say | Readiness |
+| --- | --- | --- | --- |
+| 0:00–0:15 | Press "Whole realm": the village open, five grey districts behind raised bridges; the header badges | "Saving as a family is hard to see and easy to abandon. Our Castle turns one shared goal into a connected realm. Each real milestone opens a new district." | Working |
+| 0:15–0:25 | House tab: Family, house name, crest (found it first on a fresh copy) | "Solo or family: one crest, one house. These are example personas; this prototype doesn't claim real sign-in." | Working |
+| 0:25–0:55 | Plan tab: $300 goal, $60 set aside, target date, $30 a week, a bill; "Ask the planner", then "Use this plan" | "Claude turns our own numbers into a weekly plan and shows its arithmetic. The server re-checks every cent, and bills stay separate, never counted as savings." Each live plan takes about 14 seconds: trim the wait in editing, or talk over it. Showing a shortfall needs a second plan request | **Verified** (AI-only run, Nov 3) |
+| 0:55–1:35 | Contribute tab: "$15.00 Raises the Manor", tick Rowan's adult approval, press the PayPal button, approve in the popup as the sandbox buyer | "An adult approves a specific amount, and PayPal handles the payment. Our server captures the order with PayPal's Server SDK, and progress moves only after it checks the amount, currency, household and goal with PayPal." | **Rehearse first:** the in-page popup approval is unverified. The server capture was verified through PayPal's hosted approval link |
+| 1:35–1:55 | Receipt with the PayPal order and capture ids; the Manor bridge lowers; "The Manor rises!" | "Here's the receipt, and the realm answers: the Manor Gardens open across their bridge, and the village stays." | Verified on the server path; in-app after the rehearsal |
+| 1:55–2:25 | Ledger tab: "Did PayPal confirm our last contribution?"; show "What it checked" and "PayPal and the ledger agree." | "Anyone in the family can ask the house steward. It reads our ledger and checks PayPal itself through PayPal's Agent Toolkit. It's read-only, so it can look but never pay or refund. The checks it lists come from the server, not the AI's words." | **Rehearse first:** live ledger reading and transaction listing are verified; `get_order` reconciliation of a household order is not |
+| 2:25–2:40 | AG Grid ledger with the Bills filter; Rewards tab evidence line ("$60.00 reported by you + $15.00 confirmed by PayPal sandbox captures") and the locked bill rewards | "One ledger keeps savings, bills and gifts apart, and every reward names its evidence. Bill rewards stay locked: no bill provider is connected." | Working |
+| 2:40–2:55 | "Whole realm" again | "Our Castle: PayPal for the trusted payment, AI for a plan a family can follow and a steward that checks the facts, and a realm worth coming back to." | Working |
+
+**Recording rules.**
+- Use the sandbox app and a sandbox buyer account. Never show `.env`, the client secret or the API key.
+- Use no third-party music, and no trademarks beyond the PayPal sandbox checkout the product integrates.
+- The app's **Sound** toggle produces only synthesized Web Audio, so the soundtrack stays original.
+- The original Tiny Castle art appears throughout. Its public-distribution terms are an owner decision ([NOTICE.md](../NOTICE.md)).
+
+**If live credentials are unavailable:** do not present example mode as the PayPal or AI integration. Its badges and receipts say "simulated" and "no AI" on purpose, and the steward says it is off.

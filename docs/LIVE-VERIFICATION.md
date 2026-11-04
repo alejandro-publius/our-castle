@@ -3,6 +3,12 @@
 .env loaded: yes · payments: sandbox · AI: example
 Sandbox only. Temporary database; the app's own data files were not touched. No secrets are printed.
 
+> Note added on Nov 4, 2026: this run (Nov 3, 10:48 PM PST) happened before `AI_API_KEY` was configured, so it shows "AI: example".
+> - **The AI planner** passed later, in [LIVE-VERIFICATION-AI.md](LIVE-VERIFICATION-AI.md).
+> - **The steward** was checked in that run against the ledger and the sandbox transaction list. Reconciling a specific household order with `get_order` is still unverified.
+>
+> Running `npm run verify:live` again replaces this file and creates a new sandbox order.
+
 ## AI planner
 - SKIPPED — AI plan for the demo goal: no AI_API_KEY in .env
 

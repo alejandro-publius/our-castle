@@ -18,7 +18,7 @@ Build or update an application that integrates the PayPal developer platform usi
 
 - Text description of features and functionality.
 - Functional demo: complete setup and run instructions in the repository, or a hosted demo URL. Mockups, static prototypes or non-functional demos do not qualify.
-- Tools: identify the AI model/service used and explain how it is used. (Our Castle: Anthropic Claude via the Messages API, as the runtime milestone planner with server-side validation. A coding assistant's involvement in building the project is not the runtime AI feature.)
+- Tools: identify the AI model/service used and explain how it is used. (Our Castle: Anthropic Claude `claude-opus-5-5` through the Messages API, as the runtime milestone planner with server-side validation and as the read-only house steward that checks PayPal through the Agent Toolkit. A coding assistant's involvement in building the project is not the runtime AI feature.)
 - Public code repository on GitHub, GitLab or Bitbucket with all source, assets and instructions, open source, with a visible license file.
 - Demo video under three minutes, on YouTube and publicly visible, showing the project working on its target device, with no third-party trademarks or copyrighted music/material used without permission.
 
@@ -29,6 +29,11 @@ Technological implementation (thorough, skillful, non-trivial use of PayPal and 
 ## Current owner decisions
 
 The owner wants private development. Do not publish the repository, change its visibility, deploy, upload a video or submit an entry automatically. Making the repository public, choosing what to license publicly (see NOTICE.md about the original art), recording the video and submitting are later owner decisions.
+
+Readiness against each submission item is in [JUDGE-HANDOFF.md](JUDGE-HANDOFF.md#4-what-remains-by-who-has-to-act), separated into unverified integration checks, owner decisions, provider-dependent work and optional production limits. Two gaps in brief:
+
+- **Repository:** the prototype exists only on local branches; GitHub `main` still holds the original concept handoff.
+- **Video:** the finished 36-second clip is a silent example-mode world tour. It does not show the PayPal or AI features, so it does not meet the video requirement on its own.
 
 ## Implementation route chosen
 
