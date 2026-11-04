@@ -247,6 +247,15 @@ function renderRewards() {
     return card;
   }));
 }
+// Bring the realm into view (as before: the top of the board) without stranding keyboard focus. `keep` is the control
+// that has focus afterwards; the scroll is limited so that it stays fully inside the viewport.
+function revealRealm(keep) {
+  const margin = 8, r = keep?.getBoundingClientRect();
+  let delta = $('.board-shell').getBoundingClientRect().top - margin;
+  if (r) delta = Math.min(Math.max(delta, r.bottom + margin - innerHeight), r.top - margin);
+  if (Math.abs(delta) >= 1) window.scrollBy({ top: delta, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' });
+}
+
 // A preview only redraws the board. It never calls the server, so it cannot change rewards, achievements or money.
 function previewReward(reward) {
   if (!scene) return;
@@ -268,7 +277,9 @@ function previewReward(reward) {
     const id = reward.id==='estate:market'?'market':reward.previewFeature==='water'||reward.previewFeature==='habit-garden'?'garden':homeDistrict(previewTier).id;
     scene.focusDistrict(id);
   });
-  $('.board-shell').scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth', block: 'start' });
+  // The reward card is far below the board: move focus to the preview's own exit so it is visible and one key away.
+  $('#end-preview').focus({ preventScroll: true });
+  revealRealm($('#end-preview'));
 }
 
 function districtCondition(district) {
@@ -927,7 +938,9 @@ function renderFooter() {
 }
 
 function bindEvents() {
-  for(const root of [$('#realm-districts'),$('#realm-markers')])root.addEventListener('click',e=>{const button=e.target.closest('[data-district]');if(button){scene?.focusDistrict(button.dataset.district);$('.board-shell').scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth',block:'start'});}});
+  // Selecting a district keeps focus on the button that was used. The focused map is taller on phones, so set that
+  // layout before measuring, then reveal the realm without scrolling the button out of view.
+  for(const root of [$('#realm-districts'),$('#realm-markers')])root.addEventListener('click',e=>{const button=e.target.closest('[data-district]');if(button&&scene){scene.focusDistrict(button.dataset.district);$('.realm-map').dataset.focused='true';revealRealm(button);}});
   $('#tabs').addEventListener('click', (e) => { const b = e.target.closest('[role="tab"]'); if (b) selectTab(b.id.slice(4), { focus: false }); });
   $('#tabs').addEventListener('keydown', (e) => {
     const i = TABS.indexOf(ui.tab);
@@ -949,7 +962,13 @@ function bindEvents() {
     e.preventDefault();
     scene.adjustView(action);
   });
-  $('#end-preview').addEventListener('click', () => { ui.preview = null; renderBoard({ animate: false, result: null }); });
+  $('#end-preview').addEventListener('click', (e) => {
+    const origin = ui.preview ? $(`#reward-list [data-reward="${CSS.escape(ui.preview)}"] .reward-preview`) : null;
+    ui.preview = null;
+    renderBoard({ animate: false, result: null });
+    // This button is now hidden. A keyboard activation (detail 0) returns focus to the reward card it came from.
+    if (origin && e.detail === 0) origin.focus();
+  });
   bus.on('scene:hop', (detail) => sound.cue('hop', detail));
   bus.on('scene:rise', (detail) => sound.cue('fanfare', detail));
   $('#pixel-toggle').addEventListener('click', (e) => {
