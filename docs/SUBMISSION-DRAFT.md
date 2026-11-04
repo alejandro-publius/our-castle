@@ -25,7 +25,13 @@ When an adult approves a contribution, it is paid through PayPal (sandbox). The 
   - Payments v2 handles refunds; Webhooks v1 events are signature-verified for pending→completed captures and refunds.
   - Sandbox only.
 
-  **[Confirm after the first live sandbox run: the capture id on the receipt matches the sandbox dashboard.]**
+  Verified in the PayPal sandbox on Nov 3, 2026:
+  - a sandbox buyer approved a $15 order, which was captured and credited once;
+  - a replayed capture was not counted twice, and a mismatched household was refused;
+  - PayPal's own order record matched the receipt's capture id;
+  - the refund reversed progress once.
+
+  **[Confirm the in-page button's popup approval live before submitting; the verified payment used PayPal's hosted approval link.]**
 - **AI planner:** Anthropic Claude (`claude-opus-5-5`) with structured JSON output writes the schedule, the plain-language explanation and the milestone notes. The server computes the arithmetic independently. It rejects any plan with wrong totals, dates, cents or feasibility claims, or with a dollar figure not derived from the household's inputs. Every week is editable and re-checked. **[Add one real example plan after the live AI check.]**
 - **AI house steward + PayPal Agent Toolkit:**
   - Family members ask questions like "Did PayPal confirm our last contribution?"
@@ -37,7 +43,12 @@ When an adult approves a contribution, it is paid through PayPal (sandbox). The 
 - **Ledger:** AG Grid Community, themed in the game's parchment style, keeps goal progress, bills and gifts in one view with filters. Bills and gifts are marked "not savings".
 - **Postman:** a collection walks the example and sandbox flows end to end, including replay and mismatch checks and PayPal's own view of the order.
 - **Stack:** Node.js with built-in `node:http` and `node:sqlite`; a framework-free browser app; Three.js rendered through our own 90-color palette pixel pipeline (orthographic camera, depth outlines, Bayer dither), carrying over art from our earlier Tiny Castle project.
-- **Tests:** 82 Node unit tests (every payment-safety scenario on both the Server SDK adapter and a REST adapter, plus planner validation, steward tool boundaries, HTTP security and the Postman files) and 21 Playwright end-to-end journeys at desktop and phone sizes.
+- **Tests:**
+  - Node unit tests covering every payment-safety scenario on both the Server SDK adapter and a REST adapter, plus planner validation, steward tool boundaries, HTTP security, the Postman files and the AI key setup;
+  - 13 Playwright end-to-end journeys at desktop and phone sizes;
+  - a live sandbox verification script.
+
+  **[Update the counts from VALIDATION.md before submitting.]**
 
 ## Tools used (AI disclosure)
 
