@@ -1,4 +1,5 @@
 import { createBoardScene } from '../world/board-scene.js';
+import { createFamilyAvatars } from './family-avatars.js';
 import { api, newRequestId } from './api.js';
 import { bus } from './bus.js';
 import { chargeIcon, crestChoices, crestSvg } from './crest.js';
@@ -65,6 +66,7 @@ let scene = null;
 let paypal = null;
 let paypalMount = null;
 let ledgerGrid = null;
+let familyAvatars = null;
 const ui = {
   tab: 'house',
   personaId: pref.get('persona'),
@@ -447,6 +449,7 @@ function renderBoard({ animate, result, added = [] }) {
     estateLevel: board.estateLevel ?? 0,
     previewFeature: null,
     playMode: household.playMode,
+    members: state.members,
     milestoneSpaces: board.milestoneSpaces.map((m) => m.space),
   }, { animate }).then(() => {
     if (result?.awarded?.length || added.length) celebrate(result?.awarded ?? [], added);
@@ -661,6 +664,11 @@ function renderHouse() {
   for (const input of $$('input[name="crestCharge"]')) input.checked = input.value === draft.crest.charge;
   $('#crest-preview').innerHTML = crestSvg(draft.crest, { title: `${draft.name || 'Your house'} crest` });
   $('#save-house').textContent = setup ? 'Save house and crest' : 'Raise our banner';
+  if (!familyAvatars) familyAvatars = createFamilyAvatars($('#family-avatars'), { save: async (memberId, avatarId) => {
+    const res = await api.put('/api/members/' + encodeURIComponent(memberId) + '/avatar', { avatarId });
+    applyState(res.state, { animate: false });
+  } });
+  familyAvatars.update(state.members);
 }
 
 async function saveHouse() {

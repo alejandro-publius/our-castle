@@ -18,6 +18,8 @@ For a clean visual checkout, use Node 26 (minimum 22.16), `npm ci`, then an unus
 
 ## Preserve
 
+Family avatars: Journal → House now saves one of eight original portraits per existing member, with matching map travelers. Read docs/FAMILY-AVATARS.md and inspect docs/screenshots/family-avatars.png. Keep those choices and the additive avatar column; avatars do not change roles or the twenty-person reward court.
+
 Nine clearings on one 228×132 green forest: Hearth Village, Manor Gardens, Market Town, Woodland Garden, Stone Keep, Starfall Observatory, Royal Citadel, Rosewind Palace and Rapunzel's Tower. Keep every earlier building, all nine bridges, six winding rivers, gentle current, the ivory stag, golden braid, telescope and sword grove. The sword's glint is mouse/touch/keyboard accessible and camera-only.
 
 Keep the defined white cumulus banks, varied shapes, translucent tails and restrained forest-edge haze. Keep ivory plaques, bundled Uncial/Alegreya fonts, the four-step collapsible journal and one general footer notice. Cards contain only name, pixel art/crest, one milestone line and actions. No catalogue, slogans, repeated disclaimers or “preview” product headings. The phone Areas menu must scroll within the actual map height; keep overview plaque collision handling.

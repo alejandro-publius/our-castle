@@ -1,4 +1,6 @@
 import * as THREE from 'three';
+import { memberAvatar } from '../core/avatars.js';
+import { addMemberModel } from './member-models.js';
 import { PixelRenderer } from '../graphics/pixel-renderer.js';
 import { addCloudSurround } from '../graphics/cloud-compositor.js';
 import { CREST_FIELDS, ROUTE_LENGTH } from '../core/rules.js';
@@ -208,27 +210,30 @@ export function createBoardScene(container, { reducedMotion = false, onEvent = (
   }
 
   // ---------- Household travelers ----------
-  function traveler(group, x, size, cloak) {
-    part(group, 'round', x, 0.62 * size, 0, 0.66 * size, 0.95 * size, 0.66 * size, cloak);
-    part(group, 'cone', x, 0.5 * size, 0, 0.82 * size, 0.62 * size, 0.82 * size, cloak);
-    part(group, 'box', x, 1.02 * size, 0, 0.5 * size, 0.12 * size, 0.5 * size, colours.gold);
-    part(group, 'rock', x, 1.28 * size, 0, 0.46 * size, 0.46 * size, 0.46 * size, colours.skin);
-    part(group, 'cone', x, 1.62 * size, 0, 0.56 * size, 0.42 * size, 0.56 * size, colours.cream);
-  }
+  const householdParty = () => {
+    const members = state.members?.length ? state.members : [{ id: 'traveler', role: 'adult', avatarId: 'ranger' }];
+    return state.playMode === 'solo' ? members.slice(0, 1) : members;
+  };
   function buildToken() {
     disposeGroup(groups.token);
     const cloak = crestColour(state.crest.field);
     // Gold "you are here" ring under the household travelers.
     part(groups.token, 'round', 0, 0.02, 0, 2.3, 0.08, 2.3, colours.gold);
     part(groups.token, 'round', 0, 0.05, 0, 1.95, 0.08, 1.95, colours.cream);
-    if (state.playMode === 'family') { traveler(groups.token, -0.4, 1.55, cloak); traveler(groups.token, 0.5, 1.1, cloak); } else traveler(groups.token, 0, 1.65, cloak);
+    const party = householdParty(), columns = Math.min(3, party.length);
+    party.forEach((member, index) => addMemberModel(part, groups.token, member, {
+      x: ((index % columns) - (columns - 1) / 2) * .95,
+      z: Math.floor(index / columns) * .85,
+      size: member.role === 'child' ? 1.05 : 1.45, index,
+    }));
     // Walking staff with the household pennant.
     part(groups.token, 'round', 0.62, 1.15, 0.2, 0.06, 2.2, 0.06, colours.wood);
     part(groups.token, 'box', 0.9, 2.0, 0.2, 0.52, 0.34, 0.05, cloak);
     part(groups.token, 'rock', 0.62, 2.3, 0.2, 0.14, 0.14, 0.14, colours.gold);
-    // A gold marker above the travelers keeps them easy to find in the wider estate.
-    part(groups.token, 'cone', 0, 3.75, 0, 1.0, 1.3, 1.0, colours.gold, 0, Math.PI);
-    part(groups.token, 'rock', 0, 4.55, 0, 0.62, 0.5, 0.62, colours.gold);
+    // Keep the marker clear of tall hats, including a solo wizard.
+    const markerY = Math.max(3.75, ...party.map((m, i) => (m.role === 'child' ? 1.05 : 1.45) * (memberAvatar(m, i).kind === 'hat' ? 2.4 : 1.9) + 1));
+    part(groups.token, 'cone', 0, markerY, 0, 1.0, 1.3, 1.0, colours.gold, 0, Math.PI);
+    part(groups.token, 'rock', 0, markerY + .8, 0, 0.62, 0.5, 0.62, colours.gold);
     builder.flush();
     placeToken(shownPosition, 0);
   }
@@ -522,7 +527,7 @@ export function createBoardScene(container, { reducedMotion = false, onEvent = (
         const prev = state;
         state = { ...state, ...next, crest: { ...state.crest, ...(next.crest ?? {}) } };
         const crestChanged = prev.crest.field !== state.crest.field || prev.crest.charge !== state.crest.charge;
-        if (crestChanged || prev.playMode !== state.playMode) buildToken();
+        if (crestChanged || prev.playMode !== state.playMode || JSON.stringify(prev.members) !== JSON.stringify(state.members)) buildToken();
         if (prev.gardens !== state.gardens) buildGardens();
         const tierUp = state.builtTier > prev.builtTier;
         const cameraRevision = viewRevision;
@@ -610,7 +615,7 @@ export function createBoardScene(container, { reducedMotion = false, onEvent = (
       const t = groups.token.position;
       return { spaces, travelers: toScreen(t.x, t.y + 1.5, t.z), canvas: { left: rect.left, top: rect.top, width: rect.width, height: rect.height } };
     },
-    debug: () => ({ region: REALM_SIZE, estateLevel: state.estateLevel, view: { ...view }, previewFeature: state.previewFeature, tier: state.builtTier, position: state.position, shownPosition, gardens: state.gardens, crest: { ...state.crest }, playMode: state.playMode, animating, frames, ambient: Boolean(ambientTimer), ambientFrames, grazers: grazers.length, butterflies: flutterers.length, court: court.debug(), legends: REALM_LEGENDS.map(({id,x,z})=>({id,x,z})), districts: realm.districts.map(({id,open,status,greyPaint,drawMeshes,hues})=>({id,open,status,greyPaint,drawMeshes,hues})), bridges: realm.bridges.map(({id,open,panels,gate,river})=>({id,open,gate,river,raised:panels.some(p=>Math.abs(p.group.rotation.z)>.01)})), landscape: realm.landscape, riverCurrent: realmModels.currentDebug(), surround: pipeline.cloudSurroundDebug(), atmosphere: atmosphereDebug(), render: { ...perf, averageMs: perf.draws ? perf.totalMs / perf.draws : 0, geometries: renderer.info.memory.geometries } }),
+    debug: () => ({ region: REALM_SIZE, estateLevel: state.estateLevel, view: { ...view }, previewFeature: state.previewFeature, tier: state.builtTier, position: state.position, shownPosition, gardens: state.gardens, crest: { ...state.crest }, playMode: state.playMode, familyAvatars: householdParty().map((m, i) => ({ memberId: m.id, avatarId: memberAvatar(m, i).id, role: m.role })), animating, frames, ambient: Boolean(ambientTimer), ambientFrames, grazers: grazers.length, butterflies: flutterers.length, court: court.debug(), legends: REALM_LEGENDS.map(({id,x,z})=>({id,x,z})), districts: realm.districts.map(({id,open,status,greyPaint,drawMeshes,hues})=>({id,open,status,greyPaint,drawMeshes,hues})), bridges: realm.bridges.map(({id,open,panels,gate,river})=>({id,open,gate,river,raised:panels.some(p=>Math.abs(p.group.rotation.z)>.01)})), landscape: realm.landscape, riverCurrent: realmModels.currentDebug(), surround: pipeline.cloudSurroundDebug(), atmosphere: atmosphereDebug(), render: { ...perf, averageMs: perf.draws ? perf.totalMs / perf.draws : 0, geometries: renderer.info.memory.geometries } }),
     dispose() { for (const [name,fn,options] of interactions) renderer.domElement.removeEventListener(name,fn,options); clearInterval(ambientTimer); observer?.disconnect(); court?.dispose(); for (const g of Object.values(groups)) disposeGroup(g); flutterGeo?.dispose(); builder?.dispose(); pipeline?.dispose(); renderer?.dispose(); },
   };
 

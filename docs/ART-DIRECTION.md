@@ -1,5 +1,12 @@
 # Art direction — preserve this visual family
 
+## Individual family avatars (November 5, 2026)
+
+Named portraits in Journal → House open one compact chooser with eight original pixel characters. Portraits and travelers use the same model and colours; hats, hair, skin, trim and clothing distinguish each person. The header and nine-district world stay uncluttered. Choices save per existing member and remain cosmetic; the twenty-person reward court is unchanged. A tall hat raises the route marker enough to stay clear.
+
+[Reference lock and boundaries](FAMILY-AVATARS.md) · [Actual example-data chooser](screenshots/family-avatars.png). The portraits' generator and exact source/image hashes live in assets/member-avatars/. Keep the original renderer and palette.
+
+
 ## Folklore towers and a hidden sword (November 4, 2026)
 
 Starfall Observatory and Rapunzel's Tower occupy two new eastern forest clearings, with narrow tributaries under their raised bridges. The board remains 228x132; all seven earlier estates, the Citadel stag and the defined cumulus clouds remain. The map now has nine districts, nine bridges and six connected river channels.

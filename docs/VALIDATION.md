@@ -1,5 +1,14 @@
 # Validation
 
+## Family avatars — November 5, 2026
+
+New checks use synthetic temporary/example data only. Three avatar domain/migration cases and nine HTTP cases (12 total, including existing fake-provider protections) passed. Eight targeted browser cases passed across 1440px desktop and 390px touch: independent saves/reload, matching party identities, keyboard/Escape/Cancel without writes, failed-save retry, all eight portrait loads, target sizes and retained child-payment restrictions. A separate read-only review checked 1440/390/320px, all nine districts, no overflow, no page errors/external calls/writes and unchanged example state. Browsing uses no provider calls. The 47-file original-art/palette/renderer guard passed.
+
+The portraits are original renders from the same member model as the world; assets/member-avatars/provenance.json contains matching source/image hashes. The schema change only adds nullable members.avatar_id. A version-one synthetic database migration and restart preserved existing members and every financial table. Keyboard/tile hit targets and stable accessible radio names were corrected during this pass. No checkout/AI evidence is added by these tests.
+
+Local review evidence: test-results/family-avatars/ under the owner's checkout (ignored). See docs/FAMILY-AVATARS.md for scope; this is appearance selection for the existing members, not new invitations or authentication.
+
+
 ## November 5, 2026 UTC: private main sync and split handoff
 
 The owner authorized moving the full working game to private GitHub main, with Claude responsible for visuals and Astra for sponsor/integration engineering. CLAUDE-START.md and the launcher text now point to the visual handoff; active README/judge instructions now support an authenticated clone rather than describing main as the starter. Existing financial code, visuals, assets, reference notices and historical videos are unchanged by this handoff.

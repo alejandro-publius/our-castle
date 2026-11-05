@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { avatarById, memberAvatar } from '../src/core/avatars.js';
 import { transaction } from './db.mjs';
 import { CREST_CHARGES, CREST_FIELDS, CURRENCY, TIERS, formatCents, milestoneCents } from '../src/core/rules.js';
 import { ESTATE_MILESTONES } from '../src/core/rewards.js';
@@ -91,7 +92,7 @@ export function getHousehold(db, id) {
 }
 export function getMembers(db, householdId) {
   return db.prepare('SELECT * FROM members WHERE household_id = ? ORDER BY sort').all(householdId)
-    .map((r) => ({ id: r.id, name: r.display_name, role: r.role, isExample: Boolean(r.is_example) }));
+    .map((r) => ({ id: r.id, name: r.display_name, role: r.role, isExample: Boolean(r.is_example), avatarId: memberAvatar({ avatarId: r.avatar_id }, r.sort).id }));
 }
 export function getMember(db, householdId, memberId) {
   return getMembers(db, householdId).find((m) => m.id === memberId) ?? null;
@@ -125,9 +126,18 @@ export function ensureDemoHousehold(db, clock) {
 }
 
 function insertMembers(db, householdId, members) {
+  const avatars = new Map(getMembers(db, householdId).map((m) => [m.id, m.avatarId]));
   db.prepare('DELETE FROM members WHERE household_id = ?').run(householdId);
-  const insert = db.prepare('INSERT INTO members (id, household_id, display_name, role, is_example, sort) VALUES (?, ?, ?, ?, 1, ?)');
-  members.forEach((m, i) => insert.run(m.id, householdId, m.name, m.role, i));
+  const insert = db.prepare('INSERT INTO members (id, household_id, display_name, role, is_example, sort, avatar_id) VALUES (?, ?, ?, ?, 1, ?, ?)');
+  members.forEach((m, i) => insert.run(m.id, householdId, m.name, m.role, i, avatars.get(m.id) ?? null));
+}
+
+/** Change one existing member's appearance; no identity, role or financial mutation. */
+export function updateMemberAvatar(db, householdId, memberId, avatarId) {
+  if (!getMember(db, householdId, memberId)) throw new DomainError(404, 'not_found', 'Family member not found.');
+  if (!avatarById(avatarId)) throw new DomainError(400, 'invalid_avatar', 'Choose one of the listed avatars.');
+  db.prepare('UPDATE members SET avatar_id = ? WHERE id = ? AND household_id = ?').run(avatarId, memberId, householdId);
+  return getMember(db, householdId, memberId);
 }
 
 export function hasPaymentHistory(db, householdId) {

@@ -1,0 +1,31 @@
+import * as THREE from 'three';
+import { PixelRenderer } from '../../src/graphics/pixel-renderer.js';
+import { addMemberModel } from '../../src/world/member-models.js';
+const renderer = new THREE.WebGLRenderer({ antialias: false, preserveDrawingBuffer: true });
+renderer.setPixelRatio(1); renderer.setSize(192, 192);
+document.body.append(renderer.domElement);
+const pipeline = new PixelRenderer(renderer); pipeline.setSize(192, 192);
+const scene = new THREE.Scene(); scene.background = new THREE.Color(0x142c34);
+scene.add(new THREE.HemisphereLight(0xf6eddb, 0x425b47, 1.8));
+const light = new THREE.DirectionalLight(0xffe9c2, 2.1); light.position.set(-3, 6, 5); scene.add(light);
+const camera = new THREE.OrthographicCamera(-.95, .95, .95, -.95, .1, 30);
+camera.position.set(3.2, 2.7, 7); camera.lookAt(0, 1.43, 0);
+const group = new THREE.Group(); scene.add(group);
+const geo = { box: new THREE.BoxGeometry(1,1,1), round: new THREE.CylinderGeometry(.5,.5,1,10), cone: new THREE.ConeGeometry(.5,1,6), rock: new THREE.IcosahedronGeometry(.5,0) };
+const materials = new Map();
+const part = (target, kind, x,y,z,w,h,d,color,ry=0,rz=0) => {
+  if (!materials.has(color)) materials.set(color, new THREE.MeshStandardMaterial({ color, roughness:.87, flatShading:true }));
+  const mesh = new THREE.Mesh(geo[kind], materials.get(color));
+  mesh.position.set(x,y,z); mesh.scale.set(w,h,d); mesh.rotation.set(0,ry,rz); target.add(mesh);
+};
+window.renderMemberPortrait = (id) => {
+  group.clear();
+  part(group,'round',0,.01,0,1.4,.05,1.18,0xddba79);
+  part(group,'round',0,.04,0,1.28,.04,1.08,0x527557);
+  addMemberModel(part,group,{avatarId:id});
+  pipeline.render(scene,camera);
+  const canvas=document.createElement('canvas');canvas.width=96;canvas.height=96;
+  const ctx=canvas.getContext('2d');ctx.imageSmoothingEnabled=false;ctx.drawImage(renderer.domElement,0,0,96,96);
+  return canvas.toDataURL('image/png').split(',')[1];
+};
+window.portraitsReady=true;

@@ -196,3 +196,25 @@ test('plans endpoint in example mode returns a labeled rules plan and applies go
     assert.equal(bad.status, 400);
   } finally { await s.close(); }
 });
+
+
+test('member appearance HTTP changes one cosmetic field and cannot grant adult approval', async () => {
+  const s = await startServer();
+  try {
+    const { json: initial } = await setup(s);
+    const before = initial.state;
+    assert.equal((await s.call('PUT','/api/members/m_wren/avatar',{avatarId:'knight',role:'adult',amountCents:99999})).status,200);
+    const {json:after}=await s.call('GET','/api/state');
+    assert.equal(after.members.find(m=>m.id==='m_wren').avatarId,'knight');
+    assert.equal(after.members.find(m=>m.id==='m_wren').role,'child');
+    assert.deepEqual(after.members.find(m=>m.id==='m_rowan'),before.members.find(m=>m.id==='m_rowan'));
+    assert.deepEqual(after.progress,before.progress);assert.deepEqual(after.board,before.board);
+    assert.equal((await s.call('PUT','/api/members/m_rowan/avatar',{avatarId:'wizard'},{Origin:'https://evil.example'})).status,403);
+    assert.equal((await s.call('PUT','/api/members/foreign/avatar',{avatarId:'wizard'})).status,404);
+    assert.equal((await s.call('PUT','/api/members/m_rowan/avatar',{avatarId:'missing'})).status,400);
+    const rejected=await s.call('POST','/api/example/contributions',{householdId:before.household.id,goalId:before.goal.id,amountCents:1500,approverId:'m_wren',approvalConfirmed:true,requestId:'avatar-child-rejection'});
+    assert.equal(rejected.status,403);
+    assert.equal(rejected.json.error.code,'adult_approval_required');
+    assert.equal((await s.call('GET','/api/state')).json.contributions.length,0);
+  } finally {await s.close();}
+});

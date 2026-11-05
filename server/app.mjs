@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import {
   DEMO_HOUSEHOLD_ID, DomainError, addSelfReportedEntry, ensureDemoHousehold, getActiveGoal, getGoal, resetHousehold,
-  setupHousehold, updateCrest, updateGoal,
+  setupHousehold, updateCrest, updateGoal, updateMemberAvatar,
 } from './household.mjs';
 import { PlanInputError } from './planner/basis.mjs';
 import { createPlanner } from './planner/index.mjs';
@@ -127,6 +127,10 @@ export function createApp({ config, db, clock, paypal = null, aiProvider = null,
     }],
     ['PUT', '/api/house', ({ body }) => {
       updateCrest(db, householdId, { name: body.name, crest: body.crest });
+      return { state: state() };
+    }],
+    ['PUT', /^\/api\/members\/([\w-]+)\/avatar$/, ({ body, params }) => {
+      updateMemberAvatar(db, householdId, params[0], body.avatarId);
       return { state: state() };
     }],
     ['PUT', '/api/goal', ({ body }) => {

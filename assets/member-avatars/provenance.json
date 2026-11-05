@@ -1,0 +1,97 @@
+{
+  "author": "Original Our Castle code-rendered character art",
+  "license": "Repository LICENSE; retain bundled renderer/palette notices",
+  "method": "Same original member-models geometry used by the map; original 90-colour PixelRenderer; orthographic 192x192 at pixel size 2, nearest-neighbour reduction to 96x96.",
+  "sourceFiles": [
+    {
+      "file": "src/core/avatars.js",
+      "sha256": "fd72cd39028a2de761b023038cf148774db13ebf5bf8081dd97f6991c2d1ad04"
+    },
+    {
+      "file": "src/world/member-models.js",
+      "sha256": "7508386180fef6c76460b5b5fae65f5ddffd0d81815a5c6a3f43972d15f04b2f"
+    },
+    {
+      "file": "assets/member-avatars/portrait-scene.js",
+      "sha256": "3504ca7da6498485c6f8e09e92a73a2373747ccc7032462d8f4969e0dc3fd3a2"
+    },
+    {
+      "file": "assets/member-avatars/generate.mjs",
+      "sha256": "29bcfd655aa21311d2e843600a86dc1b288687c42c2007356380c25e9fa52d16"
+    },
+    {
+      "file": "src/graphics/pixel-renderer.js",
+      "sha256": "a9db4189e63820353acf3b6068186977a1c3970e3230f92b1d854d76e11ef0b2"
+    },
+    {
+      "file": "src/graphics/palette.js",
+      "sha256": "e369a00e71f3765fbcda47e54e09490d3523210a676252e554466de565a04b06"
+    }
+  ],
+  "images": [
+    {
+      "id": "ranger",
+      "file": "ranger.png",
+      "width": 96,
+      "height": 96,
+      "sha256": "f336e396b543bc96ce3c357f4e43b21ffb9a5d9d26d359b078794723216ba858"
+    },
+    {
+      "id": "knight",
+      "file": "knight.png",
+      "width": 96,
+      "height": 96,
+      "sha256": "43e67c0f4ce496289525a4c8f31518c4e12e2bce7d8f99186c6b9e441889e876"
+    },
+    {
+      "id": "royal",
+      "file": "royal.png",
+      "width": 96,
+      "height": 96,
+      "sha256": "811ed66fe55bbacffdc00b7dc47f016a6f912b4222015f552f186ea9f2221efc"
+    },
+    {
+      "id": "wizard",
+      "file": "wizard.png",
+      "width": 96,
+      "height": 96,
+      "sha256": "53b9155244c909d0a12b449dcc0c3027892cdd98f124755b1e06387f8af13fe9"
+    },
+    {
+      "id": "gardener",
+      "file": "gardener.png",
+      "width": 96,
+      "height": 96,
+      "sha256": "e2d154e2848653b22505869bc2fae3ca4c2166c7d1f4f34bfcc712779239a57e"
+    },
+    {
+      "id": "bard",
+      "file": "bard.png",
+      "width": 96,
+      "height": 96,
+      "sha256": "b4bff6a913b16494043ba5b57193715b7cb66840db764f662054babd3ff99a87"
+    },
+    {
+      "id": "scholar",
+      "file": "scholar.png",
+      "width": 96,
+      "height": 96,
+      "sha256": "181ce0ed82606606b27ba9b79e8a2c62654049de284736f872ac361ed0e2fedc"
+    },
+    {
+      "id": "explorer",
+      "file": "explorer.png",
+      "width": 96,
+      "height": 96,
+      "sha256": "eb607b77311a346063a5b127204d2007809dc4bf37ed801cfae9fb05509693b0"
+    }
+  ],
+  "verification": {
+    "pageErrors": [],
+    "externalRequests": [],
+    "serverWrites": 0,
+    "paymentCalls": 0,
+    "aiCalls": 0,
+    "ownerBrowserUsed": false
+  }
+}

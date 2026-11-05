@@ -122,6 +122,7 @@ const MIGRATIONS = [
     UNIQUE (goal_id, key)
   );
   `,
+  `ALTER TABLE members ADD COLUMN avatar_id TEXT;`,
 ];
 
 export function openDatabase(file) {
