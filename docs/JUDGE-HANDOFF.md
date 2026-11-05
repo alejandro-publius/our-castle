@@ -1,235 +1,70 @@
-# Judge and demo handoff
+# Run and review Our Castle
 
-Start here to run, evaluate or present Our Castle. State as of **November 5, 2026**, on the private GitHub `main` branch:
-
-- **Latest owner direction:** keep building, with video work paused. The realm now has nine woodland districts, including Starfall Observatory and Rapunzel's Tower at existing milestones. The hidden sword is discovered by an accessible glint without changing money or rewards. All earlier estates, Rosewind, the Citadel stag and the defined bright clouds remain. [Towers](screenshots/wizard-tower.png) · [Rapunzel](screenshots/rapunzel-tower.png) · [Current realm](screenshots/legends-realm.png).
-- **Record to realm (817c19c):** select/search an AG Grid record, inspect its receipt and visit a calculated milestone district. Focused AI verification is scoped to the selected household order and checks order/reference/capture identity. [Award targets and actual integration](AWARD-STRATEGY.md). The 3010 backend was restarted for this code with all user-table digests and .env preserved; the existing 3021 rehearsal was not restarted or changed.
-- **App:** the current [connected experience](CONNECTED-HANDOFF.md) includes the Market Town merchant, confirmed goal draft, ordinary plan/contribution flow, and simple Treasury. Eight SDK-specific APIMatic/PayPal context skills are installed for Codex. The earlier island layout and preserved clips are historical; the working game is on private main.
-- **Usability:** [current family-flow review](FAMILY-FLOW-REVIEW.md) covers the actual setup/merchant/plan/contribution/receipt/reload journey, stable keyboard navigation, WebKit setup and one Treasury grid during slow loading. See its validation for emulation and live-payment limits.
-- **Interface:** four journey steps (House, Plan, Contribute, Ledger). The owner removed the Rewards catalogue and future-tier tour banners. Unlock cards remain automatic; select an earned district and use View deed to reopen its card. A completed goal points directly to the castle. Unlock cards now have only their name, pixel art, crest and one milestone line ([current card](screenshots/deed-manor-simple.png)).
-- **Current interface:** the realm is beside one collapsible journal with House / Plan / Contribute / Ledger. The header shows the goal once; Areas, View and World settings open on request. The footer has one general notice. Amount approval and actual receipt/ledger source labels remain. The pixel world, ivory district plaques, deeds, light/weather and gentle river current are unchanged. See [the reference lock](INTERFACE-DIRECTION.md) [Current desktop](screenshots/game-interface-contribute.png) · [whole realm](screenshots/game-interface-world.png) · [phone](screenshots/game-interface-phone.png)..
-- **GitHub source:** private [main](https://github.com/alejandro-publius/our-castle/tree/main) contains the full current game and its visual/sponsor handoffs. An authenticated clone works. Runtime secrets, owner data and ignored local captures are excluded; the repository is still private and no site is deployed.
-- **Status:** the repository is private, everything runs against the PayPal **sandbox**, and no hackathon entry has been submitted.
-
-| Look at | Where |
-| --- | --- |
-| The running app (owner's Mac) | http://localhost:3010 |
-| Current woodland/family review draft, 2:51 | [MP4](demos/woodland-review/our-castle-family-woodland-review-draft.mp4), [local player](demos/woodland-review/review.html), [editable kit](demos/woodland-review/README.md). The approved 24-second sandbox insert at 2:17–2:41 remains unfilmed; private, not submitted |
-| Recorded gameplay demo, 17.60 s | [MP4](demos/gameplay/our-castle-gameplay-demo.mp4), [cut list and source notes](demos/gameplay/README.md). Actual isolated example UI at `78033cc`, before the Rewards catalogue was deleted; court, night and rain |
-| New time/weather preview, 18.04 s | [MP4](demos/atmosphere/our-castle-time-weather-preview.mp4), [source notes and timeline](demos/atmosphere/README.md). Actual example UI; manual lighting/rain, no payment or live-weather footage |
-| Earlier review draft, historical visuals | [2:36.36 kit](demos/judge-review/README.md), preserved unchanged |
-| Historical 36-second world clip (silent, example mode) | [`docs/demos/our-castle-connected-realm.mp4`](demos/our-castle-connected-realm.mp4) ([provenance](demos/README.md)). Tracked in this private branch; not uploaded or published |
-| Private offline review kit | `test-results/local-review/` on the owner's Mac: a source zip of a committed HEAD, with a manifest. Git-ignored and not published |
-| Live payment evidence | [LIVE-VERIFICATION.md](LIVE-VERIFICATION.md) |
-| Live AI evidence | [LIVE-VERIFICATION-AI.md](LIVE-VERIFICATION-AI.md) |
-| Every check run, with dates | [VALIDATION.md](VALIDATION.md) |
-| Current world captures | [`docs/screenshots/forest-*.png`](screenshots/) (woodland revision). The older `realm-*.png` captures show the superseded grey-island revision |
-| Focused keyboard/device review | [ACCESSIBILITY-DEVICE-REVIEW.md](ACCESSIBILITY-DEVICE-REVIEW.md): 8 focused checks and 12 affected existing checks passed; Chromium emulation only |
-| Talk tracks | [DEMO-SCRIPT.md](DEMO-SCRIPT.md) |
+Current build: **November 5, 2026**. Nine connected woodland districts, one household journal, Merchant, Treasury, APIMatic context and the Studio Agent Framework are implemented. [Release status](RELEASE-READINESS.md) records publication and the remaining live-proof/video blockers. This is not a submitted entry.
 
 ## 1. Run it
 
-### On the owner's configured Mac
-
-The app already runs at **http://localhost:3010**. Its main server was safely restarted for the weather CSP at `feada574`; its household records and saved keys are preserved. Refresh to load the atmosphere controls. **Auto** follows the device clock; manual Day, Afternoon and Night work with Clear or Rain. **Local weather** sends the town you explicitly search/choose to Open-Meteo; Disconnect forgets it in that browser. No PayPal address or GPS is used. The separate example lighting tryout is **http://localhost:3156**. The approved payment rehearsal on 3021 was not restarted; its old runtime CSP does not support the new optional weather hosts, so keep its weather Clear/manual during any coordinated recording.
-
-The main app starts from `~/projects/our-house` with `npm start`, reading the git-ignored `.env` (PayPal sandbox credentials and `AI_API_KEY`) and the sandbox household in `data/our-castle-sandbox.sqlite`.
-
-- **Check it, read-only:** `curl -s http://localhost:3010/api/status` should report `"mode":"sandbox"` for payments and `"mode":"live"` with `claude-opus-5-5` for AI. The page header shows the badges **PayPal sandbox** and **AI planner · claude-opus-5-5**.
-- **If it is not running:** `cd ~/projects/our-house && npm start`. It does not modify `.env` or any ledger or payment record. While the app is up, a second `npm start` fails because port 3010 is in use.
-- **Current household:** House of Alder, $60.00 tracked, all of it reported starting progress. No PayPal contribution has been confirmed in this household yet; one early order attempt failed with a 401 before the new sandbox credentials started working. Hearth Village is open and the other five districts are locked.
-- **A throwaway example-mode copy**, for touring or Postman without touching `.env` or the household. Port 3134 is the Postman example folder's default; 3010 and 3020 are already in use on this Mac:
-
-  ```sh
-  OUR_CASTLE_ENV_FILE=none OUR_CASTLE_DATA_DIR="$(mktemp -d)" PAYPAL_CLIENT_ID= PAYPAL_CLIENT_SECRET= AI_API_KEY= PORT=3134 npm start
-  ```
-
-  If it prints `Error: listen EADDRINUSE` instead of `Payments: EXAMPLE mode`, stop. Something else owns the port; don't reuse it, reset it or run Postman against it.
-
-### From private GitHub main (another machine)
-
-Authenticate with a GitHub account that can read the private repository, then:
+Use Node.js **22.16 or later** (verified development environment: Node 26). The no-credentials game runs with simulated payments and a built-in rules planner. It is not a live PayPal/AI demonstration.
 
 ```sh
 git clone https://github.com/alejandro-publius/our-castle.git
 cd our-castle
 npm ci
-OUR_CASTLE_ENV_FILE=none OUR_CASTLE_DATA_DIR="$(mktemp -d)" PAYPAL_CLIENT_ID= PAYPAL_CLIENT_SECRET= AI_API_KEY= PORT=3134 npm start
+OUR_CASTLE_ENV_FILE=none OUR_CASTLE_DATA_DIR="$(mktemp -d)" PAYPAL_CLIENT_ID= PAYPAL_CLIENT_SECRET= AI_API_KEY= CHANNEL3_API_KEY= AG_STUDIO_LICENSE_KEY= PORT=3134 npm start
 # Open http://localhost:3134/
 ```
 
-Use Node.js 22.16 or later (Node 26 was used for the verified build). The separate no-credentials example runs without provider accounts. Do not point it at the owner's database or reuse an occupied port. For visual work start with [Claude's handoff](CLAUDE-VISUAL-HANDOFF.md); integration work starts with [Astra's handoff](ASTRA-INTEGRATION-HANDOFF.md).
+Use a free port; stop on `EADDRINUSE`. This command ignores `.env` and uses a fresh database. It does not reset the owner's household. It is a POSIX shell command; PowerShell users can instead run ordinary `npm start` in a fresh checkout without a `.env`, which uses port 3010 and `data/`.
 
-### From the private offline review kit (another machine)
+For live integrations on another machine, use your own sandbox developer credentials and runtime API key following [the README](../README.md#real-paypal-sandbox-and-ai). Channel3 needs a server key; Studio's local trial is not bundled. Studio may show its evaluation notice without a suitable licence. No runtime secrets or owner databases are distributed.
 
-The full game can now be cloned from private GitHub main with an authorized account. The owner can still share the earlier offline zip as a versioned snapshot; its adjacent manifest identifies its source commit, so it may predate the latest realm. Neither route includes .env, local data or node_modules.
+## 2. A short review route
 
-Requires Node.js 22.16 or later. `npm ci` installs the exact versions in `package-lock.json` and needs network access to the npm registry, or a warm npm cache.
+1. Name the house and choose a crest. The map starts close to Hearth Village; **Whole realm** shows all nine districts.
+2. **Areas → Market Town → Merchant:** with Channel3 configured, search within a budget. **Use as goal** drafts the Plan; confirm **Save as our goal** explicitly. Without a key the merchant shows it is disconnected.
+3. **Journal → Plan:** edit the goal, reported starting progress and weekly contribution. The AI planner is live only with a runtime key; otherwise the rules planner is labelled accordingly.
+4. **Contribute:** choose Rowan (adult), approve the exact amount and contribute. A $15 simulated contribution from the synthetic $60/$300 starting state opens the Manor at $75. It is labelled simulated.
+5. Dismiss the short deed, inspect the Manor and confirm the village remains. **View deed** reopens an earned area's card.
+6. **Ledger:** the Studio milestone points to the next area, AG Grid filters/search affect only the list, and a selected contribution opens its receipt. **Visit…** returns to the earned district. The existing steward stays closed until requested.
+7. Refresh. Goal, contribution, receipt and earned areas persist. Explore night/rain, the palace, towers and sword without changing any finances.
 
-```sh
-mkdir our-castle-review && cd our-castle-review
-unzip /path/to/our-castle-<commit>-source.zip      # creates ./our-castle/
-cd our-castle
-npm ci
-OUR_CASTLE_ENV_FILE=none OUR_CASTLE_DATA_DIR="$(mktemp -d)" PAYPAL_CLIENT_ID= PAYPAL_CLIENT_SECRET= AI_API_KEY= PORT=3134 npm start
-# open http://localhost:3134/
-```
+Searching does not buy a product. Bills/gifts do not count toward savings. No verified utility provider is connected.
 
-If the last command prints `Error: listen EADDRINUSE` instead of `Payments: EXAMPLE mode`, **stop**. Another server owns port 3134; don't use or reset it.
+## 3. Evidence, without mixing modes
 
-The kit also contains the finished clip at `docs/demos/our-castle-connected-realm.mp4`.
-
-- **Example mode:** that command runs it, with `.env` ignored, empty PayPal and AI credentials and a throwaway database. Payments are simulated and the planner uses built-in rules. Both are labeled "simulated" and "no AI" everywhere, and the steward is off. This previews the product; it does not demonstrate the PayPal or AI integrations.
-- **For the real integrations on another machine:**
-  1. Copy `.env.example` to `.env`.
-  2. Add your own PayPal **sandbox** REST app's client id and secret.
-  3. Run `npm run set-ai-key` in your terminal and paste an Anthropic Console API key.
-  4. Restart.
-
-  The README's "[Real PayPal sandbox and AI](../README.md#real-paypal-sandbox-and-ai)" section has the details. This applies to another machine only: the owner's Mac is already configured and needs no new key.
-
-### Names and paths
-
-- **Our Castle** is the product and the private GitHub repository name, and `our-castle` is the package name.
-- The owner's working folder is still `~/projects/our-house`. It was kept on purpose so local paths stay unchanged.
-- The original art reference (`/art-preview.html`, `references/images/our-house-*.png`) keeps the old "Our House" name as a preserved reference.
-- Other local checkouts: `../our-castle-connected-realm` and `../our-castle-living-court` are git worktrees used to build the realm and court before they were promoted. Both are at or behind `7468b57`.
-
-### Which commands are safe on the configured Mac
-
-| Command | What it touches | On the configured Mac |
+| Feature | Actual evidence | Limit |
 | --- | --- | --- |
-| `curl -s http://localhost:3010/api/status` | Nothing; read-only | Safe |
-| `npm run check` | Nothing; hashes and syntax | Safe |
-| `npm run test:unit` | Temporary databases and test doubles | Safe |
-| `npm run test:e2e` / `npm test` | Its own example-mode server on port 3111 with `test-results/e2e-data`; ignores `.env` | Safe; takes several minutes |
-| `npm start` | Reads `.env`, opens `data/our-castle-sandbox.sqlite` | Only when 3010 is not already running |
-| The throwaway example-mode command above | A new temporary folder | Safe |
-| `npx --yes newman@6.2.1 run … --folder "1 · …"` | **Writes** to `exampleBaseUrl` (default `localhost:3134`): resets, founds a house, logs a bill, asks the planner and steward. A guard refuses to send anything unless that server reports example payments and example AI | Against the throwaway copy, with `--env-var "exampleBaseUrl=http://localhost:3134"` (see the [README](../README.md#postman)) |
-| Postman folder 2, or the whole collection | Folder 2 creates sandbox orders on `baseUrl` (3010) and calls PayPal directly. It is **off by default** and sends nothing unless `allowSandboxRequests=yes` is set for that run | Don't opt in without the owner; a run without the opt-in stops with a `BLOCKED` failure |
-| `npm run check:postman-guard` | Logging mock servers and its own temporary example server on free ports; never 3010 or PayPal | Safe; no PayPal or AI calls. Needs Newman 6.2.1 |
-| `npm run reset-demo` | **Deletes** `data/our-castle-example.sqlite`, if present | Avoid unless you mean it. **Never** add `--include-sandbox` (it deletes the sandbox household) |
-| `npm run set-ai-key` | Rewrites `.env`, keeping the other lines | Not needed: the key is already configured |
-| `npm run verify:live` | Creates a **new sandbox order** that a sandbox buyer must approve, and calls the AI | Owner's decision. It already passed (7/0/2); don't repeat it without a reason |
-| `npm run verify:live -- --ai-only` | Paid Anthropic calls; overwrites `docs/LIVE-VERIFICATION-AI.md` | Already passed (6/0/1); don't repeat it without a reason |
+| PayPal Server SDK | [Historical sandbox run](LIVE-VERIFICATION.md): hosted buyer approval, $15 capture, single credit, replay/mismatch checks, matching order and refund | Not an in-app popup recording |
+| AI planner/steward | [Historical live AI run](LIVE-VERIFICATION-AI.md): exact plan arithmetic, impossible target, ledger and transaction listing | No same-household-order `get_order` in that run |
+| Channel3 Merchant | One real desktop search; local fake-provider phone/save/journey tests | No new credit or live phone/save retest |
+| AG Grid / Studio | Actual installed widget, theme, harness/custom runner, cancellation, cleanup and fallback in browser checks | Provider responses in framework tests are fake; production licence not included |
+| APIMatic | [Eight SDK-specific Codex skills](APIMATIC-CODEX.md), discovery/hash evidence and tested payment fixes | Developer context, not another runtime money service |
+| World and family journey | Focused desktop/touch-phone Chromium and Linux WebKit checks | Browser emulation, not physical devices/macOS Safari |
 
-## 2. What is verified, and by what
-
-| Claim | Status | Evidence |
-| --- | --- | --- |
-| Server SDK sandbox order, buyer approval, capture verified and credited once | **Verified live** Nov 3, 2026. Approved through PayPal's hosted approval link | Order `5D424601H2372591L`, capture `72476659YH700454R`: [LIVE-VERIFICATION.md](LIVE-VERIFICATION.md) |
-| Replay not double-counted; mismatched household refused; PayPal's record matches | **Verified live** | Same run |
-| Sandbox refund reverses progress once | **Verified live** through the server path | Refund `9U925627HK881213A`: [VALIDATION.md](VALIDATION.md) |
-| AI planner (Claude `claude-opus-5-5`, server-validated arithmetic) | **Verified live**, including an impossible target with a $160 shortfall | [LIVE-VERIFICATION-AI.md](LIVE-VERIFICATION-AI.md) |
-| AI steward reads the ledger and lists sandbox transactions through the read-only PayPal Agent Toolkit | **Verified live** | Same run |
-| JS SDK v6 eligibility and `<paypal-button>` rendering with the real client id | **Verified live**; the button was not pressed | [VALIDATION.md](VALIDATION.md), Nov 3 evening section |
-| In-page v6 popup approval reaching the server | **Not verified** | Needs a sandbox buyer; see section 4 |
-| Steward `get_order` reconciliation of a household order ("PayPal and the ledger agree.") | **Not verified live**; covered by unit tests with doubles | Needs one in-app payment |
-| Ledger tab's "Refund in sandbox" button | **Not verified live** | The same in-app payment can test it |
-| Webhooks | **Not verified live**; signature verification is implemented | Needs a public tunnel and `PAYPAL_WEBHOOK_ID` |
-| Connected realm, rewards, court, keepsakes | **Working**, in example mode and against test doubles | At `7468b57`: 104 unit tests passed, 1 skipped; 43 browser cases passed, 1 skipped ([VALIDATION.md](VALIDATION.md)). Not rerun for this documentation change |
-| Bill-provider verification (e.g. SDG&E) | **Not built.** No provider is connected; bill rewards stay "Needs a provider connection" | [BILL-VERIFICATION-RESEARCH.md](BILL-VERIFICATION-RESEARCH.md) |
-
-**Three kinds of money, never mixed.** Payment records, the goal summary and district deeds name the source of every dollar:
-
-- **Confirmed by PayPal sandbox captures:** test money. It counts only after the server captures the order and checks amount, currency, household and goal with PayPal. A redirect or click alone never counts.
-- **Simulated example payments:** example mode only, labeled "simulated" on every badge, receipt and ledger line. This is what the finished clip shows.
-- **Reported by you:** starting savings, bills and gifts typed in by the household. Starting savings count toward the goal and are labeled as reported. Bills and gifts never count as savings. Bills grow the self-reported habit garden and the Woodland Garden district, never a provider-verified reward.
-
-## Current family journey and woodland review
-
-The [new review kit](demos/woodland-review/README.md) uses the current green forest and the clearer next-step family flow, with actual scripted example-mode interactions, a simulated Manor unlock and the saved-record path after refresh. It keeps the earlier live-AI excerpts and historical sandbox verifier evidence distinctly labelled. Its approved sandbox insert is still unfilmed; source notes and [the current insert guide](demos/woodland-review/OWNER-INSERT.md) explain the exact remaining flow and the existing 3021 rehearsal. Do not start another rehearsal or order.
-
-On the configured Mac, the owner can try the example-only family demo at **http://localhost:3140**; the configured household remains on **3010**. The existing coordination thread owns checkout on **3021**. This project worker has no supported browser controls; the owner reports login, but that session and the in-app payment/get_order result have not been verified here. No new key or repeated payment approval is needed to resume the already-authorized test with the browser operator.
-
-## 3. The review draft and preserved world clip
-
-### Earlier judge review draft (2:36.36, historical visual version)
-
-The [new MP4](demos/judge-review/our-castle-judge-review-draft.mp4) is locally playable, with synthetic offline narration, burned-in captions, editable [SRT](demos/judge-review/captions.srt), [timeline](demos/judge-review/timeline.json) and [source notes](demos/judge-review/PROVENANCE.md). It clearly separates:
-
-- current recorded **example-mode** realm footage and simulated progression;
-- earlier recorded **live AI** planner/steward UI excerpts, labelled historical and cropped to omit the obsolete small world;
-- **historical verifier reports** for PayPal's hosted approval/server capture/refund path and the live AI checks;
-- an **unfilmed owner-recording slate at 2:00.36–2:24.36**. No popup approval or household `get_order` result is reconstructed.
-
-The [precise insert guide](demos/judge-review/OWNER-INSERT.md) needs one owner-led isolated rehearsal recording. The slot can expand to 40 seconds while the full cut stays at about 2:52.36. No new payment order or paid AI call was made to prepare the draft. It is not the submitted video or a fully live end-to-end recording. The private source kit at `de147d4` remains an earlier pinned snapshot; use a newer kit's manifest when one is present.
-
-### Preserved world clip (36.36 s)
-
-[`docs/demos/our-castle-connected-realm.mp4`](demos/our-castle-connected-realm.mp4); see the [provenance note](demos/README.md).
-
-- **Historical visuals:** recorded before the woodland revision, so it shows the earlier grey-island revision (six islands in open blue water, locked districts painted grey). The clip and the 2:36 judge draft are kept unchanged; neither shows the current forest and rivers.
-
-- **Format:** 36.36 s, 1920×1080 H.264, 25 fps, no audio, burned-in captions. 1,932,194 bytes, SHA-256 `33dd65316e28ee6e059cb856deccaaebfe8eb071e00750ab18f4d3b51beb2fc1`.
-- **Original:** `test-results/realm-promotion/` on the owner's Mac, with the capture reports (`recording-report.json`, `timeline.json`, `export-manifest.json`). That folder is git-ignored; the tracked copy is byte-identical.
-- **Source:** recorded from an **isolated example database on port 3134** (now stopped), not the owner's sandbox household. Its one contribution is **simulated**.
-
-| Clip time | Section (on-screen title) | What happens |
-| --- | --- | --- |
-| 0:00–0:09 | 1/4 One connected realm, six distinct districts | Whole-realm overview; Hearth Village open, five grey districts beyond raised bridges |
-| 0:09–0:16 | 2/4 Inspect the locked Royal Citadel | The camera focuses the grey citadel; its caption gives the 100% lock condition and the $240.00 still to go |
-| 0:16–0:28 | 3/4 The Manor bridge opens at the 25% milestone | Contribute tab, $15.00 simulated payment; $60 → $75; "The Manor rises!", the Manor Gardens turn green and the bridge lowers |
-| 0:28–0:36 | 4/4 The village remains as your realm expands | Overview: 2/6 districts earned, village and manor both open |
-
-It is a world and progression demo. It does **not** show PayPal, the AI planner or the steward, and it is not proof of any live integration. It is not the hackathon video and has not been uploaded. A talk track timed to it, and the separate judge-demo plan, are in [DEMO-SCRIPT.md](DEMO-SCRIPT.md).
+[VALIDATION.md](VALIDATION.md) gives exact runs and versions. [AWARD-STRATEGY.md](AWARD-STRATEGY.md) maps the implementations to official sponsor briefs without guaranteeing a prize.
 
 ## 4. What remains, by who has to act
 
-**A. Integration checks still unverified** (the owner must log in as a sandbox buyer):
+**Prepared, approved rehearsal — blocked on connection:** the owner's configured app is on **http://localhost:3010**; the separate existing payment rehearsal is on **http://localhost:3021**. The latest inspected Mac checkout was clean `791e8ae`; later cloud changes are not installed there. Desktop Commander now reports the Mac offline, and this chat has no supported browser controller. Do not start a replacement server, order or operator.
 
-1. The in-page JS SDK v6 popup approval, and its `onApprove` reaching the server's capture.
-2. Steward `get_order` reconciliation of that household order.
-3. The browser "Refund in sandbox" button.
-4. *Optional:* webhooks through a tunnel; pending and declined captures through PayPal's negative testing; real phone, Safari/Firefox and screen-reader passes.
+The rehearsal's last read-only state was **zero payment orders, one self-reported starting entry, no plan**. There is no order ID, payment waiter, steward call or recording to resume. The owner already approved one $15 sandbox in-app payment and its necessary same-order steward check. Existing keys are configured; no new key or repeated consent is needed when control returns. Verify the current state before proceeding.
 
-The focused [Chromium keyboard/device review](ACCESSIBILITY-DEVICE-REVIEW.md) fixed focus left off-screen after moving to the realm. Desktop and 390/320 px emulation passed its targeted checks. It does not close the real-hardware, Safari/Firefox, screen-reader or PayPal-popup accessibility items.
+The required result is actual in-app approval, a server-confirmed $15 USD receipt tied to the correct household/goal, $60→$75 exactly once, the Manor bridge with the village retained, and real `get_order` proof for that exact order. Do not substitute `list_transactions`, a ledger read or model prose.
 
-Items 1–3 can be closed by one payment (next actions, step 1).
+**Submission:** current entry copy is [SUBMISSION-DRAFT.md](SUBMISSION-DRAFT.md). The current three-minute shot plan is [SUBMISSION-SHOTLIST.md](SUBMISSION-SHOTLIST.md). A public YouTube video is not uploaded, and no authenticated Devpost submission control is available here. Hosting is optional under the checked rules. The deadline is **November 12, 2026, noon PST**.
 
-**B. Submission decisions** (owner only; the owner currently wants private development). The requirements below come from the owner's pasted Devpost page, summarized in [HACKATHON.md](HACKATHON.md). Deadline: **November 12, 2026, 12:00 p.m. PST**.
+**Production follow-up, not a claim of current support:** real family sign-in, multi-device access, live webhooks, physical-device/screen-reader passes, suitable AG commercial terms and remaining dependency advisories. Utility rewards require genuine authorized provider evidence; there is no such connection.
 
-- **A public repository with a visible license.** The complete code is now on private main. Making it public and confirming original-art distribution licensing remain owner decisions before submission ([NOTICE.md](../NOTICE.md)).
-- **A public YouTube demo under three minutes** that shows the project working. The 36-second clip doesn't meet this on its own: it shows no PayPal or AI.
-- **The Devpost text**, from [SUBMISSION-DRAFT.md](SUBMISSION-DRAFT.md), including confirming the coding-assistant disclosure.
-- **Hosting is not required.** Run instructions in the repository satisfy the "functional demo" requirement.
-- **The private offline review kit satisfies none of these.** It is a private source snapshot for review, not a public repository, a YouTube video or a Devpost entry.
+## 5. Preserved media
 
-**C. Provider-dependent, not buildable now:** confirmed-bill rewards (SDG&E or any utility). No authorized bill provider is available, so these rewards stay `connection_required` and the app cannot mark a bill verified.
+No new video was made for this pass. The owner asked to keep building. Existing sources and captions remain unchanged:
 
-**D. Optional production limitations** (not hackathon requirements):
+| Material | Path and status |
+| --- | --- |
+| Woodland/family review, 2:51 | [MP4](demos/woodland-review/our-castle-family-woodland-review-draft.mp4), [editable kit](demos/woodland-review/README.md); historical UI, unfilmed sandbox insert at 2:17–2:41 |
+| Earlier judge review, 2:36.36 | [Kit](demos/judge-review/README.md); older visuals, unfilmed insert at 2:00.36–2:24.36 |
+| Gameplay, 17.60 s | [MP4](demos/gameplay/our-castle-gameplay-demo.mp4), [sources](demos/gameplay/README.md); example mode, older Rewards catalogue |
+| Time/weather, 18.04 s | [MP4](demos/atmosphere/our-castle-time-weather-preview.mp4), [sources](demos/atmosphere/README.md); example UI, no live-weather/payment proof |
+| Original world clip, 36.36 s | [MP4](demos/our-castle-connected-realm.mp4), [provenance](demos/README.md); historical six-island example-mode world, not the current forest |
 
-- the household personas are not authentication;
-- sandbox only, with no real money;
-- not deployed;
-- one goal per household;
-- the Agent Toolkit's pinned dependencies carry `npm audit` advisories (see VALIDATION.md).
-
-## 5. Next actions
-
-1. **Owner: one in-app sandbox payment** (about 10 minutes; creates one sandbox order and uses a little Anthropic API credit). To keep the House of Alder records unchanged, run a rehearsal copy that uses the same `.env` with a fresh sandbox database:
-
-   ```sh
-   cd ~/projects/our-house && OUR_CASTLE_DATA_DIR="$(mktemp -d)" PORT=3021 npm start
-   ```
-
-   Then, at http://localhost:3021:
-   1. Found the house.
-   2. Ask the planner.
-   3. Contribute $15 with the **PayPal button** and approve in the popup as the sandbox buyer.
-   4. Check the receipt and the Manor bridge.
-   5. In the Ledger tab, ask "Did PayPal confirm our last contribution?".
-   6. Optionally, press "Refund in sandbox".
-
-   Stop it with Ctrl-C. If the PayPal button does not render or the popup fails, stop there. Note what happened, and leave the House of Alder on 3010 untouched: diagnose the failure in this isolated copy.
-2. **Claude, after the owner reports the outcome:** record it in VALIDATION.md, the README status table and the SUBMISSION-DRAFT brackets. If the popup failed, the next code task is to diagnose it, reproduced in an isolated rehearsal copy and never on the owner's household. The app has no in-page fallback to PayPal's hosted approval link, the path that was verified. Whether to add one depends on that diagnosis.
-3. **Owner: finish the judge video** after step 1 passes. The [playable review draft](demos/judge-review/README.md) already includes the existing honest material; record its [one insert](demos/judge-review/OWNER-INSERT.md), replace the unfinished slate/narration/captions and review the result. [DEMO-SCRIPT.md](DEMO-SCRIPT.md) part B remains an optional full-take plan.
-4. **Owner decisions, when ready:**
-   - merging the prototype into `main`;
-   - repository visibility and art licensing;
-   - uploading the video;
-   - submitting.
-
-   Claude can prepare a local merge and the submission text on request, but must not push, publish or submit.
-
-Scope of this conclusion: the documentation, the Postman guards and the recorded test runs were reviewed in these local handoff tasks, and none of them leaves a code change pending. That is not a claim that the rest of the app is free of defects. The open items above need the owner, a sandbox buyer or a provider. A failed popup rehearsal would become a code task. The bill-provider rewards stay locked until an authorized provider exists.
+All footage shows its recorded version. No missing checkout or tool outcome has been reconstructed.

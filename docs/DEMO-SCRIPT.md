@@ -1,5 +1,7 @@
 # Demo script
 
+**November 5 release handoff:** [SUBMISSION-SHOTLIST.md](SUBMISSION-SHOTLIST.md) is the current 2:45 plan for the nine-district interface and three sponsor integrations. It specifies the still-missing approved sandbox insert. This document and the media kits below preserve older talk tracks and recorded versions; no new video or successful checkout is implied.
+
 **Current interface:** the live app now uses a compact game frame and one household journal. Preserved recordings below show their recorded source versions and earlier controls; they have not been overwritten or relabelled as footage of this interface. World settings now holds time, weather, sound, pixel mode and integration status. No new payment/AI evidence is implied by this design pass.
 
 **Current recorded review:** use [the woodland/family cut](demos/woodland-review/README.md), its [measured narration](demos/woodland-review/narration.md) and [editable timeline](demos/woodland-review/timeline.json). It is 2:51 with a clearly unfilmed approved sandbox insert at 2:17–2:41. The older talk tracks below are reference, not proof that an in-app checkout or same-order get_order has been filmed.

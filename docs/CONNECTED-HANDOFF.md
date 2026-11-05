@@ -7,7 +7,7 @@ The reviewed build is on canonical private `main`, promoted from `feature/connec
 | Tool | Working experience | Evidence limit |
 | --- | --- | --- |
 | Channel3 | Market merchant → up to three results → unsaved Plan draft → explicit goal save | One earlier real desktop search; complete family flow and error contracts tested with fakes. Live phone/save was not repeated. |
-| AG Grid / Studio | One next-area widget, searchable/filterable records, one receipt on selection, map visit | Actual libraries and trial checked locally; slow-load duplicate-grid fix and desktop/phone browser checks pass. Studio Agent Framework is absent. |
+| AG Grid / Studio | One next-area widget, records/receipt/map visit; Studio Agent Framework manages the existing scoped steward | Actual harness/custom runner and fallback checked with fake providers. No extra chat panel; actual live popup/same-order proof remains outstanding. |
 | APIMatic | Eight enabled Codex SDK-context skills used for PayPal fixes and checks | Context use is demonstrated; it is not a runtime payment service or a prize guarantee. New read deadlines and dependency findings are in [TOOLKIT-MAINTENANCE.md](TOOLKIT-MAINTENANCE.md). |
 
 The complete family flow has 26 passing browser checks from [the usability review](FAMILY-FLOW-REVIEW.md). The maintenance follow-up adds 40 focused sponsor/payment contract passes and five post-install compatibility passes with no new provider call. Shared outstanding proof: actual in-app sandbox checkout → one credit/area unlock → same-order `get_order`. The owner's Mac/browser connection is unavailable here, so no new order or paid check was attempted. No new account or credential is needed for the code changes.
@@ -27,7 +27,7 @@ The complete family flow has 26 passing browser checks from [the usability revie
 2. **Plan.** **Use as goal** fills the Plan form as an unsaved draft. **Save as our goal** is the ordinary goal edit at the actual price (or a deliberately higher amount). Already-tracked progress may then open an area with its usual deed. No money moves. See [CHANNEL3-MERCHANT.md](CHANNEL3-MERCHANT.md).
 3. **Contribute.** Unchanged: exact-amount adult approval, then sandbox checkout (or a labelled simulation in example mode). The server verifies the capture and credits once. See [APIMATIC-USAGE.md](APIMATIC-USAGE.md) for the uncertain-capture fix.
 4. **World.** Areas open only through canonical progress against the current goal, with the existing deed.
-5. **Ledger → Treasury.** One next-area milestone ("View on map"), the existing record grid (search and filters change only the list), and a receipt on tap that leads back to the area it opened. There is no question box, chat or model label, and the steward sits closed at the end. See [TREASURY.md](TREASURY.md).
+5. **Ledger → Treasury.** One next-area milestone ("View on map"), the existing record grid (search and filters change only the list), and a receipt on tap that leads back to the area it opened. The existing steward stays closed at the end. Studio's Agent Framework manages explicit checks without adding another chat panel. See [TREASURY.md](TREASURY.md).
 6. **Return.** Reload keeps the confirmed goal and item, records and earned world. It works with the keyboard and on phones.
 
 Searching is not checkout. A contribution does not buy the Channel3 item or pay any outside bill.
@@ -81,9 +81,9 @@ The subsequent [family-flow review](FAMILY-FLOW-REVIEW.md) resolves these expect
 ## Remaining blockers and owner steps
 
 - **Not exercised live:** the phone render and the draft/save with a live item. A second credit was not spent; both are covered with fakes.
-- **Sponsor conditions.** Codex successfully read the official public [Channel3 brief](https://paypalaihackathon.devpost.com/details/channel3) on November 5: meaningful API/MCP use is required; the real merchant search supplies that evidence. The credit promotion was not applied. [Award notes](AWARD-STRATEGY.md) distinguish actual use from remaining Studio Agent Framework and formal entry requirements.
+- **Sponsor conditions.** Codex successfully read the official public [Channel3 brief](https://paypalaihackathon.devpost.com/details/channel3) on November 5: meaningful API/MCP use is required; the real merchant search supplies that evidence. The credit promotion was not applied. [Award notes](AWARD-STRATEGY.md) distinguish the actual Studio framework/custom-runner use from prize guarantees and formal entry requirements.
 - **AG Studio.** Evaluation only. Production use needs the owner's commercial decision.
 - **PayPal popup rehearsal.** The coordinated in-app popup → single credit → exact-order `get_order` rehearsal remains with its existing 3021 operator. Nothing here is live PayPal proof.
-- **Submission.** A public repository, original-art redistribution scope, a video and the Devpost submission are all separate owner decisions. Video work stays paused.
+- **Submission.** The owner has requested the release work. [Release readiness](RELEASE-READINESS.md) records source publication, existing art notices and the actual remaining video/Devpost blockers. No new video or paid-provider test was made in the framework pass.
 
 Accounts: Channel3 needs a developer key, which is in place and was used once. AG Studio's trial licence is in place and validated. APIMatic's PayPal context needs no account.
