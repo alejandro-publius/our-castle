@@ -1,5 +1,13 @@
 # Validation
 
+## November 4, 2026: brighter clouds with recognizable contours
+
+Changed only the original cloud-surround helper's shape/colour logic: explicit softly joined lobes replace the noise wash, with irregularly spaced banks, white crowns, light underside shading and thin translucent tails. The first rounded version looked repetitive on a phone, so crown geometry, scale, mirroring and placement were varied before the final review.
+
+Actual checks: the original 47-file/palette/renderer/syntax guard passed. Read-only Chromium still review covered Day, Afternoon, Night/Rain, Raw 3D, phone width 390, camera turn/zoom, reduced-motion stillness and hidden-tab pause/resume. No page/shader errors, external requests, writes or financial state changes. An independent before/after render comparison found the 32x32 interior traveler crop identical, all seven districts' access/paint and every bridge unchanged, and geometry count 13 to 13. Sky pixels changed as intended.
+
+All 21 protected file signatures (owner settings/data, rehearsal data, renderer/palette and historical MP4s) remained identical. No server restart, payment, paid AI/provider call or video work. Evidence: ignored test-results/defined-clouds/review.json, comparison.json, source-check.log and protected-before/after.json. These are focused Chromium checks, not physical phone, Safari/Firefox or assistive-technology validation.
+
 ## November 4, 2026: Rosewind Palace and a larger connected board
 
 Seven woodland clearings on 228x132 ground; old district coordinates, buildings, twenty financial steps, home thresholds and total court capacity are preserved. The palace and crossing open with the existing completed-goal achievement. Its separate deed survives refunds as a keepsake.

@@ -1,5 +1,11 @@
 # Art direction — preserve this visual family
 
+## Clearly defined cloud banks (November 4, 2026)
+
+The owner rejected the previous murky grey blur. Replace the fog field with distinct cumulus silhouettes, white rounded crowns, lightly shaded undersides, open light gaps and translucent trailing wisps. Vary width, height, crown shape, orientation and position to avoid identical clouds in rows. Preserve only subtle overlap at the outer forest edge. Day, Afternoon, Night and Rain retain readable contours.
+
+[Reference lock and bounded research](DEFINED-CLOUDS.md). [Day](screenshots/cloud-defined-day.png) · [Night/rain](screenshots/cloud-defined-night-rain.png). This supersedes the diffuse cloud appearance below. The world, palace, interface and original renderer/palette remain unchanged.
+
 ## Rosewind Palace and the eastern woodland (November 4, 2026)
 
 The board is now 228x132 (61% more ground), centred at (32, 0), with seven separate clearings. The earlier six keep their positions, buildings, colour and the Citadel stag. Rosewind Palace adds original ivory masonry, rose-and-wine roofs, five gilt-tipped spires, illuminated arched windows, a balcony, fountain and four rose parterres. A new tributary flows below its raised bridge; the main river, forest, rain and cloud edge extend to the new bounds.

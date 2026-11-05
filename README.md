@@ -20,7 +20,7 @@ Built for the PayPal AI Hackathon as a local prototype, with PayPal at the cente
 
 **Expanded board:** seven connected woodland districts on 61% more ground. Explore **Areas → Rosewind Palace** for ivory spires, rose roofs, an illuminated balcony, fountain garden and separate unlock deed at the existing 100% milestone. [Palace](docs/screenshots/rosewind-palace.png) · [Whole realm](docs/screenshots/rosewind-expanded-realm.png) · [Night/rain](docs/screenshots/rosewind-night-rain.png).
 
-**Cloud surround:** pale cloud banks and translucent edge wisps replace the flat blue empty space. [Day](docs/screenshots/cloud-woodland.png) · [Night/rain](docs/screenshots/cloud-night-rain.png). The forest and original pixel renderer remain intact.
+**Cloud surround:** distinct bright cumulus banks with rounded crowns, lightly shaded undersides and thin trailing wisps. Shapes and spacing vary; the former murky blur is gone. [Day](docs/screenshots/cloud-defined-day.png) · [Night/rain](docs/screenshots/cloud-defined-night-rain.png). The forest and original pixel renderer remain intact.
 
 **Record to realm:** select/search a Ledger row to inspect one receipt and visit its milestone district. Pending attempts remain uncredited. The read-only steward checks the selected PayPal order. [Sponsor use and award targets](docs/AWARD-STRATEGY.md) separates verified use from unconfirmed prize conditions and the undeployed Render blueprint.
 
