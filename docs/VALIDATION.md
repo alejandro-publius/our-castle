@@ -1,5 +1,13 @@
 # Validation
 
+## Sponsor/Toolkit maintenance — November 5, 2026
+
+**40 focused sponsor/payment cases passed**, using fake transports and fresh example/in-memory states. Five new real-Toolkit/wrapper/compatibility cases cover actual OAuth/read request shapes with native network blocked, exact sandbox URLs, stalled/late reads, malformed output, and the scoped LangChain patch. An additional steward case verifies that a timed-out selected order stays unverified after late success/model claims and never changes ledger rows. Existing Merchant, Treasury, SDK and uncertain-capture contracts passed in the same focused run.
+
+A clean install succeeded with the updated lockfile; five targeted Toolkit cases passed afterward. The original 47-file art/palette/renderer/syntax guard passed. Browser evidence from the prior review remains unchanged; no full browser/unit/provider suite was repeated. Details, version pins, the remaining 12-package audit result and ignored evidence paths: [TOOLKIT-MAINTENANCE.md](TOOLKIT-MAINTENANCE.md).
+
+No live PayPal, Channel3 or paid AI call occurred; no account/credential, household data, visual component, video, deployment or submission was changed. The Mac remains unavailable, so this code was not installed in the running owner app or 3021 rehearsal.
+
 ## Family journey and browser follow-up — November 5, 2026
 
 Runtime fixes at `397a8ba` keep castle navigation clear of the journal, prevent a WebKit name-blur redraw from losing a setup click, and prevent concurrent lazy loads from mounting multiple Treasury grids. Three stale assertions were corrected to the current amount, geography and selected-receipt interface. The new delayed-script regression produced three grids before the guard; the affected WebKit setup cases failed before the change and passed afterward.

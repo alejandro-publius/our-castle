@@ -28,6 +28,8 @@ These checks required no further runtime-code changes. The earlier capture-timeo
 
 ## Boundaries and evidence
 
+The subsequent [Toolkit maintenance review](TOOLKIT-MAINTENANCE.md) applied the resilience/testing context to the installed Toolkit's actual read transport: bounded waits, no automatic retry, exact sandbox origins and no late verification after a timeout. It preserves Server SDK 2.5.0. Forty fake-transport contract cases and five post-clean-install Toolkit cases passed; no live payment or paid AI call was repeated.
+
 This change adds developer context and accurate setup notes. App code, dependency pins, original artwork, household data and `.env` are unchanged. No PayPal order, refund, paid AI call or public deployment was made. Existing payment/browser suites were not repeated for context-only files; the source/art guard and discovery/hash checks cover this change.
 
 The earlier Claude automatic-review rejection remains historical and was not overridden. The owner explicitly chose Codex for this setup. Sponsor judging and general entry requirements still apply; this is evidence of actual installed context use, not a prize guarantee.

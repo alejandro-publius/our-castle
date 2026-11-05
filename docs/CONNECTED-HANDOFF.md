@@ -2,6 +2,16 @@
 
 The reviewed build is on canonical private `main`, promoted from `feature/connected-experience` (implementation handoff `68e1c61`, based on `877764e`). The feature worktree is retained for reference. The nine-district forest, four-tab journal, art, palette, fonts, clouds, rivers, bridges, farm, tavern, avatars and unlock cards are unchanged.
 
+## Current status of the three tools
+
+| Tool | Working experience | Evidence limit |
+| --- | --- | --- |
+| Channel3 | Market merchant → up to three results → unsaved Plan draft → explicit goal save | One earlier real desktop search; complete family flow and error contracts tested with fakes. Live phone/save was not repeated. |
+| AG Grid / Studio | One next-area widget, searchable/filterable records, one receipt on selection, map visit | Actual libraries and trial checked locally; slow-load duplicate-grid fix and desktop/phone browser checks pass. Studio Agent Framework is absent. |
+| APIMatic | Eight enabled Codex SDK-context skills used for PayPal fixes and checks | Context use is demonstrated; it is not a runtime payment service or a prize guarantee. New read deadlines and dependency findings are in [TOOLKIT-MAINTENANCE.md](TOOLKIT-MAINTENANCE.md). |
+
+The complete family flow has 26 passing browser checks from [the usability review](FAMILY-FLOW-REVIEW.md). The maintenance follow-up adds 40 focused sponsor/payment contract passes and five post-install compatibility passes with no new provider call. Shared outstanding proof: actual in-app sandbox checkout → one credit/area unlock → same-order `get_order`. The owner's Mac/browser connection is unavailable here, so no new order or paid check was attempted. No new account or credential is needed for the code changes.
+
 | Commit | What |
 | --- | --- |
 | ff3f923 | Market Town merchant: Channel3 search, explicit goal draft, server-only adapter |
