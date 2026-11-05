@@ -1,5 +1,13 @@
 # Validation
 
+## November 4, 2026: subtle river flow
+
+Static surface marks were replaced by 59 sparse moving glints along the three existing narrow channels. This is cosmetic: no geography, bridge access, progression or financial behavior changed. Night/rain lower the highlights' contrast, and the existing ambient clock drives the effect.
+
+**Checks:** original asset/palette/renderer/syntax check passed. A focused isolated Chromium review confirmed motion on all three rivers, channel confinement over 100 seconds, hidden-tab pause/resume, static reduced motion, Night/Rain compatibility and stable geometry after initial uploads. It recorded no writes, external requests, page errors or financial state changes. The first geometry assertion compared the pre-rain count (12) with the first upload of existing rain meshes (15); the focused continuation warmed those meshes before comparing. No application fix or unrelated suite repeat was needed. Logs and original recording are in ignored `test-results/river-flow/`.
+
+[Actual river-motion clip](demos/river-flow/our-castle-river-flow.mp4): 7.20 seconds, silent, from isolated example data. [Provenance](demos/river-flow/README.md). Desktop Chromium only; no new physical-device, Safari, Firefox, paid AI or PayPal check. Existing videos and the sandbox insert gap are unchanged.
+
 ## November 4, 2026: closer world, parchment property names and a quiet contribution step
 
 The owner asked for larger visible architectural detail, less information in the contribution screenshot, and ivory/parchment property labels with better fonts. The camera now starts on the current earned home. Whole realm still restores the full six-district map. Property plaques use the original ivory/ink palette, bundled Uncial at 19 px (16 px on narrow screens), a small lock and clamped positioning to stay inside the map. World geometry, land, buildings, bridges, access, cards and light/weather are unchanged.

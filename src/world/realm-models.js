@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { createRiverCurrent } from './river-current.js';
 import { REALM_SIZE, REALM_DISTRICTS, REALM_BRIDGES, RIVER_PATHS, journeyLeg, realmAccess, bridgeAccess, riverAt } from '../core/realm.js';
 
 // One continuous woodland. The districts are meadow clearings in a single forest floor; narrow rivers are cut into that
@@ -133,8 +134,6 @@ export function createRealmModels({ builder, part: addPart, models, colours: C }
       for (let i = 2; i < path.length - 1; i += 2) {
         const [x0, z0] = path[i - 1], [x1, z1] = path[i + 1], [x, z] = path[i], angle = Math.atan2(x1 - x0, z1 - z0);
         if (Math.abs(x) > 81.5 || Math.abs(z) > 56.5 || nearBridge(x, z, 3)) continue;
-        const across = (hash(i, river.halfWidth * 10) - .5) * river.halfWidth;
-        box(group, x + Math.cos(angle) * across, L.water + .03, z - Math.sin(angle) * across, .12, .03, 1.2 + hash(i, 3) * 1.6, F.ripple, angle);
         for (const side of [-1, 1]) {
           if (hash(i * side, 7) > .55) continue;
           const reach = river.halfWidth + .15 + hash(i, side) * .5, bx = x + Math.cos(angle) * reach * side, bz = z - Math.sin(angle) * reach * side;
@@ -341,7 +340,7 @@ export function createRealmModels({ builder, part: addPart, models, colours: C }
   }
   // The ground, rivers and forest do not depend on progress. They are built once into their own group and kept, so a
   // milestone or preview rebuilds only the districts and bridges, as before.
-  let landscape = null;
+  let landscape = null, current = null;
   function woodland(group) {
     const started = performance.now(), land = ground(group), woods = new THREE.Group(); group.add(woods);
     // The forest covers most of the screen, so it is batched with flat Lambert paint, which is far cheaper to shade than
@@ -361,6 +360,7 @@ export function createRealmModels({ builder, part: addPart, models, colours: C }
       mesh.computeBoundingSphere(); mesh.userData.ownedMaterial = true; woods.add(mesh);
     }
     let instances = 0, meshes = 0; woods.traverse((o) => { if (o.isInstancedMesh) { meshes++; instances += o.count; } });
+    current = createRiverCurrent(L.water, F.ripple); group.add(current.mesh);
     landscape = { ground: land, forest: { ...counts, meshes, instances }, rivers: { count: RIVER_PATHS.length, ...rivers }, buildMs: Math.round(performance.now() - started) };
     return landscape;
   }
@@ -387,5 +387,8 @@ export function createRealmModels({ builder, part: addPart, models, colours: C }
     for (const b of REALM_BRIDGES) for (const [x, z] of [b.a, b.b]) spots.push({ kind: 'gate', bridge: b.id, x, z });
     return spots;
   }
-  return {woodland,build,home,finish,lightSpots,surfaces:()=>({...surfaceMeshes})};
+  return {woodland,build,home,finish,lightSpots,
+    stepCurrent: (seconds) => current?.tick(seconds), currentDebug: () => current?.debug() ?? null,
+    surfaces: () => ({...surfaceMeshes, ripples: current?.mesh}),
+  };
 }

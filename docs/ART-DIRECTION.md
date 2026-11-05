@@ -1,5 +1,11 @@
 # Art direction — preserve this visual family
 
+## Gentle river current (November 4, 2026)
+
+Reference lock: the owner's existing woodland map and request for a “slight flow.” Replace the static river highlights with sparse glints moving slowly along the same three channels. The forest, river widths, buildings and bridges stay fixed. Preserve the original pixel renderer and palette; dim the highlights with Night and Rain.
+
+One instance batch uses the existing ambient clock, without another timer or render loop. Reduced motion keeps the surface still; hidden tabs stop updates and resume without a jump.
+
 ## Larger world, quiet contributions, parchment names (November 4, 2026)
 
 Current references: [home close-up](screenshots/home-close-detail.png), [ivory nameplates](screenshots/realm-parchment.png), [castle detail](screenshots/citadel-parchment-detail.png), [contribution step](screenshots/contribution-quiet.png). Captured from isolated example data; no payment or live-weather evidence.

@@ -293,6 +293,7 @@ export function createBoardScene(container, { reducedMotion = false, onEvent = (
   }
 
   function ambientStep(seconds) {
+    realmModels.stepCurrent(seconds);
     court.tick(seconds);
     for (const r of rotators) r.group.rotation[r.axis] = seconds * r.speed;
     for (const g of grazers) {
@@ -374,8 +375,10 @@ export function createBoardScene(container, { reducedMotion = false, onEvent = (
     hemi.groundColor.setHex(look.ground); hemi.intensity = look.hemi * (wet ? (night ? 0.85 : 0.7) : dull ? 0.84 : 1);
     sun.color.setHex(look.sun); sun.intensity = look.sunI * (wet ? 0.3 : dull ? 0.5 : 1); sun.position.set(...look.sunAt);
     rain.streaks.material.color.setHex(night ? 0x9db6cf : 0xd0e2ee);
-    const { ground, water } = realmModels.surfaces();
+    const { ground, water, ripples } = realmModels.surfaces();
     water?.material.color.setHex(look.water); if (wet) water?.material.color.multiplyScalar(0.82);
+    ripples?.material.color.setHex(look.water).lerp(new THREE.Color(0x9abfc1), night ? .22 : .6);
+    if (wet) ripples?.material.color.multiplyScalar(0.82);
     ground?.material.color.setHex(wet ? 0xbcc7c5 : 0xffffff);
     // Wet roofs and walls: a lower roughness gives the standard materials a damp sheen.
     for (const material of builder.materials.values()) material.roughness = wet ? 0.5 : 0.87;
@@ -579,7 +582,7 @@ export function createBoardScene(container, { reducedMotion = false, onEvent = (
       const t = groups.token.position;
       return { spaces, travelers: toScreen(t.x, t.y + 1.5, t.z), canvas: { left: rect.left, top: rect.top, width: rect.width, height: rect.height } };
     },
-    debug: () => ({ region: REALM_SIZE, estateLevel: state.estateLevel, view: { ...view }, previewFeature: state.previewFeature, tier: state.builtTier, position: state.position, shownPosition, gardens: state.gardens, crest: { ...state.crest }, playMode: state.playMode, animating, frames, ambient: Boolean(ambientTimer), ambientFrames, grazers: grazers.length, butterflies: flutterers.length, court: court.debug(), districts: realm.districts.map(({id,open,status,greyPaint,drawMeshes,hues})=>({id,open,status,greyPaint,drawMeshes,hues})), bridges: realm.bridges.map(({id,open,panels,gate,river})=>({id,open,gate,river,raised:panels.some(p=>Math.abs(p.group.rotation.z)>.01)})), landscape: realm.landscape, atmosphere: atmosphereDebug(), render: { ...perf, averageMs: perf.draws ? perf.totalMs / perf.draws : 0, geometries: renderer.info.memory.geometries } }),
+    debug: () => ({ region: REALM_SIZE, estateLevel: state.estateLevel, view: { ...view }, previewFeature: state.previewFeature, tier: state.builtTier, position: state.position, shownPosition, gardens: state.gardens, crest: { ...state.crest }, playMode: state.playMode, animating, frames, ambient: Boolean(ambientTimer), ambientFrames, grazers: grazers.length, butterflies: flutterers.length, court: court.debug(), districts: realm.districts.map(({id,open,status,greyPaint,drawMeshes,hues})=>({id,open,status,greyPaint,drawMeshes,hues})), bridges: realm.bridges.map(({id,open,panels,gate,river})=>({id,open,gate,river,raised:panels.some(p=>Math.abs(p.group.rotation.z)>.01)})), landscape: realm.landscape, riverCurrent: realmModels.currentDebug(), atmosphere: atmosphereDebug(), render: { ...perf, averageMs: perf.draws ? perf.totalMs / perf.draws : 0, geometries: renderer.info.memory.geometries } }),
     dispose() { for (const [name,fn,options] of interactions) renderer.domElement.removeEventListener(name,fn,options); clearInterval(ambientTimer); observer?.disconnect(); court?.dispose(); for (const g of Object.values(groups)) disposeGroup(g); flutterGeo?.dispose(); builder?.dispose(); pipeline?.dispose(); renderer?.dispose(); },
   };
 
