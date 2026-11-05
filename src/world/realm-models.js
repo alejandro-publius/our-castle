@@ -250,8 +250,14 @@ export function createRealmModels({ builder, part: addPart, models, colours: C }
       box(g,side*.93,1.56,i*.23,.035,.88,.055,cut);
     for (const y of [1.08,2.02]) box(g,0,y,.81,1.44,.045,.04,shade);
     models.shield(g,0,1.67,.83,flag,.84);
+    // Shallow laurel cuts frame the crest without adding another lawn ornament.
+    for(const side of [-1,1]) {
+      part(g,'box',side*.65,1.53,.818,.045,.59,.035,cut,0,-side*.24);
+      for(let i=0;i<3;i++)
+        part(g,'rock',side*(.59+i*.055),1.34+i*.17,.846,.22,.12,.06,shade,0,-side*.5);
+    }
     // The plinth stays square to the lanes; the sculpted animal turns into a three-quarter profile.
-    const stag = new THREE.Group(); stag.rotation.y = -.45; g.add(stag);
+    const stag = new THREE.Group(); stag.rotation.y = -.20; g.add(stag);
     const rod = (a,b,width,colour=stone) => {
       const dx=b[0]-a[0],dy=b[1]-a[1],dz=b[2]-a[2],length=Math.hypot(dx,dy,dz);
       part(stag,'round',(a[0]+b[0])/2,(a[1]+b[1])/2,(a[2]+b[2])/2,width,length,width,colour,
@@ -278,22 +284,23 @@ export function createRealmModels({ builder, part: addPart, models, colours: C }
       }
       const [hx,hy,hz]=points.at(-1);
       box(stag,hx,hy-.035,hz+.04,.26,.18,.36,shade);
-      box(stag,hx,hy-.025,hz+.075,.035,.18,.36,cut);
+      box(stag,hx,hy-.025,hz+.075,.05,.18,.36,cut);
     }
     rock(stag,0,5.42,1.07,.65,.76,.73,stone);
     rock(stag,0,5.2,1.49,.45,.32,.58,C.cream);
     box(stag,0,5.09,1.68,.29,.035,.045,cut);
     for(const side of [-1,1]) {
-      box(stag,side*.29,5.48,1.25,.065,.065,.13,C.dark);
+      box(stag,side*.29,5.48,1.25,.08,.08,.13,C.dark);
+      rock(stag,side*.27,5.57,1.23,.18,.09,.19,stone);
       box(stag,side*.13,5.19,1.76,.045,.05,.035,cut);
       part(stag,'rock',side*.39,5.73,.82,.25,.63,.3,stone,0,-side*.58);
       part(stag,'rock',side*.43,5.74,.94,.12,.36,.1,shade,0,-side*.58);
       // Three main antler segments plus brow and crown tines, in restrained old gold.
-      const a=[side*.2,5.7,.84],b=[side*.43,6.08,.5],c=[side*.83,6.53,.2],d=[side*.98,6.89,0];
-      rod(a,b,.15,C.gold);rod(b,c,.12,C.gold);rod(c,d,.09,C.gold);
-      rod(b,[side*.18,6.43,.83],.10,C.gold);
-      rod([side*.65,6.32,.34],[side*.52,6.74,.64],.09,C.gold);
-      rod(c,[side*1.2,6.82,.36],.09,C.gold);
+      const a=[side*.2,5.7,.84],b=[side*.50,6.08,.5],c=[side*.99,6.51,.2],d=[side*1.22,6.89,.12];
+      rod(a,b,.22,C.gold);rod(b,c,.18,C.gold);rod(c,d,.14,C.gold);
+      rod(b,[side*.27,6.42,.91],.14,C.gold);
+      rod([side*.74,6.29,.35],[side*.66,6.72,.74],.13,C.gold);
+      rod(c,[side*1.48,6.78,.48],.13,C.gold);
       for(const [yy,zz] of [[4.32,.1],[4.39,.3],[4.43,.5]])
         box(stag,side*.46,yy,zz,.035,.17,.06,shade);
     }

@@ -6,6 +6,8 @@ The owner asked for at least one highly detailed lawn statue on a fancier estate
 
 Build one ivory stag on a carved, stepped plinth, with branching gilt antlers, chiseled facial details, articulated stone legs, cloven hooves and a small household-color shield plaque. Place it on the Royal Citadel front lawn at local (8.5, 15.4), between the two guest lanes, away from the gate and existing flower parterres. Keep its base aligned with the lawn; only the stag turns. No second statue, new interface text, reward rule or financial behavior. Use existing geometry/material batches and no animation loop. [Estate view](screenshots/citadel-statue.png) · [sculpture detail](screenshots/citadel-stag-detail.png).
 
+Minor refinement: retain that same reference lock and single statue. Turn the stag slightly toward the main view, separate the antler branches with widths that survive the pixel outlines, and sharpen brow/hoof cuts. Add only a shallow carved laurel around the existing crest. The base, location, paths and reward rules remain fixed.
+
 ## Game interface around the world (November 4, 2026)
 
 The owner rejected the surrounding website chrome, repeated explanations and disclaimers, while keeping the pixel world. The new target is a compact game frame: one header goal, a large realm, one collapsible household journal, and occasional utilities behind Areas, View and World settings. There is one general notice in the footer. Exact-amount consent and the actual source/status of a receipt stay attached to that action or record.
