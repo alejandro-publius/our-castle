@@ -13,6 +13,8 @@ export const DISTRICT_SCENERY = Object.freeze({
   market: 'A red-roofed market hall, three cottages, a well, a windmill and bunting.',
   garden: 'A blue-roofed cottage, a stone-ringed pond, a well, four vegetable rows and an orchard grove.',
   keep: 'Two crimson-capped watchtowers with long banners, a stone house and flower planters.',
+  wizard: 'A star-roofed observatory, telescope, book stand and herb beds.',
+  rapunzel: 'An ivory tower, flower balcony, golden braid and a small rose garden.',
   palace: 'An ivory palace with rose roofs, five gold-tipped spires, illuminated arched windows, a fountain and rose parterres.',
   castle: 'Two cream side halls under crimson and cobalt roofs, two tall spired towers, a curtain wall with crest shields and turrets, flower planters and bunting.',
 });
@@ -23,18 +25,21 @@ export const DISTRICT_SUMMARY = Object.freeze({
   market: 'Market hall, striped stalls, workshop and windmill',
   garden: 'Pond, well, vegetable rows and an orchard',
   keep: 'Stone keep with four towers and two watchtowers',
+  wizard: 'Starred spire, brass telescope and a wizard’s study',
+  rapunzel: 'Ivory tower, flower balcony and a golden braid',
   palace: 'Ivory towers, rose roofs and a fountain garden',
   castle: 'Spired citadel, two side halls and a curtain wall',
 });
 // The deed's title band: one existing heraldic token per district (CSS custom properties in app.css).
-export const DEED_COLOURS = Object.freeze({ cottage: 'emerald', manor: 'cobalt', market: 'crimson', garden: 'leaf', keep: 'timber', castle: 'violet', palace: 'rose' });
+export const DEED_COLOURS = Object.freeze({ cottage: 'emerald', manor: 'cobalt', market: 'crimson', garden: 'leaf', keep: 'timber', castle: 'violet', palace: 'rose', wizard: 'violet', rapunzel: 'emerald' });
 
 const MARKET = ESTATE_MILESTONES.find((r) => r.key === 'market');
 /** The reward entry that opens a district: its home tier, the village quarter, or the habit garden. */
 export function rewardIdFor(districtId) {
   const d = districtById(districtId);
   if (!d) return null;
-  if (d.id === 'palace') return 'home:castle';
+  if (['palace', 'rapunzel'].includes(d.id)) return 'home:castle';
+  if (d.id === 'wizard') return 'home:keep';
   if (d.homeTier !== null) return `home:${TIERS[d.homeTier].key}`;
   return d.id === 'market' ? `estate:${MARKET.key}` : 'habit:garden';
 }

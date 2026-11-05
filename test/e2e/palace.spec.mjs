@@ -12,7 +12,7 @@ test('Rosewind can be explored while locked; the completed goal earns its own de
   await chooseDistrict(page, 'palace');
   await expect(page.locator('#realm-focus-status')).toHaveText('Rosewind Palace · $240.00 to unlock');
   const locked = await scene(page);
-  expect(locked.districts).toHaveLength(7);
+  expect(locked.districts).toHaveLength(9);
   expect(locked.districts.find((d) => d.id === 'palace')).toMatchObject({ open: false, greyPaint: false });
   expect(locked.bridges.find((b) => b.id === 'palace-bridge')).toMatchObject({ open: false, raised: true, river: 'rose' });
   expect(writes).toEqual([]);
@@ -20,7 +20,7 @@ test('Rosewind can be explored while locked; the completed goal earns its own de
   expect(unchanged.progress).toEqual(before.progress);
   await openMenu(page, 'world-settings'); await page.selectOption('#time-mode', 'night');
   await openMenu(page, 'world-settings'); await page.selectOption('#weather-mode', 'rain');
-  expect((await scene(page)).atmosphere).toMatchObject({ period: 'night', weather: 'rain', pointLights: 7, pointLightCapacity: 7, pools: 105 });
+  expect((await scene(page)).atmosphere).toMatchObject({ period: 'night', weather: 'rain', pointLights: 9, pointLightCapacity: 9, pools: 135 });
   await page.locator('#world canvas').screenshot({ path: info.outputPath('palace-night-rain.png') });
   await page.getByRole('tab', { name: /House/ }).click();
   await page.locator('#house-name').fill('House of Rosewind');
@@ -37,21 +37,23 @@ test('Rosewind can be explored while locked; the completed goal earns its own de
     if (!(await page.locator('#deed-next').isVisible())) break;
     await page.locator('#deed-next').click();
   }
-  expect(names).toEqual(['Manor Gardens', 'Market Town', 'Stone Keep', 'Royal Citadel', 'Rosewind Palace']);
+  expect(names).toEqual(['Manor Gardens', 'Market Town', 'Stone Keep', 'Starfall Observatory', 'Royal Citadel', 'Rosewind Palace', 'Rapunzel’s Tower']);
   await expect(page.locator('#deed-earned')).toHaveText('Unlocked · 100% milestone');
   const art = page.locator('#deed-art');
   await expect(art).toHaveJSProperty('naturalWidth', 320);
   await expect(art).toHaveJSProperty('naturalHeight', 176);
-  await expect(art).toHaveAttribute('src', 'assets/area-cards/palace.png');
+  await expect(art).toHaveAttribute('src', 'assets/area-cards/rapunzel.png');
   await expect(page.locator('#deed')).not.toContainText(/Evidence:|guests|Realm keepsake/);
   await page.locator('#deed-dialog').screenshot({ path: info.outputPath('rosewind-deed.png') });
   const count = writes.length;
-  await page.getByRole('button', { name: 'Visit Rosewind Palace' }).click();
+  await page.getByRole('button', { name: 'Visit Rapunzel’s Tower' }).click();
+  await chooseDistrict(page,'palace');
+  await page.locator('#realm-markers [data-district="palace"]').focus();
   await expect(page.locator('#realm-markers [data-district="palace"]')).toBeFocused();
   expect((await scene(page)).view.focus).toBe('palace');
   const earned = await scene(page);
   expect(earned.bridges.find((b) => b.id === 'palace-bridge')).toMatchObject({ open: true, raised: false, gate: false });
-  expect(earned.districts.filter((d) => d.open).map((d) => d.id)).toEqual(['cottage', 'manor', 'market', 'keep', 'castle', 'palace']);
+  expect(earned.districts.filter((d) => d.open).map((d) => d.id)).toEqual(['cottage', 'manor', 'market', 'keep', 'wizard', 'castle', 'palace', 'rapunzel']);
   expect(earned.court.capacity).toBe(20);
   expect(earned.court.guests.filter((p) => p.district === 'palace').map((p) => p.name)).toEqual(['Princess Sorrel', 'Lyra', 'Alma', 'Lark']);
   expect(earned.court.guests.filter((p) => p.district === 'cottage')).toHaveLength(2);

@@ -1,7 +1,8 @@
 import * as THREE from 'three';
+import { createWoodlandLegends } from './woodland-legends.js';
 import { createPrincessPalace } from './princess-palace.js';
 import { createRiverCurrent } from './river-current.js';
-import { REALM_SIZE, REALM_BOUNDS, REALM_DISTRICTS, REALM_BRIDGES, RIVER_PATHS, journeyLeg, realmAccess, bridgeAccess, riverAt } from '../core/realm.js';
+import { REALM_SIZE, REALM_BOUNDS, REALM_DISTRICTS, REALM_LEGENDS, REALM_BRIDGES, RIVER_PATHS, journeyLeg, realmAccess, bridgeAccess, riverAt } from '../core/realm.js';
 
 // One continuous woodland. The districts are meadow clearings in a single forest floor; narrow rivers are cut into that
 // floor over a shallow water bed and pass under the middle of every bridge. Locked districts keep their colours: the
@@ -28,7 +29,7 @@ function clearingDepth(x, z, d) {
   const corner = (.89 - ax / d.width - az / d.depth) * Math.min(d.width, d.depth) * .7;
   return Math.min(d.width / 2 - ax, d.depth / 2 - az, corner);
 }
-const deepestClearing = (x, z) => REALM_DISTRICTS.reduce((best, d) => Math.max(best, clearingDepth(x, z, d)), -Infinity);
+const deepestClearing = (x, z) => [...REALM_DISTRICTS, ...REALM_LEGENDS].reduce((best, d) => Math.max(best, clearingDepth(x, z, d)), -Infinity);
 const nearBridge = (x, z, margin) => REALM_BRIDGES.some(({ a, b }) => {
   const dx = b[0] - a[0], dz = b[1] - a[1], t = Math.max(-.15, Math.min(1.15, ((x - a[0]) * dx + (z - a[1]) * dz) / (dx * dx + dz * dz)));
   return Math.hypot(x - a[0] - dx * t, z - a[1] - dz * t) < margin;
@@ -37,6 +38,7 @@ const nearBridge = (x, z, margin) => REALM_BRIDGES.some(({ a, b }) => {
 export function createRealmModels({ builder, part: addPart, models, colours: C }) {
   let part = addPart;
   const palace = createPrincessPalace({ part: addPart, models, colours: C });
+  const legends = createWoodlandLegends({ part: addPart, models, colours: C });
   builder.geo.trunk = new THREE.CylinderGeometry(.5, .5, 1, 5);
   const box=(g,x,y,z,w,h,d,c,ry=0,rz=0)=>part(g,'box',x,y,z,w,h,d,c,ry,rz);
   const rock=(g,x,y,z,w,h,d,c)=>part(g,'rock',x,y,z,w,h,d,c);
@@ -354,6 +356,8 @@ export function createRealmModels({ builder, part: addPart, models, colours: C }
       models.bunting(group,-17,18,17,18,[C.red,C.gold,C.blue]);
     }
     if(d.id==='palace') palace(group,flag);
+    if(d.id==='wizard') legends.wizard(group,flag);
+    if(d.id==='rapunzel') legends.rapunzel(group,flag);
     if(d.id==='market'){
       models.extras(group,2,flag,null,{ramparts:false});
       models.cottage(group,-6,-1,{w:6,h:4,d:5,roofColor:C.red,shutters:C.blue});models.banner(group,-6,3,1.6,flag,1,1.3);
@@ -445,6 +449,7 @@ export function createRealmModels({ builder, part: addPart, models, colours: C }
       mesh.computeBoundingSphere(); mesh.userData.ownedMaterial = true; woods.add(mesh);
     }
     let instances = 0, meshes = 0; woods.traverse((o) => { if (o.isInstancedMesh) { meshes++; instances += o.count; } });
+    for(const d of REALM_LEGENDS){const secret=new THREE.Group();secret.position.set(d.x,0,d.z);group.add(secret);legends.sword(secret);builder.flush();finish(secret);}
     current = createRiverCurrent(L.water, F.ripple); group.add(current.mesh);
     landscape = { ground: land, forest: { ...counts, meshes, instances }, rivers: { count: RIVER_PATHS.length, ...rivers }, buildMs: Math.round(performance.now() - started) };
     return landscape;
@@ -466,7 +471,7 @@ export function createRealmModels({ builder, part: addPart, models, colours: C }
   // Where warm night light falls: in front of each district's main door, and at both gates of every bridge.
   function lightSpots() {
     const spots = REALM_DISTRICTS.map((d) => {
-      const [x, z] = d.homeTier !== null ? [0, 4.6 * d.scale] : d.id === 'market' ? [-6, 2.4] : d.id === 'palace' ? [0, 6.5] : [7, -5.6];
+      const [x, z] = d.homeTier !== null ? [0, 4.6 * d.scale] : d.id === 'market' ? [-6, 2.4] : d.id === 'palace' ? [0, 6.5] : d.id === 'wizard' ? [0, 3.4] : d.id === 'rapunzel' ? [0, 5] : [7, -5.6];
       return { kind: 'door', district: d.id, x: d.x + x, z: d.z + z };
     });
     for (const b of REALM_BRIDGES) for (const [x, z] of [b.a, b.b]) spots.push({ kind: 'gate', bridge: b.id, x, z });

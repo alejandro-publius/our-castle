@@ -128,25 +128,28 @@ test('several new areas queue one at a time, and Visit focuses the right distric
   const writes = trackWrites(page);
   await ready(page);
   await foundHouse(page);
-  await pay(page, '135.00'); // $60 → $195: the Manor, the Market and the Keep
+  await pay(page, '135.00'); // $60 → $195: Manor, Market, Keep and Observatory
   await expect(dialog(page)).toHaveAttribute('open', '');
-  await expect(page.locator('#deed-count')).toHaveText('1 / 3');
+  await expect(page.locator('#deed-count')).toHaveText('1 / 4');
   await expect(page.locator('#deed-name')).toHaveText('Manor Gardens');
   const before = writes.length;
-  await page.getByRole('button', { name: 'Next deed (2 of 3)' }).click();
+  await page.getByRole('button', { name: 'Next deed (2 of 4)' }).click();
   await expect(page.locator('#deed-name')).toHaveText('Market Town');
   await expect(page.locator('#deed-earned')).toHaveText('Unlocked · 40% milestone');
-  await page.getByRole('button', { name: 'Next deed (3 of 3)' }).click();
+  await page.getByRole('button', { name: 'Next deed (3 of 4)' }).click();
   await expect(page.locator('#deed-name')).toHaveText('Stone Keep');
+  await page.getByRole('button',{name:'Next deed (4 of 4)'}).click();
+  await expect(page.locator('#deed-name')).toHaveText('Starfall Observatory');
+  await expect(page.locator('#deed-earned')).toHaveText('Unlocked · 60% milestone');
   await expect(page.locator('#deed-next')).toBeHidden();
   await expect(page.locator('#deed-close')).toHaveText('Close');
   await page.locator('#deed-visit').focus();
   await page.keyboard.press('Enter');
   await expect(dialog(page)).not.toHaveAttribute('open', '');
-  const keep = page.locator('#realm-markers [data-district="keep"]');
+  const keep = page.locator('#realm-markers [data-district="wizard"]');
   await expect(keep).toBeFocused();
   await expect(keep).toHaveAttribute('aria-pressed', 'true');
-  expect((await scene(page)).view.focus).toBe('keep');
+  expect((await scene(page)).view.focus).toBe('wizard');
   expect(await fullyVisible(keep)).toBe(true);
   expect(writes.slice(before)).toEqual([]);
 });

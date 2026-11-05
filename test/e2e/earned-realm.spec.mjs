@@ -101,7 +101,7 @@ test('one unlock frames the bridge, moves the family, plays the cue and opens on
   expect(result.events.at(-1).animating).toBe(false);
   expect(result.sound.played.filter((s) => s === 'bridge')).toHaveLength(1);
   expect(result.sound.played.filter((s) => s === 'fanfare')).toHaveLength(1);
-  expect(result.scene.districts).toHaveLength(7);
+  expect(result.scene.districts).toHaveLength(9);
   await page.locator('#deed-close').click(); await page.reload(); await page.waitForFunction(() => document.body.dataset.ready === 'true');
   await expect(page.locator('#deed-dialog')).not.toHaveAttribute('open', '');
 });

@@ -79,7 +79,7 @@ select,input,textarea,button { font:inherit; }
 .hud-menu>summary { list-style:none; display:flex; align-items:center; justify-content:center; gap:7px; }
 .hud-menu>summary::-webkit-details-marker { display:none; }
 .hud-menu[open]>summary { border-color:var(--brass); }
-.menu-panel { position:absolute; z-index:6; top:calc(100% + 8px); left:0; padding:14px; border:1px solid var(--line); background:var(--bg); color:var(--ivory); box-shadow:0 8px 24px #0005; max-height:calc(100svh - 230px); overflow:auto; }
+.menu-panel { position:absolute; z-index:6; top:calc(100% + 8px); left:0; padding:14px; border:1px solid var(--line); background:var(--bg); color:var(--ivory); box-shadow:0 8px 24px #0005; max-height:min(calc(100svh - 230px),var(--world-menu-height,320px)); overflow:auto; }
 .settings-panel { width:292px; left:auto; right:0; }
 .settings-panel h3 { margin:0 0 15px; font-size:18px; }
 .world-navigation { display:grid; gap:12px; width:220px; }
@@ -410,7 +410,7 @@ button { font: inherit; }
  .chip,.hud-menu>summary { padding:9px 10px; }
  .board-foot { left:10px; right:10px; bottom:10px; gap:6px; }
  .area-status { font-size:13px; padding:9px 10px; }
- .menu-panel { max-height:calc(100svh - 240px); }
+ .menu-panel { max-height:min(calc(100svh - 240px),var(--world-menu-height,320px)); }
  .settings-panel { width:min(280px,calc(100vw - 44px)); }
  #camera-menu .menu-panel { left:auto; right:0; }
  .realm-marker { max-width:164px; padding:8px 10px; gap:6px; }.realm-marker strong { font-size:16px; }
@@ -442,3 +442,9 @@ button { font: inherit; }
 .verification-details .checks { margin-top:8px; }
 .verification-title { font-family:inherit; font-size:18px; }
 .verification-title.verified { color:#33533e; }
+
+/* A quiet discovery glint: a full touch/keyboard target, with no permanent title or reward panel. */
+.realm-legend { position:absolute; pointer-events:auto; width:44px; height:44px; min-width:44px; padding:0; transform:translate(-50%,-100%); border:0; background:transparent; color:#f4d17e; cursor:pointer; text-shadow:0 1px 2px #142c34,0 0 8px #f4d17e80; }
+.realm-legend span { display:block; font:24px/44px Georgia,serif; }
+.realm-legend:hover span,.realm-legend[aria-pressed='true'] span { color:#fff3bc; transform:scale(1.16); }
+.realm-legend:focus-visible { outline:2px solid var(--brass); outline-offset:1px; background:#142c34bb; }

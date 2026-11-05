@@ -74,7 +74,10 @@ test('only districts the server newly opens for the same household and goal prod
     // One large contribution opens several districts at once, in realm order.
     prev = state;
     state = (await pay(s, state, 12000, 'completed')).state; // $75 → $195 (65%)
-    assert.deepEqual(newlyOpenedDistricts(prev, state), ['market', 'keep']);
+    assert.deepEqual(newlyOpenedDistricts(prev, state), ['market', 'keep', 'wizard']);
+    assert.equal(districtDeed(state,'wizard').art,'assets/area-cards/wizard.png');
+    assert.match(districtDeed(state,'wizard').condition,/60%/);
+    assert.equal(rewardIdFor('sword-stone'),null);
 
     // A self-reported bill habit opens the Woodland Garden.
     prev = state;
@@ -85,9 +88,10 @@ test('only districts the server newly opens for the same household and goal prod
     prev = state;
     const final = await pay(s, state, 10500, 'completed', 'palace-final');
     state = final.state;
-    assert.deepEqual(newlyOpenedDistricts(prev, state), ['castle', 'palace']);
+    assert.deepEqual(newlyOpenedDistricts(prev, state), ['castle', 'palace', 'rapunzel']);
     const palace = districtDeed(state, 'palace');
     assert.equal(palace.status, 'earned');
+    assert.equal(districtDeed(state,'rapunzel').status,'earned');
     assert.equal(palace.colour, 'rose');
     assert.equal(palace.art, 'assets/area-cards/palace.png');
     assert.deepEqual(palace.court.names, ['Princess Sorrel', 'Lyra', 'Alma', 'Lark']);
@@ -97,6 +101,7 @@ test('only districts the server newly opens for the same household and goal prod
     prev = state;
     state = await refundOf(state, final.contribution);
     assert.equal(districtDeed(state, 'palace').status, 'keepsake');
+    assert.equal(districtDeed(state,'rapunzel').status,'keepsake');
     assert.equal(districtDeed(state, 'palace').open, true);
     assert.deepEqual(newlyOpenedDistricts(prev, state), []);
 
@@ -150,6 +155,6 @@ test('each deed shows the real buildings, guests, exact condition and honest evi
     assert.equal(sandbox.stamp, 'Realm keepsake · PayPal sandbox · test money');
 
     // Every district maps to the reward that opens it.
-    assert.deepEqual(['cottage', 'manor', 'market', 'garden', 'keep', 'castle', 'palace'].map(rewardIdFor), ['home:cottage', 'home:manor', 'estate:market', 'habit:garden', 'home:keep', 'home:castle', 'home:castle']);
+    assert.deepEqual(['cottage', 'manor', 'market', 'garden', 'keep', 'wizard', 'castle', 'palace', 'rapunzel'].map(rewardIdFor), ['home:cottage', 'home:manor', 'estate:market', 'habit:garden', 'home:keep', 'home:keep', 'home:castle', 'home:castle', 'home:castle']);
   } finally { await s.close(); }
 });

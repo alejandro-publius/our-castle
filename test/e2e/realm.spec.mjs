@@ -28,13 +28,13 @@ test('future castles are separate locked destinations in one green woodland behi
   const errors=[];page.on('pageerror',e=>errors.push(e.message));
   const initial=await scene(page),before=await(await request.get('/api/state')).json();
   expect(initial.region).toEqual({width:228,depth:132,centerX:32,centerZ:0});
-  expect(initial.districts).toHaveLength(7);
+  expect(initial.districts).toHaveLength(9);
   expect(initial.districts.filter(d=>d.open).map(d=>d.id)).toEqual(['cottage']);
   // Locked is shown by labels, raised leaves and closed gates. Every district keeps its full colours.
   expect(initial.districts.every(d=>!d.greyPaint&&d.drawMeshes>0&&d.hues>=4)).toBe(true);
   expect(initial.bridges.every(b=>!b.open&&b.raised&&b.gate)).toBe(true);
-  expect(new Set(initial.bridges.map(b=>b.river))).toEqual(new Set(['main','west','east','rose']));
-  expect(initial.landscape.rivers.count).toBe(4);
+  expect(new Set(initial.bridges.map(b=>b.river))).toEqual(new Set(['main','west','east','rose','starfall','braid']));
+  expect(initial.landscape.rivers.count).toBe(6);
   expect(initial.landscape.forest.trees).toBeGreaterThan(300);
   // The woodland colour check uses Day explicitly; Auto would follow this machine's clock (atmosphere.spec covers it).
   await openMenu(page, 'world-settings'); await page.selectOption('#time-mode','day');await openMenu(page, 'world-settings'); await page.selectOption('#weather-mode','clear');

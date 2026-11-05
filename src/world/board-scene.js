@@ -5,7 +5,7 @@ import { CREST_FIELDS, ROUTE_LENGTH } from '../core/rules.js';
 import { addEstateGeometry, createEstateModels } from './estate-models.js';
 import { createEstateCourt } from './court.js';
 import { createRealmModels } from './realm-models.js';
-import { REALM_SIZE, REALM_BOUNDS, REALM_DISTRICTS, REALM_BRIDGES, REALM_ROUTE, homeDistrict, districtById, journeyLeg, journeyPosition } from '../core/realm.js';
+import { REALM_SIZE, REALM_BOUNDS, REALM_DISTRICTS, REALM_LEGENDS, REALM_BRIDGES, REALM_ROUTE, homeDistrict, districtById, legendById, viewLocation, journeyLeg, journeyPosition } from '../core/realm.js';
 
 // The playable woodland board. It extends the original art-preview vocabulary (MiniBuilder,
 // layered trees, antlered deer, stone towers) and renders through the original 90-colour
@@ -420,7 +420,7 @@ export function createBoardScene(container, { reducedMotion = false, onEvent = (
     const aspect = width / height; const narrow = width < 640;
     camera.updateMatrixWorld();
     let minX = Infinity; let maxX = -Infinity; let minY = Infinity; let maxY = -Infinity;
-    const focused = districtById(view.focus), bridge = REALM_BRIDGES.find((b) => b.id === view.crossing);
+    const focused = viewLocation(view.focus), bridge = REALM_BRIDGES.find((b) => b.id === view.crossing);
     const framed = bridge ? [districtById(bridge.from), districtById(bridge.to)] : focused ? [focused] : [];
     const frame = framed.length ? framed.flatMap((d) => [-1,1].flatMap(x=>[-1,1].flatMap(z=>[-2,d.height].map(y=>new THREE.Vector3(d.x+x*(d.width/2+2),y,d.z+z*(d.depth/2+2)))))) : FRAME_POINTS;
     for (const point of frame) {
@@ -442,7 +442,7 @@ export function createBoardScene(container, { reducedMotion = false, onEvent = (
     renderer.setSize(width, height, false); pipeline.setSize(width, height); draw();
   }
   function updateCamera() {
-    const focus = districtById(view.focus), bridge = REALM_BRIDGES.find((b) => b.id === view.crossing);
+    const focus = viewLocation(view.focus), bridge = REALM_BRIDGES.find((b) => b.id === view.crossing);
     const from = bridge && districtById(bridge.from), to = bridge && districtById(bridge.to);
     const x = bridge ? (from.x + to.x) / 2 : focus?.x ?? REALM_SIZE.centerX, z = bridge ? (from.z + to.z) / 2 : focus?.z ?? REALM_SIZE.centerZ;
     camera.position.set(x+Math.sin(view.angle)*180,150,z+Math.cos(view.angle)*180);
@@ -587,6 +587,10 @@ export function createBoardScene(container, { reducedMotion = false, onEvent = (
       if(!districtById(id))return;
       viewRevision++; Object.assign(view,{focus:id,crossing:null,zoom:1,panX:0,panY:0});updateCamera();resize();
     },
+    focusLegend(id) {
+      if(!legendById(id))return;
+      viewRevision++; Object.assign(view,{focus:id,crossing:null,zoom:1,panX:0,panY:0});updateCamera();resize();
+    },
     setPixelMode(on) { pipeline.configure({ pixelMode: on }); draw(); },
     /** Cosmetic light and weather: period 'day' | 'afternoon' | 'night', weather 'clear' | 'rain' | 'overcast'. */
     setAtmosphere({ period = atmosphere.period, weather = atmosphere.weather } = {}) {
@@ -606,13 +610,13 @@ export function createBoardScene(container, { reducedMotion = false, onEvent = (
       const t = groups.token.position;
       return { spaces, travelers: toScreen(t.x, t.y + 1.5, t.z), canvas: { left: rect.left, top: rect.top, width: rect.width, height: rect.height } };
     },
-    debug: () => ({ region: REALM_SIZE, estateLevel: state.estateLevel, view: { ...view }, previewFeature: state.previewFeature, tier: state.builtTier, position: state.position, shownPosition, gardens: state.gardens, crest: { ...state.crest }, playMode: state.playMode, animating, frames, ambient: Boolean(ambientTimer), ambientFrames, grazers: grazers.length, butterflies: flutterers.length, court: court.debug(), districts: realm.districts.map(({id,open,status,greyPaint,drawMeshes,hues})=>({id,open,status,greyPaint,drawMeshes,hues})), bridges: realm.bridges.map(({id,open,panels,gate,river})=>({id,open,gate,river,raised:panels.some(p=>Math.abs(p.group.rotation.z)>.01)})), landscape: realm.landscape, riverCurrent: realmModels.currentDebug(), surround: pipeline.cloudSurroundDebug(), atmosphere: atmosphereDebug(), render: { ...perf, averageMs: perf.draws ? perf.totalMs / perf.draws : 0, geometries: renderer.info.memory.geometries } }),
+    debug: () => ({ region: REALM_SIZE, estateLevel: state.estateLevel, view: { ...view }, previewFeature: state.previewFeature, tier: state.builtTier, position: state.position, shownPosition, gardens: state.gardens, crest: { ...state.crest }, playMode: state.playMode, animating, frames, ambient: Boolean(ambientTimer), ambientFrames, grazers: grazers.length, butterflies: flutterers.length, court: court.debug(), legends: REALM_LEGENDS.map(({id,x,z})=>({id,x,z})), districts: realm.districts.map(({id,open,status,greyPaint,drawMeshes,hues})=>({id,open,status,greyPaint,drawMeshes,hues})), bridges: realm.bridges.map(({id,open,panels,gate,river})=>({id,open,gate,river,raised:panels.some(p=>Math.abs(p.group.rotation.z)>.01)})), landscape: realm.landscape, riverCurrent: realmModels.currentDebug(), surround: pipeline.cloudSurroundDebug(), atmosphere: atmosphereDebug(), render: { ...perf, averageMs: perf.draws ? perf.totalMs / perf.draws : 0, geometries: renderer.info.memory.geometries } }),
     dispose() { for (const [name,fn,options] of interactions) renderer.domElement.removeEventListener(name,fn,options); clearInterval(ambientTimer); observer?.disconnect(); court?.dispose(); for (const g of Object.values(groups)) disposeGroup(g); flutterGeo?.dispose(); builder?.dispose(); pipeline?.dispose(); renderer?.dispose(); },
   };
 
   function districtsOnScreen(){
     const rect=container.getBoundingClientRect();
-    return {focus:view.focus,points:REALM_DISTRICTS.map(d=>{
+    return {focus:view.focus,points:[...REALM_DISTRICTS,...REALM_LEGENDS].map(d=>{
       const point=new THREE.Vector3(d.x,d.height+1,d.z).project(camera);
       return {id:d.id,x:(point.x+1)/2*rect.width,y:(1-point.y)/2*rect.height,width:rect.width,height:rect.height};
     })};

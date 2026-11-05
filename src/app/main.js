@@ -12,7 +12,7 @@ import { isCounted, nextAction } from '../core/journey.js';
 import { districtDeed, newlyOpenedDistricts } from '../core/deeds.js';
 import { TIME_MODES, WEATHER_MODES, resolveAtmosphere } from '../core/atmosphere.js';
 import { WEATHER_TTL_MS, createWeatherClient } from './local-weather.js';
-import { REALM_DISTRICTS, realmAccess, districtById, homeDistrict } from '../core/realm.js';
+import { REALM_DISTRICTS, REALM_LEGENDS, realmAccess, districtById, homeDistrict } from '../core/realm.js';
 import { ledgerTrail } from '../core/ledger.js';
 
 // ---------- small helpers ----------
@@ -477,26 +477,38 @@ function renderRealmNavigation() {
     h('strong', {}, d.name), h('small', {}, d.open ? 'Open district' : `Locked · ${d.percent === null ? 'bill habit' : `${d.percent}%`}`))));
   $('#realm-markers').replaceChildren(...regions.map((d) => h('button', { type: 'button', class: 'realm-marker', 'data-district': d.id, 'data-status': d.status, 'aria-label': `Inspect ${d.name} on the map`, hidden: true },
     !d.open && h('span', { class: 'realm-lock', 'aria-hidden': 'true', html: lock }), h('strong', {}, d.name))));
+  $('#realm-markers').append(h('button', {type:'button',id:'sword-glint',class:'realm-legend','data-legend':'sword-stone','aria-label':'Investigate the glint in the trees','aria-pressed':'false',hidden:true},h('span',{'aria-hidden':'true'},'✦')));
   $('#realm-focus-status').textContent = 'Select a district.';
 }
 function syncRealmMarkers({focus,points}){
   const map=$('.realm-map'),focused=focus?'true':'false';if(map.dataset.focused!==focused)map.dataset.focused=focused;
-  // On a phone, seven full plaques would cover the overview. Keep the current home named;
+  const board=map.closest('.board-shell'),menuHeight=Math.max(120,Math.floor(map.clientHeight-110))+'px';
+  if(board.style.getPropertyValue('--world-menu-height')!==menuHeight)board.style.setProperty('--world-menu-height',menuHeight);
+  // On a phone, full property plaques would cover the overview. Keep the current home named;
   // all districts stay available in Areas and a focused district always gets its full plaque.
   const compactOverview = !focus && map.clientWidth < 640;
   const home = homeDistrict(state?.board?.builtTier ?? 0).id;
-  for(const point of points){
-    const el=$(`#realm-markers [data-district="${point.id}"]`);if(!el)continue;
-    const visible = (!focus || point.id === focus) && (!compactOverview || point.id === home || el === document.activeElement) && point.x > 0 && point.x < point.width && point.y > 0 && point.y < point.height;
+  const occupied=[];
+  const priority=(p)=>document.activeElement?.dataset?.district===p.id?3:p.id===home?2:0;
+  for(const point of [...points].sort((a,b)=>priority(b)-priority(a))){
+    const legend = point.id === 'sword-stone';
+    const el=legend ? $('#sword-glint') : $(`#realm-markers [data-district="${point.id}"]`);if(!el)continue;
+    const visible = (!focus || point.id === focus || legend && ['garden','keep'].includes(focus)) && (!compactOverview || legend || point.id === home || el === document.activeElement) && point.x > 0 && point.x < point.width && point.y > 0 && point.y < point.height;
     el.hidden = !visible;
     if (visible) {
-      const x = Math.max(el.offsetWidth / 2 + 8, Math.min(point.width - el.offsetWidth / 2 - 8, point.x)) + 'px';
-      const y = Math.max(el.offsetHeight + 8, Math.min(point.height - 8, point.y)) + 'px';
+      const px=Math.max(el.offsetWidth/2+8,Math.min(point.width-el.offsetWidth/2-8,point.x));
+      const py=Math.max(el.offsetHeight+8,Math.min(point.height-8,point.y));
+      const bounds={left:px-el.offsetWidth/2,right:px+el.offsetWidth/2,top:py-el.offsetHeight,bottom:py};
+      if(!legend&&!focus){
+        if(el!==document.activeElement&&occupied.some(b=>bounds.left<b.right+6&&bounds.right>b.left-6&&bounds.top<b.bottom+6&&bounds.bottom>b.top-6)){el.hidden=true;continue;}
+        occupied.push(bounds);
+      }
+      const x=px+'px',y=py+'px';
       if (el.style.left !== x) el.style.left = x;
       if (el.style.top !== y) el.style.top = y;
     }
   }
-  for(const button of $$('#realm-districts button, #realm-markers button')){const value=String(button.dataset.district===focus);if(button.getAttribute('aria-pressed')!==value)button.setAttribute('aria-pressed',value);}
+  for(const button of $$('#realm-districts button, #realm-markers button')){const value=String((button.dataset.district ?? button.dataset.legend)===focus);if(button.getAttribute('aria-pressed')!==value)button.setAttribute('aria-pressed',value);}
   if(!state)return;
   const regions=realmAccess({builtTier:state.board.builtTier,estateLevel:state.board.estateLevel,gardens:state.board.gardens});
   const d=regions.find(d=>d.id===focus);
@@ -506,7 +518,8 @@ function syncRealmMarkers({focus,points}){
     deedButton.dataset.district = d.id;
     deedButton.setAttribute('aria-label', `View deed for ${d.name}`);
   } else delete deedButton.dataset.district;
-  const message=d && !d.open ? `${d.name} · ${districtCondition(d)}` : '';
+  const secret = REALM_LEGENDS.find(d=>d.id===focus);
+  const message=secret ? secret.name : d && !d.open ? `${d.name} · ${districtCondition(d)}` : '';
   if($('#realm-focus-status').textContent!==message)$('#realm-focus-status').textContent=message;
 }
 
@@ -1290,6 +1303,7 @@ function bindEvents() {
   // Selecting a district keeps focus on the button that was used. The focused map is taller on phones, so set that
   // layout before measuring, then reveal the realm without scrolling the button out of view.
   for(const root of [$('#realm-districts'),$('#realm-markers')])root.addEventListener('click',e=>{const button=e.target.closest('[data-district]');if(button&&scene){scene.focusDistrict(button.dataset.district);$('.realm-map').dataset.focused='true';let keep=button;if(root.id==='realm-districts'){$('#district-menu').open=false;keep=$('#district-menu summary');keep.focus();}revealRealm(keep,{instant:e.detail===0});}});
+  $('#realm-markers').addEventListener('click',e=>{const button=e.target.closest('[data-legend]');if(!button||!scene)return;scene.focusLegend(button.dataset.legend);revealRealm(button,{instant:e.detail===0});});
   $('#view-deed').addEventListener('click', (e) => {
     const id = e.currentTarget.dataset.district;
     if (id) openDeedFromMap(id, e.currentTarget);

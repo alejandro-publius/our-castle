@@ -1,12 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { REALM_SIZE, REALM_BOUNDS, REALM_DISTRICTS, REALM_BRIDGES, REALM_RIVERS, RIVER_PATHS, REALM_ROUTE, homeDistrict, realmAccess, bridgeAccess, journeyPosition, riverAt } from '../../src/core/realm.js';
+import { REALM_SIZE, REALM_BOUNDS, REALM_DISTRICTS, REALM_LEGENDS, REALM_BRIDGES, REALM_RIVERS, RIVER_PATHS, REALM_ROUTE, homeDistrict, districtById, viewLocation, realmAccess, bridgeAccess, journeyPosition, riverAt } from '../../src/core/realm.js';
 import { courtResidents, courtWorldPose, courtDistrict } from '../../src/core/court.js';
 
-test('seven separate districts remain on the world map while only earned destinations and bridges open',()=>{
+test('nine separate districts remain on the world map while only earned destinations and bridges open',()=>{
   assert.deepEqual(REALM_SIZE,{width:228,depth:132,centerX:32,centerZ:0});
   const start=realmAccess({builtTier:0,estateLevel:1});
-  assert.equal(start.length,7);assert.deepEqual(start.filter(d=>d.open).map(d=>d.id),['cottage']);
+  assert.equal(start.length,9);assert.deepEqual(start.filter(d=>d.open).map(d=>d.id),['cottage']);
   assert.ok(bridgeAccess({builtTier:0,estateLevel:1}).every(b=>!b.open));
   const manor={builtTier:1,estateLevel:1};
   assert.ok(bridgeAccess(manor).find(b=>b.id==='manor-bridge').open);
@@ -15,7 +15,7 @@ test('seven separate districts remain on the world map while only earned destina
   assert.ok(realmAccess({...manor,estateLevel:2}).find(d=>d.id==='market').open);
   assert.ok(bridgeAccess({...manor,estateLevel:2}).find(b=>b.id==='market-bridge').open);
   const castle=realmAccess({builtTier:3,estateLevel:3,gardens:0});
-  assert.equal(castle.filter(d=>d.open).length,6);
+  assert.equal(castle.filter(d=>d.open).length,8);
   assert.equal(castle.find(d=>d.id==='garden').open,false,'a castle does not invent a bill habit');
   assert.ok(realmAccess({builtTier:0,gardens:1}).find(d=>d.id==='garden').open);
   assert.match(start.find(d=>d.id==='garden').condition,/reported by you, not provider verified/);
@@ -60,9 +60,9 @@ test('each generation of guests remains in its own open district as the realm ex
 });
 
 test('narrow connected rivers pass under the middle of every bridge and leave the clearings and most of the realm dry',()=>{
-  assert.deepEqual(REALM_RIVERS.map(r=>r.id),['main','west','east','rose']);
+  assert.deepEqual(REALM_RIVERS.map(r=>r.id),['main','west','east','rose','starfall','braid']);
   for(const river of REALM_RIVERS)assert.ok(river.halfWidth<=2.5,`${river.id} is a narrow river, not an open sea`);
-  const crossing={'garden-bridge':'main','keep-bridge':'main','royal-procession':'main','manor-bridge':'west','citadel-bridge':'east','market-bridge':'east','palace-bridge':'rose'};
+  const crossing={'garden-bridge':'main','keep-bridge':'main','royal-procession':'main','manor-bridge':'west','citadel-bridge':'east','market-bridge':'east','palace-bridge':'rose','wizard-bridge':'starfall','rapunzel-bridge':'braid'};
   for(const bridge of REALM_BRIDGES){
     const middle=riverAt((bridge.a[0]+bridge.b[0])/2,(bridge.a[1]+bridge.b[1])/2);
     assert.equal(middle.river,crossing[bridge.id],`${bridge.id} crosses the expected river`);
@@ -73,7 +73,7 @@ test('narrow connected rivers pass under the middle of every bridge and leave th
     assert.ok(riverAt(x,z).depth< -1.5,`${d.id} clearing stays dry at ${x},${z}`);
   // The tributaries join the main river, and every river runs off the board edge rather than ending in a pond.
   const main=RIVER_PATHS.find(r=>r.id==='main');
-  for(const id of['west','east','rose']){
+  for(const id of['west','east','rose','starfall','braid']){
     const path=RIVER_PATHS.find(r=>r.id===id).path;
     assert.ok(Math.min(...path.map(([x,z])=>Math.min(...main.path.map(([mx,mz])=>Math.hypot(x-mx,z-mz)))))<main.halfWidth,`${id} joins the main river`);
   }
@@ -85,7 +85,7 @@ test('narrow connected rivers pass under the middle of every bridge and leave th
 
 
 test('Rosewind adds a royal destination without moving the earlier homes or creating a bill shortcut',()=>{
-  assert.deepEqual(REALM_DISTRICTS.slice(0,6).map(d=>[d.id,d.x,d.z]),[
+  assert.deepEqual(['cottage','manor','market','garden','keep','castle'].map(id=>districtById(id)).map(d=>[d.id,d.x,d.z]),[
     ['cottage',-60,26],['manor',-10,26],['market',44,26],['garden',-60,-28],['keep',-10,-28],['castle',47,-28],
   ]);
   const palace=REALM_DISTRICTS.find(d=>d.id==='palace');
@@ -100,4 +100,22 @@ test('Rosewind adds a royal destination without moving the earlier homes or crea
   assert.equal(homeDistrict(3).id,'castle','existing final journey still arrives at the Citadel');
   assert.equal(courtResidents(3).length,20);
   assert.equal(courtResidents(3).filter(p=>courtDistrict(p).id==='palace').length,4);
+});
+
+
+test('the folklore towers use existing milestones; the hidden sword has no reward or payment gate',()=>{
+  const low=realmAccess({builtTier:1,gardens:4,estateLevel:3});
+  assert.equal(low.find(d=>d.id==='wizard').open,false);
+  assert.equal(low.find(d=>d.id==='rapunzel').open,false);
+  const keep=realmAccess({builtTier:2,estateLevel:3});
+  assert.equal(keep.find(d=>d.id==='wizard').open,true);
+  assert.equal(keep.find(d=>d.id==='rapunzel').open,false);
+  assert.equal(bridgeAccess({builtTier:2,estateLevel:3}).find(b=>b.id==='wizard-bridge').open,true);
+  assert.equal(bridgeAccess({builtTier:3,estateLevel:3}).find(b=>b.id==='rapunzel-bridge').open,true);
+  assert.deepEqual(REALM_LEGENDS.map(d=>d.id),['sword-stone']);
+  assert.equal(districtById('sword-stone'),undefined);
+  assert.equal(viewLocation('sword-stone').name,'The Sword in the Stone');
+  assert.equal(viewLocation('unknown'),undefined);
+  for(const d of REALM_LEGENDS)assert.ok(riverAt(d.x,d.z).depth < -3,'the sword grove stays on dry ground');
+  assert.deepEqual(REALM_ROUTE[20],{x:47,z:-16.3});
 });
