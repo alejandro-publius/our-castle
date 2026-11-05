@@ -5,12 +5,13 @@ The owner asked Codex to finish the remaining integration and release work. This
 | Item | Current state |
 | --- | --- |
 | Game and three sponsors | Implemented: Channel3 Merchant, AG Grid/Studio Treasury and Agent Framework, APIMatic context/SDK improvements |
-| Current local validation | 28 focused Chromium/WebKit browser passes plus source/art guard; provider responses in this pass are fake |
+| Current local validation | Family/deed follow-up: 30 focused Chromium/WebKit passes, 4 focused unit passes and source/art guard. Earlier Studio-framework 28-case evidence remains below in VALIDATION.md; no new live-provider proof |
 | GitHub source release | Reviewed build pushed to main; **still private**. GitHub denied the visibility change with HTTP 403, `Resource not accessible by integration` |
 | Hosted site | Not deployed; repository run instructions satisfy the checked functional-demo route |
 | Mac sync | Blocked: device offline; last inspected local main was clean `791e8ae`. Later cloud changes are not installed there |
 | Approved sandbox flow | Still unverified end to end; existing 3021 rehearsal must be preserved |
 | Entry text / current shot plan | Ready in [SUBMISSION-DRAFT.md](SUBMISSION-DRAFT.md) and [SUBMISSION-SHOTLIST.md](SUBMISSION-SHOTLIST.md) |
+| Fresh judge session | `npm run demo`: unused localhost port, in-memory progress, no environment keys or saved data; [review route](JUDGE-HANDOFF.md#1-run-it) and [human playtest sheet](PLAYTEST.md) ready |
 | Final video / YouTube / Devpost | Not completed, uploaded or submitted; older review drafts remain labelled incomplete |
 
 ## Source review
