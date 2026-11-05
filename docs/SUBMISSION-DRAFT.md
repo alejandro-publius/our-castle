@@ -41,7 +41,7 @@ The Treasury keeps the next area, contribution records and a selected receipt to
 | November 5 Channel3 desktop check | One real search returned three real USD products and rendered their images. Phone and goal-save contracts use fake results. |
 | Current local browser/contract checks | Full family journey, simulated credit/unlocks, real AG Studio widget/framework, cancellation, fallback and selected-order proof with fake providers. Exact runs and limitations are in [VALIDATION.md](VALIDATION.md); these are not new live financial evidence. |
 
-**Still unverified together:** in-app PayPal popup approval → server receipt/single credit/Manor bridge → real `get_order` reconciliation of that same household order. The approved isolated rehearsal is prepared, but its Mac/browser connection is unavailable. Existing draft videos label the missing insert rather than reconstructing it. No entry has been submitted.
+**Still unverified together:** in-app PayPal popup approval → server receipt/single credit/Manor bridge → real `get_order` reconciliation of that same household order. The approved isolated rehearsal is prepared, and the Mac is connected; browser control for the actual approval is still unavailable. Existing draft videos label the missing insert rather than reconstructing it. No entry has been submitted.
 
 ## Challenges and learning
 
@@ -57,7 +57,7 @@ Complete the approved in-app sandbox evidence and final public video. Beyond the
 
 ## Submission fields still to supply
 
-- Repository: https://github.com/alejandro-publius/our-castle — verify public accessibility at submission time.
+- Repository: https://github.com/alejandro-publius/our-castle — public access confirmed November 5, 2026; recheck the final submission URL.
 - Public YouTube video under three minutes: **not uploaded**. Existing cuts are review drafts; the missing live insert remains unfilmed.
 - Functional demo: repository setup instructions; a hosted site is not required by the checked rules.
 - Sponsor entries: Channel3, AG Grid/Studio and APIMatic; describe the exact use above. No award eligibility or result is guaranteed.

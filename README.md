@@ -6,7 +6,7 @@ A living pixel woodland turns shared progress into new places to explore. Keep t
 
 ![The connected woodland realm](docs/screenshots/legends-realm.png)
 
-The reviewed build is on GitHub main. The repository is **still private**: the connected integration can push but GitHub denied its visibility change. [Exact release status and remaining action](docs/RELEASE-READINESS.md#github-publication-result).
+The reviewed source is **public on GitHub main**. The owner's updated Mac app runs at http://localhost:3010 with its existing records preserved. [Release status and remaining payment/video steps](docs/RELEASE-READINESS.md).
 
 ## Try it locally
 

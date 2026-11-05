@@ -1,8 +1,8 @@
 # Astra: sponsor integration handoff
 
-**Current Codex/release follow-up:** the owner asked Codex to finish this directly. Studio's Agent Framework is now implemented behind the existing steward; [RELEASE-READINESS.md](RELEASE-READINESS.md) and the top of [VALIDATION.md](VALIDATION.md) supersede older private-only and installed-on-Mac statements below. The device is offline, so later cloud changes have not reached the Mac. The historical workstream allocation below does not require starting another Claude session.
+**Current Codex/release follow-up:** the owner asked Codex to finish this directly. Studio's Agent Framework is now implemented behind the existing steward; [RELEASE-READINESS.md](RELEASE-READINESS.md) and the top of [VALIDATION.md](VALIDATION.md) supersede older private-only and installed-on-Mac statements below. The Mac is reconnected: reviewed implementation `9d7a126` is active on 3010 from `~/projects/our-castle-reviewed`, with all owner/rehearsal records preserved. Source is now public; browser approval remains outstanding. The historical workstream allocation below does not require starting another Claude session.
 
-The owner assigned Claude visual ownership and Astra sponsor/integration engineering. Start from the current private `main`; the complete nine-district game is present. Keep `docs/CLAUDE-VISUAL-HANDOFF.md` as the other workstream's boundary.
+The owner assigned Claude visual ownership and Astra sponsor/integration engineering. Start from the current `main`; the complete nine-district game is present. Keep `docs/CLAUDE-VISUAL-HANDOFF.md` as the other workstream's boundary.
 
 ## Latest connected build — November 5, 2026
 

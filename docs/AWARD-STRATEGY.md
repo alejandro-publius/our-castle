@@ -1,6 +1,6 @@
 # Awards and integration evidence
 
-Rechecked November 5, 2026 against the official public [rules](https://paypalaihackathon.devpost.com/rules) and all three sponsor briefs below. Earlier direct-fetch 403s are historical. The repository remains private; no deployment or submission occurred.
+Rechecked November 5, 2026 against the official public [rules](https://paypalaihackathon.devpost.com/rules) and all three sponsor briefs below. Earlier direct-fetch 403s are historical. The repository is now public; no hosted site or Devpost entry has been published.
 
 | Target | Actual evidence | Remaining gap |
 | --- | --- | --- |

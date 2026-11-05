@@ -1,5 +1,19 @@
 # Validation
 
+## Mac activation and public source — November 5, 2026
+
+The Mac reconnected. Its original checkout was clean `791e8ae`; the existing Claude session's latest implementation turn ended on November 5 at 12:51 a.m. PST, and no session was interrupted or replaced. Main app 3010 was sandbox/live AI/live merchant; the separate 3021 rehearsal remained sandbox/live AI with zero orders, one starting ledger entry and no plan.
+
+To preserve that rehearsal's original source as well as its records, Codex added a **detached reviewed worktree** at `/Users/alexvintera/projects/our-castle-reviewed`, pinned to implementation `9d7a126`. Exact `npm ci`, the 47-file/palette/renderer/syntax guard and four focused demo/deed unit cases passed on the Mac's Node 26. This is native Node/backend evidence, not a native-browser or physical-phone pass. Its ignored `.env`/`data` links point to the original configuration and household; both links are explicitly ignored and both worktrees remain clean.
+
+Consistent SQLite backups and private environment copies preceded activation. Only the old main listener (23747) was stopped; the reviewed main listener (32278) was started on **3010**. At verification, every row in all application tables of both databases matched its pre-activation signature; schema versions stayed owner 3 / rehearsal 1. The original environment's SHA-256, mode 0600 and modification time matched. The main HTML and three app/world modules matched reviewed files. Rehearsal PID **67124**, its database, and its HTML/main/world source hashes stayed unchanged. The original checkout remains `791e8ae`, deliberately serving 3021; the reviewed worktree is the active 3010 app. No owner goal, plan, member, payment or receipt was reset.
+
+Private evidence: `~/projects/our-house/test-results/mac-activation-20261105T202636Z/{baseline.json,pre-activation.json,activation.json,install.log,source-check.log,focused-unit.log}`. Backups and the environment remain local in that ignored owner-only folder; none were uploaded. `test-results/CURRENT-APP.md` records the active checkout/restart path.
+
+The owner's existing Mac `gh` CLI then completed the previously authorized source visibility change. GitHub returned `private: false`; separate anonymous repository-metadata and raw README requests returned HTTP 200. The earlier cloud integration's 403 remains a historical permission limit; no token was extracted or copied and no unrelated repository setting changed. Original art/licence notices remain intact. No site, final YouTube video or Devpost entry was published by this action.
+
+All runtime-mode/source/state checks were passive local reads. No new PayPal order, capture, refund, Channel3 search or paid AI call was made. Historical live reports are unchanged. Browser-tool discovery still supplies no control of the owner's local browser; the approved popup → receipt/unlock → same-order `get_order` test remains outstanding, with its existing coordinator retaining ownership.
+
 ## Family deeds, quieter modal screens and a fresh demo command — November 5, 2026
 
 Newly earned deeds now include the household's saved pixel characters beside the existing crest. The card remains **388×406**, with the same name/art/milestone/actions and no extra visible text. Reopened map deeds keep the earlier compact face. A new district uses its deed as the celebration, suppressing the parallel banner. [Reference lock, current capture and behavior](UNLOCK-CELEBRATION.md).

@@ -1,6 +1,8 @@
 # Claude project instructions
 
-The owner assigned **Claude the visuals** and **Astra the sponsor/integration engineering**, and authorized syncing the working game to private GitHub main. Read AGENTS.md and docs/CLAUDE-VISUAL-HANDOFF.md before edits. Astra's scope and integration evidence are in docs/ASTRA-INTEGRATION-HANDOFF.md.
+**Current owner Mac:** the active 3010 app uses `~/projects/our-castle-reviewed`; its ignored environment/data links preserve the originals. Keep `~/projects/our-house` at its existing source while the separate 3021 rehearsal is preserved. Source is public. Read [release readiness](docs/RELEASE-READINESS.md#current-mac-app) before local edits; older activation/workstream notes below are historical.
+
+The owner assigned **Claude the visuals** and **Astra the sponsor/integration engineering**, and authorized syncing the working game to GitHub main. Read AGENTS.md and docs/CLAUDE-VISUAL-HANDOFF.md before edits. Astra's scope and integration evidence are in docs/ASTRA-INTEGRATION-HANDOFF.md.
 
 The complete game is the root page, driven by src/app/main.js and src/world/board-scene.js. The original /art-preview.html is historical reference. Do not replace the current game with the starter, a generic finance dashboard or a flat board.
 
@@ -12,7 +14,7 @@ Interface: the world leads. One collapsible journal contains House, Plan, Contri
 
 Astra owns server/payment/AI code, dependency upgrades and ledger/provider semantics. Coordinate src/app/main.js, src/core/realm.js, src/core/deeds.js and index.html edits. Visual changes must not weaken amount-specific adult approval, server capture verification, idempotency, same-order reconciliation or access conditions. Utility bills remain reported/connection-required unless genuine authorized provider evidence exists.
 
-Work on a focused visual branch from updated main. The owner authorizes reviewed pushes to the existing private repository; use normal merges and never force push. Keep .env/account/household records untracked. No repository visibility change, site deployment, hackathon submission, real financial transaction, new order or paid AI/provider test for this visual pass.
+Work on a focused visual branch from updated main. The owner authorizes reviewed pushes to the existing repository; use normal merges and never force push. Keep .env/account/household records untracked. No repository visibility change, site deployment, hackathon submission, real financial transaction, new order or paid AI/provider test for this visual pass.
 
 The owner's configured app remains on 3010; the separate 3021 rehearsal belongs to its existing sole browser operator. Neither is an example-test fixture. Use a separate unused port and no-credentials temporary example database. Do not ask for another API key based on old session memory. If an existing Claude session is open, continue it rather than starting another.
 

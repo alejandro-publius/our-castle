@@ -1,6 +1,8 @@
 # Connected experience: merchant, Treasury, APIMatic
 
-The reviewed build is on canonical private `main`, promoted from `feature/connected-experience` (implementation handoff `68e1c61`, based on `877764e`). The feature worktree is retained for reference. The nine-district forest, four-tab journal, art, palette, fonts, clouds, rivers, bridges, farm, tavern, avatars and unlock cards are unchanged.
+**Current owner Mac:** the active 3010 app uses `~/projects/our-castle-reviewed`; its ignored environment/data links preserve the originals. Keep `~/projects/our-house` at its existing source while the separate 3021 rehearsal is preserved. Source is public. Read [release readiness](RELEASE-READINESS.md#current-mac-app) before local edits; older activation/workstream notes below are historical.
+
+The reviewed build is on canonical `main`, promoted from `feature/connected-experience` (implementation handoff `68e1c61`, based on `877764e`). The feature worktree is retained for reference. The nine-district forest, four-tab journal, art, palette, fonts, clouds, rivers, bridges, farm, tavern, avatars and unlock cards are unchanged.
 
 ## Current status of the three tools
 
@@ -10,7 +12,7 @@ The reviewed build is on canonical private `main`, promoted from `feature/connec
 | AG Grid / Studio | One next-area widget, records/receipt/map visit; Studio Agent Framework manages the existing scoped steward | Actual harness/custom runner and fallback checked with fake providers. No extra chat panel; actual live popup/same-order proof remains outstanding. |
 | APIMatic | Eight enabled Codex SDK-context skills used for PayPal fixes and checks | Context use is demonstrated; it is not a runtime payment service or a prize guarantee. New read deadlines and dependency findings are in [TOOLKIT-MAINTENANCE.md](TOOLKIT-MAINTENANCE.md). |
 
-The complete family flow has 26 passing browser checks from [the usability review](FAMILY-FLOW-REVIEW.md). The maintenance follow-up adds 40 focused sponsor/payment contract passes and five post-install compatibility passes with no new provider call. Shared outstanding proof: actual in-app sandbox checkout → one credit/area unlock → same-order `get_order`. The owner's Mac/browser connection is unavailable here, so no new order or paid check was attempted. No new account or credential is needed for the code changes.
+The complete family flow has 26 passing browser checks from [the usability review](FAMILY-FLOW-REVIEW.md). The maintenance follow-up adds 40 focused sponsor/payment contract passes and five post-install compatibility passes with no new provider call. Shared outstanding proof: actual in-app sandbox checkout → one credit/area unlock → same-order `get_order`. The Mac file/server connection is restored and reviewed code `9d7a126` is active on 3010; browser control remains unavailable, so no new order or paid check was attempted. No new account or credential is needed for the code changes.
 
 | Commit | What |
 | --- | --- |

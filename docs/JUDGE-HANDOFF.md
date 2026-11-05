@@ -6,7 +6,7 @@ Current build: **November 5, 2026**. Nine connected woodland districts, one hous
 
 Use Node.js **22.16 or later** (verified development environment: Node 26). The no-credentials game runs with simulated payments and a built-in rules planner. It is not a live PayPal/AI demonstration.
 
-The repository remains private after GitHub denied this connection's visibility change. Clone requires an authorized GitHub account until the owner changes that setting; the reviewed source archive is also available locally. See [release readiness](RELEASE-READINESS.md#github-publication-result).
+The repository is public; cloning needs no GitHub sign-in. Runtime keys and owner data are excluded. See [release readiness](RELEASE-READINESS.md#github-publication-result).
 
 ```sh
 git clone https://github.com/alejandro-publius/our-castle.git
@@ -49,7 +49,9 @@ New unlock cards briefly welcome the household's selected pixel characters besid
 
 ## 4. What remains, by who has to act
 
-**Prepared, approved rehearsal — blocked on connection:** the owner's configured app is on **http://localhost:3010**; the separate existing payment rehearsal is on **http://localhost:3021**. The latest inspected Mac checkout was clean `791e8ae`; later cloud changes are not installed there. Desktop Commander now reports the Mac offline, and this chat has no supported browser controller. Do not start a replacement server, order or operator.
+**Current Mac app:** **http://localhost:3010** now runs reviewed implementation `9d7a126` from `~/projects/our-castle-reviewed`. Its ignored environment/data links use the existing originals. Exact dependency install, source guard and four focused unit cases passed on the Mac. All owner rows, original environment bytes/mode/mtime and rehearsal records/source/PID were preserved. Restart from that reviewed checkout with `npm start` only when 3010 is free. The original `~/projects/our-house` remains clean at `791e8ae` because the existing **3021** rehearsal serves its files; do not pull/reset/restart it or start another operator. [Activation evidence](RELEASE-READINESS.md#current-mac-app).
+
+**Prepared, approved rehearsal — browser still required:** Desktop Commander can manage the Mac's files and servers, but this chat still has no supported browser-control tool. Browser login/approval cannot be inferred from the pasted app credentials. Do not start a replacement server or order.
 
 The rehearsal's last read-only state was **zero payment orders, one self-reported starting entry, no plan**. There is no order ID, payment waiter, steward call or recording to resume. The owner already approved one $15 sandbox in-app payment and its necessary same-order steward check. Existing keys are configured; no new key or repeated consent is needed when control returns. Verify the current state before proceeding.
 

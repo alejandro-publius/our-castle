@@ -32,7 +32,7 @@ The owner initially chose private development, then authorized private main push
 
 Readiness against each submission item is in [JUDGE-HANDOFF.md](JUDGE-HANDOFF.md#4-what-remains-by-who-has-to-act), separated into unverified integration checks, connection-dependent work and optional production limits. Two gaps in brief:
 
-- **Repository:** working source, three sponsor integrations and run instructions are prepared for release with existing licences/notices. Check the current release report for the actual visibility and audit result.
+- **Repository:** reviewed source, three sponsor integrations and run instructions are now public with the existing licences/notices. Anonymous access is confirmed; the current release report records the audit and activation evidence.
 - **Video:** existing under-three-minute review drafts mix clearly labelled example footage, historical live-AI material and historical sandbox reports. The approved in-app popup/same-order insert is still unfilmed. No public YouTube video or Devpost submission has been completed.
 
 ## Award targets and current tool review

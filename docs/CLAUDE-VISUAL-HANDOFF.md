@@ -1,6 +1,8 @@
 # Claude: visual handoff
 
-The owner assigned Claude the visuals while Astra handles sponsor/integration engineering. Continue the current Our Castle game from private `main`. The working visual build is `3dd6bf5`; this handoff adds no replacement renderer or new concept.
+**Current owner Mac:** the active 3010 app uses `~/projects/our-castle-reviewed`; its ignored environment/data links preserve the originals. Keep `~/projects/our-house` at its existing source while the separate 3021 rehearsal is preserved. Source is public. Read [release readiness](RELEASE-READINESS.md#current-mac-app) before local edits; older activation/workstream notes below are historical.
+
+The owner assigned Claude the visuals while Astra handles sponsor/integration engineering. Continue the current Our Castle game from `main`. The working visual build is `3dd6bf5`; this handoff adds no replacement renderer or new concept.
 
 ## Start
 
@@ -34,7 +36,7 @@ The original `src/graphics/pixel-renderer.js`, `palette.js`, copied references, 
 
 Own visual meshes, visual effects, `app.css` and visual-only markup. Coordinate before editing shared `src/app/main.js`, `src/core/realm.js`, `src/core/deeds.js` or `index.html`. Astra owns server/payment/AI logic, integration dependencies, ledger semantics and provider contracts. Do not change financial thresholds, approval, crediting, verified-source wording or entitlement rules as part of styling.
 
-Use a focused visual branch from updated `main`. The owner has authorized reviewed pushes to private `main`; no force push, repository visibility change, site deployment or hackathon submission. Pause before shared-file edits if the other workstream has changed them. Keep commits focused and merge normally.
+Use a focused visual branch from updated `main`. The owner has authorized reviewed pushes to `main`; no force push, repository visibility change, site deployment or hackathon submission. Pause before shared-file edits if the other workstream has changed them. Keep commits focused and merge normally.
 
 Choose one visible improvement at a time, compare an actual Day/Night/phone render to the existing references, and report what changed and what was actually checked. `npm run check` protects copied assets; rerun only relevant browser checks after behavior changes. The current baseline has 21 focused unit cases and 17 applicable desktop/phone browser cases passing, plus one intentional phone animation skip.
 

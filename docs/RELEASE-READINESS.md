@@ -6,9 +6,9 @@ The owner asked Codex to finish the remaining integration and release work. This
 | --- | --- |
 | Game and three sponsors | Implemented: Channel3 Merchant, AG Grid/Studio Treasury and Agent Framework, APIMatic context/SDK improvements |
 | Current local validation | Family/deed follow-up: 30 focused Chromium/WebKit passes, 4 focused unit passes and source/art guard. Earlier Studio-framework 28-case evidence remains below in VALIDATION.md; no new live-provider proof |
-| GitHub source release | Reviewed build pushed to main; **still private**. GitHub denied the visibility change with HTTP 403, `Resource not accessible by integration` |
+| GitHub source release | **Public**, confirmed through anonymous repository metadata and README access. Published using the owner's existing Mac GitHub CLI login |
 | Hosted site | Not deployed; repository run instructions satisfy the checked functional-demo route |
-| Mac sync | Blocked: device offline; last inspected local main was clean `791e8ae`. Later cloud changes are not installed there |
+| Mac activation | Current app on 3010 uses reviewed code `9d7a126` in `~/projects/our-castle-reviewed`; original checkout stays at `791e8ae` to preserve the 3021 rehearsal's source |
 | Approved sandbox flow | Still unverified end to end; existing 3021 rehearsal must be preserved |
 | Entry text / current shot plan | Ready in [SUBMISSION-DRAFT.md](SUBMISSION-DRAFT.md) and [SUBMISSION-SHOTLIST.md](SUBMISSION-SHOTLIST.md) |
 | Fresh judge session | `npm run demo`: unused localhost port, in-memory progress, no environment keys or saved data; [review route](JUDGE-HANDOFF.md#1-run-it) and [human playtest sheet](PLAYTEST.md) ready |
@@ -27,15 +27,22 @@ Ignored audit evidence is under `test-results/release-audit/`; functional eviden
 
 ## GitHub publication result
 
-Normal push to `alejandro-publius/our-castle` main succeeded at `331d864` (the following status commit changes documentation only). The older `gh repo edit` installed here lacks the newer acknowledgement flag, so no mutation occurred through that command. The supported GitHub REST repository-update request then returned **403 `Resource not accessible by integration`**. A fresh read confirmed `private: true`; no visibility change, site deployment or entry submission occurred. No alternate token or unsupported browser path was used.
+The reviewed source is now public at https://github.com/alejandro-publius/our-castle . The earlier cloud connection could push but its repository-update request returned **403 `Resource not accessible by integration`**. Once the Mac reconnected, its existing authenticated `gh` CLI completed the owner-authorized visibility change. No token was extracted or copied. GitHub returned `private: false`; separate anonymous metadata and raw README requests both returned HTTP 200.
 
-The existing GitHub connection can push source but lacks repository-administration permission. The remaining owner action is GitHub **Settings → General → Danger Zone → Change repository visibility → Public** at https://github.com/alejandro-publius/our-castle/settings . This is a provider/connection limitation, not missing user consent. Original asset terms remain as written; do not broaden them as part of the visibility change.
+Existing original-art and third-party notices remain unchanged by publication. Runtime keys, household databases, private backups and local configuration links are excluded. This publishes source; it does not deploy a site, upload the final video or submit Devpost.
+
+## Current Mac app
+
+The latest reviewed implementation `9d7a126` is installed at `/Users/alexvintera/projects/our-castle-reviewed`. It is a detached worktree of the same repository, with an exact dependency install, the original-art/source guard and four focused unit cases passing on Node 26. The configured app on **http://localhost:3010** now runs from it. Its ignored `.env` and `data` links point to the existing original files; `npm start` in this checkout starts the configured persistent app when 3010 is free.
+
+Consistent backups preceded activation. Every application-table row in the owner database and rehearsal matches its pre-activation signature. The original `.env` bytes, permissions and modification time match. Four served entry/module files match the reviewed bytes. The separate **3021** process, database and three checked served source files are unchanged. The original `~/projects/our-house` checkout is deliberately kept clean at `791e8ae` because that rehearsal serves its files; do not pull or reset it while the existing rehearsal is being preserved.
+
+Private activation evidence is in `~/projects/our-house/test-results/mac-activation-20261105T202636Z/`; the local `test-results/CURRENT-APP.md` records the restart path. No new payment order, paid AI call or product search was made. Configured sandbox/live-AI/merchant modes are not a new provider authentication or payment-success test.
 
 ## Precise external blockers
 
-1. **Reconnect the existing Mac and supported browser control.** Desktop Commander reports the Mac offline; this chat has no supported browser controller. The owner already approved the single $15 sandbox rehearsal and necessary same-order steward call. Consent and keys are not missing. Do not make another rehearsal or order while reconnecting.
+1. **Connect supported browser control for the existing rehearsal.** The Mac file/server connection is restored, but this chat still exposes no browser-control tool. Plugin discovery found no suitable tool for its local browser session. The owner already approved the single $15 sandbox rehearsal and necessary same-order steward call. Consent and keys are not missing. The existing coordinator retains checkout ownership; do not create another rehearsal, order or competing browser operator.
 2. **Complete that one actual flow.** Last inspected 3021 state: zero orders, one $60 reported starting entry, no plan, no waiter or recording. Recheck before proceeding. A $15 USD capture must credit the $300 goal once to $75, open the Manor while retaining the village, and be matched by real `get_order` for the identical household/goal/order/reference/capture. Current fake-provider tests and historical hosted approval do not establish this.
-3. **Make the reviewed repository public through an owner-capable connection.** See the exact GitHub response/action above. Authenticated clone/push works; anonymous judge access does not yet work.
-4. **Finish the reviewed video and entry through authenticated tools.** The missing actual insert is not filmed. No public YouTube URL exists, and no supported authenticated Devpost control is available here. Do not submit the old draft as fully live or reconstruct the missing outcome. Current copy and a 2:45 shot plan are ready; no extra product search, planner call or refund is needed.
+3. **Finish the reviewed video and entry through authenticated tools.** The missing actual insert is not filmed. No public YouTube URL exists, and no supported authenticated Devpost control is available here. Do not submit the old draft as fully live or reconstruct the missing outcome. Current copy and a 2:45 shot plan are ready; no extra product search, planner call or refund is needed.
 
 Hosting, a production Studio licence, real household sign-in and verified utility-provider connections are separate future scope. No live PayPal endpoints or real financial transactions are supported.
