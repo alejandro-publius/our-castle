@@ -24,7 +24,10 @@ async function startServer() {
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
   const base = `http://localhost:${server.address().port}`;
   const post = async (path, body) => (await fetch(base + path, { method: 'POST', headers: { 'Content-Type': 'application/json', Origin: base }, body: JSON.stringify(body) })).json();
-  return { base, post, close: () => new Promise((r) => { server.close(r); db.close(); }) };
+  return { base, post, close: () => new Promise((r) => {
+    server.close(() => { db.close(); r(); });
+    server.closeAllConnections();
+  }) };
 }
 
 async function open(page, { studio = true } = {}) {

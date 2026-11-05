@@ -29,7 +29,10 @@ async function start(page) {
   const server = http.createServer(app.handler);
   await new Promise((r) => server.listen(0, '127.0.0.1', r));
   const base = `http://localhost:${server.address().port}`;
-  s = { base, fake, issues: [], writes: [], close: () => new Promise((r) => { server.close(r); db.close(); }) };
+  s = { base, fake, issues: [], writes: [], close: () => new Promise((r) => {
+    server.close(() => { db.close(); r(); });
+    server.closeAllConnections(); // End browser keep-alives before releasing this test's database.
+  }) };
   page.on('pageerror', (e) => s.issues.push(e.message));
   await page.route('**/*', (route) => {
     const r = route.request(), url = new URL(r.url());
