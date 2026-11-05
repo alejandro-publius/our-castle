@@ -6,6 +6,8 @@ A living pixel woodland turns shared progress into new places to explore. Keep t
 
 ![The connected woodland realm](docs/screenshots/legends-realm.png)
 
+The reviewed build is on GitHub main. The repository is **still private**: the connected integration can push but GitHub denied its visibility change. [Exact release status and remaining action](docs/RELEASE-READINESS.md#github-publication-result).
+
 ## Try it locally
 
 Use **Node.js 22.16+** (verified on Node 26):

@@ -15,6 +15,8 @@ The 47-file original-art/palette/renderer/syntax guard passed. No world/CSS/mark
 
 Judge/run instructions, entry copy, current 2:45 shot list, sponsor-use notes and the AG Studio commercial notice were updated. Historical verification reports and all recorded footage/captions remain unchanged. The README now leads with the game and a short local setup; detailed operational commands moved to RUNBOOK.md. [RELEASE-READINESS.md](RELEASE-READINESS.md) records the actual publication audit/status.
 
+**Source release:** `331d864` was pushed normally to GitHub main. Its source archive clean-installed and started without credentials; app/runner/Studio/font returned HTTP 200 and the source guard passed. Remote text history (85 commits), the two new commits, current-source and sampled media OCR scans reported zero credential matches. GitHub's visibility update returned 403 `Resource not accessible by integration`; a fresh read confirmed the repository remains private. This is not a public release or Devpost submission. The final documentation-status update does not change the tested application code.
+
 No real Channel3 credit, PayPal order/refund, paid AI call, household change or new video was made. The owner's Mac is still offline; the latest cloud build is not installed there. Existing 3010/3021 data, keys and servers were not accessed or changed. The rehearsal's **last inspected**, not freshly read, state remains zero orders, one reported starting entry and no plan. No supported authenticated browser control is available here.
 
 ## Sponsor/Toolkit maintenance — November 5, 2026

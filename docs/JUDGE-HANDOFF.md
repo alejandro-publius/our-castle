@@ -6,6 +6,8 @@ Current build: **November 5, 2026**. Nine connected woodland districts, one hous
 
 Use Node.js **22.16 or later** (verified development environment: Node 26). The no-credentials game runs with simulated payments and a built-in rules planner. It is not a live PayPal/AI demonstration.
 
+The repository remains private after GitHub denied this connection's visibility change. Clone requires an authorized GitHub account until the owner changes that setting; the reviewed source archive is also available locally. See [release readiness](RELEASE-READINESS.md#github-publication-result).
+
 ```sh
 git clone https://github.com/alejandro-publius/our-castle.git
 cd our-castle
