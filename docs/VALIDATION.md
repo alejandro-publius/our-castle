@@ -1,5 +1,14 @@
 # Validation
 
+## Canonical app promotion — November 5, 2026, 08:38 UTC
+
+Reviewed implementation `68e1c61` was fast-forwarded onto main. `npm ci --prefer-offline` succeeded; only the owner app on 3010 was restarted. The separate 3021 rehearsal stayed intact.
+
+A consistent SQLite backup preceded schema 2 → 3. The new `goal_items` table is empty; every existing row in all ten application tables hashes identically before and after. SQLite's internal sequence high-water mark advanced during initialization and was preserved. Integrity: `ok`. `.env` content, permissions and modification time match.
+
+Passive reads confirm configured sandbox payments, live AI, Channel3 and Studio licence, plus byte-identical HTML, three app modules and Studio bundle. No new provider call or financial/AI test occurred. Ignored evidence/private backups: `test-results/connected-promotion-20261105T083131Z/`.
+
+
 ## Connected journey (merchant → goal → contribution → world → Treasury) — November 5, 2026
 
 At branch head a4ed597, 14 desktop and touch-phone browser cases passed. These were the connected journey plus the merchant and Treasury specs. The journey ran on one fresh in-memory example household:
@@ -45,7 +54,7 @@ Eleven unit cases and six desktop/touch-phone browser cases passed. They use a f
 - valid, missing-price, non-USD, malformed, error, timeout and unreachable answers;
 - cache and burst limits;
 - explicit search only, with stale answers dropped;
-- the unsaved Plan draft and its confirmed save, which writes provenance only, with no ledger, order or area change;
+- the unsaved draft changes nothing; explicit confirmation saves provenance through ordinary goal-edit rules, without a new ledger entry or payment order;
 - the confirmed save at the actual price, matching the ordinary goal edit (a later correction removed a merchant-only area floor);
 - the below-price, stale-goal and expired-draft refusals;
 - Escape/focus return and the not-connected state;

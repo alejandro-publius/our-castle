@@ -84,7 +84,7 @@ The household has a single active goal, and goal edits already set earlier plans
   - no key means no request;
   - cache, shared requests and the burst limit;
   - draft expiry;
-  - the routes: search changes nothing; a confirmed save writes provenance only, with no ledger, order or area change;
+  - the routes: search and draft change nothing; explicit confirmation saves provenance through ordinary goal-edit rules, without a new ledger entry or order; existing progress can qualify milestones against the confirmed amount;
   - the refusals;
   - the additive migration on a version-two household.
 - Six browser cases in `test/e2e/channel3-merchant.spec.mjs`, desktop 1440 and touch phone 390. Each runs the real app on its own port with a fresh in-memory example database. They cover:
@@ -121,6 +121,6 @@ Fixture stills (drawn stand-in image, invented products): [results](screenshots/
 - US/USD search only, because the goal currency is USD.
 - No price refresh. Channel3's free `GET /v1/products/{id}` could recheck a saved item but is not wired.
 - Saved offer links may expire.
-- The owner's 3010 app shows the merchant only after it is restarted with this code. Its database then gains the empty `goal_items` table.
-- The sponsor's conditions are unverified (Devpost returned 403).
+- The owner's 3010 app was updated and restarted November 5; the additive `goal_items` table is empty and all prior application records are preserved.
+- Claude's direct Devpost fetch returned 403. Codex subsequently read the public [brief](https://paypalaihackathon.devpost.com/details/channel3): meaningful API/MCP use is required, and one real search is recorded above. The advertised 20,000-search promotion was not applied or tested.
 - None of this is PayPal, checkout or verified-savings evidence.

@@ -1,6 +1,6 @@
 # Connected experience: merchant, Treasury, APIMatic
 
-One working branch, `feature/connected-experience`, built on `main` 877764e in the worktree `our-castle-channel3`. It is local and reviewable; there is no push or merge. The nine-district forest, four-tab journal, art, palette, fonts, clouds, rivers, bridges, farm, tavern, avatars and unlock cards are unchanged.
+The reviewed build is on canonical private `main`, promoted from `feature/connected-experience` (implementation handoff `68e1c61`, based on `877764e`). The feature worktree is retained for reference. The nine-district forest, four-tab journal, art, palette, fonts, clouds, rivers, bridges, farm, tavern, avatars and unlock cards are unchanged.
 
 | Commit | What |
 | --- | --- |
@@ -22,15 +22,17 @@ One working branch, `feature/connected-experience`, built on `main` 877764e in t
 
 Searching is not checkout. A contribution does not buy the Channel3 item or pay any outside bill.
 
-## Setup on the owner's machine (after review and merge)
+## Run and configuration
 
 - **Install.** `npm ci` is needed: `ag-studio@3.0.0` is a new pinned dependency. Without it the Treasury shows its plain fallback.
 - **`.env` (server-side only).**
   - `CHANNEL3_API_KEY` enables the merchant.
   - `AG_STUDIO_LICENSE_KEY` holds the AG Studio evaluation licence: one application, no production use, expiring December 2026.
   - Both are already in the owner's ignored `.env`.
-- **Restart.** The start-up lines read `Merchant: Channel3 product search` and `Treasury: AG Studio evaluation licence set`. On first start, the database gains the empty, additive `goal_items` table (migration 3); nothing else changes.
-- **Servers left alone.** The owner's 3010 app and the coordinator's 3021 rehearsal were not restarted or touched during this work.
+- **Run.** `npm start`, then open http://localhost:3010. The start-up lines read `Merchant: Channel3 product search` and `Treasury: AG Studio evaluation licence set`. On first start, the database gains the empty, additive `goal_items` table (migration 3); nothing else changes.
+- **Owner app updated (2026-11-05 08:38 UTC).** Codex installed the exact lockfile and restarted only 3010. Schema 2 → 3 adds an empty `goal_items` table. Every row in all ten prior application tables matches the consistent SQLite backup; `.env` content, mode and modification time match too. SQLite's internal sequence counter advanced during initialization and was preserved.
+- **Passive checks.** HTML, main/merchant/Treasury modules and the Studio bundle match the reviewed bytes. Sandbox payments, live-AI configuration, Channel3 and the Studio licence are configured. These reads made no provider call. Ignored reports/private backups: `test-results/connected-promotion-20261105T083131Z/`.
+- **Coordinator unchanged.** The 3021 rehearsal and its database stayed intact; no checkout, recording or paid check occurred during promotion.
 
 ## Evidence: live versus fake
 
@@ -68,7 +70,7 @@ They are recorded, not fixed here.
 
 - **APIMatic plugin installation.** Blocked by Claude Code's automatic permission review and not retried. The two commands (smallest scope, local) are in [APIMATIC-USAGE.md](APIMATIC-USAGE.md).
 - **Not exercised live:** the phone render and the draft/save with a live item. A second credit was not spent; both are covered with fakes.
-- **Devpost sponsor pages.** The Channel3 brief returned HTTP 403, so the sponsor conditions remain unverified. The promo code was not used.
+- **Sponsor conditions.** Codex successfully read the official public [Channel3 brief](https://paypalaihackathon.devpost.com/details/channel3) on November 5: meaningful API/MCP use is required; the real merchant search supplies that evidence. The credit promotion was not applied. [Award notes](AWARD-STRATEGY.md) distinguish actual use from remaining Studio Agent Framework and APIMatic-activation gaps.
 - **AG Studio.** Evaluation only. Production use needs the owner's commercial decision.
 - **PayPal popup rehearsal.** The coordinated in-app popup → single credit → exact-order `get_order` rehearsal remains with its existing 3021 operator. Nothing here is live PayPal proof.
 - **Submission.** A public repository, original-art redistribution scope, a video and the Devpost submission are all separate owner decisions. Video work stays paused.
