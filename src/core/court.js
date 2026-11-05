@@ -1,4 +1,4 @@
-import { homeDistrict } from './realm.js';
+import { homeDistrict, districtById } from './realm.js';
 
 // A cosmetic cast unlocked by the home already built. Never a payment, balance or bill-verification source.
 const CAST = [
@@ -13,6 +13,10 @@ const CAST = [
   ['ivo', 'Sir Ivo', 'knight', 3], ['alma', 'Alma', 'gardener', 3],
   ['bea', 'Bea', 'merchant', 3], ['lark', 'Lark', 'page', 3],
 ].map(([id, name, role, tier], index) => Object.freeze({ id, name, role, tier, index }));
+
+// Existing final-tier guests take up residence in the new palace; total capacity stays twenty.
+const PALACE_GUESTS = new Set(['sorrel', 'lyra', 'alma', 'lark']);
+export const courtDistrict = (person) => PALACE_GUESTS.has(person.id) ? districtById('palace') : homeDistrict(person.tier);
 
 export const COURT_CAST = Object.freeze(CAST);
 const clampTier = (tier) => Number.isInteger(tier) ? Math.max(0, Math.min(3, tier)) : 0;
@@ -69,6 +73,6 @@ export function courtPose(person, seconds) {
 
 /** Guests belong to the district that welcomed them; later unlocks keep the village and manor inhabited. */
 export function courtWorldPose(person, seconds) {
-  const pose = courtPose(person, seconds), district = homeDistrict(person.tier);
+  const pose = courtPose(person, seconds), district = courtDistrict(person);
   return { ...pose, x: district.x + pose.x * district.scale, z: district.z + pose.z * district.scale, district: district.id };
 }

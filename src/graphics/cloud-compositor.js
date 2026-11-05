@@ -16,6 +16,7 @@ class CloudSurround {
     Object.assign(this.material.uniforms, {
       cloudSurroundEnabled: { value: true },
       cloudTime: { value: 0 },
+      cloudCenter: { value: new THREE.Vector2(0, 0) },
       cloudBounds: { value: new THREE.Vector2(82, 57) },
       cloudWorldFromClip: { value: new THREE.Matrix4() },
       cloudLight: { value: new THREE.Vector3(1, 1, 1) },
@@ -52,11 +53,12 @@ class CloudSurround {
     for (const name of ['setCloudSurround', 'stepCloudSurround', 'cloudSurroundDebug', 'render'])
       pipeline[name] = this[name].bind(this);
   }
-  setCloudSurround({ enabled = true, period = this.cloudAppearance.period, weather = this.cloudAppearance.weather, bounds } = {}) {
+  setCloudSurround({ enabled = true, period = this.cloudAppearance.period, weather = this.cloudAppearance.weather, bounds, center } = {}) {
     const u = this.material.uniforms;
     u.cloudSurroundEnabled.value = Boolean(enabled);
     this.cloudAppearance = { period, weather };
     if (bounds) u.cloudBounds.value.set(...bounds);
+    if (center) u.cloudCenter.value.set(...center);
     for (const [i, name] of ['cloudLight', 'cloudShade', 'cloudBase'].entries()) {
       const hex = cloudColours(period, weather)[i];
       u[name].value.set(((hex >>> 16) & 255) / 255, ((hex >>> 8) & 255) / 255, (hex & 255) / 255);

@@ -2,14 +2,16 @@ import { openMenu, closeMenu, chooseDistrict, clickView } from './support/game-c
 import {test,expect} from '@playwright/test';
 import { closeDeedsWhenTheyAppear } from './support/deeds.mjs';
 const scene=(page)=>page.evaluate(()=>window.__ourCastle.scene());
-// Classify the rendered map: the share of drawn pixels (not background or outline) that are green or water blue.
-const mapColours=(page)=>page.evaluate(()=>{
+// Classify palette-painted world surfaces, excluding the soft non-palette cloud surround and dark outline.
+const mapColours=(page)=>page.evaluate(async()=>{
+  const {PALETTE}=await import('/src/graphics/palette.js');
+  const painted=new Set(PALETTE.map(rgb=>rgb.reduce((n,v)=>(n<<8)|Math.round(v*255),0)));
   const source=document.querySelector('#world canvas'),c=document.createElement('canvas');c.width=source.width;c.height=source.height;
-  const g=c.getContext('2d');g.drawImage(source,0,0);const px=g.getImageData(0,0,c.width,c.height).data,bg=[px[0],px[1],px[2]];
+  const g=c.getContext('2d');g.drawImage(source,0,0);const px=g.getImageData(0,0,c.width,c.height).data;
   let drawn=0,green=0,blue=0;
   for(let i=0;i<px.length;i+=4){
     const r=px[i],gg=px[i+1],b=px[i+2];
-    if(Math.abs(r-bg[0])+Math.abs(gg-bg[1])+Math.abs(b-bg[2])<10||Math.abs(r-14)+Math.abs(gg-18)+Math.abs(b-21)<8)continue;
+    if(!painted.has((r<<16)|(gg<<8)|b)||Math.abs(r-14)+Math.abs(gg-18)+Math.abs(b-21)<8)continue;
     drawn++;if(gg>=r+10&&gg>=b+5)green++;else if(b>=gg+10&&b>=r+25)blue++;
   }
   return {drawn,green:green/drawn,blue:blue/drawn};
@@ -25,14 +27,14 @@ test.beforeEach(async({page,request})=>{
 test('future castles are separate locked destinations in one green woodland behind raised bridges and gates; inspecting them cannot unlock them',async({page,request})=>{
   const errors=[];page.on('pageerror',e=>errors.push(e.message));
   const initial=await scene(page),before=await(await request.get('/api/state')).json();
-  expect(initial.region).toEqual({width:164,depth:114});
-  expect(initial.districts).toHaveLength(6);
+  expect(initial.region).toEqual({width:228,depth:132,centerX:32,centerZ:0});
+  expect(initial.districts).toHaveLength(7);
   expect(initial.districts.filter(d=>d.open).map(d=>d.id)).toEqual(['cottage']);
   // Locked is shown by labels, raised leaves and closed gates. Every district keeps its full colours.
   expect(initial.districts.every(d=>!d.greyPaint&&d.drawMeshes>0&&d.hues>=4)).toBe(true);
   expect(initial.bridges.every(b=>!b.open&&b.raised&&b.gate)).toBe(true);
-  expect(new Set(initial.bridges.map(b=>b.river))).toEqual(new Set(['main','west','east']));
-  expect(initial.landscape.rivers.count).toBe(3);
+  expect(new Set(initial.bridges.map(b=>b.river))).toEqual(new Set(['main','west','east','rose']));
+  expect(initial.landscape.rivers.count).toBe(4);
   expect(initial.landscape.forest.trees).toBeGreaterThan(300);
   // The woodland colour check uses Day explicitly; Auto would follow this machine's clock (atmosphere.spec covers it).
   await openMenu(page, 'world-settings'); await page.selectOption('#time-mode','day');await openMenu(page, 'world-settings'); await page.selectOption('#weather-mode','clear');

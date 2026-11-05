@@ -2,7 +2,7 @@
 // Shared and dependency-free. Everything comes from the authoritative state the server sends (rewards, realm access,
 // court cast); nothing here decides money or access. A deed is a realm keepsake.
 import { REALM_DISTRICTS, districtById, homeDistrict } from './realm.js';
-import { COURT_CAST } from './court.js';
+import { COURT_CAST, courtDistrict } from './court.js';
 import { TIERS } from './rules.js';
 import { ESTATE_MILESTONES, HOME_DETAILS } from './rewards.js';
 
@@ -13,6 +13,7 @@ export const DISTRICT_SCENERY = Object.freeze({
   market: 'A red-roofed market hall, three cottages, a well, a windmill and bunting.',
   garden: 'A blue-roofed cottage, a stone-ringed pond, a well, four vegetable rows and an orchard grove.',
   keep: 'Two crimson-capped watchtowers with long banners, a stone house and flower planters.',
+  palace: 'An ivory palace with rose roofs, five gold-tipped spires, illuminated arched windows, a fountain and rose parterres.',
   castle: 'Two cream side halls under crimson and cobalt roofs, two tall spired towers, a curtain wall with crest shields and turrets, flower planters and bunting.',
 });
 // One short line for the face of the deed; the full description is in the deed's details.
@@ -22,23 +23,25 @@ export const DISTRICT_SUMMARY = Object.freeze({
   market: 'Market hall, striped stalls, workshop and windmill',
   garden: 'Pond, well, vegetable rows and an orchard',
   keep: 'Stone keep with four towers and two watchtowers',
+  palace: 'Ivory towers, rose roofs and a fountain garden',
   castle: 'Spired citadel, two side halls and a curtain wall',
 });
 // The deed's title band: one existing heraldic token per district (CSS custom properties in app.css).
-export const DEED_COLOURS = Object.freeze({ cottage: 'emerald', manor: 'cobalt', market: 'crimson', garden: 'leaf', keep: 'timber', castle: 'violet' });
+export const DEED_COLOURS = Object.freeze({ cottage: 'emerald', manor: 'cobalt', market: 'crimson', garden: 'leaf', keep: 'timber', castle: 'violet', palace: 'rose' });
 
 const MARKET = ESTATE_MILESTONES.find((r) => r.key === 'market');
 /** The reward entry that opens a district: its home tier, the village quarter, or the habit garden. */
 export function rewardIdFor(districtId) {
   const d = districtById(districtId);
   if (!d) return null;
+  if (d.id === 'palace') return 'home:castle';
   if (d.homeTier !== null) return `home:${TIERS[d.homeTier].key}`;
   return d.id === 'market' ? `estate:${MARKET.key}` : 'habit:garden';
 }
 /** The district an estate reward appears in (the same rule the art previews use). */
 export const estateDistrict = (reward) => (reward.id === `estate:${MARKET.key}` ? 'market' : homeDistrict(reward.previewTier).id);
 /** Court guests welcomed in a district: guests belong to the home district of the tier that welcomed them. */
-export const districtResidents = (districtId) => COURT_CAST.filter((p) => homeDistrict(p.tier).id === districtId);
+export const districtResidents = (districtId) => COURT_CAST.filter((p) => courtDistrict(p).id === districtId);
 
 const openIds = (state) => new Set((state?.rewards?.realm?.districts ?? []).filter((d) => d.open).map((d) => d.id));
 /**

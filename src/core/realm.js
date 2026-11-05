@@ -1,5 +1,9 @@
 // One connected world. District access is a presentation of existing earned achievements, never a payment decision.
-export const REALM_SIZE = Object.freeze({ width: 164, depth: 114 });
+export const REALM_SIZE = Object.freeze({ width: 228, depth: 132, centerX: 32, centerZ: 0 });
+export const REALM_BOUNDS = Object.freeze({
+  minX: REALM_SIZE.centerX - REALM_SIZE.width / 2, maxX: REALM_SIZE.centerX + REALM_SIZE.width / 2,
+  minZ: REALM_SIZE.centerZ - REALM_SIZE.depth / 2, maxZ: REALM_SIZE.centerZ + REALM_SIZE.depth / 2,
+});
 export const REALM_DISTRICTS = Object.freeze([
   { id: 'cottage', name: 'Hearth Village', x: -60, z: 26, width: 34, depth: 32, height: 6, homeTier: 0, percent: 0, scale: 1 },
   { id: 'manor', name: 'Manor Gardens', x: -10, z: 26, width: 40, depth: 36, height: 10, homeTier: 1, percent: 25, scale: 1.2 },
@@ -7,6 +11,7 @@ export const REALM_DISTRICTS = Object.freeze([
   { id: 'garden', name: 'Woodland Garden', x: -60, z: -28, width: 34, depth: 38, height: 9, homeTier: null, percent: null, scale: 1 },
   { id: 'keep', name: 'Stone Keep', x: -10, z: -28, width: 42, depth: 38, height: 13, homeTier: 2, percent: 60, scale: 1.35 },
   { id: 'castle', name: 'Royal Citadel', x: 47, z: -28, width: 50, depth: 46, height: 22, homeTier: 3, percent: 100, scale: 1.65 },
+  { id: 'palace', name: 'Rosewind Palace', x: 112, z: -26, width: 50, depth: 46, height: 27, homeTier: null, percent: 100, scale: 1 },
 ].map(Object.freeze));
 export const homeDistrict = (tier) => REALM_DISTRICTS.find((d) => d.homeTier === tier) ?? REALM_DISTRICTS[0];
 export const districtById = (id) => REALM_DISTRICTS.find((d) => d.id === id);
@@ -16,6 +21,7 @@ export const REALM_BRIDGES = Object.freeze([
   { id: 'citadel-bridge', from: 'keep', to: 'castle', a: [11, -28], b: [22, -28] },
   { id: 'market-bridge', from: 'manor', to: 'market', a: [10, 26], b: [28, 26] },
   { id: 'garden-bridge', from: 'cottage', to: 'garden', a: [-60, 10], b: [-60, -9] },
+  { id: 'palace-bridge', from: 'castle', to: 'palace', a: [74, -28], b: [90, -28] },
   { id: 'royal-procession', from: 'market', to: 'castle', a: [44, 11], b: [44, -5] },
 ].map((b) => Object.freeze({ ...b, a: Object.freeze(b.a), b: Object.freeze(b.b) })));
 
@@ -23,9 +29,10 @@ export const REALM_BRIDGES = Object.freeze([
 // bridges: the main river under the garden, keep and royal-procession crossings; a west tributary under the manor
 // crossing; an east tributary under the citadel and market crossings. Control points are joined by Catmull-Rom curves.
 export const REALM_RIVERS = Object.freeze([
-  { id: 'main', halfWidth: 2.4, points: [[-86, 3], [-72, -2.5], [-60, .5], [-49, 4], [-38, 1.5], [-24, -3], [-10, -.5], [3, 2.5], [17, -.5], [30, .5], [44, 3], [57, .5], [70, 3.5], [86, 1]] },
-  { id: 'west', halfWidth: 1.9, points: [[-38, 1.5], [-35.5, 9], [-37.5, 17], [-36.5, 26], [-34.5, 35], [-37.5, 45], [-36, 61]] },
-  { id: 'east', halfWidth: 1.9, points: [[16, -61], [18, -47], [15, -38], [16.5, -28], [18, -18], [15.5, -9], [17, -.5], [20, 8], [17.5, 17], [19, 26], [21.5, 35], [18, 45], [20, 61]] },
+  { id: 'main', halfWidth: 2.4, points: [[-86, 3], [-72, -2.5], [-60, .5], [-49, 4], [-38, 1.5], [-24, -3], [-10, -.5], [3, 2.5], [17, -.5], [30, .5], [44, 3], [57, .5], [70, 3.5], [83, 3], [98, 2], [113, 3.5], [130, 2], [150, 2]] },
+  { id: 'west', halfWidth: 1.9, points: [[-38, 1.5], [-35.5, 9], [-37.5, 17], [-36.5, 26], [-34.5, 35], [-37.5, 45], [-36, 72]] },
+  { id: 'east', halfWidth: 1.9, points: [[16, -72], [18, -47], [15, -38], [16.5, -28], [18, -18], [15.5, -9], [17, -.5], [20, 8], [17.5, 17], [19, 26], [21.5, 35], [18, 45], [20, 72]] },
+  { id: 'rose', halfWidth: 1.9, points: [[82, -72], [80, -58], [81, -45], [82, -28], [79, -15], [81, -6], [83, 3]] },
 ].map((r) => Object.freeze({ ...r, points: Object.freeze(r.points.map((p) => Object.freeze(p))) })));
 function sampleRiver(points, steps = 10) {
   const out = [], at = (i) => points[Math.max(0, Math.min(points.length - 1, i))];
@@ -60,7 +67,8 @@ export const inRiver = (x, z, margin = 0) => riverAt(x, z).depth > -margin;
 export function realmAccess({ builtTier = 0, estateLevel = 0, gardens = 0, previewFeature = null } = {}) {
   return REALM_DISTRICTS.map((district) => {
     const open = district.homeTier !== null ? district.homeTier <= builtTier
-      : district.id === 'market' ? estateLevel >= 2
+      : district.id === 'palace' ? builtTier >= 3
+        : district.id === 'market' ? estateLevel >= 2
         : gardens > 0 || ['habit-garden', 'water'].includes(previewFeature);
     return { ...district, open, status: open ? 'open' : 'locked', condition: district.percent === null
       ? 'Record an on-time bill habit (reported by you, not provider verified)'

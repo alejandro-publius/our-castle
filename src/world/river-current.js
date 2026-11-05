@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { REALM_SIZE, RIVER_PATHS } from '../core/realm.js';
+import { REALM_BOUNDS, RIVER_PATHS } from '../core/realm.js';
 
 // Sparse surface glints follow the existing channels. One instance batch, advanced only by the
 // scene's ambient clock; the banks, water bed and bridge geometry never move.
@@ -53,7 +53,7 @@ export function createRiverCurrent(waterLevel, colour) {
       const angle = Math.atan2(dx, dz);
       ripple.x = a[0] + dx * t + Math.cos(angle) * ripple.across;
       ripple.z = a[1] + dz * t - Math.sin(angle) * ripple.across;
-      ripple.visible = Math.abs(ripple.x) < REALM_SIZE.width / 2 - .8 && Math.abs(ripple.z) < REALM_SIZE.depth / 2 - .8;
+      ripple.visible = ripple.x > REALM_BOUNDS.minX + .8 && ripple.x < REALM_BOUNDS.maxX - .8 && ripple.z > REALM_BOUNDS.minZ + .8 && ripple.z < REALM_BOUNDS.maxZ - .8;
       // Taper at the channel ends so wrapping glints never pop across the forest.
       const fade = ripple.visible ? Math.min(1, distance / 3, (river.length - distance) / 3) : 0;
       transform.position.set(ripple.x, waterLevel + .04, ripple.z);

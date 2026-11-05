@@ -49,7 +49,7 @@ test('Night and Rain light the world, survive refresh, district inspection and a
   await openMenu(page, 'world-settings'); await page.selectOption('#weather-mode', 'rain');
   await expect(status(page)).toHaveText('Night (chosen by you) · Rain (chosen by you)');
   let a = await sky(page);
-  expect(a).toMatchObject({ period: 'night', weather: 'rain', pointLights: 6, pointLightCapacity: 6, pools: 90, rain: { visible: true } });
+  expect(a).toMatchObject({ period: 'night', weather: 'rain', pointLights: 7, pointLightCapacity: 7, pools: 105, rain: { visible: true } });
   expect(a.glassGlow).toBeGreaterThan(0);
   expect(a.panes).toBeGreaterThan(40);
   expect(a.lamps).toBeGreaterThan(30);
@@ -65,7 +65,7 @@ test('Night and Rain light the world, survive refresh, district inspection and a
 
   // Inspecting a locked area and returning to the whole realm keep the atmosphere and actual access.
   await chooseDistrict(page, 'castle');
-  expect(await sky(page)).toMatchObject({ period: 'night', weather: 'rain', pointLights: 6 });
+  expect(await sky(page)).toMatchObject({ period: 'night', weather: 'rain', pointLights: 7 });
   await expect(page.locator('#view-deed')).toBeHidden();
   await page.getByRole('button', { name: 'Whole realm', exact: true }).click();
   await expect.poll(async () => (await page.evaluate(() => window.__ourCastle.scene())).tier).toBe(0);
@@ -84,7 +84,7 @@ test('Night and Rain light the world, survive refresh, district inspection and a
   await page.getByRole('button', { name: 'Simulate approved payment' }).click();
   await expect(page.locator('#progress-amount')).toHaveText('$75.00');
   await expect.poll(async () => (await page.evaluate(() => window.__ourCastle.scene())).animating, { timeout: 25_000 }).toBe(false);
-  expect(await sky(page)).toMatchObject({ period: 'night', weather: 'rain', pointLights: 6 });
+  expect(await sky(page)).toMatchObject({ period: 'night', weather: 'rain', pointLights: 7 });
   await expect(page.locator('#time-mode')).toHaveValue('night');
   // Only the house setup and the explicit simulated payment wrote; no weather request was ever made.
   expect(seen.writes).toEqual(['POST /api/setup', 'POST /api/example/contributions']);

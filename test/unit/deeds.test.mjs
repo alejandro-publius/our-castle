@@ -81,6 +81,25 @@ test('only districts the server newly opens for the same household and goal prod
     state = (await s.call('POST', '/api/entries', { kind: 'bill_paid', label: 'Water bill', amountCents: 4000, memberId: adultOf(state).id })).state;
     assert.deepEqual(newlyOpenedDistricts(prev, state), ['garden']);
 
+    // The existing final milestone opens both royal estates, once, with separate deeds.
+    prev = state;
+    const final = await pay(s, state, 10500, 'completed', 'palace-final');
+    state = final.state;
+    assert.deepEqual(newlyOpenedDistricts(prev, state), ['castle', 'palace']);
+    const palace = districtDeed(state, 'palace');
+    assert.equal(palace.status, 'earned');
+    assert.equal(palace.colour, 'rose');
+    assert.equal(palace.art, 'assets/area-cards/palace.png');
+    assert.deepEqual(palace.court.names, ['Princess Sorrel', 'Lyra', 'Alma', 'Lark']);
+    assert.match(palace.condition, /100%/);
+    const repeated = (await pay(s, state, 10500, 'completed', 'palace-final')).state;
+    assert.deepEqual(newlyOpenedDistricts(state, repeated), []);
+    prev = state;
+    state = await refundOf(state, final.contribution);
+    assert.equal(districtDeed(state, 'palace').status, 'keepsake');
+    assert.equal(districtDeed(state, 'palace').open, true);
+    assert.deepEqual(newlyOpenedDistricts(prev, state), []);
+
     // A different goal is never compared with the previous one.
     assert.deepEqual(newlyOpenedDistricts({ ...prev, goal: { ...prev.goal, id: 'another-goal' } }, state), []);
   } finally { await s.close(); }
@@ -131,6 +150,6 @@ test('each deed shows the real buildings, guests, exact condition and honest evi
     assert.equal(sandbox.stamp, 'Realm keepsake · PayPal sandbox · test money');
 
     // Every district maps to the reward that opens it.
-    assert.deepEqual(['cottage', 'manor', 'market', 'garden', 'keep', 'castle'].map(rewardIdFor), ['home:cottage', 'home:manor', 'estate:market', 'habit:garden', 'home:keep', 'home:castle']);
+    assert.deepEqual(['cottage', 'manor', 'market', 'garden', 'keep', 'castle', 'palace'].map(rewardIdFor), ['home:cottage', 'home:manor', 'estate:market', 'habit:garden', 'home:keep', 'home:castle', 'home:castle']);
   } finally { await s.close(); }
 });

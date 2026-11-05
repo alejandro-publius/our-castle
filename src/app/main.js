@@ -481,9 +481,13 @@ function renderRealmNavigation() {
 }
 function syncRealmMarkers({focus,points}){
   const map=$('.realm-map'),focused=focus?'true':'false';if(map.dataset.focused!==focused)map.dataset.focused=focused;
+  // On a phone, seven full plaques would cover the overview. Keep the current home named;
+  // all districts stay available in Areas and a focused district always gets its full plaque.
+  const compactOverview = !focus && map.clientWidth < 640;
+  const home = homeDistrict(state?.board?.builtTier ?? 0).id;
   for(const point of points){
     const el=$(`#realm-markers [data-district="${point.id}"]`);if(!el)continue;
-    const visible = (!focus || point.id === focus) && point.x > 0 && point.x < point.width && point.y > 0 && point.y < point.height;
+    const visible = (!focus || point.id === focus) && (!compactOverview || point.id === home || el === document.activeElement) && point.x > 0 && point.x < point.width && point.y > 0 && point.y < point.height;
     el.hidden = !visible;
     if (visible) {
       const x = Math.max(el.offsetWidth / 2 + 8, Math.min(point.width - el.offsetWidth / 2 - 8, point.x)) + 'px';

@@ -58,7 +58,7 @@ test.describe('at 320 by 568', () => {
 });
 
 
-test('the starting home is larger, parchment names stay inside the map, and overview retains all six districts', async ({ page }) => {
+test('the starting home is larger, parchment names stay inside the map, and overview retains all seven districts', async ({ page }) => {
   const writes = trackWrites(page);
   await ready(page);
   await page.evaluate(() => document.fonts.ready);
@@ -77,7 +77,9 @@ test('the starting home is larger, parchment names stay inside the map, and over
   await page.getByRole('button', { name: 'Whole realm', exact: true }).click();
   const overview = await page.evaluate(() => window.__ourCastle.scene());
   expect(overview.view.worldPerPixel / close.view.worldPerPixel).toBeGreaterThan(2);
-  expect(overview.districts).toHaveLength(6);
+  expect(overview.districts).toHaveLength(7);
+  expect(await page.locator('#realm-districts button').count()).toBe(7);
+  if(page.viewportSize().width<640) await expect(page.locator('#realm-markers button:visible')).toHaveCount(1);
   expect(overview.districts.filter((d) => d.open).map((d) => d.id)).toEqual(['cottage']);
   for (const el of await page.locator('#realm-markers button:visible').all()) {
     expect(await el.evaluate((el) => {

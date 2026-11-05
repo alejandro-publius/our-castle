@@ -30,7 +30,7 @@ test('one general notice and closed utilities leave the world and four actions r
   expect(world.y).toBeLessThan(page.viewportSize().height * .3);
   expect(world.height).toBeGreaterThan(350);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-  expect(await page.evaluate(() => window.__ourCastle.scene().districts.length)).toBe(6);
+  expect(await page.evaluate(() => window.__ourCastle.scene().districts.length)).toBe(7);
   expect(seen).toEqual({ writes: [], errors: [] });
 });
 

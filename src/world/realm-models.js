@@ -1,6 +1,7 @@
 import * as THREE from 'three';
+import { createPrincessPalace } from './princess-palace.js';
 import { createRiverCurrent } from './river-current.js';
-import { REALM_SIZE, REALM_DISTRICTS, REALM_BRIDGES, RIVER_PATHS, journeyLeg, realmAccess, bridgeAccess, riverAt } from '../core/realm.js';
+import { REALM_SIZE, REALM_BOUNDS, REALM_DISTRICTS, REALM_BRIDGES, RIVER_PATHS, journeyLeg, realmAccess, bridgeAccess, riverAt } from '../core/realm.js';
 
 // One continuous woodland. The districts are meadow clearings in a single forest floor; narrow rivers are cut into that
 // floor over a shallow water bed and pass under the middle of every bridge. Locked districts keep their colours: the
@@ -35,6 +36,7 @@ const nearBridge = (x, z, margin) => REALM_BRIDGES.some(({ a, b }) => {
 
 export function createRealmModels({ builder, part: addPart, models, colours: C }) {
   let part = addPart;
+  const palace = createPrincessPalace({ part: addPart, models, colours: C });
   builder.geo.trunk = new THREE.CylinderGeometry(.5, .5, 1, 5);
   const box=(g,x,y,z,w,h,d,c,ry=0,rz=0)=>part(g,'box',x,y,z,w,h,d,c,ry,rz);
   const rock=(g,x,y,z,w,h,d,c)=>part(g,'rock',x,y,z,w,h,d,c);
@@ -89,7 +91,7 @@ export function createRealmModels({ builder, part: addPart, models, colours: C }
     // A shallow water bed under the whole board shows only where the ground is cut below it. Unlit, so the bright sun
     // does not wash it out; its sides show at the river mouths on the board edge.
     const water = new THREE.Mesh(new THREE.BoxGeometry(REALM_SIZE.width - .3, L.water - L.base - .1, REALM_SIZE.depth - .3), new THREE.MeshBasicMaterial({ color: F.water }));
-    water.position.y = (L.water + L.base + .1) / 2;
+    water.position.set(REALM_SIZE.centerX, (L.water + L.base + .1) / 2, REALM_SIZE.centerZ);
     water.userData.ownedGeometry = true; water.userData.ownedMaterial = true; water.userData.water = true; group.add(water);
     surfaceMeshes.water = water;
     return { vertices: positions.length / 3, triangles: index.length / 3 };
@@ -99,7 +101,7 @@ export function createRealmModels({ builder, part: addPart, models, colours: C }
     const positions = [], colours = [], index = [], colour = new THREE.Color(), mix = new THREE.Color();
     const paint = (hex, other, t = 0) => { colour.setHex(hex); if (other !== undefined) colour.lerp(mix.setHex(other), t); colours.push(colour.r, colour.g, colour.b); };
     for (let j = 0; j < rows; j++) for (let i = 0; i < cols; i++) {
-      const x = -W / 2 + i, z = -D / 2 + j, river = riverAt(x, z), clearing = deepestClearing(x, z);
+      const x = REALM_BOUNDS.minX + i, z = REALM_BOUNDS.minZ + j, river = riverAt(x, z), clearing = deepestClearing(x, z);
       // Banks run from 1.1 outside the water line down to the bed just inside it.
       const cut = smooth((river.depth + 1.1) / 1.4), bump = clearing > 0 ? 0 : (noise(x / 5, z / 5) - .5) * .12 * (1 - cut);
       positions.push(x, lerp(L.ground + bump, L.bed, cut), z);
@@ -133,7 +135,7 @@ export function createRealmModels({ builder, part: addPart, models, colours: C }
       const path = river.path;
       for (let i = 2; i < path.length - 1; i += 2) {
         const [x0, z0] = path[i - 1], [x1, z1] = path[i + 1], [x, z] = path[i], angle = Math.atan2(x1 - x0, z1 - z0);
-        if (Math.abs(x) > 81.5 || Math.abs(z) > 56.5 || nearBridge(x, z, 3)) continue;
+        if (x < REALM_BOUNDS.minX + .5 || x > REALM_BOUNDS.maxX - .5 || z < REALM_BOUNDS.minZ + .5 || z > REALM_BOUNDS.maxZ - .5 || nearBridge(x, z, 3)) continue;
         for (const side of [-1, 1]) {
           if (hash(i * side, 7) > .55) continue;
           const reach = river.halfWidth + .15 + hash(i, side) * .5, bx = x + Math.cos(angle) * reach * side, bz = z - Math.sin(angle) * reach * side;
@@ -172,10 +174,13 @@ export function createRealmModels({ builder, part: addPart, models, colours: C }
   function forest(group) {
     const counts = { trees: 0, pines: 0, broadleaf: 0, birches: 0, shrubs: 0, ferns: 0, details: 0 };
     const step = 3.2;
-    for (let gz = -56; gz <= 56; gz += step) for (let gx = -81; gx <= 81; gx += step) {
+    // Keep the original grid anchors, extending only the outer bounds: older groves do not shift.
+    for (let iz = Math.ceil((REALM_BOUNDS.minZ + 1 + 56) / step); -56 + iz * step <= REALM_BOUNDS.maxZ - 1; iz++)
+      for (let ix = Math.ceil((REALM_BOUNDS.minX + 1 + 81) / step); -81 + ix * step <= REALM_BOUNDS.maxX - 1; ix++) {
+      const gx = -81 + ix * step, gz = -56 + iz * step;
       const i = Math.round(gx * 10), j = Math.round(gz * 10);
       const x = gx + (hash(i, j) - .5) * step * .9, z = gz + (hash(j, i) - .5) * step * .9;
-      if (Math.abs(x) > 81.2 || Math.abs(z) > 56.2) continue;
+      if (x < REALM_BOUNDS.minX + .8 || x > REALM_BOUNDS.maxX - .8 || z < REALM_BOUNDS.minZ + .8 || z > REALM_BOUNDS.maxZ - .8) continue;
       const river = riverAt(x, z), clearing = deepestClearing(x, z), density = noise(x / 13, z / 13), species = noise(x / 19 + 20, z / 19 - 7);
       if (river.depth > -1.5 || nearBridge(x, z, 3.6) || nearJourney(x, z, 2.7)) continue;
       // Trees may step up to about 2.5 units into a clearing edge, so no district has a straight tree line.
@@ -210,12 +215,12 @@ export function createRealmModels({ builder, part: addPart, models, colours: C }
     // Each clearing has its own copses rather than a single square tree border.
     for(let i=0;i<24;i++){
       const x=Math.sin(i*2.37)*(d.width/2-3),z=Math.cos(i*3.73)*(d.depth/2-3);
-      if(Math.abs(x)<12*d.scale&&Math.abs(z)<11*d.scale||nearJourney(d.x+x,d.z+z))continue;
+      if(d.id==='palace'&&Math.abs(x)<19&&z>-12&&z<22||Math.abs(x)<12*d.scale&&Math.abs(z)<11*d.scale||nearJourney(d.x+x,d.z+z))continue;
       helpers.tree(group,x,z,1.1+(i%5)*.16,i%3!==0);
     }
     for(let i=0;i<26;i++){
       const x=Math.sin(i*3.9)*(d.width*.41),z=Math.cos(i*2.7)*(d.depth*.4);
-      if(Math.abs(x)<7&&Math.abs(z)<6||nearJourney(d.x+x,d.z+z))continue;
+      if(d.id==='palace'&&Math.abs(x)<19&&z>-12&&z<22||Math.abs(x)<7&&Math.abs(z)<6||nearJourney(d.x+x,d.z+z))continue;
       rock(group,x,.34,z,.5,.32,.4,C.leaf);rock(group,x,.57,z,.2,.23,.2,[C.gold,C.red,F.pink,F.violet][i%4]);
     }
   }
@@ -348,6 +353,7 @@ export function createRealmModels({ builder, part: addPart, models, colours: C }
       stagMonument(group,8.5,15.4,flag);
       models.bunting(group,-17,18,17,18,[C.red,C.gold,C.blue]);
     }
+    if(d.id==='palace') palace(group,flag);
     if(d.id==='market'){
       models.extras(group,2,flag,null,{ramparts:false});
       models.cottage(group,-6,-1,{w:6,h:4,d:5,roofColor:C.red,shutters:C.blue});models.banner(group,-6,3,1.6,flag,1,1.3);
@@ -460,7 +466,7 @@ export function createRealmModels({ builder, part: addPart, models, colours: C }
   // Where warm night light falls: in front of each district's main door, and at both gates of every bridge.
   function lightSpots() {
     const spots = REALM_DISTRICTS.map((d) => {
-      const [x, z] = d.homeTier !== null ? [0, 4.6 * d.scale] : d.id === 'market' ? [-6, 2.4] : [7, -5.6];
+      const [x, z] = d.homeTier !== null ? [0, 4.6 * d.scale] : d.id === 'market' ? [-6, 2.4] : d.id === 'palace' ? [0, 6.5] : [7, -5.6];
       return { kind: 'door', district: d.id, x: d.x + x, z: d.z + z };
     });
     for (const b of REALM_BRIDGES) for (const [x, z] of [b.a, b.b]) spots.push({ kind: 'gate', bridge: b.id, x, z });

@@ -3,6 +3,7 @@ export const CLOUD_SURROUND_GLSL = `
 uniform bool cloudSurroundEnabled;
 uniform float cloudTime;
 uniform vec2 cloudBounds;
+uniform vec2 cloudCenter;
 uniform mat4 cloudWorldFromClip;
 uniform vec3 cloudLight;
 uniform vec3 cloudShade;
@@ -40,7 +41,7 @@ vec4 cloudSurroundAt(vec2 uv,float depth) {
   vec3 from=a.xyz/a.w,to=b.xyz/b.w;
   bool sky=depth>=.99999;
   vec3 world=sky?mix(from,to,(.25-from.y)/(to.y-from.y)):mix(from,to,depth);
-  vec2 edge=abs(world.xz)-cloudBounds;
+  vec2 edge=abs(world.xz-cloudCenter)-cloudBounds;
   float distance=length(max(edge,vec2(0.0)))+min(max(edge.x,edge.y),0.0);
   if(!sky&&distance<-4.2)return vec4(0.0);
   vec2 p=vec2(dot(world,cloudRight),dot(world,cloudUp))/31.0+vec2(cloudTime*.003,cloudTime*.0018);

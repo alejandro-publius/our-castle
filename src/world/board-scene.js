@@ -5,7 +5,7 @@ import { CREST_FIELDS, ROUTE_LENGTH } from '../core/rules.js';
 import { addEstateGeometry, createEstateModels } from './estate-models.js';
 import { createEstateCourt } from './court.js';
 import { createRealmModels } from './realm-models.js';
-import { REALM_SIZE, REALM_DISTRICTS, REALM_BRIDGES, REALM_ROUTE, homeDistrict, districtById, journeyLeg, journeyPosition } from '../core/realm.js';
+import { REALM_SIZE, REALM_BOUNDS, REALM_DISTRICTS, REALM_BRIDGES, REALM_ROUTE, homeDistrict, districtById, journeyLeg, journeyPosition } from '../core/realm.js';
 
 // The playable woodland board. It extends the original art-preview vocabulary (MiniBuilder,
 // layered trees, antlered deer, stone towers) and renders through the original 90-colour
@@ -204,7 +204,7 @@ export function createBoardScene(container, { reducedMotion = false, onEvent = (
   function buildCourt() {
     court.setTier(state.builtTier, crestColour(state.crest.field));
     const profile = court.debug();
-    renderer.domElement.setAttribute('aria-label', `Connected woodland realm: six districts in one forest, joined by bridges over winding rivers, with ${profile.capacity} wandering guests. Locked districts keep their colours behind raised bridges and closed gates. ${profile.description}`);
+    renderer.domElement.setAttribute('aria-label', `Connected woodland realm: ${REALM_DISTRICTS.length} districts in one forest, joined by bridges over winding rivers, with ${profile.capacity} wandering guests. Locked districts keep their colours behind raised bridges and closed gates. ${profile.description}`);
   }
 
   // ---------- Household travelers ----------
@@ -351,15 +351,16 @@ export function createBoardScene(container, { reducedMotion = false, onEvent = (
     });
     glow = { pools, lights, glass: builder.material(models.roles.glass), lamp: builder.material(models.roles.lamp) };
 
-    const rand = seeded(20261104), height = 14, count = 540;
+    const density = REALM_SIZE.width * REALM_SIZE.depth / (164 * 114);
+    const rand = seeded(20261104), height = 14, count = Math.round(540 * density);
     const streaks = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial({ color: 0xc9deeb, transparent: true, opacity: 0.5, depthWrite: false }), count * 2);
     for (let i = 0; i < count; i++) {
-      const x = -82 + rand() * 164, z = -57 + rand() * 114, y = rand() * height;
+      const x = REALM_BOUNDS.minX + rand() * REALM_SIZE.width, z = REALM_BOUNDS.minZ + rand() * REALM_SIZE.depth, y = rand() * height;
       for (const layer of [0, 1]) { t.position.set(x, y + layer * height, z); t.rotation.set(0, 0, 0.2); t.scale.set(0.13, 1.9, 0.13); t.updateMatrix(); streaks.setMatrixAt(i * 2 + layer, t.matrix); }
     }
     streaks.renderOrder = 3; streaks.userData.ownedGeometry = true; streaks.userData.ownedMaterial = true;
-    const splashes = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial({ color: 0xdcebf3, transparent: true, opacity: 0.75, depthWrite: false }), 220);
-    const placeSplash = (i) => { t.position.set(-80 + rand() * 160, 0.33, -55 + rand() * 110); t.rotation.set(0, rand() * 3, 0); t.scale.set(0.42, 0.03, 0.42); t.updateMatrix(); splashes.setMatrixAt(i, t.matrix); };
+    const splashes = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial({ color: 0xdcebf3, transparent: true, opacity: 0.75, depthWrite: false }), Math.round(220 * density));
+    const placeSplash = (i) => { t.position.set(REALM_BOUNDS.minX + 2 + rand() * (REALM_SIZE.width - 4), 0.33, REALM_BOUNDS.minZ + 2 + rand() * (REALM_SIZE.depth - 4)); t.rotation.set(0, rand() * 3, 0); t.scale.set(0.42, 0.03, 0.42); t.updateMatrix(); splashes.setMatrixAt(i, t.matrix); };
     for (let i = 0; i < splashes.count; i++) placeSplash(i);
     splashes.renderOrder = 3; splashes.userData.ownedGeometry = true; splashes.userData.ownedMaterial = true;
     const group = new THREE.Group(); group.add(streaks, splashes); group.visible = false; groups.atmosphere.add(group);
@@ -409,7 +410,7 @@ export function createBoardScene(container, { reducedMotion = false, onEvent = (
   // rotation, in the part of the canvas not covered by the heading, view controls or caption. Zoom in for detail.
   const FRAME_POINTS = [];
   const half = { x: REALM_SIZE.width / 2 + 0.2, z: REALM_SIZE.depth / 2 + 0.2 };
-  for (const x of [-half.x, half.x]) for (const z of [-half.z, half.z]) for (const y of [-2.4, 4.2]) FRAME_POINTS.push(new THREE.Vector3(x, y, z));
+  for (const x of [REALM_SIZE.centerX - half.x, REALM_SIZE.centerX + half.x]) for (const z of [REALM_SIZE.centerZ - half.z, REALM_SIZE.centerZ + half.z]) for (const y of [-2.4, 4.2]) FRAME_POINTS.push(new THREE.Vector3(x, y, z));
   for (const d of REALM_DISTRICTS) FRAME_POINTS.push(new THREE.Vector3(d.x,d.height,d.z));
   const ZOOM = { min: 0.55, max: 2.8 };
   const scratch = new THREE.Vector3();
@@ -443,7 +444,7 @@ export function createBoardScene(container, { reducedMotion = false, onEvent = (
   function updateCamera() {
     const focus = districtById(view.focus), bridge = REALM_BRIDGES.find((b) => b.id === view.crossing);
     const from = bridge && districtById(bridge.from), to = bridge && districtById(bridge.to);
-    const x = bridge ? (from.x + to.x) / 2 : focus?.x ?? 0, z = bridge ? (from.z + to.z) / 2 : focus?.z ?? 0;
+    const x = bridge ? (from.x + to.x) / 2 : focus?.x ?? REALM_SIZE.centerX, z = bridge ? (from.z + to.z) / 2 : focus?.z ?? REALM_SIZE.centerZ;
     camera.position.set(x+Math.sin(view.angle)*180,150,z+Math.cos(view.angle)*180);
     camera.lookAt(x,1.2,z);camera.updateMatrixWorld();
   }
@@ -502,7 +503,7 @@ export function createBoardScene(container, { reducedMotion = false, onEvent = (
   models = createEstateModels({ part, builder, colours });
   realmModels = createRealmModels({part,builder,models,colours});
   pipeline = addCloudSurround(new PixelRenderer(renderer));
-  pipeline.setCloudSurround({ enabled: true, bounds: [REALM_SIZE.width / 2, REALM_SIZE.depth / 2] });
+  pipeline.setCloudSurround({ enabled: true, bounds: [REALM_SIZE.width / 2, REALM_SIZE.depth / 2], center: [REALM_SIZE.centerX, REALM_SIZE.centerZ] });
   pipeline.configure({ pixelSize: 2, pixelMode: true, outlines: true, dither: true, exposure: 1.05 });
   for (const name of ['woodland', 'land', 'route', 'gardens', 'token', 'fx', 'estate', 'court', 'atmosphere']) { groups[name] = new THREE.Group(); scene.add(groups[name]); }
   court = createEstateCourt(groups.court, builder, colours);
