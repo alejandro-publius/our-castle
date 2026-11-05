@@ -1,5 +1,9 @@
 # Claude project instructions
 
+Owner's latest steering: **stop video work for now and build**. Preserve existing videos, raw captures and the unfinished earned-realm source kit; do not resume filming/rendering/exporting unless the owner asks. The playable woodland now has layered pale clouds instead of flat navy empty space, with only light mist over the outer trees. Keep the original PixelRenderer and palette untouched; the separate cloud compositor wraps that renderer. Inspect docs/screenshots/cloud-woodland.png and cloud-night-rain.png.
+
+The record-to-realm build at 817c19c also remains: AG Grid selection/search opens one receipt and can visit a calculated milestone district. Focused steward verification requests the selected household order and validates order/reference/capture identity; never show a verified result from model prose alone. The real in-app sandbox/same-order recording gap remains with the existing browser operator, and video work is now paused.
+
 This is the Our Castle build handoff requested by the repository owner. Follow AGENTS.md and read the documents in README's order. The visual source is concrete and bundled: inspect the PNGs and run the art preview. Preserve the Tiny Castle miniature family and 90-color renderer. Do not substitute an unrelated design system.
 
 Build the financial board game described here. The previous card battler and Lens Studio projects are outside this repository and must not be modified. This is a browser project; no SPECS/Meta hardware is required for this hackathon.

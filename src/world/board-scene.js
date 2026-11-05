@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { PixelRenderer } from '../graphics/pixel-renderer.js';
+import { addCloudSurround } from '../graphics/cloud-compositor.js';
 import { CREST_FIELDS, ROUTE_LENGTH } from '../core/rules.js';
 import { addEstateGeometry, createEstateModels } from './estate-models.js';
 import { createEstateCourt } from './court.js';
@@ -295,6 +296,7 @@ export function createBoardScene(container, { reducedMotion = false, onEvent = (
 
   function ambientStep(seconds) {
     realmModels.stepCurrent(seconds);
+    pipeline.stepCloudSurround(seconds);
     court.tick(seconds);
     for (const r of rotators) r.group.rotation[r.axis] = seconds * r.speed;
     for (const g of grazers) {
@@ -372,6 +374,7 @@ export function createBoardScene(container, { reducedMotion = false, onEvent = (
   function applyAtmosphere() {
     const look = LOOKS[atmosphere.period] ?? LOOKS.day, wet = atmosphere.weather === 'rain', dull = wet || atmosphere.weather === 'overcast';
     const night = atmosphere.period === 'night';
+    pipeline.setCloudSurround({ enabled: true, period: atmosphere.period, weather: atmosphere.weather });
     hemi.color.setHex(look.sky); if (dull) hemi.color.lerp(new THREE.Color(look.overcast), 0.65);
     hemi.groundColor.setHex(look.ground); hemi.intensity = look.hemi * (wet ? (night ? 0.85 : 0.7) : dull ? 0.84 : 1);
     sun.color.setHex(look.sun); sun.intensity = look.sunI * (wet ? 0.3 : dull ? 0.5 : 1); sun.position.set(...look.sunAt);
@@ -490,7 +493,7 @@ export function createBoardScene(container, { reducedMotion = false, onEvent = (
   renderer.domElement.setAttribute('role', 'img');
   renderer.domElement.setAttribute('aria-label', 'Woodland board with deer, a brook and the household home');
   container.append(renderer.domElement);
-  scene = new THREE.Scene(); scene.background = new THREE.Color(0x112830);
+  scene = new THREE.Scene(); scene.background = new THREE.Color(0xd4ddd0);
   const hemi = new THREE.HemisphereLight(0xeaf6ff, 0x65714f, 2.7); scene.add(hemi);
   const sun = new THREE.DirectionalLight(0xffe9bf, 3.4); sun.position.set(-12, 25, 17); scene.add(sun);
   camera = new THREE.OrthographicCamera(-90, 90, 60, -60, 0.1, 800); updateCamera();
@@ -498,7 +501,8 @@ export function createBoardScene(container, { reducedMotion = false, onEvent = (
   addEstateGeometry(builder);
   models = createEstateModels({ part, builder, colours });
   realmModels = createRealmModels({part,builder,models,colours});
-  pipeline = new PixelRenderer(renderer);
+  pipeline = addCloudSurround(new PixelRenderer(renderer));
+  pipeline.setCloudSurround({ enabled: true, bounds: [REALM_SIZE.width / 2, REALM_SIZE.depth / 2] });
   pipeline.configure({ pixelSize: 2, pixelMode: true, outlines: true, dither: true, exposure: 1.05 });
   for (const name of ['woodland', 'land', 'route', 'gardens', 'token', 'fx', 'estate', 'court', 'atmosphere']) { groups[name] = new THREE.Group(); scene.add(groups[name]); }
   court = createEstateCourt(groups.court, builder, colours);
@@ -601,7 +605,7 @@ export function createBoardScene(container, { reducedMotion = false, onEvent = (
       const t = groups.token.position;
       return { spaces, travelers: toScreen(t.x, t.y + 1.5, t.z), canvas: { left: rect.left, top: rect.top, width: rect.width, height: rect.height } };
     },
-    debug: () => ({ region: REALM_SIZE, estateLevel: state.estateLevel, view: { ...view }, previewFeature: state.previewFeature, tier: state.builtTier, position: state.position, shownPosition, gardens: state.gardens, crest: { ...state.crest }, playMode: state.playMode, animating, frames, ambient: Boolean(ambientTimer), ambientFrames, grazers: grazers.length, butterflies: flutterers.length, court: court.debug(), districts: realm.districts.map(({id,open,status,greyPaint,drawMeshes,hues})=>({id,open,status,greyPaint,drawMeshes,hues})), bridges: realm.bridges.map(({id,open,panels,gate,river})=>({id,open,gate,river,raised:panels.some(p=>Math.abs(p.group.rotation.z)>.01)})), landscape: realm.landscape, riverCurrent: realmModels.currentDebug(), atmosphere: atmosphereDebug(), render: { ...perf, averageMs: perf.draws ? perf.totalMs / perf.draws : 0, geometries: renderer.info.memory.geometries } }),
+    debug: () => ({ region: REALM_SIZE, estateLevel: state.estateLevel, view: { ...view }, previewFeature: state.previewFeature, tier: state.builtTier, position: state.position, shownPosition, gardens: state.gardens, crest: { ...state.crest }, playMode: state.playMode, animating, frames, ambient: Boolean(ambientTimer), ambientFrames, grazers: grazers.length, butterflies: flutterers.length, court: court.debug(), districts: realm.districts.map(({id,open,status,greyPaint,drawMeshes,hues})=>({id,open,status,greyPaint,drawMeshes,hues})), bridges: realm.bridges.map(({id,open,panels,gate,river})=>({id,open,gate,river,raised:panels.some(p=>Math.abs(p.group.rotation.z)>.01)})), landscape: realm.landscape, riverCurrent: realmModels.currentDebug(), surround: pipeline.cloudSurroundDebug(), atmosphere: atmosphereDebug(), render: { ...perf, averageMs: perf.draws ? perf.totalMs / perf.draws : 0, geometries: renderer.info.memory.geometries } }),
     dispose() { for (const [name,fn,options] of interactions) renderer.domElement.removeEventListener(name,fn,options); clearInterval(ambientTimer); observer?.disconnect(); court?.dispose(); for (const g of Object.values(groups)) disposeGroup(g); flutterGeo?.dispose(); builder?.dispose(); pipeline?.dispose(); renderer?.dispose(); },
   };
 

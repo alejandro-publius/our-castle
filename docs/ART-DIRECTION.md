@@ -1,5 +1,13 @@
 # Art direction — preserve this visual family
 
+## Clouds around the woodland (November 4, 2026)
+
+The owner rejected the flat blue empty space and requested mixed fluffy/transparent clouds around the greenery, barely seeping into the map. This is the primary reference lock: the existing woodland, pixel palette and that explicit cloud brief. Bounded secondary research: Adaline (https://www.adaline.ai, Refero 6096b7ca-a126-444b-81c6-8943f0fbec98) supplies misty depth around natural scenery; Air (https://air.inc, c8a666d9-56a3-4aa6-b373-e62a2b07d3cb) supplies layered soft cloud masses. No typography, controls, marketing layout, saturated sky blue or third-party imagery is imported.
+
+Replace empty sky pixels with ivory/sage cloud banks and a thinner mist layer. Anchor the banks in world space so they follow camera movement. Limit foreground haze to a few units at the outer forest edge; keep the map interior, buildings, rivers, labels and financial interactions clear. Afternoon, Night and Rain tint the same cloud shapes. Reuse the ambient clock; keep reduced motion static and cap hidden-tab drift. The art-reference page keeps its original renderer defaults. No new user controls or notices.
+
+The owner paused all further video work. Preserve the captured source and older videos; build and review still images only.
+
 ## Record-to-realm journey (November 4, 2026)
 
 Reuse the current owner-approved game frame and the existing Refero reference lock in INTERFACE-DIRECTION.md. The bounded map-selection pattern supplies one selected ledger record, not a new dashboard or reward catalogue. Keep the owned fonts/palette, one general footer notice, source labels on records and all six forest districts.

@@ -1,5 +1,15 @@
 # Validation
 
+## November 4, 2026: soft clouds in place of the navy surround
+
+Empty space around the woodland now contains broad pale cloud banks, thinner haze and light drift. Wisps touch only a few units of the outer forest. Day, Afternoon, Night and Rain tint the same shapes; the world interior, rivers, architecture and controls remain clear. The clouds use smooth alpha after the original world palette pass to avoid night-time colour banding. No image downloads, new notices or controls were added.
+
+The original copied PixelRenderer and palette are byte-for-byte preserved. The initial direct renderer edit was caught by the source-integrity guard; the final solution decorates an actual original renderer instance in a separate cloud compositor. Initial patterned and banded cloud versions were rejected during visual review and retained in ignored test-results/cloud-surround/.
+
+**Checks:** original 47-file/palette/renderer/syntax check passed. Read-only Chromium still-image review covered Day, Afternoon, Night/Rain, Raw 3D, camera turn/zoom, 390 px fit, static reduced motion and hidden-tab pause/resume without a large drift jump. There were no page/shader errors, writes, external requests or financial state changes. A 32×32 interior traveler crop matched the earlier renderer exactly; the sampled sky corner contained no old navy pixels, and all six district access/paint states matched. Resource counts and the same-context comparison are recorded with the review, not used as a hardware performance benchmark.
+
+All seven protected owner/rehearsal files retained their hashes, modes and timestamps. No server restart, new payment, paid AI/provider check or video recording/export occurred during this cloud pass. Physical phones, Safari/Firefox and a screen reader were not checked. [Current woodland](screenshots/cloud-woodland.png) · [Night and rain](screenshots/cloud-night-rain.png).
+
 ## November 4, 2026: record-to-realm integration and exact-order verification
 
 The existing Community grid now supports source/order/capture search, keyboard/single-row selection, one selected receipt and a link from a calculated milestone to the already-earned district. Pending/failed attempts are visible with zero credited impact. Refunds retain their own amount and reference. The pinned total remains current server progress, independent of search/filtering. Plain-table selection/search remains if AG Grid cannot load.
