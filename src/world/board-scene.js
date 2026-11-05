@@ -72,7 +72,7 @@ const disposeGroup = (group) => {
 const easeInOut = (t) => (t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2);
 const easeOutBack = (t) => 1 + 2.2 * (t - 1) ** 3 + 1.2 * (t - 1) ** 2;
 
-export function createBoardScene(container, { reducedMotion = false, onEvent = () => {}, onViewChange = () => {}, insets = null } = {}) {
+export function createBoardScene(container, { reducedMotion = false, isOccluded = () => false, onEvent = () => {}, onViewChange = () => {}, insets = null } = {}) {
   let renderer; let pipeline; let scene; let camera; let builder; let observer; let models; let court;
   const part = (...args) => builder.part(...args);
   const groups = {};
@@ -322,11 +322,15 @@ export function createBoardScene(container, { reducedMotion = false, onEvent = (
   }
   function startAmbient() {
     if (reducedMotion || ambientTimer) return;
-    const start = performance.now();
+    let start = performance.now(), coveredAt = null;
     // About 8 frames per second while idle; the pixel look hides the low rate and it stays cheap.
     ambientTimer = setInterval(() => {
+      const now = performance.now();
+      if (isOccluded()) { coveredAt ??= now; return; }
+      // Keep the same ambient phase after a card closes, rather than jumping through the covered interval.
+      if (coveredAt !== null) { start += now - coveredAt; coveredAt = null; }
       if (document.hidden) return;
-      ambientStep((performance.now() - start) / 1000);
+      ambientStep((now - start) / 1000);
       ambientFrames++;
       if (!animating && (view.focus || view.zoom>1.1 || ambientFrames%2===0)) draw();
     }, 125);

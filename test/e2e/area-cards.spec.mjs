@@ -52,8 +52,11 @@ test.beforeEach(async ({ request }) => {
   expect((await request.post('/api/demo/reset', { data: {} })).ok()).toBeTruthy();
 });
 
-test('reaching the manor shows its deed after the board animation; Escape restores focus and a reload shows none', async ({ page }, testInfo) => {
+test('reaching the manor shows its deed after the board animation; Escape restores focus and a reload shows none', async ({ page, request }, testInfo) => {
   const writes = trackWrites(page);
+  // Chosen cosmetic identities, not an extra payment or assertion that each family member contributed.
+  for (const [id, avatarId] of [['m_rowan', 'wizard'], ['m_wren', 'royal']])
+    expect((await request.put(`/api/members/${id}/avatar`, { data: { avatarId } })).ok()).toBe(true);
   await ready(page);
   await watchDeedOpening(page);
   await foundHouse(page);
@@ -67,6 +70,13 @@ test('reaching the manor shows its deed after the board animation; Escape restor
   expect(await art.evaluate((img) => [img.naturalWidth, img.naturalHeight, getComputedStyle(img).imageRendering, img.getAttribute('src')])).toEqual([320, 176, 'pixelated', 'assets/area-cards/manor.png']);
   await expect(art).toHaveAttribute('alt', 'Pixel portrait of Manor Gardens');
   await expect(page.locator('#deed-seal svg')).toBeVisible();
+  await expect(page.locator('#deed-family')).toHaveAttribute('aria-label', 'House of Rivergate');
+  await expect(page.locator('#deed-family img')).toHaveCount(2);
+  await expect(page.locator('#deed-family img').nth(0)).toHaveAttribute('alt', 'Rowan · Wizard');
+  await expect(page.locator('#deed-family img').nth(1)).toHaveAttribute('alt', 'Wren · Royal');
+  await expect(page.locator('#deed-family img').nth(0)).toHaveAttribute('src', '/assets/member-avatars/wizard.png');
+  await expect(page.locator('#deed-family img').nth(1)).toHaveAttribute('src', '/assets/member-avatars/royal.png');
+  await expect(page.locator('#celebration')).toBeHidden(); // one celebration, not a parallel banner for the same unlock
   await expect(page.locator('#deed')).not.toContainText(/Evidence:|guests|Deed details|Realm keepsake/);
   await page.locator('#deed').evaluate((el) => Promise.all(el.getAnimations().map((a) => a.finished)));
   await page.locator('#deed-dialog').screenshot({ path: testInfo.outputPath('short-deed.png') });
@@ -120,6 +130,7 @@ test('pending payments, refunds and re-crossing never create a deed; earned map 
   await view.focus();
   await page.keyboard.press('Enter');
   await expect(page.locator('#deed-earned')).toHaveText('Unlocked · 25% milestone');
+  await expect(page.locator('#deed-family')).toBeHidden(); // reopening an earned deed is not another celebration
   await page.keyboard.press('Escape');
   await expect(view).toBeFocused();
 });
@@ -186,6 +197,7 @@ test('a new area that arrives while a map deed is open replaces it in place with
   await page.waitForTimeout(500); // any stale close event has run by now
   await expect(dialog(page)).toHaveAttribute('open', '');
   await expect(page.locator('#deed-name')).toHaveText('Manor Gardens');
+  await expect(page.locator('#deed-family')).toBeVisible();
   await page.getByRole('button', { name: 'Visit Manor Gardens' }).click();
   await expect(page.locator('#realm-markers [data-district="manor"]')).toBeFocused();
 });
@@ -227,6 +239,36 @@ test.describe('with reduced motion', () => {
     await pay(page, '15.00');
     await expect(dialog(page)).toHaveAttribute('open', '');
     expect(await page.locator('#deed').evaluate((el) => getComputedStyle(el).animationName)).toBe('none');
+    expect(await page.locator('#deed-family img').evaluateAll((nodes) => nodes.every((el) => getComputedStyle(el).animationName === 'none'))).toBe(true);
+  });
+});
+
+test.describe('idle rendering behind cards', () => {
+  test.use({ reducedMotion: 'no-preference' });
+  test('open cards pause idle drawing and closing resumes it without writing', async ({ page, request }) => {
+    const writes = trackWrites(page);
+    await ready(page);
+    const before = await (await request.get('/api/state')).json();
+    const checkPause = async (modal) => {
+      await expect(modal).toHaveAttribute('open', '');
+      const frame = await scene(page);
+      expect(frame.ambient).toBe(true);
+      await page.waitForTimeout(400);
+      expect((await scene(page)).ambientFrames).toBe(frame.ambientFrames);
+      await page.keyboard.press('Escape');
+      await expect(modal).not.toHaveAttribute('open', '');
+      await expect.poll(async () => (await scene(page)).ambientFrames).toBeGreaterThan(frame.ambientFrames);
+    };
+    await chooseDistrict(page, 'cottage');
+    await page.locator('#view-deed').click();
+    await checkPause(dialog(page));
+    await chooseDistrict(page, 'market');
+    await page.locator('#open-merchant').click();
+    await checkPause(page.locator('#merchant-dialog'));
+    expect(writes).toEqual([]);
+    const after = await (await request.get('/api/state')).json();
+    expect(after.progress).toEqual(before.progress);
+    expect(after.contributions).toEqual(before.contributions);
   });
 });
 

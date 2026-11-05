@@ -1,5 +1,6 @@
 import { createBoardScene } from '../world/board-scene.js';
 import { createFamilyAvatars } from './family-avatars.js';
+import { memberAvatar, avatarImage } from '../core/avatars.js';
 import { api, newRequestId } from './api.js';
 import { bus } from './bus.js';
 import { chargeIcon, crestChoices, crestSvg } from './crest.js';
@@ -239,6 +240,7 @@ async function boot() {
     // The board announces hops and tier rises on the bus; sound (and tests) listen. Nothing calls audio directly.
     scene = createBoardScene($('#world'), {
       reducedMotion: matchMedia('(prefers-reduced-motion: reduce)').matches,
+      isOccluded: () => Boolean(document.querySelector('dialog[open]')),
       onEvent: (type, detail) => bus.emit(`scene:${type}`, detail),
       insets: worldInsets,
       onViewChange: syncRealmMarkers,
@@ -290,7 +292,7 @@ function applyState(next, { animate = true, result = null } = {}) {
   renderHeader();
   renderQuest();
   renderNextStep();
-  const boardDone = renderBoard({ animate, result, added });
+  const boardDone = renderBoard({ animate, result, added, hasNewDistrict: opened.length > 0 });
   if (opened.length) Promise.resolve(boardDone).then(() => queueDeeds(opened, scope));
   renderHouse();
   renderPlan();
@@ -420,7 +422,9 @@ function renderQuest() {
   $('#progress-breakdown').textContent = parts.join(' · ');
 }
 
-function renderBoard({ animate, result, added = [] }) {
+function renderBoard({ animate, result, added = [], hasNewDistrict = false }) {
+  // The earned deed is the celebration for a new district; do not stack a second banner behind it.
+  if (hasNewDistrict) { clearTimeout(ui.celebrationTimer); $('#celebration').hidden = true; }
   const { board, household, goal, progress } = state;
   const built = TIERS[board.builtTier];
   $('#board-title').textContent = 'Your connected realm';
@@ -452,7 +456,7 @@ function renderBoard({ animate, result, added = [] }) {
     members: state.members,
     milestoneSpaces: board.milestoneSpaces.map((m) => m.space),
   }, { animate }).then(() => {
-    if (result?.awarded?.length || added.length) celebrate(result?.awarded ?? [], added);
+    if (!hasNewDistrict && (result?.awarded?.length || added.length)) celebrate(result?.awarded ?? [], added);
   });
 }
 
@@ -591,6 +595,14 @@ function renderDeed() {
   if (art.getAttribute('src') !== deed.art) art.setAttribute('src', deed.art);
   art.alt = `Pixel portrait of ${deed.name}`; // an illustration of the area, not a live view of the earned realm
   $('#deed-seal').innerHTML = crestSvg(state.household.crest, { title: `${state.household.name} seal` });
+  const family = $('#deed-family');
+  family.hidden = d.mode !== 'new' || deed.status !== 'earned';
+  family.setAttribute('aria-label', state.household.name);
+  family.replaceChildren(...(family.hidden ? [] : state.members.map((member, index) => {
+    const avatar = memberAvatar(member, index), label = `${member.name} · ${avatar.label}`;
+    return h('img', { src: avatarImage(avatar.id), alt: label, title: label, width: 44, height: 44,
+      'data-member': member.id, style: `--arrival: ${Math.min(index, 3) * 30}ms` });
+  })));
   const percent = districtById(id).percent;
   const milestone = deed.selfReported ? 'Recorded bill habit' : percent ? `${percent}% milestone` : 'Starting village';
   $('#deed-earned').textContent = `${deed.status === 'keepsake' ? 'Keepsake' : deed.open ? 'Unlocked' : 'Locked'} · ${milestone}`;
