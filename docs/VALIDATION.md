@@ -1,5 +1,21 @@
 # Validation
 
+## November 4, 2026: a compact game frame and one general notice
+
+The owner rejected the surrounding website chrome and repeated explanations. The realm now sits beside one collapsible household journal, with the four existing actions. Goal and progress appear once in the header. Areas, camera controls and World settings open on request. Model IDs and integration details moved out of the main header; duplicate slogans, summaries and general financial/persona paragraphs were removed. One footer notice states the active payment mode and the limits of profiles/reported progress. Exact-amount approval, error states and source/status labels on actual receipts and records remain.
+
+Research and the reference lock: [INTERFACE-DIRECTION.md](INTERFACE-DIRECTION.md). Live Refero research covered Wayfinder, MekaVerse and Haley Park styles plus PamPam/OneSoil map-menu screens. The existing world, fonts, palette and artwork remain primary. No generated or third-party artwork was added.
+
+**Checks:** the original 47-file asset/palette/renderer/syntax check and final syntax/diff checks passed. **61 applicable targeted browser cases passed, with 5 intentional project skips**, across the family journey, payment/receipt states, new journal/menu behavior, keyboard focus, realm framing, cards, night/rain and mocked local weather. This was not a full unit or browser-suite run. Two additional follow-up executions confirmed that closing the wider Ledger journal returns its space to the realm.
+
+Initial failures were kept and resolved: phone focus at a fractional viewport edge needed a 16 px scroll margin; the goal amount was raised to 24 px; changed source/profile labels needed matching test expectations. A two-tab workflow timed out under simultaneous software-WebGL animation, so that navigation test now uses reduced motion and the current profile label. Weather-result clicks replace their own DOM nodes; the outside-click handler now checks the original event path, preserving the open menu and focus. Only failed cases or newly changed behavior were rerun.
+
+Final visual review captured desktop, 390 px and 320 px views from isolated example data. There was one general notice, no horizontal overflow, no page errors and no external requests. The setup capture used only house setup and a built-in plan; the final refresh was read-only. No contribution, PayPal order, paid AI call, utility-provider verification or live-weather request was made by the visual review. Browser-flow tests used isolated example payments and mocked weather.
+
+Protected owner/rehearsal file hashes, modes and timestamps were identical before and after this work. Their servers, data and keys were not replaced or restarted. The approved in-app sandbox recording/steward gap and all source-pinned older videos remain unchanged. Logs, earlier failures/traces, source hashes and capture reports are in ignored `test-results/game-shell/`.
+
+Limits: Chromium desktop and phone emulation; physical phones, Safari/Firefox and a real screen reader were not checked. No production authentication, bill-provider integration or enterprise-readiness claim follows from this visual pass.
+
 ## November 4, 2026: subtle river flow
 
 Static surface marks were replaced by 59 sparse moving glints along the three existing narrow channels. This is cosmetic: no geography, bridge access, progression or financial behavior changed. Night/rain lower the highlights' contrast, and the existing ambient clock drives the effect.

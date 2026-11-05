@@ -1,3 +1,4 @@
+import { openMenu, closeMenu, chooseDistrict, clickView } from './support/game-controls.mjs';
 import {test,expect} from '@playwright/test';
 import { closeDeedsWhenTheyAppear } from './support/deeds.mjs';
 const scene=(page)=>page.evaluate(()=>window.__ourCastle.scene());
@@ -34,17 +35,17 @@ test('future castles are separate locked destinations in one green woodland behi
   expect(initial.landscape.rivers.count).toBe(3);
   expect(initial.landscape.forest.trees).toBeGreaterThan(300);
   // The woodland colour check uses Day explicitly; Auto would follow this machine's clock (atmosphere.spec covers it).
-  await page.selectOption('#time-mode','day');await page.selectOption('#weather-mode','clear');
+  await openMenu(page, 'world-settings'); await page.selectOption('#time-mode','day');await openMenu(page, 'world-settings'); await page.selectOption('#weather-mode','clear');
   const colours=await mapColours(page);
   expect(colours.green,'the starting realm reads green').toBeGreaterThan(.4);
   expect(colours.blue,'rivers, not an ocean').toBeLessThan(.15);
   await expect(page.locator('.realm-stop[data-district="castle"]')).toContainText('Locked · 100%');
   const writes=[];page.on('request',r=>{if(r.method()!=='GET')writes.push(r.url())});
-  await page.locator('.realm-stop[data-district="castle"]').click();
+  await chooseDistrict(page, 'castle');
   expect((await scene(page)).view.focus).toBe('castle');
   expect((await scene(page)).districts.find(d=>d.id==='castle').open).toBe(false);
-  await expect(page.locator('#realm-focus-status')).toContainText('Royal Citadel · Locked');
-  await expect(page.locator('#realm-focus-status')).toContainText('$240.00 to go');
+  await expect(page.locator('#realm-focus-status')).toContainText('Royal Citadel · $240.00 to unlock');
+  await expect(page.locator('#realm-focus-status')).toContainText('$240.00 to unlock');
   await page.getByRole('button',{name:'Whole realm',exact:true}).click();
   expect((await scene(page)).view.focus).toBe(null);
   const after=await(await request.get('/api/state')).json();

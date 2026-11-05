@@ -1,3 +1,4 @@
+import { openMenu, closeMenu, chooseDistrict, clickView } from './support/game-controls.mjs';
 import { test, expect } from '@playwright/test';
 import { closeDeedsWhenTheyAppear } from './support/deeds.mjs';
 
@@ -29,7 +30,7 @@ async function mockOpenMeteo(page, { code = 61, hold = null, fail = false } = {}
   });
 }
 async function chooseLisbon(page) {
-  await page.selectOption('#weather-mode', 'local');
+  await openMenu(page, 'world-settings'); await page.selectOption('#weather-mode', 'local');
   await expect(page.locator('#weather-place-query')).toBeFocused();
   await page.locator('#weather-place-query').fill('Lisbon');
   await page.locator('#weather-search').click();
@@ -44,8 +45,8 @@ test('Night and Rain light the world, survive refresh, district inspection and a
   await closeDeedsWhenTheyAppear(page);
   const seen = track(page);
   await ready(page);
-  await page.selectOption('#time-mode', 'night');
-  await page.selectOption('#weather-mode', 'rain');
+  await openMenu(page, 'world-settings'); await page.selectOption('#time-mode', 'night');
+  await openMenu(page, 'world-settings'); await page.selectOption('#weather-mode', 'rain');
   await expect(status(page)).toHaveText('Night (chosen by you) · Rain (chosen by you)');
   let a = await sky(page);
   expect(a).toMatchObject({ period: 'night', weather: 'rain', pointLights: 6, pointLightCapacity: 6, pools: 90, rain: { visible: true } });
@@ -63,7 +64,7 @@ test('Night and Rain light the world, survive refresh, district inspection and a
   expect(await sky(page)).toMatchObject({ period: 'night', weather: 'rain' });
 
   // Inspecting a locked area and returning to the whole realm keep the atmosphere and actual access.
-  await page.locator('#realm-districts [data-district="castle"]').click();
+  await chooseDistrict(page, 'castle');
   expect(await sky(page)).toMatchObject({ period: 'night', weather: 'rain', pointLights: 6 });
   await expect(page.locator('#view-deed')).toBeHidden();
   await page.getByRole('button', { name: 'Whole realm', exact: true }).click();
@@ -90,8 +91,8 @@ test('Night and Rain light the world, survive refresh, district inspection and a
   expect(seen.weather).toEqual([]);
 
   // Back to Day: lights and rain go away.
-  await page.selectOption('#time-mode', 'day');
-  await page.selectOption('#weather-mode', 'clear');
+  await openMenu(page, 'world-settings'); await page.selectOption('#time-mode', 'day');
+  await openMenu(page, 'world-settings'); await page.selectOption('#weather-mode', 'clear');
   a = await sky(page);
   expect(a).toMatchObject({ period: 'day', weather: 'clear', pointLights: 0, pools: 0, glassGlow: 0, rain: { visible: false } });
 });
@@ -133,6 +134,7 @@ test('local weather is opt-in: nothing is requested until a town is searched and
   expect(seen.weather.slice(2)).toEqual(['api.open-meteo.com/v1/forecast']);
 
   // Disconnect forgets the town, returns to Clear and stops all weather requests.
+  await openMenu(page, 'world-settings');
   await page.locator('#weather-disconnect').click();
   await expect(page.locator('#weather-mode')).toHaveValue('clear');
   await expect(page.locator('#weather-mode')).toBeFocused();
@@ -153,7 +155,7 @@ test('a slow answer never overrides a newer choice, and an unreachable service i
   await ready(page);
   await chooseLisbon(page);
   await expect(status(page)).toContainText('Lisbon, Portugal: loading local weather');
-  await page.selectOption('#weather-mode', 'clear'); // a newer choice while the forecast is still on its way
+  await openMenu(page, 'world-settings'); await page.selectOption('#weather-mode', 'clear'); // a newer choice while the forecast is still on its way
   release();
   await page.waitForTimeout(600);
   await expect(status(page)).toHaveText(/· Clear \(chosen by you\)$/);
@@ -161,7 +163,7 @@ test('a slow answer never overrides a newer choice, and an unreachable service i
 
   await page.unrouteAll({ behavior: 'ignoreErrors' });
   await mockOpenMeteo(page, { fail: true });
-  await page.selectOption('#weather-mode', 'local');
+  await openMenu(page, 'world-settings'); await page.selectOption('#weather-mode', 'local');
   await expect(status(page)).toContainText('Lisbon, Portugal: local weather unavailable (The weather service could not be reached.');
   expect((await sky(page)).weather).toBe('clear');
 });
@@ -187,8 +189,8 @@ test('after a failed load, scheduled refreshes wait 15 minutes; an explicit choi
   await visible();
   await expect.poll(forecasts).toBe(2);
   // Choosing Local weather again is an explicit request and may retry at once.
-  await page.selectOption('#weather-mode', 'clear');
-  await page.selectOption('#weather-mode', 'local');
+  await openMenu(page, 'world-settings'); await page.selectOption('#weather-mode', 'clear');
+  await openMenu(page, 'world-settings'); await page.selectOption('#weather-mode', 'local');
   await expect.poll(forecasts).toBe(3);
   expect(seen.writes).toEqual([]);
 });
@@ -197,7 +199,7 @@ test.describe('with reduced motion', () => {
   test.use({ reducedMotion: 'reduce' });
   test('rain stays still, with no animation timer', async ({ page }) => {
     await ready(page);
-    await page.selectOption('#weather-mode', 'rain');
+    await openMenu(page, 'world-settings'); await page.selectOption('#weather-mode', 'rain');
     const a = await sky(page);
     expect(a.rain).toMatchObject({ visible: true, animated: false });
     expect((await page.evaluate(() => window.__ourCastle.scene())).ambient).toBe(false);
@@ -206,7 +208,7 @@ test.describe('with reduced motion', () => {
 
 test('a hidden page stops the ambient rain frames, and they resume when it is visible', async ({ page }) => {
   await ready(page);
-  await page.selectOption('#weather-mode', 'rain');
+  await openMenu(page, 'world-settings'); await page.selectOption('#weather-mode', 'rain');
   const frames = () => page.evaluate(() => window.__ourCastle.scene().ambientFrames);
   await page.evaluate(() => { Object.defineProperty(document, 'hidden', { configurable: true, get: () => true }); document.dispatchEvent(new Event('visibilitychange')); });
   const hiddenStart = await frames();
@@ -221,12 +223,13 @@ test.describe('at 320 by 568', () => {
   test('the controls are keyboard-usable 44 px targets with no overflow', async ({ page }, testInfo) => {
     test.skip(testInfo.project.name !== 'phone', 'checked on the phone project');
     await ready(page);
+    await openMenu(page, 'world-settings');
     for (const id of ['#time-mode', '#weather-mode']) expect((await page.locator(id).boundingBox()).height).toBeGreaterThanOrEqual(44);
     await page.locator('#time-mode').focus();
     await page.keyboard.press('ArrowDown'); // Auto → Day
     await expect(page.locator('#time-mode')).toHaveValue('day');
     await expect(status(page)).toHaveText(/^Day \(chosen by you\)/);
-    await page.selectOption('#weather-mode', 'local');
+    await openMenu(page, 'world-settings'); await page.selectOption('#weather-mode', 'local');
     await expect(page.locator('#weather-place-query')).toBeFocused();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   });

@@ -151,16 +151,19 @@ test('a returning family resumes, keeps its chosen tab and unsaved amount, and c
 });
 
 test('a new visit resumes at the next step, and a child persona is told an adult approves', async ({ page, context }) => {
+  // This verifies two-tab navigation, not animation; avoid two simultaneous software-WebGL ambient loops.
+  await page.emulateMedia({ reducedMotion: 'reduce' });
   await ready(page);
   await foundHouse(page);
   await page.getByRole('button', { name: 'Make an example plan' }).click();
   await page.getByRole('button', { name: 'Use this plan' }).click();
   // A fresh browser tab has no chosen tab: it opens the step that is next, not House.
   const second = await context.newPage();
-  await second.goto('/');
+  await second.emulateMedia({ reducedMotion: 'reduce' });
+  await second.goto('/', { waitUntil: 'domcontentloaded' });
   await second.waitForFunction(() => document.body.dataset.ready === 'true');
   await expect(second.locator('[role="tab"][aria-selected="true"]')).toHaveId('tab-give');
-  await second.locator('#persona').selectOption({ label: 'Wren (child, example)' });
+  await second.locator('#persona').selectOption({ label: 'Wren · Child' });
   await expect(second.locator('#give-approve-text')).toContainText('Switch to an adult');
   await expect(second.locator('#give-approve')).toBeDisabled();
 });

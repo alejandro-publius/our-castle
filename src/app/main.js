@@ -95,7 +95,7 @@ function worldInsets() {
   const world = $('#world').getBoundingClientRect();
   if (!world.height) return null;
   let top = 0; let bottom = 0;
-  for (const el of $$('.board-heading, .world-navigation')) {
+  for (const el of $$('.world-hud')) {
     const r = el.getBoundingClientRect();
     if (r.height && r.bottom > world.top && r.top < world.top + world.height / 2) top = Math.max(top, r.bottom - world.top);
   }
@@ -247,7 +247,8 @@ async function boot() {
   bindEvents();
   try {
     applyState(await api.get('/api/state'), { animate: false });
-    selectTab(resumeTab(), { focus: false, remember: false });
+    selectTab(resumeTab(), { focus: false, remember: false, open: false });
+    setJournalOpen(pref.get('journal') !== 'closed', { remember: false });
     scene?.focusDistrict(homeDistrict(state.board.builtTier).id);
   } catch (error) {
     $('#honesty').textContent = `Could not load the household: ${error.message}`;
@@ -344,10 +345,7 @@ function layoutSettled(el, maxFrames = 120) {
 }
 function revealFocus(target, keyboard) {
   target.focus({ preventScroll: true });
-  const margin = 12, r = target.getBoundingClientRect();
-  if (r.top < margin || r.bottom > innerHeight - margin) {
-    window.scrollBy({ top: r.top - margin, behavior: keyboard || matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' });
-  }
+  target.scrollIntoView({ block: 'nearest', behavior: keyboard || matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' });
 }
 // Open the step: switch tab and move focus to its heading or control. Keyboard activation scrolls instantly.
 function openNextStep(e) {
@@ -355,9 +353,13 @@ function openNextStep(e) {
   if (!next) return;
   if (next.step === 'realm') {
     ui.navigation++;
-    const district = $(next.target);
-    district?.focus({ preventScroll: true });
-    district?.click();
+    const id = $(next.target)?.dataset.district;
+    if (id && scene) {
+      scene.focusDistrict(id);
+      const marker = $(`#realm-markers [data-district="${CSS.escape(id)}"]`);
+      marker?.focus({ preventScroll: true });
+      revealRealm(marker, { instant: e?.detail === 0 });
+    }
     return;
   }
   selectTab(next.step, { focus: false });
@@ -374,16 +376,16 @@ function renderHeader() {
   const { household, modes, members } = state;
   $('#brand-crest').innerHTML = crestSvg(household.crest, { title: `${household.name} crest` });
   $('#house-eyebrow').textContent = household.setupComplete
-    ? `${household.name} · ${household.playMode === 'family' ? 'Family' : 'Solo'} · example household`
-    : 'A household adventure · example household';
+    ? household.name
+    : 'Your household';
   $('#mode-badges').replaceChildren(
     h('li', { class: `mode-badge ${modes.payments.mode === 'sandbox' ? 'live' : 'example'}`, title: modes.payments.mode === 'sandbox' ? 'Real PayPal sandbox API calls with test money' : 'No PayPal calls; payments are simulated and labeled' },
-      modes.payments.mode === 'sandbox' ? 'PayPal sandbox' : 'Example payments · simulated'),
+      modes.payments.mode === 'sandbox' ? 'PayPal sandbox' : 'Simulated payments'),
     h('li', { class: `mode-badge ${modes.ai.mode === 'live' ? 'live' : 'example'}`, title: modes.ai.mode === 'live' ? `Plans are written by ${modes.ai.model} and checked by the server` : 'Plans come from built-in rules; no AI is called' },
-      modes.ai.mode === 'live' ? `AI planner · ${modes.ai.model}` : 'Example planner · no AI'),
+      modes.ai.mode === 'live' ? 'AI planner' : 'Built-in planner'),
   );
   const select = $('#persona');
-  select.replaceChildren(...members.map((m) => h('option', { value: m.id, selected: m.id === ui.personaId }, `${m.name} (${m.role}, example)`)));
+  select.replaceChildren(...members.map((m) => h('option', { value: m.id, selected: m.id === ui.personaId }, `${m.name} · ${m.role === 'adult' ? 'Adult' : 'Child'}`)));
 }
 
 function renderQuest() {
@@ -456,10 +458,10 @@ function revealRealm(keep, { instant = false } = {}) {
 }
 
 function districtCondition(district) {
-  if(district.percent===null)return 'Record an on-time bill habit · reported by you';
+  if(district.percent===null)return 'Report an on-time bill to unlock';
   if(district.percent===0)return 'Starting district';
   const required=Math.ceil(state.goal.targetCents*district.percent/100),remaining=Math.max(0,required-state.progress.progressCents);
-  return `${district.percent}% · ${money(required)} tracked${remaining?` · ${money(remaining)} to go`:''}`;
+  return remaining ? `${money(remaining)} to unlock` : `${district.percent}% milestone`;
 }
 function renderRealmNavigation() {
   const regions = realmAccess({ builtTier: state.board.builtTier, estateLevel: state.board.estateLevel, gardens: state.board.gardens });
@@ -483,7 +485,7 @@ function syncRealmMarkers({focus,points}){
       if (el.style.top !== y) el.style.top = y;
     }
   }
-  for(const button of $$('#realm-districts button')){const value=String(button.dataset.district===focus);if(button.getAttribute('aria-pressed')!==value)button.setAttribute('aria-pressed',value);}
+  for(const button of $$('#realm-districts button, #realm-markers button')){const value=String(button.dataset.district===focus);if(button.getAttribute('aria-pressed')!==value)button.setAttribute('aria-pressed',value);}
   if(!state)return;
   const regions=realmAccess({builtTier:state.board.builtTier,estateLevel:state.board.estateLevel,gardens:state.board.gardens});
   const d=regions.find(d=>d.id===focus);
@@ -493,7 +495,7 @@ function syncRealmMarkers({focus,points}){
     deedButton.dataset.district = d.id;
     deedButton.setAttribute('aria-label', `View deed for ${d.name}`);
   } else delete deedButton.dataset.district;
-  const message=focus?`${d.name} · ${d.open?'Open district':'Locked'} · ${districtCondition(d)}`:`Whole realm · ${regions.filter(d=>d.open).length}/6 districts earned. Select a locked district to inspect its condition.`;
+  const message=d && !d.open ? `${d.name} · ${districtCondition(d)}` : '';
   if($('#realm-focus-status').textContent!==message)$('#realm-focus-status').textContent=message;
 }
 
@@ -579,10 +581,10 @@ function visitDeed(e) {
   const id = ui.deeds.queue[ui.deeds.index];
   ui.deeds.visiting = true;
   $('#deed-dialog').close();
-  const button = $(`#realm-districts [data-district="${CSS.escape(id)}"]`);
-  if (!button) return;
   scene?.focusDistrict(id);
   $('.realm-map').dataset.focused = 'true';
+  const button = $(`#realm-markers [data-district="${CSS.escape(id)}"]`);
+  if (!button) return;
   button.focus({ preventScroll: true });
   revealRealm(button, { instant: e?.detail === 0 });
 }
@@ -595,8 +597,11 @@ function deedClosed() {
   Object.assign(d, { queue: [], index: 0, visiting: false });
   if (visiting) return;
   let target = d.origin;
-  if (!target?.isConnected || target.closest('[hidden]')) target = $(`#realm-districts [data-district="${CSS.escape(id ?? '')}"]`);
-  (target ?? $('#next-step-go')).focus();
+  if (!target?.isConnected || target.closest('[hidden], details:not([open])')) {
+    const marker = $(`#realm-markers [data-district="${CSS.escape(id ?? '')}"]`);
+    target = marker && !marker.hidden ? marker : $('#journal-toggle');
+  }
+  target.focus();
 }
 
 // ---------- 1. House ----------
@@ -662,9 +667,8 @@ async function saveHouse() {
 // ---------- 2. Plan ----------
 function renderPlan() {
   const { goal, progress, modes, plan } = state;
-  $('#planner-lede').textContent = modes.ai.mode === 'live'
-    ? `The AI planner (${modes.ai.model}) turns your inputs into a weekly plan with its arithmetic shown. The server re-checks every number before you see it, and nothing is paid automatically.`
-    : 'Example planner: built-in rules write this plan. No AI is called until an AI key is added to the server’s .env file. Nothing is paid automatically.';
+  $('#planner-lede').textContent = '';
+  $('#planner-lede').hidden = true;
   $('#ask-planner').textContent = modes.ai.mode === 'live' ? 'Ask the AI planner' : 'Make an example plan';
   if (!ui.planFormDirty) {
     $('#goal-name-input').value = goal.name;
@@ -681,8 +685,8 @@ function renderPlan() {
   const badge = $('#plan-source');
   badge.className = `source-badge ${plan.source}`;
   badge.textContent = plan.source === 'ai'
-    ? `AI plan · ${plan.model} · checked by the server`
-    : plan.source === 'household-edited' ? 'Edited by your household · re-checked by the server' : (plan.fallbackFromAi ? 'Example plan (built-in rules, chosen after the AI plan failed)' : plan.sourceLabel);
+    ? 'AI plan'
+    : plan.source === 'household-edited' ? 'Household plan' : 'Built-in plan';
   $('#plan-headline').textContent = plan.headline;
   $('#plan-summary').textContent = plan.summary;
   const shortfall = $('#plan-shortfall');
@@ -867,7 +871,6 @@ function renderGive() {
   }
   const ready = setup && !done && approve.checked && !check.error && who?.role === 'adult';
   renderGiveAction(ready);
-  $('#give-mode-note').textContent = isSandbox() ? 'PayPal sandbox · test money' : 'Demo · simulated payments';
   renderReceipt();
 }
 
@@ -1080,14 +1083,10 @@ const STEWARD_SUGGESTIONS = ['Did PayPal confirm our last contribution?', 'How c
 
 function renderSteward() {
   const { steward } = state;
-  $('#steward-note').textContent = !steward.available
-    ? 'The steward is off. It needs an AI key (AI_API_KEY) in the server’s .env file; with PayPal sandbox credentials it can also check payments through PayPal’s Agent Toolkit.'
-    : steward.paypalTools
-      ? `Claude (${steward.model}) answers from your ledger and checks PayPal sandbox records with PayPal’s Agent Toolkit. Read-only: it cannot create, pay or refund anything.`
-      : `Claude (${steward.model}) answers from your ledger. PayPal checks are off while payments are in example mode.`;
+  $('#steward-note').textContent = !steward.available ? 'Steward unavailable.' : steward.paypalTools ? 'AI · can check PayPal records' : 'AI · household records';
   const suggestions = $('#steward-suggestions');
   if (!suggestions.childElementCount) {
-    suggestions.append(...STEWARD_SUGGESTIONS.map((q) => h('button', { type: 'button', 'data-question': q }, h('span', {}, q))));
+    suggestions.append(h('button', { type: 'button', 'data-question': STEWARD_SUGGESTIONS[0], 'aria-label': STEWARD_SUGGESTIONS[0] }, h('span', {}, 'Check last payment')));
   }
   const disabled = !steward.available || ui.stewardBusy;
   for (const el of [...$$('#steward-suggestions button'), $('#steward-form input'), $('#steward-ask')]) el.disabled = disabled;
@@ -1175,7 +1174,16 @@ async function logEntry(event, kind) {
 
 // ---------- tabs, footer, events ----------
 const TABS = ['house', 'plan', 'give', 'ledger'];
-function selectTab(name, { focus = true, remember = true } = {}) {
+function setJournalOpen(open, { focus = false, remember = true } = {}) {
+  $('#journey').hidden = !open;
+  $('.layout').dataset.journal = open ? 'open' : 'closed';
+  $('#journal-toggle').setAttribute('aria-expanded', String(open));
+  if (remember) pref.set('journal', open ? 'open' : 'closed');
+  if (focus) (open ? $(`#tab-${ui.tab}`) : $('#journal-toggle')).focus();
+}
+
+function selectTab(name, { focus = true, remember = true, open = true } = {}) {
+  if (open) setJournalOpen(true);
   ui.tab = name;
   ui.navigation++; // a pending Ledger reveal stands down once the family navigates again
   if (remember) sessionTab.set(name);
@@ -1197,25 +1205,28 @@ function renderTabs() {
   for (const tab of TABS) {
     const button = $(`#tab-${tab}`), next = ui.next?.step === tab;
     button.classList.toggle('next', next);
-    let marker = button.querySelector('.tab-next');
-    if (next && !marker) button.append(marker = h('span', { class: 'tab-next' }, ' · next step'));
-    if (!next && marker) marker.remove();
   }
 }
 function renderFooter() {
   const { modes } = state;
-  const parts = [];
-  parts.push(modes.payments.mode === 'sandbox' ? 'PayPal sandbox only: test accounts and test money; nothing here moves real money.' : 'Example payments: simulated and labeled; no PayPal call is made.');
-  parts.push(modes.ai.mode === 'live' ? `Plans are proposed by ${modes.ai.model} and checked by the server.` : 'Plans come from built-in rules; no AI is called.');
-  parts.push('Goal progress is this app’s own ledger, not a bank balance. Household bills are recorded by you; no utility-bill verification provider is connected.');
-  if (modes.warnings?.length) parts.push(`Server notes: ${modes.warnings.join(' ')}`);
-  $('#honesty').textContent = parts.join(' ');
+  const mode = modes.payments.mode === 'sandbox' ? 'PayPal sandbox · test money only.' : 'Demo mode · simulated payments.';
+  $('#honesty').textContent = `${mode} Demo profiles, not sign-in. Reported savings and bills are unverified; progress is not a bank balance.`;
 }
 
 function bindEvents() {
+  $('#journal-toggle').addEventListener('click', () => setJournalOpen($('#journey').hidden, { focus: true }));
+  $('#close-journal').addEventListener('click', () => setJournalOpen(false, { focus: true }));
+  $('#journey').addEventListener('keydown', (e) => { if (e.key === 'Escape' && !e.defaultPrevented) { e.preventDefault(); setJournalOpen(false, { focus: true }); } });
+  $('.skip-link').addEventListener('click', (e) => { e.preventDefault(); setJournalOpen(true); $('#journey').focus(); });
+  const menus = $$('.hud-menu');
+  for (const menu of menus) {
+    menu.addEventListener('toggle', () => { if (menu.open) for (const other of menus) if (other !== menu) other.open = false; });
+    menu.addEventListener('keydown', (e) => { if (e.key === 'Escape') { e.preventDefault(); menu.open = false; menu.querySelector('summary').focus(); } });
+  }
+  document.addEventListener('click', (e) => { for (const menu of menus) if (menu.open && !e.composedPath().includes(menu)) menu.open = false; });
   // Selecting a district keeps focus on the button that was used. The focused map is taller on phones, so set that
   // layout before measuring, then reveal the realm without scrolling the button out of view.
-  for(const root of [$('#realm-districts'),$('#realm-markers')])root.addEventListener('click',e=>{const button=e.target.closest('[data-district]');if(button&&scene){scene.focusDistrict(button.dataset.district);$('.realm-map').dataset.focused='true';revealRealm(button,{instant:e.detail===0});}});
+  for(const root of [$('#realm-districts'),$('#realm-markers')])root.addEventListener('click',e=>{const button=e.target.closest('[data-district]');if(button&&scene){scene.focusDistrict(button.dataset.district);$('.realm-map').dataset.focused='true';let keep=button;if(root.id==='realm-districts'){$('#district-menu').open=false;keep=$('#district-menu summary');keep.focus();}revealRealm(keep,{instant:e.detail===0});}});
   $('#view-deed').addEventListener('click', (e) => {
     const id = e.currentTarget.dataset.district;
     if (id) openDeedFromMap(id, e.currentTarget);

@@ -1,3 +1,4 @@
+import { openMenu, closeMenu, chooseDistrict, clickView } from './support/game-controls.mjs';
 import { test, expect } from '@playwright/test';
 import { closeDeedsWhenTheyAppear } from './support/deeds.mjs';
 
@@ -40,7 +41,7 @@ async function contributeAmount(page, amount) {
 async function expectRouteClear(page) {
   const { spaces, travelers, canvas } = await page.evaluate(() => window.__ourCastle.route());
   const overlays = await page.evaluate(() => [
-    '.board-heading > div:first-child', '.board-tools', '.world-navigation', '#board-status', '#tier-track',
+    '.world-hud', '#view-deed',
   ].flatMap((sel) => [...document.querySelectorAll(sel)]).filter((el) => el.offsetParent).map((el) => {
     const r = el.getBoundingClientRect(); return { sel: el.className || el.id, left: r.left, right: r.right, top: r.top, bottom: r.bottom };
   }));
@@ -68,14 +69,14 @@ test('the wider estate keeps every route space and the travelers visible and cle
   await ready(page);
   expect(await scene(page)).toMatchObject({ region: { width: 164, depth: 114 }, estateLevel: 1, tier: 0, position: 4 });
   await expectRouteClear(page);
-  for (let i = 0; i < 3; i++) await page.getByRole('button', { name: 'Turn the estate right' }).click();
+  for (let i = 0; i < 3; i++) await clickView(page, 'Turn the estate right');
   await expectRouteClear(page);
-  await page.getByRole('button', { name: 'Zoom out' }).click();
+  await clickView(page, 'Zoom out');
   await expectRouteClear(page);
-  await page.getByRole('button', { name: 'Zoom in' }).click();
-  await page.getByRole('button', { name: 'Zoom in' }).click();
+  await clickView(page, 'Zoom in');
+  await clickView(page, 'Zoom in');
   expect((await scene(page)).view.zoom).toBeGreaterThan(1.1);
-  await page.getByRole('button', { name: 'Reset view' }).click();
+  await clickView(page, 'Reset view');
   expect((await scene(page)).view).toMatchObject({ zoom: 1, panX: 0, panY: 0 });
   await expectRouteClear(page);
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth);

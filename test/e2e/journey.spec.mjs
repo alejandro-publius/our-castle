@@ -1,3 +1,4 @@
+import { openMenu, closeMenu, chooseDistrict, clickView } from './support/game-controls.mjs';
 import { test, expect } from '@playwright/test';
 import { closeDeedsWhenTheyAppear } from './support/deeds.mjs';
 
@@ -30,7 +31,7 @@ async function foundHouse(page, { mode = 'family', name = 'House of Fernhill', f
 
 async function acceptExamplePlan(page) {
   await page.getByRole('button', { name: 'Make an example plan' }).click();
-  await expect(page.locator('#plan-source')).toContainText('no AI');
+  await expect(page.locator('#plan-source')).toHaveText('Built-in plan');
   await page.getByRole('button', { name: 'Use this plan' }).click();
   await expect(page.getByRole('tab', { name: /Contribute/ })).toHaveAttribute('aria-selected', 'true');
 }
@@ -53,18 +54,20 @@ test.beforeEach(async ({ request }) => {
 test('full journey: house and crest, example plan, adult approval, receipt, board move and Manor, persists after reload', async ({ page }) => {
   const errors = trackErrors(page);
   await ready(page);
-  await expect(page.getByText('Example payments · simulated')).toBeVisible();
-  await expect(page.getByText('Example planner · no AI')).toBeVisible();
+  await expect(page.locator('#honesty')).toContainText('Demo mode · simulated payments.');
+  await openMenu(page, 'world-settings');
+  await expect(page.getByText('Built-in planner', { exact: true })).toBeVisible();
+  await closeMenu(page, 'world-settings');
   await expect(page.locator('#progress-amount')).toHaveText('$60.00');
   await expect(page.locator('#target-amount')).toHaveText('$300.00');
   expect(await scene(page)).toMatchObject({ position: 4, tier: 0 });
 
   await foundHouse(page);
   await expect(page.getByRole('tab', { name: /Plan/ })).toHaveAttribute('aria-selected', 'true');
-  await expect(page.locator('#house-eyebrow')).toContainText('House of Fernhill · Family');
+  await expect(page.locator('#house-eyebrow')).toHaveText('House of Fernhill');
 
   await page.getByRole('button', { name: 'Make an example plan' }).click();
-  await expect(page.locator('#plan-source')).toHaveText('Example plan (built-in rules, no AI)');
+  await expect(page.locator('#plan-source')).toHaveText('Built-in plan');
   await expect(page.locator('#plan-headline')).toHaveText('Eight weeks of $30.00 reaches the Castle');
   await expect(page.locator('#plan-schedule tr')).toHaveCount(8);
   await expect(page.locator('#plan-total')).toHaveText('$240.00');
@@ -174,7 +177,7 @@ test('household edits are re-checked and saved as an edited plan', async ({ page
   await expect(page.locator('#plan-total')).toHaveText('$220.00');
   await expect(page.getByRole('button', { name: 'Use this plan' })).toBeDisabled();
   await page.getByRole('button', { name: 'Save my edits' }).click();
-  await expect(page.locator('#plan-source')).toContainText('Edited by your household');
+  await expect(page.locator('#plan-source')).toHaveText('Household plan');
   await expect(page.locator('#plan-shortfall')).toContainText('$20.00 short');
   await page.getByLabel('Week 3 amount').fill('-5');
   await page.getByRole('button', { name: 'Save my edits' }).click();
@@ -251,7 +254,7 @@ test('a refund lowers progress and moves the travelers back; the Manor stays as 
 test('without an AI key the steward explains it is off and cannot be used', async ({ page }) => {
   await ready(page);
   await page.getByRole('tab', { name: /Ledger/ }).click();
-  await expect(page.locator('#steward-note')).toContainText('needs an AI key (AI_API_KEY)');
+  await expect(page.locator('#steward-note')).toHaveText('Steward unavailable.');
   await expect(page.locator('#steward-ask')).toBeDisabled();
   await expect(page.locator('#steward-suggestions button').first()).toBeDisabled();
   await expect(page.locator('#ledger-goal[data-grid="ag-grid"]')).toBeVisible();
@@ -278,6 +281,7 @@ test('the world keeps living, and board events drive synthesized sound through t
   const first = await scene(page);
   expect(first).toMatchObject({ ambient: true, grazers: 4, butterflies: 4 });
   await expect.poll(async () => (await scene(page)).ambientFrames, { timeout: 5000 }).toBeGreaterThan(first.ambientFrames + 3);
+  await openMenu(page, 'world-settings');
   const toggle = page.locator('#sound-toggle');
   await expect(toggle).toHaveAttribute('aria-pressed', 'false');
   await toggle.click();

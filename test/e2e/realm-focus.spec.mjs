@@ -1,3 +1,4 @@
+import { openMenu, closeMenu, chooseDistrict, clickView } from './support/game-controls.mjs';
 import { test, expect } from '@playwright/test';
 
 // Keyboard focus must stay visible when an action moves the view to the realm (WCAG 2.4.7 / 2.4.11).
@@ -26,18 +27,21 @@ test.beforeEach(async ({ request }) => {
 });
 
 async function inspectCastleByKeyboard(page) {
+  await openMenu(page, 'district-menu');
   const castle = page.locator('#realm-districts [data-district="castle"]');
   await castle.focus();
   await page.keyboard.press('Enter');
-  await expect(page.locator('#realm-focus-status')).toContainText('Royal Citadel · Locked · 100%');
+  await expect(page.locator('#realm-focus-status')).toContainText('Royal Citadel · $240.00 to unlock');
   await scrollSettled(page);
-  expect(await fullyVisible(castle), 'the button that was used is still fully on screen').toBe(true);
-  await expect(castle).toBeFocused();
+  const trigger = page.locator('#district-menu > summary');
+  expect(await fullyVisible(trigger), 'the menu trigger is fully on screen').toBe(true);
+  await expect(trigger).toBeFocused();
+  await expect(page.locator('#district-menu')).not.toHaveAttribute('open', '');
   await expect(castle).toHaveAttribute('aria-pressed', 'true');
   expect(await page.evaluate(() => window.__ourCastle.scene().view.focus)).toBe('castle');
 }
 
-test('selecting a district from the keyboard keeps that button focused, pressed and fully visible', async ({ page }) => {
+test('keyboard district selection closes the menu and returns focus to its visible trigger', async ({ page }) => {
   const writes = trackWrites(page);
   await ready(page);
   await inspectCastleByKeyboard(page);

@@ -21,3 +21,6 @@ Unlock-card brevity: keep only the area name, pixel art, crest and one short mil
 
 
 Current UI direction: begin close to the earned home, retaining Whole realm for the full six-district map. Property plaques use ivory/parchment, dark ink, larger bundled Uncial names and only a small lock mark. Keep contributions to the amount, explicit approval and payment action; remove duplicated plan/projection/next-step paragraphs and server implementation explanations. Show validation errors when needed; preserve accurate modes and receipts. Do not expand this into a finance dashboard.
+
+
+Interface direction: follow docs/INTERFACE-DIRECTION.md. The world leads, with one collapsible household journal and compact Areas / View / World settings menus. Show goal/progress once in the header and one general notice in the footer. Do not bring back slogans, large duplicated realm headings, model IDs in the main header, six permanent district cards, or repeated financial/persona paragraphs. Keep explicit amount approval, child restrictions, truthful sources on actual records, and provider-required status. Preserve the original world, palette, fonts, cards and gentle river flow.

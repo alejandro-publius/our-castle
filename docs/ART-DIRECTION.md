@@ -1,5 +1,11 @@
 # Art direction — preserve this visual family
 
+## Game interface around the world (November 4, 2026)
+
+The owner rejected the surrounding website chrome, repeated explanations and disclaimers, while keeping the pixel world. The new target is a compact game frame: one header goal, a large realm, one collapsible household journal, and occasional utilities behind Areas, View and World settings. There is one general notice in the footer. Exact-amount consent and the actual source/status of a receipt stay attached to that action or record.
+
+Live Refero research and the decision ledger are in [INTERFACE-DIRECTION.md](INTERFACE-DIRECTION.md). The owned brand remains primary; Wayfinder supplies world-first restraint, MekaVerse light navigation, and PamPam/OneSoil the bounded menu pattern. No third-party art or replacement fonts were imported. The existing Uncial/Alegreya, ivory/ink/brass, deed cards, all six districts and flowing woodland rivers remain.
+
 ## Gentle river current (November 4, 2026)
 
 Reference lock: the owner's existing woodland map and request for a “slight flow.” Replace the static river highlights with sparse glints moving slowly along the same three channels. The forest, river widths, buildings and bridges stay fixed. Preserve the original pixel renderer and palette; dim the highlights with Night and Rain.

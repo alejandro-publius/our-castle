@@ -1,3 +1,4 @@
+import { openMenu, closeMenu, chooseDistrict, clickView } from './support/game-controls.mjs';
 import { test, expect } from '@playwright/test';
 
 // District deeds: a card for an area the server newly opens. Example mode only; payments here are simulated by the
@@ -105,15 +106,15 @@ test('pending payments, refunds and re-crossing never create a deed; earned map 
   await expect(page.locator('#progress-amount')).toHaveText('$75.00');
   await expectNoDeed(page);
   // Locked districts keep their condition on the map and cannot open an earned deed.
-  await page.locator('#realm-districts [data-district="castle"]').click();
-  await expect(page.locator('#realm-focus-status')).toContainText('Royal Citadel · Locked · 100%');
+  await chooseDistrict(page, 'castle');
+  await expect(page.locator('#realm-focus-status')).toContainText('Royal Citadel · $240.00 to unlock');
   await expect(page.locator('#view-deed')).toBeHidden();
   await expectNoDeed(page);
-  await page.locator('#realm-districts [data-district="garden"]').click();
-  await expect(page.locator('#realm-focus-status')).toContainText('Record an on-time bill habit');
+  await chooseDistrict(page, 'garden');
+  await expect(page.locator('#realm-focus-status')).toContainText('Report an on-time bill to unlock');
   await expect(page.locator('#view-deed')).toBeHidden();
   // Earned deeds reopen directly from their district, with keyboard focus returned on Escape.
-  await page.locator('#realm-districts [data-district="manor"]').click();
+  await chooseDistrict(page, 'manor');
   const view = page.locator('#view-deed');
   await expect(view).toBeVisible();
   await view.focus();
@@ -142,7 +143,7 @@ test('several new areas queue one at a time, and Visit focuses the right distric
   await page.locator('#deed-visit').focus();
   await page.keyboard.press('Enter');
   await expect(dialog(page)).not.toHaveAttribute('open', '');
-  const keep = page.locator('#realm-districts [data-district="keep"]');
+  const keep = page.locator('#realm-markers [data-district="keep"]');
   await expect(keep).toBeFocused();
   await expect(keep).toHaveAttribute('aria-pressed', 'true');
   expect((await scene(page)).view.focus).toBe('keep');
@@ -157,12 +158,12 @@ test('a deed opened from the map visits the earned district with no write', asyn
   await pay(page, '15.00');
   await expect(dialog(page)).toHaveAttribute('open', '');
   await page.keyboard.press('Escape');
-  await page.locator('#realm-districts [data-district="manor"]').click();
+  await chooseDistrict(page, 'manor');
   await page.locator('#view-deed').click();
   const before = writes.length;
   await page.getByRole('button', { name: 'Visit Manor Gardens' }).click();
   await expect.poll(async () => (await scene(page)).tier).toBe(1);
-  await expect(page.locator('#realm-districts [data-district="manor"]')).toBeFocused();
+  await expect(page.locator('#realm-markers [data-district="manor"]')).toBeFocused();
   expect((await scene(page)).view.focus).toBe('manor');
   expect(writes.slice(before)).toEqual([]);
 });
@@ -172,7 +173,7 @@ test('a new area that arrives while a map deed is open replaces it in place with
   await foundHouse(page);
   await pay(page, '15.00', 'Simulate pending');
   await expect(page.locator('#give-status')).toContainText('Pending');
-  await page.locator('#realm-districts [data-district="cottage"]').click();
+  await chooseDistrict(page, 'cottage');
   await page.locator('#view-deed').click();
   await expect(page.locator('#deed-name')).toHaveText('Hearth Village');
   // The server's completion arrives while the deed is open (as a PayPal result can); the Ledger button is behind the
@@ -183,7 +184,7 @@ test('a new area that arrives while a map deed is open replaces it in place with
   await expect(dialog(page)).toHaveAttribute('open', '');
   await expect(page.locator('#deed-name')).toHaveText('Manor Gardens');
   await page.getByRole('button', { name: 'Visit Manor Gardens' }).click();
-  await expect(page.locator('#realm-districts [data-district="manor"]')).toBeFocused();
+  await expect(page.locator('#realm-markers [data-district="manor"]')).toBeFocused();
 });
 
 for (const [label, viewport, project] of [['390 by 844', { width: 390, height: 844 }, 'phone'], ['320 by 568', { width: 320, height: 568 }, 'phone']]) {
@@ -246,8 +247,9 @@ test('four journey tabs recover an old Rewards selection and a completed goal vi
   await expect(page.locator('#next-step-go')).toHaveText('Visit your castle');
   await page.locator('#next-step-go').focus();
   await page.keyboard.press('Enter');
-  const castle = page.locator('#realm-districts [data-district="castle"]');
+  const castle = page.locator('#realm-markers [data-district="castle"]');
   await expect(castle).toBeFocused();
   await expect(castle).toHaveAttribute('aria-pressed', 'true');
-  await expect(page.locator('#realm-focus-status')).toContainText('Royal Citadel · Open district');
+  await expect(page.locator('#realm-focus-status')).toBeEmpty();
+  await expect(page.locator('#view-deed')).toBeVisible();
 });
