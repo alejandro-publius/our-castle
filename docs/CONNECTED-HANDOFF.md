@@ -50,13 +50,13 @@ Codex has eight SDK-specific APIMatic/PayPal repository skills installed and dis
 
 No new PayPal order, refund or paid AI call was made, and nothing was deployed or published.
 
-Four existing browser cases fail identically on unmodified `main` 877764e:
+At the implementation handoff, four browser cases failed identically on unmodified `main` 877764e:
 - area-cards :87, a threshold-text expectation;
 - area-cards :234, Citadel focus;
 - estate :67, which expects the old 164-wide region;
 - journey :216, a canceled-record receipt.
 
-They are recorded, not fixed here.
+The subsequent [family-flow review](FAMILY-FLOW-REVIEW.md) resolves these expectations/navigation checks and the additional WebKit setup and duplicate-grid defects it uncovered. Current outcomes are at the top of [VALIDATION.md](VALIDATION.md); the earlier results above remain historical evidence.
 
 ## Sources credited
 

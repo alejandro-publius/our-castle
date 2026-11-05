@@ -32,7 +32,7 @@ The owner wants private development. Do not publish the repository, change its v
 
 Readiness against each submission item is in [JUDGE-HANDOFF.md](JUDGE-HANDOFF.md#4-what-remains-by-who-has-to-act), separated into unverified integration checks, owner decisions, provider-dependent work and optional production limits. Two gaps in brief:
 
-- **Repository:** the prototype exists only on local branches; GitHub `main` still holds the original concept handoff.
+- **Repository:** the working game and its three sponsor integrations are on private GitHub `main`. Public visibility and redistribution licensing remain owner decisions before submission.
 - **Video:** the finished 36-second clip is a silent example-mode world tour. It does not show the PayPal or AI features, so it does not meet the video requirement on its own.
 
 ## Award targets and current tool review

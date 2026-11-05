@@ -1,5 +1,19 @@
 # Validation
 
+## Family journey and browser follow-up — November 5, 2026
+
+Runtime fixes at `397a8ba` keep castle navigation clear of the journal, prevent a WebKit name-blur redraw from losing a setup click, and prevent concurrent lazy loads from mounting multiple Treasury grids. Three stale assertions were corrected to the current amount, geography and selected-receipt interface. The new delayed-script regression produced three grids before the guard; the affected WebKit setup cases failed before the change and passed afterward.
+
+**Actual focused results:** 24 distinct cases pass: six checks at both desktop (1440×1000) and touch-phone (390×844) sizes in Chromium and Linux WebKit. They cover pending/refund/re-crossing deeds, completed-goal keyboard navigation, route visibility at turn/zoom, canceled/declined receipts with a single credit, the complete fresh-family merchant/plan/contribution/receipt/reload flow, and delayed Treasury loading with one grid. Functional checks use reduced motion. WebKit ran in the official Playwright `v1.64.1-noble` container; these are emulations, not physical phones or macOS Safari.
+
+The Chromium matrix initially had 11 passes and one isolated-server teardown timeout after the journey assertions had passed. Test-only cleanup at `bfa779b` now closes active connections before releasing the in-memory database; the affected desktop journey then passed independently. The full WebKit matrix passed 12/12. No already-passed full/unit/provider suites were repeated. The 47-file original-art/palette/renderer/syntax guard passed; desktop/phone merchant, plan and Treasury stills were inspected.
+
+**Normal motion:** two additional Chromium cases passed at desktop/phone sizes with the actual full-route walk, queued deeds and keyboard castle visit. The initial software-rendered run exceeded the old 25-second settling/90-second case budgets. Test-only `6da7a96` keeps the animation/arrival assertions and gives this full-goal jump a bounded 60-second settling wait and 150-second case budget. The retry passed 2/2; no animation or renderer was shortened. This is functional evidence, not a hardware performance benchmark. Total: **26 passing focused checks** across the recorded runs.
+
+Evidence/configurations in the cloud worktree: ignored `test-results/family-finish/{chromium-verified.log,fresh-family-cleanup-verified.log,webkit-verified.log,grid-race-before.log,webkit-setup-after.log,source-check.log}` and `test-results/connected/`. The earlier baseline/failing logs are retained rather than rewritten. See [FAMILY-FLOW-REVIEW.md](FAMILY-FLOW-REVIEW.md) for the exact scope, official sponsor checks and remaining browser/provider limits.
+
+All financial activity here used fresh in-memory/example data, fake Channel3 and simulated contributions. No new real Channel3 credit, PayPal order, paid AI call, payment, refund, video, deployment or submission occurred. The approved 3021 rehearsal is untouched; its last read-only check showed zero orders, one starting ledger entry and no plan. The Mac's remote connection subsequently went offline, preventing local sync/native testing; its last inspected checkout was clean `791e8ae`. Supported control of the existing browser is also unavailable in this chat, so the in-app popup/same-order live verification remains outstanding. No keys or owner records were copied into the cloud checkout.
+
 ## APIMatic context for Codex — November 5, 2026
 
 Eight SDK-specific skills and two references are installed verbatim from upstream `6aa057126f0d4709a42e15002aab832a94935d92`; each copied file matches the pinned source and its recorded SHA-256. Codex 0.163.0 app-server `skills/list` discovers all eight as enabled repository skills, with zero loading errors. No model thread was created. See APIMATIC-CODEX.md and `.agents/apimatic-paypal/discovery.json`.

@@ -1,10 +1,10 @@
 # Awards and integration evidence
 
-Updated November 5, 2026. Codex read the official public [PayPal AI Hackathon](https://paypalaihackathon.devpost.com/) sponsor briefs. Earlier direct-fetch 403s are historical. The repository remains private; no deployment or submission occurred.
+Rechecked November 5, 2026 against the official public [rules](https://paypalaihackathon.devpost.com/rules) and all three sponsor briefs below. Earlier direct-fetch 403s are historical. The repository remains private; no deployment or submission occurred.
 
 | Target | Actual evidence | Remaining gap |
 | --- | --- | --- |
-| PayPal + AI; creative consumer experience | Adult-approved sandbox checkout, verified credit, runtime planner/steward and a persistent family woodland | Historical sandbox/AI evidence exists; the in-app popup and exact-order steward rehearsal stays with the 3021 operator |
+| PayPal + AI; creative consumer experience | Historical script-driven sandbox payment/capture evidence, runtime planner/steward and a persistent family woodland | The in-app popup and exact-order steward rehearsal stays with the 3021 operator; the family browser checks use simulated payments |
 | Channel3 | Real search inside Market Town; one live desktop call, six fake-transport browser cases | Live phone/save not re-run; no automatic purchase or price refresh |
 | AG Grid / AG Studio | Community 36.2.0 records/receipts; Studio 3.0.0 themed custom next-area widget and validated local trial | Studio Agent Framework is not integrated; no full-prize-coverage claim |
 | APIMatic | Exact SDK context installed as eight enabled Codex repository skills; earlier capture-timeout fixes retain seven fake-provider cases | Repo-scoped context use is documented; global registration and prize qualification are not claimed |
