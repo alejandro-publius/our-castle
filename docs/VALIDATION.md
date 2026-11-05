@@ -28,7 +28,8 @@ Eleven unit cases and six desktop/touch-phone browser cases passed. They use a f
 - cache and burst limits;
 - explicit search only, with stale answers dropped;
 - the unsaved Plan draft and its confirmed save, which writes provenance only, with no ledger, order or area change;
-- the area-opening and below-price refusals;
+- the confirmed save at the actual price, matching the ordinary goal edit (a later correction removed a merchant-only area floor);
+- the below-price, stale-goal and expired-draft refusals;
 - Escape/focus return and the not-connected state;
 - the additive `goal_items` migration.
 

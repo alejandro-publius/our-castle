@@ -1,35 +1,13 @@
 // Saving a Market Town merchant result as the household goal, only after the family confirms it.
-// The goal itself is changed by the existing updateGoal (same validation and plan handling as the Plan form). The
-// merchant path adds three guards and keeps the item's provenance: a Channel3 result this server showed, its price,
-// currency, merchant link and the time Channel3 answered. It never credits money, buys anything or opens an area.
+// Searching and preparing a draft change nothing. On "Save as our goal" the goal is changed by the same updateGoal the
+// Plan editor uses (same validation, plan handling and milestone rules), so the item's actual price can be the goal.
+// The merchant adds only these checks: the draft is a Channel3 result this server showed (not expired), its price is in
+// the goal currency, the goal amount is not below that price, and the goal has not changed since the draft was made.
+// It keeps the item's provenance. It never credits, captures or pays out money and never buys the item.
 
-import { DomainError, getAchievements, getGoal, progressFor, updateGoal } from '../household.mjs';
+import { DomainError, getGoal, updateGoal } from '../household.mjs';
 import { transaction } from '../db.mjs';
-import { TIERS, formatCents, milestoneCents } from '../../src/core/rules.js';
-import { ESTATE_MILESTONES } from '../../src/core/rewards.js';
-
-/**
- * Milestones a goal change would newly reach with progress already tracked, and the smallest goal amount that reaches
- * none. A merchant price may not lower the goal far enough to open areas by itself; areas open only through progress.
- * Already-open means recorded as achieved or reached by current progress against the current goal (as the realm shows).
- */
-export function milestonesReachedBy(db, goal, { targetCents, startingCents }) {
-  const progress = progressFor(db, goal.id);
-  const before = progress.progressCents;
-  const after = before - progress.startingCents + startingCents;
-  const earned = new Set(getAchievements(db, goal.id).map((a) => a.key));
-  const open = (key, percent) => earned.has(key) || before >= milestoneCents(goal.targetCents, percent);
-  const reached = [];
-  let minTargetCents = 0;
-  const check = (key, name, percent) => {
-    if (open(key, percent)) return;
-    minTargetCents = Math.max(minTargetCents, Math.ceil((100 * after + 1) / percent)); // smallest T with milestone(T) > after
-    if (after >= milestoneCents(targetCents, percent)) reached.push(name);
-  };
-  for (const tier of TIERS.slice(1)) check(`tier:${tier.index}`, tier.name, tier.percent);
-  for (const r of ESTATE_MILESTONES) check(`estate:${r.key}`, r.name, r.percent);
-  return { reached, minTargetCents };
-}
+import { formatCents } from '../../src/core/rules.js';
 
 /** Save the confirmed draft: the goal through updateGoal, then the item provenance, in one transaction. */
 export function saveGoalFromItem(db, { householdId, goalId, expectedGoalId, item, goal: input }, clock) {
@@ -40,16 +18,14 @@ export function saveGoalFromItem(db, { householdId, goalId, expectedGoalId, item
   if (!item?.usable || item.currency !== goal.currency || !Number.isSafeInteger(item.priceCents)) {
     throw new DomainError(400, 'merchant_price_unusable', 'This result has no price in the goal currency, so it cannot set the goal amount.');
   }
+  // The actual price is the default; a family may deliberately choose more (tax, shipping, a broader goal), never less.
   if (!Number.isSafeInteger(input.targetCents) || input.targetCents < item.priceCents) {
     throw new DomainError(400, 'merchant_goal_below_price', `The goal amount cannot be lower than the item’s price (${formatCents(item.priceCents, item.currency)}).`);
   }
-  const starting = Number.isSafeInteger(input.startingCents) ? input.startingCents : 0;
-  const { reached, minTargetCents } = milestonesReachedBy(db, goal, { targetCents: input.targetCents, startingCents: starting });
-  if (reached.length) {
-    throw new DomainError(409, 'merchant_would_open_areas', `Saving ${formatCents(input.targetCents, goal.currency)} would open ${reached.join(', ')} from progress already tracked. Areas open only through progress, so use a goal amount of at least ${formatCents(minTargetCents, goal.currency)} or keep the current goal.`, { minTargetCents });
-  }
   return transaction(db, () => {
-    const saved = updateGoal(db, goal.id, input, clock); // Existing goal validation; earlier plans are set aside as before.
+    // The ordinary goal edit: existing validation; earlier plans set aside; milestones that progress already tracked
+    // reaches under the new amount are recorded exactly as the Plan editor would. No ledger entry is written.
+    const saved = updateGoal(db, goal.id, input, clock);
     db.prepare(`INSERT INTO goal_items (goal_id, provider, product_id, title, merchant, url, price_cents, currency, availability, checked_at, goal_name, saved_at)
       VALUES (?, 'channel3', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(goal_id) DO UPDATE SET product_id = excluded.product_id, title = excluded.title, merchant = excluded.merchant, url = excluded.url,

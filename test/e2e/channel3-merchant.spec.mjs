@@ -125,37 +125,57 @@ test('Market Town merchant: explicit search, at most three honest rows, a draft 
   await expect(page.locator('#goal-target')).toHaveValue('189.50');
   await expect(page.locator('#goal-draft-facts')).toContainText('$189.50 USD · example-outfitter.com · In stock · Channel3, checked');
   await expect(page.locator('#goal-draft-effect')).toContainText('Not saved yet. Saving replaces “Camping trip fund” ($300.00)');
-  await expect(page.locator('#goal-draft-effect')).toContainText('the $60.00 already tracked stays with the goal');
+  await expect(page.locator('#goal-draft-effect')).toContainText('the $60.00 already tracked stays and counts toward the new amount');
   await expect(page.locator('#ask-planner')).toBeDisabled();
   expect(await stateOf(page)).toEqual(before);
   await page.locator('#goal-draft').scrollIntoViewIfNeeded();
   await page.screenshot({ path: `${evidence}${info.project.name}-draft.png` });
 
-  // A $189.50 goal would open the Manor from the $60 already reported: refused, with the smallest safe amount offered.
+  // A refused save changes nothing and keeps the draft: the amount cannot go below the item's price.
+  await page.locator('#goal-target').fill('150.00');
   await page.locator('#goal-draft-save').click();
-  await expect(page.locator('#plan-status')).toContainText('would open Manor from progress already tracked');
+  await expect(page.locator('#plan-status')).toContainText('The goal amount cannot be lower than the item’s price ($189.50).');
+  await expect(page.locator('#goal-draft')).toBeVisible();
   expect(await stateOf(page)).toEqual(before);
-  await page.getByRole('button', { name: 'Set the goal to $240.01' }).click();
-  await expect(page.locator('#goal-target')).toHaveValue('240.01');
-  await expect(page.locator('#goal-target')).toBeFocused();
+
+  // Saving at the actual price is the ordinary goal edit: with $60 already reported, $189.50 passes 25%, so the Manor
+  // opens with its usual deed card, exactly as the Plan editor would for the same edit. No money moves.
+  await page.locator('#goal-target').fill('189.50');
   await page.locator('#goal-draft-save').click();
-  await expect(page.locator('#plan-status')).toContainText('Goal saved: Test fixture: Four-person dome tent, $240.01.');
+  await expect(page.locator('#plan-status')).toContainText('Goal saved: Test fixture: Four-person dome tent, $189.50.');
+  await expect(page.locator('#deed-dialog')).toBeVisible();
+  await expect(page.locator('#deed-name')).toHaveText('Manor Gardens');
+  await page.locator('#deed-close').click();
+  await expect(page.locator('#deed-dialog')).toBeHidden();
   await expect(page.locator('#goal-name')).toHaveText('Test fixture: Four-person dome tent');
   await expect(page.locator('#goal-draft')).toBeHidden();
   await expect(page.locator('#goal-item')).toContainText('Goal item: Test fixture: Four-person dome tent · $189.50 at example-outfitter.com, Channel3 price checked');
   await expect(page.locator('#ask-planner')).toBeEnabled();
 
   const after = await stateOf(page);
+  expect(after.goal.targetCents).toBe(18950);
   expect(after.goalItem).toMatchObject({ provider: 'Channel3', productId: 'fakeTent01', priceCents: 18950, currency: 'USD', merchant: 'example-outfitter.com' });
   expect(after.progress.progressCents).toBe(before.progress.progressCents);
   // No ledger entry is added or changed in amount; the existing goal save only relabels the example starting row.
   const money = (l) => l.goalEntries.concat(l.bills, l.gifts).map((e) => [e.id, e.kind, e.effect, e.amountCents, e.source]);
   expect(money(after.ledger)).toEqual(money(before.ledger));
   expect(after.contributions).toEqual([]);
-  expect(after.rewards.realm.districts.filter((d) => d.open).map((d) => d.id)).toEqual(before.rewards.realm.districts.filter((d) => d.open).map((d) => d.id));
+  expect(after.rewards.realm.districts.filter((d) => d.open).map((d) => d.id)).toEqual(['cottage', 'manor']);
   expect(searches.get(page)).toEqual(['POST /api/merchant/search', 'POST /api/merchant/goal', 'POST /api/merchant/goal']);
   expect(s.fake.calls).toHaveLength(1);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+
+  // Reload: the confirmed goal and its item persist; the deed is not shown again.
+  await page.reload();
+  await page.waitForFunction(() => window.__ourCastle?.state && window.__ourCastle.scene());
+  if (await page.locator('#journey').isHidden()) await page.locator('#journal-toggle').click();
+  await page.locator('#tab-plan').click();
+  await expect(page.locator('#goal-name')).toHaveText('Test fixture: Four-person dome tent');
+  await expect(page.locator('#goal-target')).toHaveValue('189.50');
+  await expect(page.locator('#goal-item')).toContainText('$189.50 at example-outfitter.com');
+  await page.waitForTimeout(1500);
+  await expect(page.locator('#deed-dialog')).toBeHidden();
+  expect(await stateOf(page)).toEqual(after);
 });
 
 test('stale answers are dropped; empty, error, discard, Escape and focus return behave', async ({ page }) => {
@@ -210,7 +230,7 @@ test('stale answers are dropped; empty, error, discard, Escape and focus return 
 test('without a Channel3 key the merchant says so plainly and searches nothing', async ({ page }, info) => {
   await open(page, { withKey: false });
   await page.locator('#open-merchant').click();
-  await expect(page.locator('#merchant-status')).toHaveText('Channel3 is not connected on this server yet. Add CHANNEL3_API_KEY to the local .env and restart; nothing is searched until then.');
+  await expect(page.locator('#merchant-status')).toHaveText('The merchant isn’t open yet: product search is not connected.');
   await expect(page.locator('#merchant-query')).toBeDisabled();
   await expect(page.locator('#merchant-search')).toBeDisabled();
   await expect(page.locator('#merchant-title')).toBeFocused();

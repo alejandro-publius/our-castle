@@ -204,25 +204,27 @@ test('searching changes nothing; only an explicitly confirmed draft changes the 
     assert.deepEqual(state.goal, before.goal, 'search does not change the goal');
     assert.deepEqual(counts(s.db), before.counts);
 
-    // Confirmed save: the goal takes the item name and price; progress, ledger, orders and areas are unchanged.
-    // $60 is reported toward the goal: a $189.50 goal would open the Manor (25%) at once, so the merchant refuses it
-    // and names the smallest amount that opens nothing. Nothing changes.
-    let res = await s.call('POST', '/api/merchant/goal', { draftId: tent.draftId, goalId: state.goal.id, goal: goalFrom(state, { name: 'Family dome tent', targetCents: 18950 }) });
-    assert.deepEqual([res.status, res.json.error.code], [409, 'merchant_would_open_areas']);
-    assert.match(res.json.error.message, /would open Manor from progress already tracked.*at least \$240\.01/);
-    assert.equal(res.json.error.minTargetCents, 24001);
-    assert.deepEqual(counts(s.db), before.counts);
-    const saved = await s.call('POST', '/api/merchant/goal', { draftId: tent.draftId, goalId: state.goal.id, goal: goalFrom(state, { name: 'Family dome tent', targetCents: 24001 }) });
+    // Confirmed save at the item's actual price: exactly the ordinary goal edit. With $60 already reported, $189.50
+    // puts the household past 25%, so the Manor opens from progress already tracked, as the Plan editor would do for
+    // the same edit. No money moves: ledger entries and payment orders are unchanged.
+    const saved = await s.call('POST', '/api/merchant/goal', { draftId: tent.draftId, goalId: state.goal.id, goal: goalFrom(state, { name: 'Family dome tent', targetCents: 18950 }) });
     assert.equal(saved.status, 200, saved.text);
     const after = saved.json.state;
-    assert.deepEqual([after.goal.name, after.goal.targetCents], ['Family dome tent', 24001]);
+    assert.deepEqual([after.goal.name, after.goal.targetCents], ['Family dome tent', 18950]);
     assert.equal(after.progress.progressCents, state.progress.progressCents);
-    // No ledger entry or payment order is created. The existing goal save may record an already-open keepsake
-    // (the porch, open at 10% by progress), but no area opens.
     const now = counts(s.db);
     assert.deepEqual([now.ledger, now.orders], [before.counts.ledger, before.counts.orders]);
-    assert.deepEqual(s.db.prepare('SELECT key FROM achievements').all().map((r) => r.key), ['estate:porch']);
-    assert.deepEqual(after.rewards.realm.districts.filter((d) => d.open).map((d) => d.id), state.rewards.realm.districts.filter((d) => d.open).map((d) => d.id));
+    // The same edit through the ordinary goal route on an identical fresh household gives the same areas and keepsakes.
+    const ordinary = await startServer();
+    try {
+      const base = (await ordinary.call('POST', '/api/setup', { playMode: 'family', name: 'House of Alder', crest: { field: 'cobalt', charge: 'stag' } })).json.state;
+      const edited = (await ordinary.call('PUT', '/api/goal', goalFrom(base, { name: 'Family dome tent', targetCents: 18950 }))).json.state;
+      const opened = (st) => st.rewards.realm.districts.filter((d) => d.open).map((d) => d.id);
+      assert.deepEqual(opened(after), opened(edited));
+      assert.deepEqual(opened(after), ['cottage', 'manor']);
+      assert.deepEqual(after.achievements.map((x) => x.key), edited.achievements.map((x) => x.key));
+      assert.deepEqual(after.treasury.nextArea, edited.treasury.nextArea);
+    } finally { await ordinary.close(); }
     assert.deepEqual(after.goalItem, {
       provider: 'Channel3', productId: 'fakeTent01', title: 'Test fixture: Four-person dome tent', merchant: 'example-outfitter.com',
       url: 'https://buy.trychannel3.com/fake/tent-a', priceCents: 18950, currency: 'USD', availability: 'InStock',
@@ -234,28 +236,44 @@ test('searching changes nothing; only an explicitly confirmed draft changes the 
   } finally { await s.close(); }
 });
 
-test('the merchant cannot lower the goal into areas, undercut the price, use a stale goal or an expired draft', async () => {
+test('failed saves change nothing; a fully funded low-cost item is saved like any goal edit', async () => {
   const s = await startServer({ respond: () => fakeSearchResponse([fakeProduct({ offers: [{ url: 'https://buy.trychannel3.com/fake/lamp', domain: 'example-lamps.com', price: { price: 40, currency: 'USD' }, availability: 'InStock' }] })]) });
   try {
     const state = (await s.call('POST', '/api/setup', { playMode: 'family', name: 'House of Alder', crest: { field: 'cobalt', charge: 'stag' } })).json.state;
     const [item] = (await s.call('POST', '/api/merchant/search', { query: 'lantern' })).json.results;
     const before = counts(s.db);
-    // $60 is already reported; a $40 goal would open areas immediately.
-    let res = await s.call('POST', '/api/merchant/goal', { draftId: item.draftId, goalId: state.goal.id, goal: goalFrom(state, { name: 'Lantern', targetCents: 4000 }) });
-    assert.deepEqual([res.status, res.json.error.code], [409, 'merchant_would_open_areas']);
-    assert.match(res.json.error.message, /Areas open only through progress/);
-    res = await s.call('POST', '/api/merchant/goal', { draftId: item.draftId, goalId: state.goal.id, goal: goalFrom(state, { name: 'Lantern', targetCents: 3999, startingCents: 0 }) });
+    const unchanged = async () => {
+      const now = (await s.call('GET', '/api/state')).json;
+      assert.deepEqual([now.goal.name, now.goal.targetCents, now.goalItem], [state.goal.name, state.goal.targetCents, null]);
+      assert.deepEqual(counts(s.db), before);
+    };
+    let res = await s.call('POST', '/api/merchant/goal', { draftId: item.draftId, goalId: state.goal.id, goal: goalFrom(state, { name: 'Lantern', targetCents: 3999 }) });
     assert.deepEqual([res.status, res.json.error.code], [400, 'merchant_goal_below_price']);
-    res = await s.call('POST', '/api/merchant/goal', { draftId: item.draftId, goalId: 'goal_other', goal: goalFrom(state, { name: 'Lantern', targetCents: 30000 }) });
+    res = await s.call('POST', '/api/merchant/goal', { draftId: item.draftId, goalId: 'goal_other', goal: goalFrom(state, { name: 'Lantern', targetCents: 4000 }) });
     assert.deepEqual([res.status, res.json.error.code], [409, 'goal_changed']);
-    res = await s.call('POST', '/api/merchant/goal', { draftId: 'c3d_000000000000000000000000', goalId: state.goal.id, goal: goalFrom(state, { name: 'Lantern', targetCents: 30000 }) });
+    res = await s.call('POST', '/api/merchant/goal', { draftId: 'c3d_000000000000000000000000', goalId: state.goal.id, goal: goalFrom(state, { name: 'Lantern', targetCents: 4000 }) });
     assert.deepEqual([res.status, res.json.error.code], [410, 'merchant_draft_expired']);
-    // Existing goal validation still applies (here: the name).
-    res = await s.call('POST', '/api/merchant/goal', { draftId: item.draftId, goalId: state.goal.id, goal: goalFrom(state, { name: 'L', targetCents: 30000 }) });
+    // Existing goal validation still applies (here: the name, and starting progress above the goal amount).
+    res = await s.call('POST', '/api/merchant/goal', { draftId: item.draftId, goalId: state.goal.id, goal: goalFrom(state, { name: 'L', targetCents: 4000 }) });
     assert.deepEqual([res.status, res.json.error.code], [400, 'invalid_goal']);
-    const now = (await s.call('GET', '/api/state')).json;
-    assert.deepEqual([now.goal.name, now.goal.targetCents, now.goalItem], [state.goal.name, state.goal.targetCents, null]);
-    assert.deepEqual(counts(s.db), before);
+    res = await s.call('POST', '/api/merchant/goal', { draftId: item.draftId, goalId: state.goal.id, goal: goalFrom(state, { name: 'Lantern', targetCents: 4000 }) });
+    assert.deepEqual([res.status, res.json.error.code], [400, 'invalid_goal'], 'the $60 reported starting amount cannot exceed a $40 goal');
+    await unchanged();
+
+    // With the reported amount lowered to fit, a $40 goal is fully funded by what is already tracked: the ordinary
+    // goal edit records every milestone, as the Plan editor would. Still no ledger entry or payment order.
+    res = await s.call('POST', '/api/merchant/goal', { draftId: item.draftId, goalId: state.goal.id, goal: goalFrom(state, { name: 'Lantern', targetCents: 4000, startingCents: 4000 }) });
+    assert.equal(res.status, 200, res.text);
+    const funded = res.json.state;
+    assert.deepEqual([funded.goal.targetCents, funded.progress.progressCents, funded.treasury.nextArea], [4000, 4000, null]);
+    assert.deepEqual([counts(s.db).ledger, counts(s.db).orders], [before.ledger, before.orders]);
+    const ordinary = await startServer();
+    try {
+      const base = (await ordinary.call('POST', '/api/setup', { playMode: 'family', name: 'House of Alder', crest: { field: 'cobalt', charge: 'stag' } })).json.state;
+      const edited = (await ordinary.call('PUT', '/api/goal', goalFrom(base, { name: 'Lantern', targetCents: 4000, startingCents: 4000 }))).json.state;
+      assert.deepEqual(funded.achievements.map((x) => x.key), edited.achievements.map((x) => x.key));
+      assert.deepEqual(funded.rewards.realm.districts.map((d) => [d.id, d.open]), edited.rewards.realm.districts.map((d) => [d.id, d.open]));
+    } finally { await ordinary.close(); }
   } finally { await s.close(); }
 });
 

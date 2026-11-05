@@ -169,7 +169,7 @@ async function providerError(response) {
   let detail = '';
   try { const body = await response.json(); detail = typeof body?.detail === 'string' ? body.detail : ''; } catch { /* not JSON */ }
   const s = response.status;
-  if (s === 401 || s === 403) return fail(502, 'merchant_auth', 'Channel3 did not accept this server’s API key. Check CHANNEL3_API_KEY in the local .env.');
+  if (s === 401 || s === 403) return fail(502, 'merchant_auth', 'Channel3 did not accept this app’s search key, so no search was made.');
   if (s === 402) return fail(502, 'merchant_credits', 'Channel3 reports no search credits left for this key. No search was made.');
   if (s === 429) return fail(503, 'merchant_rate_limited', 'Channel3 is limiting searches right now. Wait a few seconds, then search again.');
   if (s === 400 || s === 422) return fail(502, 'merchant_rejected', `Channel3 could not run that search${detail ? `: ${cleanText(detail, 160)}` : '.'}`);
@@ -241,7 +241,7 @@ export function createMerchant({ apiKey = null, fetch, clock, ...options } = {})
 
   async function search(input) {
     const request = validateSearch(input);
-    if (!client) throw fail(503, 'merchant_not_connected', 'Channel3 is not connected on this server. Add CHANNEL3_API_KEY to the local .env and restart. No search was made.');
+    if (!client) throw fail(503, 'merchant_not_connected', 'Product search is not connected, so no search was made.');
     const key = `${request.query.toLowerCase()}|${request.budgetCents ?? ''}`;
     let at = now();
     prune(at);

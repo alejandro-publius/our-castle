@@ -48,7 +48,7 @@ export function createMerchantDialog({ getState, onUse }) {
     const on = connected();
     for (const el of form.elements) el.disabled = !on;
     if (!on) {
-      say('off', 'Channel3 is not connected on this server yet. Add CHANNEL3_API_KEY to the local .env and restart; nothing is searched until then.');
+      say('off', 'The merchant isn’t open yet: product search is not connected.'); // setup steps: docs/CHANNEL3-MERCHANT.md
       list.replaceChildren();
       source.hidden = true;
     } else if (status.dataset.kind === 'off') say('', '');

@@ -16,7 +16,7 @@ Put the key in the server's local `.env`. It stays server-side and is never sent
 CHANNEL3_API_KEY=...
 ```
 
-Restart the server; the start-up line then reads `Merchant: Channel3 product search`. Without a key, the merchant says "Channel3 is not connected on this server yet…", its fields are disabled, and no request is made. Keys come from a free developer account (https://trychannel3.com/sign-up/developer → https://trychannel3.com/dashboard/api). Channel3 documents 1,000 free credits a month, and one search costs one credit. The sponsor's promo code (PAYPAL-HACKATHON-2026) was not used or verified here; no account, purchase or terms acceptance was automated.
+Restart the server; the start-up line then reads `Merchant: Channel3 product search`. Without a key, the family sees only "The merchant isn't open yet: product search is not connected.", its fields are disabled, and no request is made. These setup steps are for whoever runs the server and are not shown in the game. Keys come from a free developer account (https://trychannel3.com/sign-up/developer → https://trychannel3.com/dashboard/api). Channel3 documents 1,000 free credits a month, and one search costs one credit. The sponsor's promo code (PAYPAL-HACKATHON-2026) was not used or verified here; no account, purchase or terms acceptance was automated.
 
 ## Contract and sources
 
@@ -58,12 +58,18 @@ In the browser, only the newest search may update the list; an older answer is a
 The household has a single active goal, and goal edits already set earlier plans aside. A merchant result is therefore a draft imported into the existing Plan editor. It is never a silent replacement, and `POST /api/merchant/goal` saves it only on the family's click.
 
 - The draft is the server's own copy of a result it showed. A `draftId` is valid for 30 minutes, and the client cannot invent provenance.
-- The goal changes through the existing `updateGoal`, with the same validation. Starting progress, ledger, contributions and members stay untouched, and plans are set aside as with any goal edit. The draft note says what will change before saving.
+- Searching and "Use as goal" change nothing on the server. On "Save as our goal" the goal changes through the existing `updateGoal`, exactly as the Plan editor would save the same values: same validation, plans set aside, and milestones recorded for progress already tracked against the new amount.
+  - So a $189.50 tent with $60 already reported becomes a $189.50 goal, and the Manor (25%) opens with its usual deed. The Plan editor would do the same for that edit. A unit test checks this against the ordinary goal route.
+  - No money is credited, captured or paid out; ledger entries, payment orders and members stay as they were. The draft note says what will change before saving.
+- The actual returned price is the default amount. A family may deliberately choose more (tax, shipping, a broader goal) but never less.
 - The save is refused if:
   - the amount is below the item's price;
+  - the price isn't in the goal currency;
   - the goal changed since the draft was made;
   - the draft expired;
-  - the new amount would open any area from progress already tracked. The refusal offers the smallest safe amount, for example "Set the goal to $240.01". Areas open only through progress.
+  - the ordinary goal validation fails.
+- A refused save leaves the goal, item and records unchanged.
+- Correction (November 5): an earlier version refused any amount that would open an area from already-tracked progress and offered an inflated minimum ($240.01 for the $189.50 tent). That merchant-only rule was a misreading of "browsing must not unlock anything" and has been removed.
 - Provenance is kept in the additive `goal_items` table (migration 3): product id, title, merchant, link, item price, currency, availability and the time Channel3 checked. It is not search history. The Plan form shows it while the goal keeps that name. Channel3 says offer links are short-lived, so the saved link is labelled as of its checked time.
 - Role rules are unchanged: anyone who may edit the goal may confirm a draft. Contributions still need an adult's amount-specific approval, and nothing here touches payment code.
 
@@ -85,7 +91,7 @@ The household has a single active goal, and goal edits already set earlier plans
   - explicit search only;
   - three honest rows with image, price, merchant and availability;
   - the secondary safe link and disclosure;
-  - the draft and the area refusal with its smallest-safe-amount fix, then the confirmed save;
+  - the draft, then the confirmed save at the actual price with the ordinary Manor deed, then reload persistence;
   - stale answers dropped;
   - empty, error and link-refused states;
   - Escape and focus return;

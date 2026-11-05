@@ -6,7 +6,6 @@ export class ApiError extends Error {
     this.code = error.code;
     this.issues = error.issues;
     this.debugId = error.debugId;
-    this.minTargetCents = error.minTargetCents; // merchant goal: the smallest amount that opens no area
   }
 }
 

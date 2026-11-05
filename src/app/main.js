@@ -785,7 +785,7 @@ function renderGoalDraft() {
   $('#goal-draft-facts').textContent = ` ${resultFacts(draft).join(' · ')} · Channel3, checked ${timeLabel(draft.checkedAt)}`;
   const { goal, progress } = state;
   const effects = [`Not saved yet. Saving replaces “${goal.name}” (${money(goal.targetCents)}) with the name and amount below`];
-  if (progress.progressCents > 0) effects.push(`; the ${money(progress.progressCents)} already tracked stays with the goal`);
+  if (progress.progressCents > 0) effects.push(`; the ${money(progress.progressCents)} already tracked stays and counts toward the new amount`);
   if (state.plan) effects.push('; the current plan is set aside, so make a new one afterwards');
   effects.push('. The price excludes tax and shipping; nothing is bought.');
   $('#goal-draft-effect').textContent = effects.join('');
@@ -824,10 +824,7 @@ async function saveGoalDraft() {
     setStatus('#plan-status', 'ok', `Goal saved: ${res.state.goal.name}, ${money(res.state.goal.targetCents)}. Make a plan when you are ready.`);
     $('#goal-name-input').focus();
   } catch (error) {
-    const fix = error.code === 'merchant_would_open_areas' && Number.isSafeInteger(error.minTargetCents) ? error.minTargetCents : null;
-    setStatus('#plan-status', 'error', error.message, fix ? {
-      action: h('button', { type: 'button', onclick: () => { $('#goal-target').value = centsToInput(fix); setStatus('#plan-status', '', ''); $('#goal-target').focus(); } }, `Set the goal to ${money(fix)}`),
-    } : {});
+    setStatus('#plan-status', 'error', error.message); // a refused save changes nothing; the draft stays for review
     if (error.code === 'merchant_draft_expired' || error.code === 'goal_changed') { ui.goalDraft = null; renderGoalDraft(); }
   } finally {
     button.disabled = false;
