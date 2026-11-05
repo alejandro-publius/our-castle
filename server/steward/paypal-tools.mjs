@@ -7,7 +7,8 @@ export const READ_ONLY_ACTIONS = Object.freeze({ orders: Object.freeze({ get: tr
 const ALLOWED_TOOLS = new Set(['get_order', 'list_transactions']);
 const ORDER_ID = /^[A-Z0-9]{17,32}$/;
 
-export function createPayPalReadTools({ clientId, clientSecret, toolkit = null, now = () => new Date() }) {
+export function createPayPalReadTools({ clientId, clientSecret, toolkit = null, now = () => new Date(), timeoutMs = 30_000 }) {
+  if (!Number.isSafeInteger(timeoutMs) || timeoutMs < 1 || timeoutMs > 2_147_483_647) throw new Error('PayPal tool timeout must be a positive 32-bit integer.');
   const kit = toolkit ?? new PayPalAgentToolkit({
     clientId,
     clientSecret,
@@ -15,16 +16,27 @@ export function createPayPalReadTools({ clientId, clientSecret, toolkit = null, 
     configuration: { actions: READ_ONLY_ACTIONS, context: { sandbox: true } },
   });
   const baseUrl = kit.client?.getBaseUrl?.() ?? '';
-  if (!/sandbox\.paypal\.com/.test(baseUrl)) throw new Error('The PayPal Agent Toolkit must point at the PayPal sandbox.');
+  let endpoint;
+  try { endpoint = new URL(baseUrl); } catch { /* rejected below */ }
+  if (!endpoint || endpoint.protocol !== 'https:' || !['api.sandbox.paypal.com', 'api-m.sandbox.paypal.com'].includes(endpoint.host) || endpoint.username || endpoint.password || endpoint.pathname !== '/' || endpoint.search || endpoint.hash)
+    throw new Error('The PayPal Agent Toolkit must point at the PayPal sandbox.');
   const enabled = kit.getTools().map((t) => t.function?.name);
   for (const name of enabled) if (!ALLOWED_TOOLS.has(name)) throw new Error(`Refusing to start: PayPal tool "${name}" is not read-only.`);
 
   async function run(name, args) {
     if (!ALLOWED_TOOLS.has(name)) throw new Error(`PayPal tool "${name}" is not allowed.`);
-    const message = await kit.handleToolCall({ id: `steward_${Date.now()}`, type: 'function', function: { name, arguments: JSON.stringify(args) } });
-    let data;
-    try { data = JSON.parse(message.content); } catch { data = { error: { message: 'PayPal tool returned non-JSON output.' } }; }
-    return data;
+    let timer;
+    try {
+      // The toolkit does not expose a per-call abort/timeout option. Bound the answer's wait;
+      // a late read may finish upstream, but cannot become proof for this answer. Never retry here.
+      const message = await Promise.race([
+        kit.handleToolCall({ id: `steward_${Date.now()}`, type: 'function', function: { name, arguments: JSON.stringify(args) } }),
+        new Promise((_, reject) => { timer = setTimeout(() => reject(Object.assign(new Error('PayPal did not respond in time. Check this payment again later.'), { code: 'PAYPAL_TOOL_TIMEOUT' })), timeoutMs); }),
+      ]);
+      try { return JSON.parse(message.content); } catch { return { error: { message: 'PayPal tool returned non-JSON output.' } }; }
+    } finally {
+      clearTimeout(timer);
+    }
   }
 
   return {

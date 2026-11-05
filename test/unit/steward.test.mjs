@@ -165,6 +165,31 @@ test('a fluent answer without the selected get_order result remains unverified',
   assert.match(result.warnings.join(' '), /same PayPal order/);
   assert.deepEqual(result.checks, []);
 });
+test('a timed-out selected-order read stays unverified even after a late success and a fluent model claim', { timeout: 2000 }, async () => {
+  const env = await sandboxWithCapture();
+  let finish;
+  const pending = new Promise((resolve) => { finish = resolve; });
+  const paypalTools = createPayPalReadTools({ timeoutMs: 10, toolkit: {
+    client: { getBaseUrl: () => 'https://api.sandbox.paypal.com' },
+    getTools: () => ['get_order', 'list_transactions'].map((name) => ({ function: { name } })),
+    handleToolCall: () => pending,
+  } });
+  const anthropic = scriptedAnthropic([
+    message([{ type: 'tool_use', id: 'toolu_timeout', name: 'get_order', input: { order_id: env.orderId } }], 'tool_use'),
+    message([{ type: 'text', text: 'PayPal confirmed your $15.00 contribution.' }]),
+  ]);
+  const before = env.db.prepare('SELECT COUNT(*) AS n FROM ledger_entries').get().n;
+  const steward = createSteward({ db: env.db, contributions: env.service, householdId: env.householdId, ai, paypalTools, fetch: anthropic.fetch, clock: env.clock });
+  const result = await steward.ask({ question: 'Verify this payment', memberId: 'm_rowan', focusOrderId: env.orderId });
+  assert.equal(result.verification.status, 'unverified');
+  assert.equal(anthropic.requests[1].messages[2].content[0].is_error, true);
+  assert.match(result.warnings.join(' '), /not been verified/);
+  finish({ content: JSON.stringify((await env.paypal.getOrder(env.orderId)).data) });
+  await new Promise(setImmediate);
+  assert.equal(result.verification.status, 'unverified');
+  assert.deepEqual(result.checks, []);
+  assert.equal(env.db.prepare('SELECT COUNT(*) AS n FROM ledger_entries').get().n, before);
+});
 test('matching amounts alone cannot reconcile a different order or capture', () => {
   const ours = { id: 'ctb_1', providerOrderId: 'ORDER1', amountCents: 1500, currency: 'USD', status: 'completed', captures: [{ captureId: 'CAP1', credited: true }] };
   const unit = { reference_id: 'ctb_1', payments: { captures: [{ id: 'CAP1', status: 'COMPLETED', amount: { currency_code: 'USD', value: '15.00' } }] } };
