@@ -24,6 +24,8 @@ Searching is not checkout. A contribution does not buy the Channel3 item or pay 
 
 ## Run and configuration
 
+Codex has eight SDK-specific APIMatic/PayPal repository skills installed and discovery-verified; see [APIMATIC-CODEX.md](APIMATIC-CODEX.md).
+
 - **Install.** `npm ci` is needed: `ag-studio@3.0.0` is a new pinned dependency. Without it the Treasury shows its plain fallback.
 - **`.env` (server-side only).**
   - `CHANNEL3_API_KEY` enables the merchant.
@@ -60,7 +62,7 @@ They are recorded, not fixed here.
 
 - **Channel3:** official docs and OpenAPI (https://channel3.ai/docs/, `/docs/openapi/openapi.json`), including the caching guidance and the required commission disclosure.
 - **AG Studio:** official JavaScript docs (quick start, custom widgets, licence install) and the installed type definitions.
-- **APIMatic:** the PayPal Context Plugin's published skills (marketplace commit `7cbdf85`); the plugin was not installed.
+- **APIMatic:** the earlier API-level review used published generic skills (marketplace `7cbdf85`). Codex now uses the SDK-specific PayPal Server context, installed as eight repository skills from `6aa0571`; source and discovery proof are in APIMATIC-CODEX.md.
 - **Webinars:** the published descriptions and chapters of the PayPal Developer and Devpost sessions of October 6, 7, 12 and 13. Only descriptions and chapters were reviewed, not watched talks or transcripts. Their guidance was applied:
   - the grid session (async data source, filters versus the real query contract) to the Treasury;
   - the Context Plugin and unhappy-path sessions to the PayPal review.
@@ -68,9 +70,8 @@ They are recorded, not fixed here.
 
 ## Remaining blockers and owner steps
 
-- **APIMatic plugin installation.** Blocked by Claude Code's automatic permission review and not retried. The two commands (smallest scope, local) are in [APIMATIC-USAGE.md](APIMATIC-USAGE.md).
 - **Not exercised live:** the phone render and the draft/save with a live item. A second credit was not spent; both are covered with fakes.
-- **Sponsor conditions.** Codex successfully read the official public [Channel3 brief](https://paypalaihackathon.devpost.com/details/channel3) on November 5: meaningful API/MCP use is required; the real merchant search supplies that evidence. The credit promotion was not applied. [Award notes](AWARD-STRATEGY.md) distinguish actual use from remaining Studio Agent Framework and APIMatic-activation gaps.
+- **Sponsor conditions.** Codex successfully read the official public [Channel3 brief](https://paypalaihackathon.devpost.com/details/channel3) on November 5: meaningful API/MCP use is required; the real merchant search supplies that evidence. The credit promotion was not applied. [Award notes](AWARD-STRATEGY.md) distinguish actual use from remaining Studio Agent Framework and formal entry requirements.
 - **AG Studio.** Evaluation only. Production use needs the owner's commercial decision.
 - **PayPal popup rehearsal.** The coordinated in-app popup → single credit → exact-order `get_order` rehearsal remains with its existing 3021 operator. Nothing here is live PayPal proof.
 - **Submission.** A public repository, original-art redistribution scope, a video and the Devpost submission are all separate owner decisions. Video work stays paused.

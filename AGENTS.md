@@ -9,3 +9,7 @@ Use original bundled art and rendering code; preserve notices and provenance. Tr
 Do not use live PayPal endpoints, move real money, change repository visibility, deploy/publish a site or submit an entry. A push to the existing private repository is authorized; it does not authorize deployment or submission. Do not run new paid AI/payment checks as part of repository sync or a visual pass. Do not commit `.env` files, account data or credentials. Implemented payment logic needs server verification, idempotency and explicit approval. Every mock/example state must be labeled honestly.
 
 Do not claim the PayPal/AI prototype is complete because the art preview works. Use meaningful tests for ledger, payment confirmation, AI-output validation and progression when those parts exist. Preserve the board/world as the main product view.
+
+## PayPal context for Codex
+
+Before PayPal SDK work, read `.agents/skills/typescript-getting-started/SKILL.md`, then its relevant companion skills. These are the SDK-specific APIMatic/PayPal context files pinned in `.agents/apimatic-paypal/provenance.json`; verify examples against the installed `@paypal/paypal-server-sdk` 2.5.0 source. Preserve the exact dependency pin and the existing payment safeguards. See `docs/APIMATIC-CODEX.md` for installation and discovery evidence.

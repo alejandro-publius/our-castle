@@ -1,0 +1,58 @@
+{
+  "source": "https://github.com/paypaldev/server-sdk-context-plugin-preview",
+  "sourceCommit": "6aa057126f0d4709a42e15002aab832a94935d92",
+  "pluginVersion": "0.1.0",
+  "declaredLicense": "MIT",
+  "language": "TypeScript/Node",
+  "sdkPackage": "@paypal/paypal-server-sdk",
+  "sdkVersion": "2.5.0",
+  "installation": "Codex repository-scoped skills under .agents/skills; no global marketplace or assistant permission change",
+  "files": {
+    ".agents/skills/typescript-authentication/SKILL.md": {
+      "source": "skills/typescript/typescript-authentication/SKILL.md",
+      "sha256": "0a56ddc5fe046020fbfa6ad03c07a80e0df3f670d53025bb2059619b8468b9e4"
+    },
+    ".agents/skills/typescript-authentication/reference.md": {
+      "source": "skills/typescript/typescript-authentication/reference.md",
+      "sha256": "eebed392ab84602d84de8ce5b9ffefa8cc837e2d8058b8b7bb1f9bd7c6507baf"
+    },
+    ".agents/skills/typescript-calling-endpoints/SKILL.md": {
+      "source": "skills/typescript/typescript-calling-endpoints/SKILL.md",
+      "sha256": "90ea4e6419f9bacbc28972a46d48c58cc0c9ad4c270bb87152e92a2efec5c1a9"
+    },
+    ".agents/skills/typescript-client-initialization/SKILL.md": {
+      "source": "skills/typescript/typescript-client-initialization/SKILL.md",
+      "sha256": "dd684c055e1620070e8d88af5a07798ac6d84d3c1ab1945aa2941035a92e253b"
+    },
+    ".agents/skills/typescript-configuration-resilience/SKILL.md": {
+      "source": "skills/typescript/typescript-configuration-resilience/SKILL.md",
+      "sha256": "dd53bd57325b0bc32297adee046bdd9b4e1eac63afcc416624405867a400b5dc"
+    },
+    ".agents/skills/typescript-error-handling/SKILL.md": {
+      "source": "skills/typescript/typescript-error-handling/SKILL.md",
+      "sha256": "79a6a657a5cd2cbd20ee293ac4bd4829274911da107535735bac806e772ee489"
+    },
+    ".agents/skills/typescript-getting-started/SKILL.md": {
+      "source": "skills/typescript/typescript-getting-started/SKILL.md",
+      "sha256": "3ba7a1f994d3d229dd737d5ccd94d27a742a05b9ae2d2a3abb96f7843f337c6d"
+    },
+    ".agents/skills/typescript-models/SKILL.md": {
+      "source": "skills/typescript/typescript-models/SKILL.md",
+      "sha256": "3edf8a0864c9e0c0f5c89dc9218d189f5c16f71d62df5328d1e4af9ce8cc9216"
+    },
+    ".agents/skills/typescript-models/reference.md": {
+      "source": "skills/typescript/typescript-models/reference.md",
+      "sha256": "5970fa31f92f7804c09ad0890c1ddb82f14d0eaf8fe99b9386d5012552952a96"
+    },
+    ".agents/skills/typescript-testing/SKILL.md": {
+      "source": "skills/typescript/typescript-testing/SKILL.md",
+      "sha256": "15ceac79dc79178a570415cd14e3b97e746b1106ea91cf5f4687dcf08d96214d"
+    }
+  },
+  "sdkReferenceIntegrity": "sha512-smJXZx7Euj6f886BszgMyy8dhWWVCI0++QDPn+I5ugcYwNmhzR+vvWr5CuW1Z4+KPh44hSOzhlXnNEjWnugEtg==",
+  "manifest": {
+    "source": "plugin.json",
+    "path": ".agents/apimatic-paypal/plugin.json",
+    "sha256": "b7265916db571dcfbae5c86941bf2161a3c835ecbe86c4c863bfab478d60c938"
+  }
+}

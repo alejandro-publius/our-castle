@@ -24,3 +24,7 @@ Loaded or used elsewhere, not bundled:
 - Newman (Postman's CLI, Apache-2.0) was run through `npx` to verify the Postman collection. It is not a dependency.
 
 The board scene (`src/world/board-scene.js`), crest SVG (`src/app/crest.js`) and application code are new source written for Our Castle under the root MIT license. The crest's crown and leaf charges adapt the owner's original sigil paths from `references/source/heraldry.reference.js`.
+
+## PayPal Server SDK Context Plugin (APIMatic context)
+
+The TypeScript/Node skill files under `.agents/skills/` are unmodified third-party context from https://github.com/paypaldev/server-sdk-context-plugin-preview at revision `6aa057126f0d4709a42e15002aab832a94935d92`. The original plugin manifest names **PayPal Server SDKs** as author and declares **MIT**; its author/licence metadata is preserved in `.agents/apimatic-paypal/plugin.json`. Original file contents and notices are retained. Provenance and SHA-256 hashes are in `.agents/apimatic-paypal/provenance.json`. This does not change the separate original-art notices above.

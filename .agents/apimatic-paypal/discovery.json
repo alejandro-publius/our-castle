@@ -1,0 +1,55 @@
+{
+  "codexVersion": "0.163.0",
+  "verifiedBy": "Codex app-server skills/list; no thread or model turn created",
+  "skills": [
+    {
+      "name": "typescript-authentication",
+      "scope": "repo",
+      "enabled": true,
+      "path": ".agents/skills/typescript-authentication/SKILL.md"
+    },
+    {
+      "name": "typescript-calling-endpoints",
+      "scope": "repo",
+      "enabled": true,
+      "path": ".agents/skills/typescript-calling-endpoints/SKILL.md"
+    },
+    {
+      "name": "typescript-client-initialization",
+      "scope": "repo",
+      "enabled": true,
+      "path": ".agents/skills/typescript-client-initialization/SKILL.md"
+    },
+    {
+      "name": "typescript-configuration-resilience",
+      "scope": "repo",
+      "enabled": true,
+      "path": ".agents/skills/typescript-configuration-resilience/SKILL.md"
+    },
+    {
+      "name": "typescript-error-handling",
+      "scope": "repo",
+      "enabled": true,
+      "path": ".agents/skills/typescript-error-handling/SKILL.md"
+    },
+    {
+      "name": "typescript-getting-started",
+      "scope": "repo",
+      "enabled": true,
+      "path": ".agents/skills/typescript-getting-started/SKILL.md"
+    },
+    {
+      "name": "typescript-models",
+      "scope": "repo",
+      "enabled": true,
+      "path": ".agents/skills/typescript-models/SKILL.md"
+    },
+    {
+      "name": "typescript-testing",
+      "scope": "repo",
+      "enabled": true,
+      "path": ".agents/skills/typescript-testing/SKILL.md"
+    }
+  ],
+  "errors": []
+}

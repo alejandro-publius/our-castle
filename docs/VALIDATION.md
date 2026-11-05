@@ -1,5 +1,12 @@
 # Validation
 
+## APIMatic context for Codex — November 5, 2026
+
+Eight SDK-specific skills and two references are installed verbatim from upstream `6aa057126f0d4709a42e15002aab832a94935d92`; each copied file matches the pinned source and its recorded SHA-256. Codex 0.163.0 app-server `skills/list` discovers all eight as enabled repository skills, with zero loading errors. No model thread was created. See APIMATIC-CODEX.md and `.agents/apimatic-paypal/discovery.json`.
+
+Codex applied the entry point, client initialization, authentication and resilience context to the actual 2.5.0 SDK source and the current adapter. No additional runtime-code change was needed. This context-only change does not rerun or extend historical live PayPal/AI evidence. No new financial/provider test was made.
+
+
 ## Canonical app promotion — November 5, 2026, 08:38 UTC
 
 Reviewed implementation `68e1c61` was fast-forwarded onto main. `npm ci --prefer-offline` succeeded; only the owner app on 3010 was restarted. The separate 3021 rehearsal stayed intact.

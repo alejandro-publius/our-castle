@@ -2,7 +2,13 @@
 
 The owner approved "APIMatic: behind the scenes. Help Claude implement the PayPal integration correctly, with documented improvements." APIMatic is development tooling here. It adds no screen, payment or runtime AI; the planner and steward are unchanged.
 
-## Source and setup
+## Current Codex setup — November 5, 2026
+
+The owner explicitly asked Codex to do this here. Eight SDK-specific APIMatic/PayPal skills are now installed as Codex repository skills, with zero discovery errors. They target the exact official SDK 2.5.0 used here. See [APIMATIC-CODEX.md](APIMATIC-CODEX.md) for the pinned source, hashes, actual Codex discovery and the source-grounded review.
+
+The older review and Claude rejection below are historical. No Claude permission or global marketplace setting was changed.
+
+## Earlier Claude setup and published-context review (historical)
 
 - **Official sources checked (November 5, 2026):**
   - https://context.apimatic.io/plugins/paypal/ (plugin 0.4.1, MIT; nine skills; "Generated from the API's published specification");
@@ -13,19 +19,14 @@ The owner approved "APIMatic: behind the scenes. Help Claude implement the PayPa
 - **Installation was blocked.** Before any change, no APIMatic or PayPal plugin was present (18 installed plugins, 7 marketplaces, none matching). I chose the smallest scope Claude Code supports: `claude plugin marketplace add context-plugins/plugin-marketplace --scope local --sparse .claude-plugin plugins/paypal`, then `claude plugin install paypal@context-plugins --scope local`. This writes only this project's git-ignored `.claude/settings.local.json`, not other projects or assistants, and avoids the installer's all-assistants prompt.
   - Claude Code's automatic permission review denied the command. As the task requires, it was not retried by any other tool, source or scope.
   - No account, sign-in, key or subscription was involved.
-- **To install it yourself** (optional), run in this repo from your own terminal:
-  ```
-  claude plugin marketplace add context-plugins/plugin-marketplace --scope local --sparse .claude-plugin plugins/paypal
-  claude plugin install paypal@context-plugins --scope local
-  ```
-  Then run `/reload-plugins` in the session.
+- These earlier Claude commands are not needed for the current Codex project-skill installation.
 - **What was used instead.** The plugin's actual published skill files, read from the official marketplace repository pinned at commit `7cbdf85dc95f09d9ede8c5d349506686684fa0d4`:
   - `typescript-integrate-paypal`, `typescript-getting-started`, `typescript-error-handling`, `typescript-configuration-resilience`, `typescript-calling-endpoints`, `typescript-testing`.
   - This is published-context review, not an installed plugin, and the plugin did not write any code here.
 
-## SDK match
+## Earlier generic-plugin SDK mismatch (historical)
 
-The plugin's TypeScript context describes a different generated SDK: package `paypal` 2.29.0 (not on npm, built from `context-plugins/paypal-typescript-sdk`, client `PaypalClient`, retries on by default, with its own error kinds).
+That earlier generic plugin's TypeScript context describes a different generated SDK: package `paypal` 2.29.0 (not on npm, built from `context-plugins/paypal-typescript-sdk`, client `PaypalClient`, retries on by default, with its own error kinds).
 
 This repo uses PayPal's official `@paypal/paypal-server-sdk` **2.5.0** (pinned in package-lock; also APIMatic-generated): `Client`, `OrdersController`, `PaymentsController`, `ApiError`, `Environment.Sandbox`. Its installed default is `retryConfig.maxNumberOfRetries: 0`, with retries only for GET/PUT, and our client keeps that, so there are no automatic retries.
 
@@ -75,6 +76,5 @@ Cases 1, 2 and 4 failed against the code before the fix, and cases 5, 6 and 7 fa
 
 ## Pending (owner or provider)
 
-- **Plugin installation:** blocked by automatic permission review; the owner can run the two commands above.
 - **Live sandbox:** none of this is live-sandbox evidence. The coordinated in-app popup, single credit and exact-order `get_order` rehearsal stays with its existing operator on 3021.
 - **Session descriptions applied** (published descriptions and chapters only, not watched talks): the October 7 PayPal Developer session (Context Plugins; demo prompt asking for clear cancel/failure handling) and the October 6 Devpost session ("testing unhappy paths"). Both were applied as the unknown-outcome and failure-path review above.

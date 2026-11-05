@@ -7,7 +7,7 @@ Updated November 5, 2026. Codex read the official public [PayPal AI Hackathon](h
 | PayPal + AI; creative consumer experience | Adult-approved sandbox checkout, verified credit, runtime planner/steward and a persistent family woodland | Historical sandbox/AI evidence exists; the in-app popup and exact-order steward rehearsal stays with the 3021 operator |
 | Channel3 | Real search inside Market Town; one live desktop call, six fake-transport browser cases | Live phone/save not re-run; no automatic purchase or price refresh |
 | AG Grid / AG Studio | Community 36.2.0 records/receipts; Studio 3.0.0 themed custom next-area widget and validated local trial | Studio Agent Framework is not integrated; no full-prize-coverage claim |
-| APIMatic | Actual generated Server SDK; published Context Plugin guidance informed capture-timeout/stale-read fixes and seven fake-provider cases | Installation blocked by automatic review; published-context review is not installed-plugin use or a guaranteed sponsor qualification |
+| APIMatic | Exact SDK context installed as eight enabled Codex repository skills; earlier capture-timeout fixes retain seven fake-provider cases | Repo-scoped context use is documented; global registration and prize qualification are not claimed |
 | Render | Example-only Blueprint, automatic deployment off | No hosting or Workflows use; no award claim |
 | Postman | Guarded example walkthrough and explicit sandbox opt-in, with duplicate-credit checks | Useful validation; no separate prize claimed |
 
@@ -15,7 +15,7 @@ Updated November 5, 2026. Codex read the official public [PayPal AI Hackathon](h
 
 - [Channel3](https://paypalaihackathon.devpost.com/details/channel3) requires meaningful API/MCP use rather than a reference alone. Our recorded call supplies direct usage evidence. The advertised 20,000-search hackathon promotion was not applied or tested.
 - [AG Grid](https://paypalaihackathon.devpost.com/details/aggrid) emphasizes Studio custom widgets, theming/layout and the Studio Agent Framework. This Treasury demonstrates a custom widget and theme; framework agents are absent. The trial is evaluation-only. Keep the simple family interface rather than add an unused chatbot for an award.
-- [APIMatic](https://paypalaihackathon.devpost.com/details/apimatic) describes using Context Plugins to build the PayPal integration. A generated dependency alone is not that proof. PayPal context needs no extra APIMatic login. Our published-context review produced fixes, but activation remains blocked; see [APIMATIC-USAGE.md](APIMATIC-USAGE.md).
+- [APIMatic](https://paypalaihackathon.devpost.com/details/apimatic) describes using Context Plugins to build the PayPal integration. A generated dependency alone is not that proof. PayPal context needs no extra APIMatic login. The earlier review produced fixes; Codex now has the SDK-specific skills installed and discovery-verified. See [APIMATIC-CODEX.md](APIMATIC-CODEX.md).
 
 Official entry requirements and judging still apply. A public licensed repository, public video and submission remain separate owner decisions. No eligibility guarantee or winner status is claimed.
 
