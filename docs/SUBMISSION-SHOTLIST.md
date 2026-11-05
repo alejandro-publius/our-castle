@@ -1,29 +1,24 @@
-# Current submission shot plan — 2:45 target
+# Current review cut — 2:42
 
-This is an editable plan for the current nine-district build, **not a new video or evidence that the missing integration worked**. Existing cuts and original recordings stay unchanged. Video work remains paused until actual capture is possible.
+The owner requested the remaining release work on November 5. The [current edit kit](demos/current-review/README.md) contains actual current-build footage, historical live evidence and an explicit unfilmed insert. It supersedes the older 2:45 shot plan; the original sources remain unchanged.
 
-| Time | Picture/action | Short narration | Source boundary |
-| --- | --- | --- | --- |
-| 0:00–0:15 | Whole realm, then Hearth Village and the crest | “One family goal, a realm you build together. Our Castle makes shared progress something everyone can see.” | Current recorded app UI needed; example mode must retain its label |
-| 0:15–0:40 | Market Town merchant: budget, three products, Use as goal, explicit save | “The merchant finds real items through Channel3. Choose one and confirm the goal. A search never makes a purchase.” | Earlier real search is documented; fake search footage must say example results. No extra live credit is authorized by this script |
-| 0:40–1:05 | Plan with arithmetic and accepted schedule | “Claude proposes a weekly plan from our numbers. The server checks the cents, dates and total before we use it.” | Existing historical live-AI footage can be reused only with its date/older-interface label; example planner is not AI |
-| 1:05–1:45 | **Approved isolated insert:** actual $15 sandbox popup, receipt, $60→$75, Manor bridge, same-order steward | “An adult approves this test payment. The server confirms the capture once. The Manor opens, while the village stays. The steward checks the very same order using PayPal's read-only toolkit.” | **UNFILMED / UNVERIFIED end to end.** Use this narration only if the actual continuous take proves every claim |
-| 1:45–2:10 | Ledger milestone, filter, receipt, Visit Manor; keep steward closed afterward | “The Treasury keeps the next area and its records together. A receipt takes us back to the world. Studio manages the existing steward without another chat panel.” | Actual Studio UI/framework. Provider proof only if the preceding real insert succeeds |
-| 2:10–2:30 | Nine districts; evening lanterns; palace/towers and one deed | “Earlier homes stay. New crossings, guests and keepsakes make the next milestone worth reaching.” | Looking at locked areas does not unlock them; staged progression must say simulated |
-| 2:30–2:45 | Whole realm, short end card | “PayPal for the confirmed sandbox payment. AI for a plan and read-only checks. Channel3 for the goal, AG Studio for the Treasury, APIMatic context behind the integration.” | No real-money pooling, utility verification or production-readiness claim |
+| Time | Picture | Source boundary |
+| --- | --- | --- |
+| 0:00–0:09 | Current nine-district forest | Actual fresh public build; example mode |
+| 0:09–0:21 | House, crest and family characters | Current recorded setup |
+| 0:21–0:32 | Three merchant results | Actual earlier Channel3 screenshot, November 4 PST; not a new search or recorded goal save |
+| 0:32–0:40 | Weekly schedule | Current built-in rules plan, not AI |
+| 0:40–0:50 | Real Claude plan result | Unchanged earlier-interface recording, November 3 PST |
+| 0:50–0:56 | Exact amount and adult consent | Current example contribution controls |
+| 0:56–1:08 | Earlier payment verifier | Hosted-link sandbox report from November 3 PST; subsequently refunded |
+| **1:08–1:36** | **Unfilmed checkout insert** | **Explicit review slate; no popup or same-order get_order shown** |
+| 1:36–1:46 | Personal Manor deed | Actual current simulated $15 unlock; not PayPal evidence |
+| 1:46–2:00 | Treasury, next area and receipt | Real AG Grid/Studio UI with labelled example records |
+| 2:00–2:10 | APIMatic implementation | Installed-context/SDK facts; documentation slate |
+| 2:10–2:22 | Connected castles and towers | Current recorded simulated progression |
+| 2:22–2:32 | Night and rain | Current manual scenery controls |
+| 2:32–2:42 | Public source and fresh-run route | Actual public repository; no hosted site claimed |
 
-## Exact missing insert
+The [exact insert instructions](demos/current-review/INSERT.md) preserve the existing rehearsal, owner data and single approved sandbox order. The 28-second slot may expand to 40 seconds; the result would be **2:54**, still under three minutes. Existing keys and consent are sufficient; supported browser control is the missing capability here. The original coordinator retains checkout ownership.
 
-Use the **existing** 3021 rehearsal and configured server-side keys. Last known state: $300 goal, $60 reported starting progress, zero orders. Check current state first. Do not launch another server on 3021 or create a replacement order while an outcome is uncertain.
-
-Prepare continuous screen capture **before** creating the single approved $15 sandbox order. Confirm the actual payment origin is sandbox. Authenticate the personal sandbox buyer off-camera through supported browser controls; a live PayPal login is not sufficient. Keep passwords, keys, developer dashboards and unrelated household data off-screen.
-
-Keep an untouched original. Trim only waits and log the exact cut ranges, date, source commit, payment modes, non-secret order/capture IDs and SHA-256. Required readable moments:
-
-1. The in-app v6 popup and buyer approval, not a hosted link substituted afterward.
-2. Server receipt: $15 USD, correct household/goal/order/capture, a single $60→$75 credit and the actual Manor bridge opening with Hearth Village retained.
-3. A real `get_order` for that **same order**, with the server-backed match. Ledger-only reading, `list_transactions` or model text is insufficient.
-
-This does not authorize extra planner calls, new product searches, refunds or additional orders. Stop at CAPTCHA/2FA/manual buyer intervention or an uncertain payment result. Preserve the order and diagnose it rather than looping.
-
-After success, update the exact validation claims and replace the missing-insert slate/narration/captions in the chosen draft. Until then the drafts remain labelled incomplete. Verify the exported duration is under three minutes, then upload only the reviewed final cut to the required public YouTube destination. No video has been uploaded or submitted.
+After actual success, replace the slate and instructional narration/captions, record the real source ranges/hashes, update only newly supported claims, and verify the export before the final public YouTube upload and Devpost submission. No final video has been uploaded and no entry submitted. Do not represent the review cut as completed end-to-end live evidence.

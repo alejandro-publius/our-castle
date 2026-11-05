@@ -84,7 +84,7 @@ scenes=[
   'The Treasury keeps the next area, searchable records and a receipt together. AG Grid and a custom Studio widget fit the same journal. The read-only steward stays closed until needed.'
  ],media='sources/treasury.mp4',hold=6),
  scene('apimatic',10,'slide','APIMatic · developer integration',[
-  'Behind the scenes, APIMatic context guided PayPal integration and recovery checks. Eight SDK-specific skills are installed. It adds no extra step for the family.'
+  'APIMatic’s eight installed context skills guided PayPal integration and recovery checks, without adding any extra step for the family.'
  ],title='PayPal context, behind the scenes.',lines=['8 installed SDK context skills','PayPal Server SDK 2.5.0','Uncertain captures recheck the same order'],note='Actual implementation and checks: docs/APIMATIC-CODEX.md'),
  scene('completed',12,'video','Current build · later simulated progression',[
   'Later milestones extend the same forest into a citadel, a palace and two towers. The earlier homes stay connected by rivers and bridges.'
