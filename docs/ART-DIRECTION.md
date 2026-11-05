@@ -1,5 +1,12 @@
 # Art direction — preserve this visual family
 
+## Stables and small farms (November 5, 2026)
+
+The Citadel and Rosewind each have a detailed stable and two horses. The village gains one henhouse, three hens and a goat; the Manor gains two sheep. Roofs, heraldry, hay, timber framing, warm lanterns and animal anatomy use the original miniature palette. Buildings and guests remain; farm plots sit clear of their routes and the river banks. Grazing/pecking/tail motion uses the existing clock and respects reduced motion and hidden tabs. No extra controls or text.
+
+[Reference lock, placement and boundaries](FARM-LIFE.md) · [Royal stable](screenshots/royal-stables.png) · [Village henhouse](screenshots/village-henhouse.png). The two detail captures use original geometry in an isolated stage; source art, renderer and palette are unchanged.
+
+
 ## Individual family avatars (November 5, 2026)
 
 Named portraits in Journal → House open one compact chooser with eight original pixel characters. Portraits and travelers use the same model and colours; hats, hair, skin, trim and clothing distinguish each person. The header and nine-district world stay uncluttered. Choices save per existing member and remain cosmetic; the twenty-person reward court is unchanged. A tall hat raises the route marker enough to stay clear.

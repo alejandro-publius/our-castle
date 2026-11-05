@@ -1,4 +1,6 @@
 import * as THREE from 'three';
+import { createFarmLife } from './farm-life.js';
+import { FARM_SITES, inFarmPlot } from './farm-locations.js';
 import { createWoodlandLegends } from './woodland-legends.js';
 import { createPrincessPalace } from './princess-palace.js';
 import { createRiverCurrent } from './river-current.js';
@@ -37,6 +39,8 @@ const nearBridge = (x, z, margin) => REALM_BRIDGES.some(({ a, b }) => {
 
 export function createRealmModels({ builder, part: addPart, models, colours: C }) {
   let part = addPart;
+  const farm = createFarmLife({ part: addPart, models, colours: C });
+  const farmWorldPlots = FARM_SITES.map(s => { const d=REALM_DISTRICTS.find(d=>d.id===s.district);return [d.x+s.bounds[0],d.x+s.bounds[1],d.z+s.bounds[2],d.z+s.bounds[3]]; });
   const palace = createPrincessPalace({ part: addPart, models, colours: C });
   const legends = createWoodlandLegends({ part: addPart, models, colours: C });
   builder.geo.trunk = new THREE.CylinderGeometry(.5, .5, 1, 5);
@@ -184,7 +188,7 @@ export function createRealmModels({ builder, part: addPart, models, colours: C }
       const x = gx + (hash(i, j) - .5) * step * .9, z = gz + (hash(j, i) - .5) * step * .9;
       if (x < REALM_BOUNDS.minX + .8 || x > REALM_BOUNDS.maxX - .8 || z < REALM_BOUNDS.minZ + .8 || z > REALM_BOUNDS.maxZ - .8) continue;
       const river = riverAt(x, z), clearing = deepestClearing(x, z), density = noise(x / 13, z / 13), species = noise(x / 19 + 20, z / 19 - 7);
-      if (river.depth > -1.5 || nearBridge(x, z, 3.6) || nearJourney(x, z, 2.7)) continue;
+      if (river.depth > -1.5 || nearBridge(x, z, 3.6) || nearJourney(x, z, 2.7) || farmWorldPlots.some(([a,b,c,d])=>x>a-1.4&&x<b+1.4&&z>c-1.4&&z<d+1.4)) continue;
       // Trees may step up to about 2.5 units into a clearing edge, so no district has a straight tree line.
       if (clearing > 1.1 + 1.4 * noise(x / 4, z / 4)) continue;
       const roll = hash(i + 3, j - 5), seed = Math.floor(hash(i - 9, j + 2) * 1000);
@@ -217,12 +221,12 @@ export function createRealmModels({ builder, part: addPart, models, colours: C }
     // Each clearing has its own copses rather than a single square tree border.
     for(let i=0;i<24;i++){
       const x=Math.sin(i*2.37)*(d.width/2-3),z=Math.cos(i*3.73)*(d.depth/2-3);
-      if(d.id==='palace'&&Math.abs(x)<19&&z>-12&&z<22||Math.abs(x)<12*d.scale&&Math.abs(z)<11*d.scale||nearJourney(d.x+x,d.z+z))continue;
+      if(inFarmPlot(d.id,x,z,1.2)||d.id==='palace'&&Math.abs(x)<19&&z>-12&&z<22||Math.abs(x)<12*d.scale&&Math.abs(z)<11*d.scale||nearJourney(d.x+x,d.z+z))continue;
       helpers.tree(group,x,z,1.1+(i%5)*.16,i%3!==0);
     }
     for(let i=0;i<26;i++){
       const x=Math.sin(i*3.9)*(d.width*.41),z=Math.cos(i*2.7)*(d.depth*.4);
-      if(d.id==='palace'&&Math.abs(x)<19&&z>-12&&z<22||Math.abs(x)<7&&Math.abs(z)<6||nearJourney(d.x+x,d.z+z))continue;
+      if(inFarmPlot(d.id,x,z,.5)||d.id==='palace'&&Math.abs(x)<19&&z>-12&&z<22||Math.abs(x)<7&&Math.abs(z)<6||nearJourney(d.x+x,d.z+z))continue;
       rock(group,x,.34,z,.5,.32,.4,C.leaf);rock(group,x,.57,z,.2,.23,.2,[C.gold,C.red,F.pink,F.violet][i%4]);
     }
   }
@@ -318,6 +322,7 @@ export function createRealmModels({ builder, part: addPart, models, colours: C }
   }
 
   function decor(group,d,state,flag,helpers){
+    farm.build(group,d.id,flag);
     if(d.id==='cottage'){
       for(const[x,z]of[[-10,11],[8,11]])models.cottage(group,x,z,{w:2.7,h:1.8,d:2.2,roofColor:z>0?C.red:C.blue,shutters:C.blue});
       helpers.deer(group,-10,-6,.4);helpers.deer(group,-9,-3,-.4,.7);helpers.deer(group,9,2,2.2);helpers.deer(group,8,-8,1.5);
@@ -455,6 +460,7 @@ export function createRealmModels({ builder, part: addPart, models, colours: C }
     return landscape;
   }
   function build(group,state,helpers,flag){
+    farm.reset();
     const started=performance.now(),districts=realmAccess(state),bridges=[];
     for(const d of districts){
       const region=new THREE.Group();region.position.set(d.x,0,d.z);group.add(region);
@@ -474,10 +480,15 @@ export function createRealmModels({ builder, part: addPart, models, colours: C }
       const [x, z] = d.homeTier !== null ? [0, 4.6 * d.scale] : d.id === 'market' ? [-6, 2.4] : d.id === 'palace' ? [0, 6.5] : d.id === 'wizard' ? [0, 3.4] : d.id === 'rapunzel' ? [0, 5] : [7, -5.6];
       return { kind: 'door', district: d.id, x: d.x + x, z: d.z + z };
     });
+    for (const site of FARM_SITES.filter(s=>s.kind==='stable')) {
+      const d=REALM_DISTRICTS.find(d=>d.id===site.district);
+      spots.push({kind:'stable',district:d.id,x:d.x+site.x,z:d.z+site.z+2.8});
+    }
     for (const b of REALM_BRIDGES) for (const [x, z] of [b.a, b.b]) spots.push({ kind: 'gate', bridge: b.id, x, z });
     return spots;
   }
   return {woodland,build,home,finish,lightSpots,
+    stepFarm: (seconds) => farm.tick(seconds), farmDebug: () => farm.debug(),
     stepCurrent: (seconds) => current?.tick(seconds), currentDebug: () => current?.debug() ?? null,
     surfaces: () => ({...surfaceMeshes, ripples: current?.mesh}),
   };

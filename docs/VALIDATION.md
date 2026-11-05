@@ -1,5 +1,14 @@
 # Validation
 
+## Stables and farm life — November 5, 2026
+
+Six focused browser cases passed across desktop and touch phone: scenery counts, unchanged financial state/family/access, eight visual realm rebuilds without accumulating animals or geometry, retained twenty-person court, reduced motion, hidden-tab pause and bounded clock resumption. All browser requests were restricted to same-origin GET; no provider/AI/payment calls or household writes.
+
+Four detail renders and three actual Day realm views were reviewed after roof/ramp refinement. The actual app also rendered manual Night/Rain. Reviews recorded no page errors/external requests and unchanged example server state. A placement audit sampled existing guest lanes, all family route segments and 3,005 river-bank points against conservative building/fence envelopes: nearest guest clearance 1.22 units; family route clearance 2.93 units. This is a scenery placement check, not general collision physics. The 47-file original-art/palette/renderer and JavaScript guard passed.
+
+Evidence: docs/FARM-LIFE.md and its stills; ignored test-results/farm-life/ under the owner's checkout. No new live integration evidence is claimed.
+
+
 ## Family avatars — November 5, 2026
 
 New checks use synthetic temporary/example data only. Three avatar domain/migration cases and nine HTTP cases (12 total, including existing fake-provider protections) passed. Eight targeted browser cases passed across 1440px desktop and 390px touch: independent saves/reload, matching party identities, keyboard/Escape/Cancel without writes, failed-save retry, all eight portrait loads, target sizes and retained child-payment restrictions. A separate read-only review checked 1440/390/320px, all nine districts, no overflow, no page errors/external calls/writes and unchanged example state. Browsing uses no provider calls. The 47-file original-art/palette/renderer guard passed.
