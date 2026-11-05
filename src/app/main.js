@@ -368,12 +368,7 @@ function openNextStep(e) {
   if (next.step === 'realm') {
     ui.navigation++;
     const id = $(next.target)?.dataset.district;
-    if (id && scene) {
-      scene.focusDistrict(id);
-      const marker = $(`#realm-markers [data-district="${CSS.escape(id)}"]`);
-      marker?.focus({ preventScroll: true });
-      revealRealm(marker, { instant: e?.detail === 0 });
-    }
+    if (id && scene) visitDistrict(id, e);
     return;
   }
   selectTab(next.step, { focus: false });
@@ -1459,6 +1454,9 @@ function bindEvents() {
 
   // House
   $('#panel-house').addEventListener('change', (e) => {
+    // Name edits are tracked on input. Redrawing this scrollable panel on name blur can
+    // move the Save button between pointer-down and click in WebKit.
+    if (!['playMode', 'crestField', 'crestCharge'].includes(e.target.name)) return;
     const draft = houseDraft();
     if (e.target.name === 'playMode') draft.playMode = e.target.value;
     if (e.target.name === 'crestField') draft.crest.field = e.target.value;

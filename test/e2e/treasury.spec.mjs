@@ -55,7 +55,15 @@ const milestone = (page) => page.locator('#treasury-next .next-area');
 
 test('Ledger: one next area from AG Studio, records and receipts on tap; no questions, model calls or writes', async ({ page }, info) => {
   await open(page);
+  // Reopening the Ledger while its first script is still loading must not mount two grids.
+  let releaseGrid;
+  const gridGate = new Promise((resolve) => { releaseGrid = resolve; });
+  await page.route('**/vendor/ag-grid/ag-grid-community.min.js', async (route) => { await gridGate; await route.continue(); });
+  await page.locator('#tab-ledger').click();
+  await page.locator('#tab-ledger').click();
+  releaseGrid();
   await openLedger(page);
+  await expect(page.locator('#ledger-goal .ag-root-wrapper')).toHaveCount(1);
   await expect(milestone(page).locator('.next-area-name')).toHaveText('Next area Manor Gardens 25% milestone');
   await expect(milestone(page).locator('.next-area-meta')).toHaveText('$60.00 of $75.00 · $15.00 to go');
   await expect(milestone(page).getByRole('meter', { name: 'Progress toward Manor Gardens' })).toHaveAttribute('aria-valuenow', '6000');

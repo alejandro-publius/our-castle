@@ -30,7 +30,6 @@ async function start(page) {
   await new Promise((r) => server.listen(0, '127.0.0.1', r));
   const base = `http://localhost:${server.address().port}`;
   s = { base, fake, issues: [], writes: [], close: () => new Promise((r) => { server.close(r); db.close(); }) };
-  await fetch(`${base}/api/setup`, { method: 'POST', headers: { 'Content-Type': 'application/json', Origin: base }, body: JSON.stringify({ playMode: 'family', name: 'House of Alder', crest: { field: 'cobalt', charge: 'stag' } }) });
   page.on('pageerror', (e) => s.issues.push(e.message));
   await page.route('**/*', (route) => {
     const r = route.request(), url = new URL(r.url());
@@ -51,8 +50,16 @@ async function closeDeed(page, name) {
   await expect(page.locator('#deed-dialog')).toBeHidden();
 }
 
-test('merchant -> confirmed goal -> example contribution -> world unlocks -> Treasury receipt and milestone, after reload', async ({ page }, info) => {
+test('fresh family -> merchant goal -> reviewed plan -> example contribution -> world -> Treasury and reload', async ({ page }, info) => {
   await start(page);
+  // Start from the actual House form rather than preparing a household through an API helper.
+  await page.locator('input[name="playMode"][value="family"]').check();
+  await page.locator('#house-name').fill('House of Alder');
+  await page.locator('input[name="crestField"][value="cobalt"]').check({ force: true });
+  await page.locator('input[name="crestCharge"][value="stag"]').check({ force: true });
+  await page.getByRole('button', { name: 'Raise our banner' }).click();
+  await expect(page.locator('#house-status')).toContainText('is founded');
+  await expect(page.locator('#tab-plan')).toHaveAttribute('aria-selected', 'true');
   // 1. Market Town merchant (keyboard to open), explicit search, a draft that changes nothing.
   await chooseDistrict(page, 'market');
   await page.locator('#open-merchant').focus();
@@ -63,6 +70,8 @@ test('merchant -> confirmed goal -> example contribution -> world unlocks -> Tre
   await expect(page.locator('#merchant-results > li')).toHaveCount(2);
   await expect(page.locator('#merchant-results > li').nth(1).locator('.merchant-item-meta')).toContainText('No price returned');
   const before = await state(page);
+  mkdirSync(evidence, { recursive: true });
+  await page.locator('#merchant-dialog').screenshot({ path: `${evidence}${info.project.name}-merchant.png` });
   await page.locator('#merchant-results > li').first().getByRole('button', { name: 'Use as goal' }).click();
   await expect(page.locator('#goal-draft')).toBeVisible();
   expect((await state(page)).goal).toEqual(before.goal);
@@ -73,10 +82,24 @@ test('merchant -> confirmed goal -> example contribution -> world unlocks -> Tre
   await closeDeed(page, 'Manor Gardens');
   expect((await state(page)).ledger.goalEntries.map((e) => [e.kind, e.amountCents])).toEqual(before.ledger.goalEntries.map((e) => [e.kind, e.amountCents]));
 
-  // 3. The existing Contribute flow: adult approval of an exact amount, simulated example payment, credited once.
+  // 3. Review and accept the built-in plan for the new goal. This test calls no AI provider.
+  await page.locator('#goal-weekly').fill('20.00');
+  await page.getByRole('button', { name: 'Make an example plan' }).click();
+  await expect(page.locator('#plan-source')).toHaveText('Built-in plan');
+  await expect(page.locator('#plan-total')).toHaveText('$129.50');
+  expect((await state(page)).acceptedPlanId).toBeNull();
+  await page.locator('#plan-result').screenshot({ path: `${evidence}${info.project.name}-plan.png` });
+  await page.getByRole('button', { name: 'Use this plan' }).click();
+  await expect(page.locator('#tab-give')).toHaveAttribute('aria-selected', 'true');
+  const planned = await state(page);
+  expect(planned.acceptedPlanId).toBe(planned.plan.id);
+  expect(planned.plan.totals.plannedCents).toBe(12950);
+
+  // 4. Adult approval of an exact amount, simulated example payment, credited once.
   await openJournal(page);
   await page.locator('#tab-give').click();
   await page.locator('#give-amount').fill('20.00');
+  await expect(page.getByRole('button', { name: 'Simulate approved payment' })).toBeDisabled();
   await page.locator('#give-approve').check();
   await page.getByRole('button', { name: 'Simulate approved payment' }).click();
   await closeDeed(page, 'Market Town'); // $80 of $189.50 passes 40%
@@ -84,7 +107,7 @@ test('merchant -> confirmed goal -> example contribution -> world unlocks -> Tre
   expect(paid.progress.progressCents).toBe(8000);
   expect(paid.contributions.map((c) => [c.amountCents, c.status, c.simulated])).toEqual([[2000, 'completed', true]]);
 
-  // 4. Treasury: the next area from the server's own rules for the new goal, the records, and a receipt on tap.
+  // 5. Treasury: the next area from the server's own rules for the new goal, the records, and a receipt on tap.
   await openJournal(page);
   await page.locator('#tab-ledger').click();
   await expect.poll(async () => (await page.evaluate(() => window.__ourCastle.treasury()))?.next?.id).toBe('keep');
@@ -111,7 +134,7 @@ test('merchant -> confirmed goal -> example contribution -> world unlocks -> Tre
   await expect.poll(() => page.evaluate(() => window.__ourCastle.scene().view.focus)).toBe('market');
   await expect(page.locator('#realm-markers [data-district="market"]')).toBeFocused();
 
-  // 5. Return: reload keeps the confirmed goal and item, the ledger, the earned world and the Treasury; no deed repeats.
+  // 6. Return: reload keeps the confirmed goal and item, accepted plan, records and earned world; no deed repeats.
   await page.reload();
   await page.waitForFunction(() => window.__ourCastle?.state && window.__ourCastle.scene());
   const after = await state(page);
@@ -119,6 +142,7 @@ test('merchant -> confirmed goal -> example contribution -> world unlocks -> Tre
   expect(after.goalItem).toMatchObject({ productId: 'fakeTent01', priceCents: 18950 });
   expect(after.rewards.realm.districts.filter((d) => d.open).map((d) => d.id)).toEqual(['cottage', 'manor', 'market']);
   expect(after.progress.progressCents).toBe(8000);
+  expect(after.acceptedPlanId).toBe(planned.acceptedPlanId);
   await openJournal(page);
   await page.locator('#tab-ledger').click();
   await expect(page.locator('#treasury-next .next-area-meta')).toHaveText('$80.00 of $113.70 · $33.70 to go');
@@ -126,7 +150,7 @@ test('merchant -> confirmed goal -> example contribution -> world unlocks -> Tre
   await expect(page.locator('#deed-dialog')).toBeHidden();
 
   expect(s.fake.calls).toHaveLength(1); // one fake Channel3 search, on request
-  expect(s.writes).toEqual(['/api/merchant/search', '/api/merchant/goal', '/api/example/contributions']);
+  expect(s.writes).toEqual(['/api/setup', '/api/merchant/search', '/api/merchant/goal', '/api/plans', `/api/plans/${planned.plan.id}/accept`, '/api/example/contributions']);
   expect(s.issues).toEqual([]);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });

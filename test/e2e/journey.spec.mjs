@@ -231,8 +231,20 @@ test('cancel, decline and pending outcomes leave progress unchanged until comple
   await page.getByRole('tab', { name: /Ledger/ }).click();
   await page.getByRole('button', { name: 'Simulate PayPal completing it' }).click();
   await expect(page.locator('#progress-amount')).toHaveText('$75.00');
-  await expect(page.locator('#ledger-contributions')).toContainText('Canceled — nothing charged');
-  await expect(page.locator('#ledger-contributions')).toContainText('Declined — not counted');
+  // The Treasury shows one selected receipt. Failed attempts remain in the grid with no credit;
+  // selecting them must not change the total or bring back completion/refund actions.
+  const receipt = page.locator('#ledger-contributions');
+  await expect(receipt).toContainText('Completed — counted');
+  for (const status of ['Canceled — nothing charged', 'Declined — not counted']) {
+    const row = page.locator('#ledger-goal').getByRole('row').filter({ hasText: status });
+    await expect(row).toContainText('No — not counted');
+    await row.getByText(status, { exact: true }).click();
+    await expect(receipt).toContainText(status);
+    await expect(receipt.locator('li')).toHaveCount(1);
+    await expect(receipt.getByRole('button', { name: /Simulate refund|Simulate PayPal completing it/ })).toHaveCount(0);
+    await expect(page.locator('#progress-amount')).toHaveText('$75.00');
+  }
+  expect(await page.evaluate(() => window.__ourCastle.state.contributions.flatMap((c) => c.captures).filter((c) => c.credited).length)).toBe(1);
 });
 
 test('a refund lowers progress and moves the travelers back; the Manor stays as an explained keepsake', async ({ page }) => {

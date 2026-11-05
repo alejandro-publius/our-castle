@@ -107,7 +107,7 @@ test('pending payments, refunds and re-crossing never create a deed; earned map 
   await expectNoDeed(page);
   // Locked districts keep their condition on the map and cannot open an earned deed.
   await chooseDistrict(page, 'castle');
-  await expect(page.locator('#realm-focus-status')).toContainText('Royal Citadel · $240.00 to unlock');
+  await expect(page.locator('#realm-focus-status')).toContainText('Royal Citadel · $225.00 to unlock'); // $300 target − $75 tracked
   await expect(page.locator('#view-deed')).toBeHidden();
   await expectNoDeed(page);
   await chooseDistrict(page, 'garden');
@@ -232,6 +232,7 @@ test.describe('with reduced motion', () => {
 
 
 test('four journey tabs recover an old Rewards selection and a completed goal visits the castle', async ({ page }) => {
+  const writes = trackWrites(page);
   await ready(page);
   await foundHouse(page);
   await page.evaluate(() => sessionStorage.setItem('our-castle:tab', 'rewards'));
@@ -248,11 +249,16 @@ test('four journey tabs recover an old Rewards selection and a completed goal vi
   await expect(dialog(page)).toHaveAttribute('open', '');
   await page.getByRole('button', { name: 'Close all' }).click();
   await expect(page.locator('#next-step-go')).toHaveText('Visit your castle');
+  const beforeVisit = writes.length;
   await page.locator('#next-step-go').focus();
   await page.keyboard.press('Enter');
   const castle = page.locator('#realm-markers [data-district="castle"]');
   await expect(castle).toBeFocused();
   await expect(castle).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.locator('#journey')).toBeHidden();
+  expect(await fullyVisible(castle)).toBe(true);
+  expect((await scene(page)).view.focus).toBe('castle');
+  expect(writes.slice(beforeVisit)).toEqual([]);
   await expect(page.locator('#realm-focus-status')).toBeEmpty();
   await expect(page.locator('#view-deed')).toBeVisible();
 });

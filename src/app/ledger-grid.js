@@ -119,6 +119,8 @@ export function createLedgerGrid(container, { formatMoney, onSelect = () => {} }
     if (api || failed) return api;
     try {
       const ag = await loadAgGrid();
+      // Another update may have mounted the grid while these callers shared the script load.
+      if (api || failed) return api;
       ag.ModuleRegistry?.registerModules?.([ag.AllCommunityModule]);
       api = ag.createGrid(container, {
         theme: ag.themeQuartz.withParams(PARCHMENT),
