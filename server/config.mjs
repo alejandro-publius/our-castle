@@ -70,8 +70,13 @@ export function loadConfig(env = {}, { root = process.cwd() } = {}) {
   const channel3Key = trimmed('CHANNEL3_API_KEY');
   const merchant = channel3Key ? { mode: 'live', apiKey: channel3Key } : { mode: 'off' };
 
+  // Treasury: an optional AG Studio evaluation licence. Browser licences are client-side by design; only this one value
+  // is ever handed to the page (GET /api/treasury/studio), never the rest of the environment.
+  const studioLicence = trimmed('AG_STUDIO_LICENSE_KEY');
+  const studio = studioLicence ? { licenseKey: studioLicence } : null;
+
   const dataDir = path.resolve(root, trimmed('OUR_CASTLE_DATA_DIR') || 'data');
-  return { port: Number.isFinite(port) ? port : 3010, host, payments, ai, merchant, dataDir, warnings };
+  return { port: Number.isFinite(port) ? port : 3010, host, payments, ai, merchant, studio, dataDir, warnings };
 }
 
 /** Public, secret-free description of the active modes, safe to send to the browser. */

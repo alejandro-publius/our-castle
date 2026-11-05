@@ -14,6 +14,7 @@ import { buildState } from './view.mjs';
 import { publicModes } from './config.mjs';
 import { createMerchant } from './merchant/channel3.mjs';
 import { goalItemFor, saveGoalFromItem } from './merchant/goal-item.mjs';
+import { treasuryFor } from './treasury.mjs';
 
 const MIME = {
   '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8',
@@ -27,6 +28,9 @@ const STATIC_PREFIXES = ['src/', 'assets/', 'vendor/', 'references/'];
 const PACKAGE_FILES = new Map([
   ['vendor/ag-grid/ag-grid-community.min.js', 'node_modules/ag-grid-community/dist/ag-grid-community.min.js'],
   ['vendor/ag-grid/LICENSE.txt', 'node_modules/ag-grid-community/LICENSE.txt'],
+  // AG Studio (commercial; local evaluation licence only), loaded on demand by the Ledger's next-area widget.
+  ['vendor/ag-studio/ag-studio.min.js', 'node_modules/ag-studio/dist/umd/ag-studio.min.js'],
+  ['vendor/ag-studio/LICENSE.html', 'node_modules/ag-studio/LICENSE.html'],
 ]);
 const LOCAL_HOSTS = new Set(['localhost', '127.0.0.1', '[::1]']);
 const MAX_BODY = 64 * 1024;
@@ -122,6 +126,7 @@ export function createApp({ config, db, clock, paypal = null, aiProvider = null,
     const s = buildState({ db, householdId, planner, contributions, config, steward: stewardInfo });
     s.modes.merchant = shop.status();
     s.goalItem = goalItemFor(db, s.goal);
+    s.treasury = treasuryFor(s);
     return s;
   };
   const goalId = () => getActiveGoal(db, householdId).id;
@@ -171,6 +176,8 @@ export function createApp({ config, db, clock, paypal = null, aiProvider = null,
       saveGoalFromItem(db, { householdId, goalId: goalId(), expectedGoalId: str(body.goalId), item, goal: body.goal }, clock);
       return { status: 'ok', state: state() };
     }],
+    // ---- Treasury: read-only. The AG Studio licence (if configured) is the only setting the page may read here. ----
+    ['GET', '/api/treasury/studio', () => ({ licenseKey: config.studio?.licenseKey ?? null })],
     ['POST', '/api/steward', async ({ body }) => steward.ask({ question: body.question, memberId: str(body.memberId), focusOrderId: str(body.focusOrderId) })],
     ['POST', '/api/entries', ({ body }) => {
       const result = addSelfReportedEntry(db, { householdId, goalId: goalId(), kind: body.kind, amountCents: body.amountCents, label: body.label, memberId: str(body.memberId) }, clock);

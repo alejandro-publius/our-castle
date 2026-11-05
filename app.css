@@ -533,3 +533,28 @@ button { font: inherit; }
 .realm-legend span { display:block; font:24px/44px Georgia,serif; }
 .realm-legend:hover span,.realm-legend[aria-pressed='true'] span { color:#fff3bc; transform:scale(1.16); }
 .realm-legend:focus-visible { outline:2px solid var(--brass); outline-offset:1px; background:#142c34bb; }
+
+/* Treasury (see docs/TREASURY.md): one next-area milestone above the records. Inside the AG Studio widget or the plain
+   fallback the same markup is drawn; Studio's own canvas is made transparent so the parchment shows through. */
+.treasury-next-block { margin-top: 4px; }
+.treasury-next[data-source='ag-studio'] { overflow: hidden; }
+/* Studio's root frame and canvas padding are removed here only, so the widget is one parchment row, not a box in a box. */
+.treasury-next .ag-studio-root-inner { background: transparent; border: 0; }
+.treasury-next .ag-studio-layout { padding: 0; }
+.next-area { display: flex; align-items: center; gap: 12px; padding: 10px 12px; background: var(--paper-3); border: 1px solid var(--ink-line); color: var(--ink); font: 15px/1.35 Alegreya, Arial, sans-serif; box-sizing: border-box; }
+.next-area-text { flex: 1; min-width: 0; }
+.next-area-name { margin: 0; overflow-wrap: anywhere; }
+.next-area-label { font-size: 13px; text-transform: uppercase; letter-spacing: .6px; color: var(--brass-dark); }
+.next-area-name strong { font-size: 16px; }
+.next-area-percent { font-size: 13px; color: var(--ink-muted); }
+.next-area-bar { height: 6px; margin: 6px 0 4px; background: var(--paper-2); border: 1px solid var(--ink-line); }
+.next-area-bar span { display: block; height: 100%; background: var(--brass); }
+.next-area-meta { margin: 0; font-size: 14px; color: var(--ink-muted); font-variant-numeric: tabular-nums; }
+.next-area-visit { flex: none; min-height: 44px; padding: 0 2px; background: none; border: 0; color: #6e4a12; font: 500 14px Alegreya, Arial, sans-serif; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+.next-area-done { margin: 0; font-weight: 500; }
+details.steward > summary { min-height: 44px; display: flex; align-items: center; cursor: pointer; font: 700 16px Alegreya, Arial, sans-serif; color: var(--ink); }
+details.steward:not([open]) > summary { color: var(--ink-muted); font-weight: 500; }
+@media (max-width: 480px) {
+  .next-area { flex-wrap: wrap; gap: 0 12px; }
+  .next-area-visit { min-height: 40px; }
+}

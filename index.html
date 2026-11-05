@@ -224,21 +224,16 @@
           <article class="receipt" id="receipt" hidden tabindex="-1" aria-labelledby="receipt-title"></article>
         </section>
 
-        <!-- 4. Ledger: AI steward, one ledger grid with savings, bills and gifts kept separate, receipts -->
+        <!-- 4. Ledger: the Treasury (next area, one record grid, receipts on tap), bills and gifts kept separate, then the steward -->
         <section class="panel parchment" id="panel-ledger" role="tabpanel" aria-labelledby="tab-ledger" hidden>
-          <h3>The house ledger</h3>
+          <h3>Treasury</h3>
 
-          <section class="ledger-block steward" aria-labelledby="steward-title">
-            <h4 id="steward-title">House steward</h4>
-            <p class="fine" id="steward-note"></p>
-            <div class="quick-picks suggestions" id="steward-suggestions" role="group" aria-label="Suggested questions"></div>
-            <form class="inline-form steward-form" id="steward-form" novalidate>
-              <label class="field"><span>Your question</span><input name="question" type="text" maxlength="300" autocomplete="off" placeholder="Did PayPal confirm our last contribution?"></label>
-              <button type="submit" id="steward-ask">Ask</button>
-            </form>
-            <div class="form-status" id="steward-status" role="status" aria-live="polite"></div>
-            <article class="steward-answer" id="steward-answer" hidden aria-live="polite"></article>
+          <!-- One next-area milestone, from the server's own progression (an AG Studio custom widget; plain fallback). -->
+          <section class="ledger-block treasury-next-block" aria-labelledby="next-area-title">
+            <h4 id="next-area-title" class="sr-only">Next area</h4>
+            <div id="treasury-next" class="treasury-next" aria-live="polite"></div>
           </section>
+
 
           <section class="ledger-block" aria-labelledby="ledger-grid-title">
             <div class="ledger-head">
@@ -277,6 +272,19 @@
             <h4 id="keepsakes-title">Keepsakes</h4>
             <ul class="keepsakes" id="achievements"></ul>
           </section>
+
+          <!-- The existing read-only steward and its server checks, unchanged; disclosed only when someone opens it. -->
+          <details class="ledger-block steward" id="steward-block">
+            <summary><span id="steward-title">House steward</span></summary>
+            <p class="fine" id="steward-note"></p>
+            <div class="quick-picks suggestions" id="steward-suggestions" role="group" aria-label="Suggested questions"></div>
+            <form class="inline-form steward-form" id="steward-form" novalidate>
+              <label class="field"><span>Your question</span><input name="question" type="text" maxlength="300" autocomplete="off" placeholder="Did PayPal confirm our last contribution?"></label>
+              <button type="submit" id="steward-ask">Ask</button>
+            </form>
+            <div class="form-status" id="steward-status" role="status" aria-live="polite"></div>
+            <article class="steward-answer" id="steward-answer" hidden aria-live="polite"></article>
+          </details>
           <p class="form-status" id="ledger-status" role="status" aria-live="polite"></p>
           <div class="actions" id="reset-row" hidden>
             <button type="button" class="link-button" id="reset-demo">Reset the example household</button>

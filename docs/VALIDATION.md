@@ -1,5 +1,25 @@
 # Validation
 
+## Treasury (AG Studio next-area widget) — November 5, 2026
+
+Three unit cases and six desktop/touch-phone browser cases passed, using fresh in-memory example databases, simulated payments only, no licence and no provider credentials. They cover:
+- the next area from real server states, through pending, canceled, replayed and refunded payments (the Manor stays open as a keepsake), bills, grouped milestones, completion and a changed goal;
+- the AG Studio custom widget rendering it;
+- filters and search never changing it;
+- receipts on tap, "View on map" and "Visit" focus, and reload persistence;
+- the plain fallback when Studio cannot load;
+- keyboard access;
+- no question, chat or model controls, and no writes or external requests on load, filter or select;
+- the licence route exposing only that value.
+
+The owner's AG Studio evaluation licence was validated in the installed SDK (`ag-studio@3.0.0`) in an isolated local run, with only that assignment loaded in memory: valid, `STUDIO-PRO-AI`, trial, expiring 19 December 2026, with no licence console messages.
+
+I reran the existing Ledger-related specs (area-cards, earned-realm, family-journey, journey). Two changes came out of that:
+- `journey.spec.mjs` now ignores only AG's unlicensed trial banner in its console-error check.
+- A height-fitting loop that shifted the Ledger on phones was replaced by container-only sizing.
+
+After both, full journey (journey :57) and bills/gifts (journey :190) passed on desktop and phone. The remaining failures are the four cases that also fail on unmodified main (area-cards :87 and :234, estate :67, journey :216), now seen on phone as well. The 47-file original-art guard passed. Details: docs/TREASURY.md.
+
 ## Market Town merchant (Channel3) — November 5, 2026
 
 Eleven unit cases and six desktop/touch-phone browser cases passed. They use a fake Channel3 transport with the documented response shape and invented products, plus fresh in-memory example databases on separate ports. They cover:

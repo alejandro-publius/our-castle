@@ -16,6 +16,7 @@ import { WEATHER_TTL_MS, createWeatherClient } from './local-weather.js';
 import { REALM_DISTRICTS, REALM_LEGENDS, realmAccess, districtById, homeDistrict } from '../core/realm.js';
 import { ledgerTrail } from '../core/ledger.js';
 import { createMerchantDialog, resultFacts } from './merchant.js';
+import { createTreasury } from './treasury.js';
 
 // ---------- small helpers ----------
 const $ = (selector, root = document) => root.querySelector(selector);
@@ -69,6 +70,7 @@ let paypalMount = null;
 let ledgerGrid = null;
 let familyAvatars = null;
 let merchant = null;
+let treasury = null;
 const ui = {
   tab: 'house',
   personaId: pref.get('persona'),
@@ -263,7 +265,7 @@ async function boot() {
     $('#honesty').textContent = `Could not load the household: ${error.message}`;
   }
   document.body.dataset.ready = 'true';
-  window.__ourCastle = { get state() { return state; }, scene: () => scene?.debug() ?? null, sky: () => ({ time: sky.time, weather: sky.weather, place: sky.place, loading: sky.loading, error: sky.error, result: sky.result && { kind: sky.result.kind, label: sky.result.label, expiresAt: sky.result.expiresAt }, resolved: sky.resolved }), route: () => scene?.routeOnScreen() ?? null, bus, sound: () => ({ enabled: sound.enabled, played: sound.played() }) };
+  window.__ourCastle = { get state() { return state; }, scene: () => scene?.debug() ?? null, treasury: () => treasury?.status() ?? null, sky: () => ({ time: sky.time, weather: sky.weather, place: sky.place, loading: sky.loading, error: sky.error, result: sky.result && { kind: sky.result.kind, label: sky.result.label, expiresAt: sky.result.expiresAt }, resolved: sky.resolved }), route: () => scene?.routeOnScreen() ?? null, bus, sound: () => ({ enabled: sound.enabled, played: sound.played() }) };
   window.__booted = true;
 }
 
@@ -1175,6 +1177,7 @@ function renderLedgerGrid() {
 
 function renderLedger() {
   const { contributions, achievements, modes } = state;
+  renderTreasury();
   renderLedgerGrid();
   renderSteward();
 
@@ -1189,16 +1192,25 @@ function renderLedger() {
   $('#reset-row').hidden = modes.payments.mode !== 'example';
 }
 
+// Move the camera to a district and keep keyboard focus on its map control. Never writes.
+function visitDistrict(id, e) {
+  setJournalOpen(false); scene?.focusDistrict(id); $('.realm-map').dataset.focused = 'true';
+  const marker = $(`#realm-markers [data-district="${CSS.escape(id)}"]`);
+  marker?.focus({ preventScroll: true }); revealRealm(marker, { instant: e?.detail === 0 });
+}
 function recordImpact(row) {
   if (row.afterCents === null) return null;
   const open = new Set(state.rewards.realm.districts.filter((d) => d.open).map((d) => d.id));
   return h('div', { class: 'ledger-impact', title: 'After this record in the current ledger' },
     h('span', {}, `After record: ${money(row.afterCents)} tracked`),
-    ...row.districts.filter((id) => open.has(id)).map((id) => h('button', { type: 'button', class: 'link-button', 'data-record-district': id, onclick: (e) => {
-      setJournalOpen(false); scene?.focusDistrict(id); $('.realm-map').dataset.focused = 'true';
-      const marker = $(`#realm-markers [data-district="${CSS.escape(id)}"]`);
-      marker?.focus({ preventScroll: true }); revealRealm(marker, { instant: e.detail === 0 });
-    } }, `Visit ${districtById(id).name}`)));
+    ...row.districts.filter((id) => open.has(id)).map((id) => h('button', { type: 'button', class: 'link-button', 'data-record-district': id, onclick: (e) => visitDistrict(id, e) }, `Visit ${districtById(id).name}`)));
+}
+// The Treasury's one next-area milestone (AG Studio custom widget, server data). Built when the Ledger is first shown.
+function renderTreasury() {
+  if (ui.tab !== 'ledger') return;
+  treasury ??= createTreasury($('#treasury-next'), { formatMoney: money, onVisit: visitDistrict,
+    getLicence: () => api.get('/api/treasury/studio').then((r) => r.licenseKey ?? null) });
+  treasury.update(state);
 }
 function renderLedgerRecord() {
   const row = ledgerRows().find((r) => r.id === ui.ledgerRecord), c = row?.contribution;
@@ -1259,6 +1271,7 @@ async function askSteward(question, focusOrderId = null) {
   if (!state.steward.available || ui.stewardBusy) return;
   if (focusOrderId) ui.ledgerRecord = ledgerRows().find((r) => r.contribution?.providerOrderId === focusOrderId)?.id ?? ui.ledgerRecord;
   if (ui.tab !== 'ledger') selectTab('ledger', { focus: false });
+  $('#steward-block').open = true; // the steward is disclosed on request; a verification asked from a receipt opens it
   $('#steward-form').elements.question.value = question;
   ui.stewardFocus = focusOrderId;
   ui.stewardBusy = true;
@@ -1365,7 +1378,7 @@ function selectTab(name, { focus = true, remember = true, open = true } = {}) {
     button.tabIndex = selected ? 0 : -1;
     $(`#panel-${tab}`).hidden = !selected;
   }
-  if (name === 'ledger' && state) { renderLedgerGrid(); renderLedgerRecord(); }
+  if (name === 'ledger' && state) { renderTreasury(); renderLedgerGrid(); renderLedgerRecord(); }
   if (state) renderNextStep();
   if (focus) $(`#tab-${name}`).focus();
 }

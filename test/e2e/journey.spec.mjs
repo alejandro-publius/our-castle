@@ -16,7 +16,10 @@ const isPhone = (testInfo) => testInfo.project.name === 'phone';
 function trackErrors(page) {
   const errors = [];
   page.on('pageerror', (e) => errors.push(`pageerror: ${e.message}`));
-  page.on('console', (m) => { if (m.type() === 'error') errors.push(`console: ${m.text()}`); });
+  // AG Studio prints its own licence banner when no evaluation licence is configured (as in these credential-free
+  // tests); with the owner's licence it prints nothing. Only those vendor lines are ignored.
+  const studioLicenceNotice = /^\*+$|AG Studio Core License|License Key Not Found|unlocked for trial|hide the watermark/;
+  page.on('console', (m) => { if (m.type() === 'error' && !studioLicenceNotice.test(m.text().trim())) errors.push(`console: ${m.text()}`); });
   return errors;
 }
 
