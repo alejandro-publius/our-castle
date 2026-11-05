@@ -4,7 +4,7 @@ The owner assigned **Claude the visuals** and **Astra the sponsor/integration en
 
 The complete game is the root page, driven by src/app/main.js and src/world/board-scene.js. The original /art-preview.html is historical reference. Do not replace the current game with the starter, a generic finance dashboard or a flat board.
 
-Current world: nine clearings in one 228×132 forest, nine raised/lowered bridges, six flowing river channels, retained earlier homes, the ivory Citadel stag, Starfall Observatory, Rosewind Palace, Rapunzel's Tower and a camera-only hidden sword grove. The new cloud shader has recognizable white cumulus crowns, varied contours and thin wisps; no murky noise wash. Inspect the PNGs named in the visual handoff.
+Current world: nine clearings in one 228×132 forest, nine raised/lowered bridges, six flowing river channels, retained earlier homes, the ivory Citadel stag, Starfall Observatory, Rosewind Palace, Rapunzel's Tower and a camera-only hidden sword grove. The new cloud shader has recognizable white cumulus crowns, overlapping continuously with varied contours and thin wisps; no flat grey gaps or murky noise wash. Inspect the PNGs named in the visual handoff.
 
 Preserve the copied PixelRenderer, original 90-colour palette, assets/fonts/notices and all portrait provenance. New art must stay in that family. The earned court remains twenty; small tower figures are scenery. New towers share existing 60%/100% milestones. The secret never credits money or grants a district reward.
 

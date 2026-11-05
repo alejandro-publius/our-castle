@@ -1,5 +1,12 @@
 # Validation
 
+## Overlapping clouds — November 5, 2026
+
+Two GPU regression cases passed on desktop and touch-phone projects. They execute the actual cloud-bank GLSL over three spatial sample windows and require cloud-body coverage above 99.75%, preventing a return to broad backdrop gaps. A separate 384×384 diagnostic measured 18.51% covered samples before this change and 99.987% afterward (coverage threshold 240/255); this is a finite shader-mask sample, not a guarantee for every possible camera coordinate.
+
+Actual Day/Afternoon/Night/Night+Rain desktop views and a phone Day view were reviewed. All nine districts/bridges, ten farm animals, three tavern figures and family avatars remained; there were no page errors, external calls, writes or horizontal overflow, and the example server state was unchanged. The 47-file original-art/palette/renderer and JavaScript guard passed. The original terrain mask and cloud clock were not changed. Source/stills: docs/DEFINED-CLOUDS.md; ignored evidence: test-results/overlapping-clouds/ under the owner's checkout. No new paid/provider calls or video work.
+
+
 ## Market Town tavern — November 5, 2026
 
 Four focused browser cases passed across desktop and touch phone. They check three animated background townsfolk, unchanged family/farms/access and financial state, still reduced-motion poses, hidden-tab pause, bounded resumption, and four tier/crest render rebuilds without accumulated people or geometry. Requests were limited to same-origin GET: no household writes or provider calls.

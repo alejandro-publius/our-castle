@@ -7,7 +7,7 @@ The owner assigned Claude the visuals while Astra handles sponsor/integration en
 Read `AGENTS.md`, `CLAUDE.md`, `docs/ART-DIRECTION.md`, `docs/INTERFACE-DIRECTION.md`, `docs/DEFINED-CLOUDS.md` and `docs/WOODLAND-LEGENDS.md`. Open the actual current PNGs:
 
 - `docs/screenshots/wizard-tower.png`, `rapunzel-tower.png`, `legends-realm.png`.
-- `docs/screenshots/cloud-defined-day.png`, `cloud-defined-night-rain.png`.
+- `docs/screenshots/cloud-overlap-day.png`, `cloud-overlap-night-rain.png`.
 - `docs/screenshots/rosewind-palace.png`, `citadel-stag-detail.png`.
 
 The running game is `/`, built by `src/app/main.js` and `src/world/board-scene.js`. The old `/art-preview.html` is historical reference.
@@ -26,7 +26,7 @@ Family avatars: Journal → House now saves one of eight original portraits per 
 
 Nine clearings on one 228×132 green forest: Hearth Village, Manor Gardens, Market Town, Woodland Garden, Stone Keep, Starfall Observatory, Royal Citadel, Rosewind Palace and Rapunzel's Tower. Keep every earlier building, all nine bridges, six winding rivers, gentle current, the ivory stag, golden braid, telescope and sword grove. The sword's glint is mouse/touch/keyboard accessible and camera-only.
 
-Keep the defined white cumulus banks, varied shapes, translucent tails and restrained forest-edge haze. Keep ivory plaques, bundled Uncial/Alegreya fonts, the four-step collapsible journal and one general footer notice. Cards contain only name, pixel art/crest, one milestone line and actions. No catalogue, slogans, repeated disclaimers or “preview” product headings. The phone Areas menu must scroll within the actual map height; keep overview plaque collision handling.
+Keep continuous overlapping white cumulus banks, varied shapes, translucent tails and restrained forest-edge haze. There must be no flat grey gaps between the banks; read docs/DEFINED-CLOUDS.md for the latest correction. Keep ivory plaques, bundled Uncial/Alegreya fonts, the four-step collapsible journal and one general footer notice. Cards contain only name, pixel art/crest, one milestone line and actions. No catalogue, slogans, repeated disclaimers or “preview” product headings. The phone Areas menu must scroll within the actual map height; keep overview plaque collision handling.
 
 The original `src/graphics/pixel-renderer.js`, `palette.js`, copied references, licenses and provenance stay untouched. New portrait assets must be original code renders with their own provenance.
 

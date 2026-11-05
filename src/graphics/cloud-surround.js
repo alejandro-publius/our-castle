@@ -28,29 +28,29 @@ vec2 cloudJoin(vec2 a,vec2 b) {
   return vec2(mix(b.x,a.x,h)-.10*h*(1.0-h),mix(b.y,a.y,h));
 }
 vec2 cloudCrown(vec2 q,float seed) {
-  vec2 s=cloudLobe(q-vec2(0.0,-.18),vec2(1.08+seed*.12,.32));
+  vec2 s=cloudLobe(q-vec2(0.0,-.18),vec2(1.16+seed*.12,.40));
   s=cloudJoin(s,cloudLobe(q-vec2(-.58,.02),vec2(.36+seed*.16,.34+seed*.1)));
   s=cloudJoin(s,cloudLobe(q-vec2(-.20,.16+seed*.24),vec2(.42+seed*.12,.44+seed*.22)));
   s=cloudJoin(s,cloudLobe(q-vec2(.35,.06+seed*.14),vec2(.51,.33+(1.0-seed)*.22)));
   return cloudJoin(s,cloudLobe(q-vec2(.76,-.10),vec2(.37,.25+seed*.08)));
 }
 vec4 cloudBank(vec2 p) {
-  vec2 spacing=vec2(4.5,3.0),cell=floor(p/spacing);
-  vec3 colour=cloudBase;
+  vec2 spacing=vec2(2.4,.95),cell=floor(p/spacing);
+  vec3 colour=mix(cloudBase,cloudLight,.86);
   float coverage=0.0;
-  for(int j=-1;j<=1;j++)for(int i=-1;i<=1;i++) {
+  for(int j=2;j>=-2;j--)for(int i=-1;i<=1;i++) {
     vec2 tile=cell+vec2(float(i),float(j)),r=cloudHash(tile),form=cloudHash(tile+vec2(17.3,9.2));
-    vec2 centre=(tile+.5)*spacing+(r-.5)*vec2(3.0,2.0);
-    vec2 q=(p-centre)/vec2(.85+form.x*.70,.75+form.y*.50);
+    vec2 centre=(tile+.5)*spacing+(r-.5)*vec2(.65,.20);
+    vec2 q=(p-centre)/vec2(1.25+form.x*.45,1.35+form.y*.50);
     q.x*=form.y>.5?-1.0:1.0;
     vec2 shape=cloudCrown(q,r.y);
     float body=1.0-smoothstep(-.008,.032,shape.x);
     float halo=1.0-smoothstep(.015,.13,shape.x);
     float wisp=1.0-smoothstep(-.01,.065,cloudLobe(q-vec2(.32,-.49),vec2(1.48,.12)).x);
-    // Only a light underside shadow and a thin translucent tail; clear air remains between the banks.
-    colour=mix(colour,cloudShade,halo*.12);
-    colour=mix(colour,mix(cloudBase,cloudLight,.68),wisp*.22);
-    vec3 bodyColour=mix(cloudShade,cloudLight,smoothstep(.30,.95,shape.y));
+    // Overlapping rows form one cloud bed. Pale under-cloud light replaces exposed flat background.
+    colour=mix(colour,cloudShade,halo*.16);
+    colour=mix(colour,mix(cloudBase,cloudLight,.82),wisp*.22);
+    vec3 bodyColour=mix(mix(cloudShade,cloudLight,.45),cloudLight,smoothstep(.30,.95,shape.y));
     colour=mix(colour,bodyColour,body*.98);
     coverage=max(coverage,max(body,wisp*.25));
   }

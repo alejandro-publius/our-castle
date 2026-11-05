@@ -1,5 +1,12 @@
 # Art direction — preserve this visual family
 
+## Overlapping cloud surround (November 5, 2026)
+
+The owner clarified that separate clouds over grey gaps were the wrong target. Larger crowns now overlap in tightly layered rows, filling the surround continuously with pale cloud light and soft underside seams. Keep recognizable puffs and thin wisps; no exposed grey sheet between them. The forest-edge mask, world, buildings, farms, tavern, avatars, original renderer/palette and controls remain unchanged.
+
+[Current reference lock](DEFINED-CLOUDS.md) · [Day](screenshots/cloud-overlap-day.png) · [Night/Rain](screenshots/cloud-overlap-night-rain.png) · [Phone](screenshots/cloud-overlap-phone.png). This supersedes earlier open-gap/separated-bank directions.
+
+
 ## Market Town tavern (November 5, 2026)
 
 The existing market house gains a small striped porch, hanging tankard sign and an outdoor table with two seated neighbors and an innkeeper. Bread, mugs, barrels and a warm lantern make the gathering readable without extra interface. Occasional head/mug gestures use the existing ambient clock; reduced motion and hidden-tab pause remain. The market, well, stalls, windmill, earlier houses, farms and twenty-person court stay intact.

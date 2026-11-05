@@ -1,15 +1,16 @@
-# Defined cloud banks
+# Defined, overlapping cloud banks
 
-Owner correction, November 4, 2026: the existing grey-green blur is murky and does not read as clouds. Primary reference: the current seven-district woodland and that correction. Keep the entire world, original renderer/palette, architecture and interface unchanged.
+Owner correction, November 5, 2026: the clouds must overlap instead of sitting apart with grey space between them. This supersedes the earlier instruction to leave clear air between banks. Keep the recognizable rounded crowns and varied contours, but make one continuous layered cloud surround.
 
-Live Refero research reviewed Obscura (https://obscura.net, 6454b0bf-266d-4d3e-9957-1c9d38d87117) for clear, playful pixel cloud silhouettes, and Cora (https://cora.computer, 15c36325-0ee9-4aeb-946e-1951a570e6be) for expressive illustrated cloud edges. Borrow only cloud legibility and separation; no sky-blue canvas, UI, font, brand accent or downloaded image. This supersedes the earlier diffuse fog direction.
+Primary reference lock: the owner's correction and the current woodland/cumulus shapes. Earlier bounded Refero references remain useful only for legibility: Obscura (https://obscura.net, 6454b0bf-266d-4d3e-9957-1c9d38d87117) for playful clear cloud silhouettes and Cora (https://cora.computer, 15c36325-0ee9-4aeb-946e-1951a570e6be) for expressive illustrated edges. No external imagery, sky-blue canvas, interface, fonts or palette changes.
 
-| Decision | Source / role |
+| Decision | Source / purpose |
 | --- | --- |
-| Distinct cumulus clusters: rounded crowns, gently flattened bases | Owner wants recognizable clouds; Obscura silhouette clarity |
-| Warm white lit tops, pale cool undersides, open light gaps | Owner rejects grey/murky; light/shadow on cloud illustration only |
-| Small translucent trailing wisps, subtle outer-tree overlap | Earlier explicit request for transparent wisps near greenery |
-| Separate moonlit and rainy colours | Existing Day/Afternoon/Night/Rain modes; retain visible contours in every mode |
-| Original code-native shader, ambient clock and reduced-motion behavior | Existing renderer architecture, no images or extra draw pass |
+| Wider/taller crowns, tighter spacing and less positional scatter | Owner wants overlapping clouds, not isolated clouds over a backdrop |
+| Layer neighboring rows from back to front | Preserve readable overlying puffs and soft seams |
+| Pale under-cloud light with gentle underside shading | Remove the exposed grey field while keeping depth |
+| Retain the existing forest-edge mask and faint wisps | Keep greenery, architecture and rivers clear |
 
-Reject: all-over grey noise, blurry camouflage, blue ocean/sky sheet, opaque clouds over buildings, new controls or explanatory copy. Review actual overview, palace, Day/Afternoon/Night/Rain and phone stills before delivery. No videos, paid/provider calls or household writes.
+The same playable-world compositor remains in the existing pass. Its bounds, terrain-alpha mask, camera anchoring, clock and reduced-motion behavior are unchanged; the original PixelRenderer and 90-colour world palette remain untouched. The lookup covers all neighboring rows that can overlap, avoiding cropped crowns at cell boundaries.
+
+Current references: [Day](screenshots/cloud-overlap-day.png), [Night/Rain](screenshots/cloud-overlap-night-rain.png), [Phone](screenshots/cloud-overlap-phone.png). Historical cloud-defined PNGs are preserved. These are isolated example-world stills, not payment/AI evidence. No videos, new product controls, provider calls or household writes.
