@@ -18,6 +18,7 @@ test.beforeEach(({ page }) => closeDeedsWhenTheyAppear(page));
 test.beforeEach(async({page,request})=>{
   expect((await request.post('/api/demo/reset',{data:{}})).ok()).toBeTruthy();
   await page.goto('/');await page.waitForFunction(()=>document.body.dataset.ready==='true');
+  await page.getByRole('button',{name:'Whole realm',exact:true}).click();
 });
 
 test('future castles are separate locked destinations in one green woodland behind raised bridges and gates; inspecting them cannot unlock them',async({page,request})=>{

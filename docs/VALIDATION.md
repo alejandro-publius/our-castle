@@ -1,5 +1,17 @@
 # Validation
 
+## November 4, 2026: closer world, parchment property names and a quiet contribution step
+
+The owner asked for larger visible architectural detail, less information in the contribution screenshot, and ivory/parchment property labels with better fonts. The camera now starts on the current earned home. Whole realm still restores the full six-district map. Property plaques use the original ivory/ink palette, bundled Uncial at 19 px (16 px on narrow screens), a small lock and clamped positioning to stay inside the map. World geometry, land, buildings, bridges, access, cards and light/weather are unchanged.
+
+The contribution step is a centred, bounded form with a larger amount field, one explicit approval and the payment action. Plan recap, amount-suggestion cards, projection essay, repeated next-step heading/reasons, bank-balance paragraph and server-plumbing note were removed. Validation errors appear when relevant. Financial modes remain clearly labelled in badges, the compact checkout note and receipts. A single next-action button disappears when already at that step; the saved-record link remains on House/Plan, and full records remain in the Ledger. Editing the amount now clears approval so a prior check cannot authorize a changed amount.
+
+**Checks:** original assets/palette/renderer/syntax check passed. The initial syntax check caught an extra closing parenthesis in the new renderer; it was corrected before browser checks. **31 targeted browser cases passed, 5 intentional project skips**: 27 from the family journey, selected end-to-end money flows, responsive layout and realm focus; 4 explicit overview/route cases followed because line filters in the first command did not select those cases. No already-passed suite was repeated.
+
+Evidence includes: the close view draws the home at over twice the overview scale; all six districts persist; parchment text/background/font and marker bounds; keyboard navigation and 320 px fit; untouched progress when navigating; House/Plan/contribution/receipt and saved-record recovery after AG Grid loads; invalid/child/pending/canceled/declined handling; exact-amount reapproval; full-map framing, colour and locked gates. Actual contribution screenshots were captured from the isolated example-mode fixture. No PayPal order or paid AI call was made. Protected owner/rehearsal files, permissions and timestamps are unchanged; no existing server restart was needed.
+
+Limits: Chromium desktop/phone emulation, not Safari/Firefox, physical phones or a real screen-reader pass. No hardware performance claim. The broader approved sandbox popup/same-order steward recording gap remains unchanged. Original art and source-pinned older videos are preserved. Logs and preservation evidence: ignored `test-results/quiet-realm/`.
+
 ## November 4, 2026: compact collectible unlock cards
 
 The owner asked for Monopoly-like brevity. The face now has only its area name, original pixel artwork, household crest and a short status/milestone line, such as **Unlocked · 25% milestone**. A small count appears only when several cards queue. Visit, Next and Close share one row; their accessible labels still name the destination or next card. Architecture descriptions, guest lists, evidence/stamp paragraphs and expandable details are deleted. Financial facts remain in receipts and the Ledger. No reward rule, access, core deed data, payment code, timing or stored record changed.

@@ -101,8 +101,7 @@
       <aside class="journey" id="journey" aria-label="Household journey" tabindex="-1">
         <section class="quest parchment" aria-labelledby="goal-name">
           <div class="quest-head">
-            <p class="eyebrow ink">Shared goal</p>
-            <h2 id="goal-name">…</h2>
+                        <h2 id="goal-name">…</h2>
           </div>
           <p class="quest-amount"><strong id="progress-amount">…</strong> <span>of <span id="target-amount">…</span> tracked</span></p>
           <div class="meter" id="meter" role="meter" aria-label="Goal progress" aria-valuemin="0">
@@ -112,12 +111,9 @@
           <p class="quest-next" id="quest-next"></p>
           <p class="fine" id="progress-breakdown"></p>
           <!-- One next step from saved state. Opening it only switches tab and moves focus; it never writes. -->
-          <div class="next-step" id="next-step" aria-labelledby="next-step-title">
-            <p class="eyebrow ink">Your next step</p>
-            <h3 id="next-step-title"></h3>
-            <div class="next-step-why" id="next-step-why"></div>
-            <button type="button" class="primary" id="next-step-go"></button>
-            <p class="next-step-record" id="next-step-record" hidden><span id="next-step-record-text"></span> <button type="button" class="link-button" id="next-step-record-go">Open the payment record in the Ledger</button></p>
+          <div class="next-step" id="next-step" aria-label="Next action">
+                        <button type="button" class="primary" id="next-step-go"></button>
+            <p class="next-step-record" id="next-step-record" hidden><span id="next-step-record-text"></span> <button type="button" class="link-button" id="next-step-record-go">View payment</button></p>
           </div>
         </section>
 
@@ -210,15 +206,13 @@
 
         <!-- 3. Contribute: adult approval, PayPal sandbox or labeled simulation, receipt -->
         <section class="panel parchment" id="panel-give" role="tabpanel" aria-labelledby="tab-give" hidden>
-          <h3 id="give-heading" tabindex="-1">Add to the journey</h3>
+          <h3 id="give-heading" tabindex="-1">Contribute</h3>
           <p class="lede" id="give-context"></p>
-          <div class="quick-picks" id="quick-picks" role="group" aria-label="Suggested amounts"></div>
           <label class="field">
-            <span>Contribution (USD)</span>
+            <span>Amount (USD)</span>
             <span class="money"><input id="give-amount" inputmode="decimal" autocomplete="off" aria-describedby="give-amount-help"></span>
           </label>
           <p class="fine" id="give-amount-help"></p>
-          <p class="give-projection" id="give-projection" aria-live="polite"></p>
           <label class="check" id="give-approve-row">
             <input type="checkbox" id="give-approve">
             <span id="give-approve-text"></span>

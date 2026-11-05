@@ -1,5 +1,19 @@
 # Art direction — preserve this visual family
 
+## Larger world, quiet contributions, parchment names (November 4, 2026)
+
+The owner asked for visible architectural detail, less information in the contribution screen, and ivory/parchment property names with better lettering. Reference lock: today's owner screenshots identify the exact deletion/restyle targets; the established Tiny Castle palette, Uncial type, pixel renderer and connected realm remain primary. Refero's copywriting guidance supplies orientation, status and action, without repeated implementation explanations.
+
+| Decision | Source | Role |
+| --- | --- | --- |
+| Start near the current earned home; Whole realm still shows all six districts | Owner: buildings too small to show detail | Camera only, no shrinking the realm or changing buildings/access |
+| Printed ivory plaques, ink text in larger bundled Uncial and a small lock | Owner's parchment/font request | Names on the map; no extra descriptive text |
+| Goal and amount/approval/payment action, with errors only when needed | Owner's contribution screenshot and “less is more” | Remove plan recap, suggestion cards, projection essay, repeated next-step explanation and server plumbing |
+| One contextual next-step button, hidden when already at that step | Earlier family-journey goal and current simplification | Preserve navigation without duplicate instructions |
+| Fresh approval after editing the amount | Existing explicit amount-specific approval | Prevent a prior checkbox from approving a changed amount |
+
+The whole realm, original buildings, night/rain, unlock cards, money validation and records remain. Financial modes stay identified in their badges, checkout note and receipts. No provider/payment/AI action is added.
+
 ## Short collectible cards (November 4, 2026)
 
 Current card face: [Manor Gardens](screenshots/deed-manor-simple.png), captured from an isolated example-mode unlock.

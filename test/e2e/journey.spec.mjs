@@ -73,11 +73,11 @@ test('full journey: house and crest, example plan, adult approval, receipt, boar
   await page.getByRole('button', { name: 'Use this plan' }).click();
   await expect(page.getByRole('tab', { name: /Contribute/ })).toHaveAttribute('aria-selected', 'true');
 
-  await expect(page.locator('#give-context')).toContainText('week 1');
+  await expect(page.locator('#give-context')).toBeHidden();
   await expect(page.locator('#give-amount')).toHaveValue('15.00');
-  await expect(page.locator('#quick-picks')).toContainText('Raises the Manor');
+  await expect(page.locator('#quick-picks')).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Simulate approved payment' })).toBeDisabled();
-  await expect(page.locator('#give-approve-text')).toContainText('I’m Rowan, an adult in House of Fernhill. I approve a $15.00 USD simulated payment');
+  await expect(page.locator('#give-approve-text')).toContainText('I approve $15.00 USD (simulated).');
 
   const before = await page.locator('#world canvas').screenshot();
   await contribute(page);
@@ -149,7 +149,7 @@ test('a child persona cannot approve a payment', async ({ page }) => {
   await acceptExamplePlan(page);
   await page.locator('#persona').selectOption('m_wren');
   await expect(page.locator('#give-approve')).toBeDisabled();
-  await expect(page.locator('#give-approve-text')).toContainText('Wren is a child persona');
+  await expect(page.locator('#give-approve-text')).toContainText('Switch to an adult');
   await expect(page.getByRole('button', { name: 'Simulate approved payment' })).toBeDisabled();
   await page.locator('#persona').selectOption('m_rowan');
   await expect(page.locator('#give-approve')).toBeEnabled();

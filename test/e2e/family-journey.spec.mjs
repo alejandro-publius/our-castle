@@ -37,11 +37,12 @@ test.beforeEach(async ({ request }) => {
   expect((await request.post('/api/demo/reset', { data: {} })).ok()).toBeTruthy();
 });
 
-test('one next step leads from house to plan to contribution; opening a step never writes', async ({ page }) => {
+test('one next step leads from house to plan to contribution; opening a step never writes', async ({ page }, testInfo) => {
   const writes = trackWrites(page);
   await ready(page);
   await expect(card(page)).toHaveAttribute('data-key', 'found-house');
-  await expect(page.locator('#next-step-title')).toHaveText('Found your house');
+  await expect(go(page)).toBeHidden();
+  await page.getByRole('tab', { name: /Ledger/ }).click();
   await expect(go(page)).toHaveText('Set up your house');
   await expect(page.locator('#tab-house')).toHaveClass(/\bnext\b/);
   // Keyboard: the step's heading receives focus and is on screen at once.
@@ -59,7 +60,7 @@ test('one next step leads from house to plan to contribution; opening a step nev
 
   await page.getByRole('button', { name: 'Make an example plan' }).click();
   await expect(card(page)).toHaveAttribute('data-key', 'review-plan');
-  await expect(page.locator('#next-step-why')).toContainText('Eight weeks of $30.00 reaches the Castle');
+  await page.getByRole('tab', { name: /Ledger/ }).click();
   await expect(page.locator('#tab-plan')).not.toHaveClass(/\bdone\b/);
   expect(await writesDuring(page, writes, async () => { await go(page).focus(); await page.keyboard.press('Enter'); })).toEqual([]);
   await expect(page.locator('#plan-headline')).toBeFocused();
@@ -67,16 +68,22 @@ test('one next step leads from house to plan to contribution; opening a step nev
 
   await page.getByRole('button', { name: 'Use this plan' }).click();
   await expect(card(page)).toHaveAttribute('data-key', 'contribute-week');
-  await expect(page.locator('#next-step-title')).toHaveText('Week 1: add $30.00');
-  await expect(page.locator('#next-step-why')).toContainText('The Manor needs $15.00 more.');
+  await expect(card(page)).toBeHidden();
   await expect(page.locator('#tab-plan')).toHaveClass(/\bdone\b/);
-  await expect(page.locator('#give-context')).toContainText('Plan in use: “Eight weeks of $30.00 reaches the Castle.”');
-  // The quick pick and projection connect the plan to the next milestone, as a projection only.
+  await expect(page.locator('#give-context')).toBeHidden();
+  // The next milestone supplies a default amount; no repeated plan or projection copy.
   await expect(page.locator('#give-amount')).toHaveValue('15.00');
-  await expect(page.locator('#give-projection')).toContainText('If the server confirms $15.00: $60.00 → $75.00 tracked (25%). The Manor would rise.');
-  await expect(page.locator('#give-projection')).toContainText('Nothing counts until then');
+  await expect(page.locator('#give-projection')).toHaveCount(0);
+  await expect(page.locator('#quick-picks')).toHaveCount(0);
   await expect(page.locator('#give-approve')).not.toBeChecked();
   await expect(page.locator('#progress-amount')).toHaveText('$60.00');
+  // Editing the amount requires a fresh explicit approval; no navigation or typing sends a payment.
+  await page.locator('#give-approve').check();
+  await page.locator('#give-amount').fill('30.00');
+  await expect(page.locator('#give-approve')).not.toBeChecked();
+  await expect(page.getByRole('button', { name: 'Simulate approved payment' })).toBeDisabled();
+  await page.locator('#give-amount').fill('15.00');
+  await page.locator('.journey').screenshot({ path: testInfo.outputPath('compact-contribution.png') });
   expect(writes).toEqual(['POST /api/setup', 'POST /api/plans', expect.stringMatching(/^POST \/api\/plans\/plan_\w+\/accept$/)]);
 
   // A newer plan that is not accepted yet clears the Plan tab's done mark and asks for review.
@@ -105,14 +112,14 @@ test('a returning family resumes, keeps its chosen tab and unsaved amount, and c
   await expect(selectedTab(page)).toHaveId('tab-ledger');
   await page.getByRole('tab', { name: /Contribute/ }).click();
   await expect(page.locator('#give-amount')).toHaveValue('12.34');
-  await expect(page.locator('#give-projection')).toContainText('If the server confirms $12.34: $60.00 → $72.34 tracked');
+  await expect(page.locator('#give-projection')).toHaveCount(0);
 
   // A pending payment is the next step; it is not credit.
   await page.locator('#give-approve').check();
   await page.locator('#give-action summary').click();
   await page.getByRole('button', { name: 'Simulate pending' }).click();
   await expect(card(page)).toHaveAttribute('data-key', 'payment-pending');
-  await expect(page.locator('#next-step-why')).toContainText('$12.34 (simulated example payment) is not counted until it completes. Goal progress is still $60.00.');
+  await expect(page.locator('#progress-amount')).toHaveText('$60.00');
   await expect(page.locator('#next-step-record')).toBeHidden();
   expect(await writesDuring(page, writes, async () => { await go(page).focus(); await page.keyboard.press('Enter'); })).toEqual([]);
   await expect(selectedTab(page)).toHaveId('tab-ledger');
@@ -122,7 +129,7 @@ test('a returning family resumes, keeps its chosen tab and unsaved amount, and c
   // Completed while the family is on the Ledger: the receipt is the next step until it is shown.
   await page.getByRole('button', { name: 'Simulate PayPal completing it' }).click();
   await expect(card(page)).toHaveAttribute('data-key', 'receipt-ready');
-  await expect(page.locator('#next-step-title')).toHaveText('$12.34 was confirmed');
+  await expect(go(page)).toHaveText('Review the receipt');
   await go(page).focus(); await page.keyboard.press('Enter');
   await expect(page.locator('#receipt')).toBeFocused();
   await expect(card(page)).toHaveAttribute('data-key', 'contribute-week');
@@ -132,7 +139,9 @@ test('a returning family resumes, keeps its chosen tab and unsaved amount, and c
   await page.reload();
   await page.waitForFunction(() => document.body.dataset.ready === 'true');
   await expect(selectedTab(page)).toHaveId('tab-give');
-  await expect(page.locator('#next-step-record')).toContainText('Last payment: $12.34 · Completed — counted · simulated.');
+  await expect(page.locator('#next-step-record')).toBeHidden();
+  await page.getByRole('tab', { name: /House/ }).click();
+  await expect(page.locator('#next-step-record')).toContainText('$12.34 · Completed — counted · simulated');
   const record = page.locator('#next-step-record-go');
   expect(await writesDuring(page, writes, async () => { await record.focus(); await page.keyboard.press('Enter'); })).toEqual([]);
   await expect(selectedTab(page)).toHaveId('tab-ledger');
@@ -152,7 +161,7 @@ test('a new visit resumes at the next step, and a child persona is told an adult
   await second.waitForFunction(() => document.body.dataset.ready === 'true');
   await expect(second.locator('[role="tab"][aria-selected="true"]')).toHaveId('tab-give');
   await second.locator('#persona').selectOption({ label: 'Wren (child, example)' });
-  await expect(second.locator('#next-step-why')).toContainText('Wren is a child persona: switch “Acting as” to an adult to approve a payment.');
+  await expect(second.locator('#give-approve-text')).toContainText('Switch to an adult');
   await expect(second.locator('#give-approve')).toBeDisabled();
 });
 
@@ -162,6 +171,7 @@ test.describe('at 320 by 568', () => {
     await ready(page);
     await foundHouse(page);
     await expect(card(page)).toHaveAttribute('data-key', 'make-plan');
+    await page.getByRole('tab', { name: /Ledger/ }).click();
     const box = await go(page).boundingBox();
     expect(box.height).toBeGreaterThanOrEqual(44);
     expect(box.x + box.width).toBeLessThanOrEqual(320);
@@ -202,7 +212,8 @@ for (const [label, viewport, project] of [['1760 by 760', { width: 1760, height:
       const release = await holdLedgerGrid(page);
       const writes = trackWrites(page);
       await ready(page);
-      await expect(page.locator('#next-step-record')).toContainText('Last payment: $15.00 · Completed — counted · simulated.');
+      await page.getByRole('tab', { name: /House/ }).click();
+      await expect(page.locator('#next-step-record')).toContainText('$15.00 · Completed — counted · simulated');
       await page.locator('#next-step-record-go').focus();
       await page.keyboard.press('Enter');
       await expect(selectedTab(page)).toHaveId('tab-ledger');
@@ -224,6 +235,7 @@ for (const [label, viewport, project] of [['1760 by 760', { width: 1760, height:
       const release = await holdLedgerGrid(page);
       const writes = trackWrites(page);
       await ready(page);
+      await page.getByRole('tab', { name: /House/ }).click();
       await page.locator('#next-step-record-go').click();
       await expect(selectedTab(page)).toHaveId('tab-ledger');
       await page.getByRole('tab', { name: /Contribute/ }).click();

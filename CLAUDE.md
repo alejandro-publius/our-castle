@@ -18,3 +18,6 @@ The Rewards catalogue and fifth journey tab were explicitly deleted by the owner
 
 
 Unlock-card brevity: keep only the area name, pixel art, crest and one short milestone/status line, plus Visit / Next / Close. No architecture descriptions, guest lists, evidence paragraphs, payment stamps or expandable details on these cards. Full financial facts stay in receipts and the Ledger.
+
+
+Current UI direction: begin close to the earned home, retaining Whole realm for the full six-district map. Property plaques use ivory/parchment, dark ink, larger bundled Uncial names and only a small lock mark. Keep contributions to the amount, explicit approval and payment action; remove duplicated plan/projection/next-step paragraphs and server implementation explanations. Show validation errors when needed; preserve accurate modes and receipts. Do not expand this into a finance dashboard.

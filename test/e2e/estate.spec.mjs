@@ -7,6 +7,7 @@ import { closeDeedsWhenTheyAppear } from './support/deeds.mjs';
 const ready = async (page) => {
   await page.goto('/');
   await page.waitForFunction(() => document.body.dataset.ready === 'true');
+  await page.getByRole('button', { name: 'Whole realm', exact: true }).click();
 };
 const scene = (page) => page.evaluate(() => window.__ourCastle.scene());
 const settled = (page) => expect.poll(async () => (await scene(page)).animating, { timeout: 20_000 }).toBe(false);

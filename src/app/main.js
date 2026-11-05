@@ -8,11 +8,11 @@ import { createLedgerGrid } from './ledger-grid.js';
 import { sound } from './sound.js';
 import { newlyEarnedEstate } from '../core/rewards.js';
 import { courtForTier } from '../core/court.js';
-import { contributionProjection, isCounted, nextAction } from '../core/journey.js';
+import { isCounted, nextAction } from '../core/journey.js';
 import { districtDeed, newlyOpenedDistricts } from '../core/deeds.js';
 import { TIME_MODES, WEATHER_MODES, resolveAtmosphere } from '../core/atmosphere.js';
 import { WEATHER_TTL_MS, createWeatherClient } from './local-weather.js';
-import { REALM_DISTRICTS, realmAccess, districtById } from '../core/realm.js';
+import { REALM_DISTRICTS, realmAccess, districtById, homeDistrict } from '../core/realm.js';
 
 // ---------- small helpers ----------
 const $ = (selector, root = document) => root.querySelector(selector);
@@ -248,6 +248,7 @@ async function boot() {
   try {
     applyState(await api.get('/api/state'), { animate: false });
     selectTab(resumeTab(), { focus: false, remember: false });
+    scene?.focusDistrict(homeDistrict(state.board.builtTier).id);
   } catch (error) {
     $('#honesty').textContent = `Could not load the household: ${error.message}`;
   }
@@ -297,22 +298,17 @@ function renderNextStep() {
   const next = nextAction(state, { persona: persona(), receipt: ui.receipt?.contribution ?? null, receiptReviewed: Boolean(ui.receipt) && ui.receiptReviewed === receiptKey() });
   ui.next = next;
   $('#next-step').dataset.key = next.key;
-  if ($('#next-step-title').textContent !== next.title) $('#next-step-title').textContent = next.title;
-  const why = next.why.join('\n');
-  if ($('#next-step-why').dataset.text !== why) {
-    $('#next-step-why').dataset.text = why;
-    $('#next-step-why').replaceChildren(...next.why.map((line) => h('p', {}, line)));
-  }
   const go = $('#next-step-go');
   if (go.textContent !== next.cta) go.textContent = next.cta;
-  // A compact way back to the saved payment record (Ledger), from durable state. Opening it only reads.
+  go.hidden = next.step === ui.tab && next.key !== 'receipt-ready';
   const record = $('#next-step-record');
-  record.hidden = !next.record;
+  record.hidden = !next.record || ['give', 'ledger'].includes(ui.tab);
   if (next.record) {
-    const r = next.record, line = `Last payment: ${money(r.amountCents)} · ${STATUS_LABEL[r.status] ?? r.status} · ${r.simulated ? 'simulated' : 'PayPal sandbox'}.`;
-    if ($('#next-step-record-text').textContent !== line) $('#next-step-record-text').textContent = line;
+    const r = next.record;
+    $('#next-step-record-text').textContent = `${money(r.amountCents)} · ${STATUS_LABEL[r.status] ?? r.status} · ${r.simulated ? 'simulated' : 'sandbox'}`;
     record.dataset.contribution = r.contributionId;
   }
+  $('#next-step').hidden = go.hidden && record.hidden;
   renderTabs();
 }
 // Open the Ledger at that record. No server call: the record is already in the loaded state.
@@ -404,13 +400,13 @@ function renderQuest() {
   $('#meter-ticks').replaceChildren(...board.tiers.slice(1).map((t) => h('span', { style: `left:calc(${t.percent}% - 1px)`, 'data-label': t.name })));
   const next = board.nextMilestone;
   $('#quest-next').textContent = next
-    ? `Next: the ${next.name} at ${money(next.targetCents)} — ${money(next.awayCents)} to go.`
+    ? `${next.name} · ${money(next.awayCents)} to go`
     : 'Goal reached. The castle stands.';
-  const parts = [`${money(progress.startingCents)} reported by you`];
+  const parts = [`${money(progress.startingCents)} reported savings`];
   if (progress.contributedCents) parts.push(`${money(progress.contributedCents)} confirmed in PayPal sandbox`);
   if (progress.simulatedContributedCents) parts.push(`${money(progress.simulatedContributedCents)} simulated`);
   if (progress.refundedCents + progress.simulatedRefundedCents) parts.push(`${money(progress.refundedCents + progress.simulatedRefundedCents)} refunded`);
-  $('#progress-breakdown').textContent = `${parts.join(' · ')}. ${progress.note}`;
+  $('#progress-breakdown').textContent = parts.join(' · ');
 }
 
 function renderBoard({ animate, result, added = [] }) {
@@ -465,18 +461,27 @@ function districtCondition(district) {
   const required=Math.ceil(state.goal.targetCents*district.percent/100),remaining=Math.max(0,required-state.progress.progressCents);
   return `${district.percent}% · ${money(required)} tracked${remaining?` · ${money(remaining)} to go`:''}`;
 }
-function renderRealmNavigation(){
-  const regions=realmAccess({builtTier:state.board.builtTier,estateLevel:state.board.estateLevel,gardens:state.board.gardens});
-  $('#realm-districts').replaceChildren(...regions.map(d=>h('button',{type:'button',class:'realm-stop','data-district':d.id,'data-status':d.status,'aria-pressed':'false'},h('strong',{},d.name),h('small',{},d.open?'Open district':`Locked · ${d.percent===null?'bill habit':`${d.percent}%`}`))));
-  $('#realm-markers').replaceChildren(...regions.map(d=>h('button',{type:'button',class:'realm-marker','data-district':d.id,'data-status':d.status,'aria-label':`Inspect ${d.name} on the map`,hidden:true},h('strong',{},d.name),h('small',{},d.open?'Open':`Locked · ${d.percent===null?'bill habit':`${d.percent}%`}`))));
-  $('#realm-focus-status').textContent='Six districts in one woodland · raised bridges, closed gates and the labels show what is still locked. Select a district to look closer.';
+function renderRealmNavigation() {
+  const regions = realmAccess({ builtTier: state.board.builtTier, estateLevel: state.board.estateLevel, gardens: state.board.gardens });
+  const lock = '<svg viewBox="0 0 12 14" width="12" height="14" fill="none" aria-hidden="true"><path d="M3 6V4a3 3 0 0 1 6 0v2" stroke="currentColor" stroke-width="1.5"/><rect x="1.5" y="6" width="9" height="6.5" rx=".5" fill="currentColor"/></svg>';
+  $('#realm-districts').replaceChildren(...regions.map((d) => h('button', { type: 'button', class: 'realm-stop', 'data-district': d.id, 'data-status': d.status, 'aria-pressed': 'false' },
+    h('strong', {}, d.name), h('small', {}, d.open ? 'Open district' : `Locked · ${d.percent === null ? 'bill habit' : `${d.percent}%`}`))));
+  $('#realm-markers').replaceChildren(...regions.map((d) => h('button', { type: 'button', class: 'realm-marker', 'data-district': d.id, 'data-status': d.status, 'aria-label': `Inspect ${d.name} on the map`, hidden: true },
+    !d.open && h('span', { class: 'realm-lock', 'aria-hidden': 'true', html: lock }), h('strong', {}, d.name))));
+  $('#realm-focus-status').textContent = 'Select a district.';
 }
 function syncRealmMarkers({focus,points}){
   const map=$('.realm-map'),focused=focus?'true':'false';if(map.dataset.focused!==focused)map.dataset.focused=focused;
   for(const point of points){
     const el=$(`#realm-markers [data-district="${point.id}"]`);if(!el)continue;
-    const visible=(!focus||point.id===focus)&&point.x>40&&point.x<point.width-40&&point.y>45&&point.y<point.height;
-    el.hidden=!visible;if(visible){const x=`${point.x}px`,y=`${point.y}px`;if(el.style.left!==x)el.style.left=x;if(el.style.top!==y)el.style.top=y;}
+    const visible = (!focus || point.id === focus) && point.x > 0 && point.x < point.width && point.y > 0 && point.y < point.height;
+    el.hidden = !visible;
+    if (visible) {
+      const x = Math.max(el.offsetWidth / 2 + 8, Math.min(point.width - el.offsetWidth / 2 - 8, point.x)) + 'px';
+      const y = Math.max(el.offsetHeight + 8, Math.min(point.height - 8, point.y)) + 'px';
+      if (el.style.left !== x) el.style.left = x;
+      if (el.style.top !== y) el.style.top = y;
+    }
   }
   for(const button of $$('#realm-districts button')){const value=String(button.dataset.district===focus);if(button.getAttribute('aria-pressed')!==value)button.setAttribute('aria-pressed',value);}
   if(!state)return;
@@ -815,14 +820,11 @@ async function acceptPlan() {
 }
 
 // ---------- 3. Contribute ----------
-function quickPicks() {
-  const picks = [];
+function suggestedContribution() {
   const { board, nextStep, progress, contributionLimits: lim } = state;
-  const ok = (c) => c >= lim.minCents && c <= lim.maxCents && c <= progress.remainingCents;
-  if (board.nextMilestone && ok(board.nextMilestone.awayCents)) picks.push({ cents: board.nextMilestone.awayCents, label: `Raises the ${board.nextMilestone.name}` });
-  if (nextStep?.dueCents && ok(nextStep.dueCents)) picks.push({ cents: nextStep.dueCents, label: nextStep.dueCents === nextStep.plannedCents ? `Week ${nextStep.week} in full` : `Rest of week ${nextStep.week}` });
-  if (ok(progress.remainingCents)) picks.push({ cents: progress.remainingCents, label: 'Finishes the goal' });
-  return picks.filter((p, i) => picks.findIndex((q) => q.cents === p.cents) === i).sort((a, b) => a.cents - b.cents).slice(0, 3);
+  return [board.nextMilestone?.awayCents, nextStep?.dueCents, progress.remainingCents]
+    .filter((c) => Number.isInteger(c) && c >= lim.minCents && c <= lim.maxCents && c <= progress.remainingCents)
+    .sort((a, b) => a - b)[0] ?? null;
 }
 
 function amountCheck() {
@@ -835,23 +837,19 @@ function amountCheck() {
 }
 
 function renderGive() {
-  const { household, goal, nextStep, progress, acceptedPlanId } = state;
+  const { household, goal, progress } = state;
   const setup = household.setupComplete;
   const done = progress.remainingCents <= 0;
-  $('#give-context').textContent = !setup ? 'Found your house first, then add to the journey.'
-    : done ? 'The goal is complete. The castle stands.'
-      : nextStep?.week ? `Plan in use: “${state.plan?.id === acceptedPlanId ? state.plan.headline : 'your accepted plan'}.” Next in your plan: week ${nextStep.week} (${dateLabel(nextStep.date)}) — ${money(nextStep.dueCents)} of ${money(nextStep.plannedCents)} still to add.`
-        : acceptedPlanId ? 'Your plan’s weeks are covered. You can still add more.' : 'No plan in use yet. You can still contribute, or make a plan first.';
-  const picks = setup && !done ? quickPicks() : [];
+  $('#give-context').textContent = !setup ? 'Create your house to contribute.' : done ? 'Goal complete.' : '';
+  $('#give-context').hidden = !$('#give-context').textContent;
+  const suggested = setup && !done ? suggestedContribution() : null;
   const amountInput = $('#give-amount');
-  if (!ui.amountTouched && document.activeElement !== amountInput) amountInput.value = picks[0] ? centsToInput(picks[0].cents) : '';
-  const current = parseAmountToCents(amountInput.value);
-  $('#quick-picks').replaceChildren(...picks.map((p) => h('button', {
-    type: 'button', 'data-cents': p.cents, 'aria-pressed': String(current === p.cents),
-  }, h('strong', {}, money(p.cents)), h('span', {}, p.label))));
+  if (!ui.amountTouched && document.activeElement !== amountInput) amountInput.value = suggested !== null ? centsToInput(suggested) : '';
   const check = amountCheck();
-  $('#give-amount-help').textContent = check.error && amountInput.value ? check.error : `${money(state.contributionLimits.minCents)}–${money(state.contributionLimits.maxCents)} per contribution. ${money(progress.remainingCents)} still needed.`;
-  renderProjection(setup && !done && !check.error ? check.cents : null);
+  const error = amountInput.value ? check.error : null;
+  $('#give-amount-help').textContent = error ?? '';
+  $('#give-amount-help').hidden = !error;
+  amountInput.setAttribute('aria-invalid', String(Boolean(error)));
 
   const who = persona();
   const approve = $('#give-approve');
@@ -861,34 +859,16 @@ function renderGive() {
     approve.checked = false;
     approve.disabled = true;
     row.classList.add('blocked');
-    $('#give-approve-text').textContent = `${who?.name ?? 'This persona'} is a child persona. Switch “Acting as” to an adult to approve a payment.`;
+    $('#give-approve-text').textContent = 'Switch to an adult to contribute.';
   } else {
-    approve.disabled = !setup || done;
+    approve.disabled = !setup || done || Boolean(check.error);
     row.classList.remove('blocked');
-    $('#give-approve-text').textContent = `I’m ${who.name}, an adult in ${household.name}. I approve a ${amountText} USD ${isSandbox() ? 'PayPal sandbox payment (test money)' : 'simulated payment'} toward ${goal.name}.`;
+    $('#give-approve-text').textContent = check.error ? 'Approve this payment.' : `I approve ${amountText} ${goal.currency} (${isSandbox() ? 'test money' : 'simulated'}).`;
   }
   const ready = setup && !done && approve.checked && !check.error && who?.role === 'adult';
   renderGiveAction(ready);
-  $('#give-mode-note').textContent = isSandbox()
-    ? 'PayPal sandbox only. Progress changes after the server captures the payment and checks the amount, currency and goal with PayPal — never from the browser alone.'
-    : 'Example mode: no PayPal call is made. The server records a clearly labeled simulated payment through the same checks.';
+  $('#give-mode-note').textContent = isSandbox() ? 'PayPal sandbox · test money' : 'Demo · simulated payments';
   renderReceipt();
-}
-
-// What the chosen amount would do if the server confirms it, from the shared milestone rules. It is a projection,
-// never credit: progress only changes after the server confirms the payment.
-function renderProjection(cents) {
-  const box = $('#give-projection');
-  if (cents === null) { box.replaceChildren(); return; }
-  const { progress, goal, board, achievements } = state;
-  const p = contributionProjection({ progressCents: progress.progressCents, targetCents: goal.targetCents, builtTier: board.builtTier, earned: achievements.map((a) => a.key) }, cents);
-  const parts = [`${money(p.beforeCents)} → `, h('strong', {}, money(p.afterCents)), ` tracked (${p.percent}).`];
-  if (p.rises.length) parts.push(` The ${p.rises.join(' and the ')} would rise.`);
-  if (p.alreadyStanding.length) parts.push(` The ${p.alreadyStanding.join(' and the ')} already stands as a keepsake.`);
-  if (p.additions.length) parts.push(` Adds ${p.additions.join(' and ').toLowerCase()}.`);
-  parts.push(p.completes ? ' This completes the goal.' : p.next ? ` Then the ${p.next.name} needs ${money(p.next.awayCents)} more.` : '');
-  const how = isSandbox() ? 'after an adult approves it in PayPal sandbox and the server captures and checks it' : 'after an adult approves it and the server records the simulated payment';
-  box.replaceChildren(h('strong', {}, `If the server confirms ${money(cents)}: `), ...parts, ` Nothing counts until then: it is counted only ${how}. The receipt appears below this form and in the Ledger.`);
 }
 
 function renderGiveAction(ready) {
@@ -1207,6 +1187,7 @@ function selectTab(name, { focus = true, remember = true } = {}) {
     $(`#panel-${tab}`).hidden = !selected;
   }
   if (name === 'ledger' && state) renderLedgerGrid();
+  if (state) renderNextStep();
   if (focus) $(`#tab-${name}`).focus();
 }
 function renderTabs() {
@@ -1317,14 +1298,7 @@ function bindEvents() {
   $('#accept-plan').addEventListener('click', acceptPlan);
 
   // Contribute
-  $('#quick-picks').addEventListener('click', (e) => {
-    const b = e.target.closest('[data-cents]');
-    if (!b) return;
-    $('#give-amount').value = centsToInput(Number(b.dataset.cents));
-    ui.amountTouched = true;
-    renderGive();
-  });
-  $('#give-amount').addEventListener('input', () => { ui.amountTouched = true; renderGive(); });
+  $('#give-amount').addEventListener('input', () => { ui.amountTouched = true; $('#give-approve').checked = false; renderGive(); });
   $('#give-approve').addEventListener('change', () => { setStatus('#give-status', '', ''); renderGive(); });
 
   // Ledger

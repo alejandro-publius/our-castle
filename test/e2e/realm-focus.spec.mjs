@@ -52,3 +52,34 @@ test.describe('at 320 by 568', () => {
     await inspectCastleByKeyboard(page);
   });
 });
+
+
+test('the starting home is larger, parchment names stay inside the map, and overview retains all six districts', async ({ page }) => {
+  const writes = trackWrites(page);
+  await ready(page);
+  await page.evaluate(() => document.fonts.ready);
+  const close = await page.evaluate(() => window.__ourCastle.scene());
+  expect(close.view.focus).toBe('cottage');
+  const marker = page.locator('#realm-markers [data-district="cottage"]');
+  await expect(marker).toBeVisible();
+  const look = await marker.evaluate((el) => {
+    const label = el.querySelector('strong'), style = getComputedStyle(el), text = getComputedStyle(label);
+    return { background: style.backgroundColor, ink: style.color, font: text.fontFamily, size: parseFloat(text.fontSize) };
+  });
+  expect(look.background).toBe('rgb(246, 237, 214)');
+  expect(look.ink).toBe('rgb(56, 47, 37)');
+  expect(look.font).toContain('Uncial');
+  expect(look.size).toBeGreaterThanOrEqual(16);
+  await page.getByRole('button', { name: 'Whole realm', exact: true }).click();
+  const overview = await page.evaluate(() => window.__ourCastle.scene());
+  expect(overview.view.worldPerPixel / close.view.worldPerPixel).toBeGreaterThan(2);
+  expect(overview.districts).toHaveLength(6);
+  expect(overview.districts.filter((d) => d.open).map((d) => d.id)).toEqual(['cottage']);
+  for (const el of await page.locator('#realm-markers button:visible').all()) {
+    expect(await el.evaluate((el) => {
+      const p = el.closest('.realm-map').getBoundingClientRect(), r = el.getBoundingClientRect();
+      return r.left >= p.left && r.right <= p.right && r.top >= p.top && r.bottom <= p.bottom;
+    })).toBe(true);
+  }
+  expect(writes).toEqual([]);
+});

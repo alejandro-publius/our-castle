@@ -354,12 +354,6 @@ button { font: inherit; }
 .realm-stop[aria-pressed='true'] small { color:var(--ink-muted); }
 .realm-focus-status { color:var(--muted);margin:9px 20px;font-size:16px;min-height:1.5em; }
 .realm-markers { position:absolute;inset:0;pointer-events:none;overflow:hidden; }
-.realm-marker { position:absolute;pointer-events:auto;transform:translate(-50%,-100%);background:#10252eea;color:var(--ivory);border:1px solid #8a9899;border-radius:2px;padding:5px 9px;max-width:150px;min-height:39px;font-size:13px;line-height:1.15;text-align:center;box-shadow:0 3px 8px #0004; }
-.realm-marker::after { content:'';position:absolute;left:50%;bottom:-7px;width:1px;height:7px;background:#b6baba; }
-.realm-marker strong,.realm-marker small { display:block; }
-.realm-marker small { margin-top:3px;font-size:11px;color:#c6cbcb; }
-.realm-marker[data-status='open'] { border-color:var(--brass); }
-.realm-marker[data-status='open'] small { color:var(--brass); }
 .journey { grid-template-columns:minmax(280px,360px) minmax(0,1fr);align-items:start;margin:0 6px; }
 .journey>.quest { grid-column:1;grid-row:1/span 2; }
 .journey>.steps { grid-column:2;grid-row:1; }
@@ -376,8 +370,6 @@ button { font: inherit; }
   .board-heading { padding:14px; }
   .board-heading h2 { font-size:22px; }
   .board-foot { padding:10px 12px;flex-direction:column;align-items:stretch; }
-  .realm-marker { max-width:104px;font-size:11px;padding:4px 6px; }
-  .realm-marker small { font-size:10px; }
 }
 @media(max-width:640px){
   .board-heading { display:block;padding:12px 14px; }
@@ -398,16 +390,10 @@ button { font: inherit; }
 /* Family journey: one next step inside the goal card, and the tab that holds it. */
 .next-step { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--ink-line); }
 .next-step .eyebrow { margin-bottom: 4px; }
-.next-step h3 { font-size: 20px; color: var(--ink); line-height: 1.2; }
-.next-step-why p { margin: 6px 0 0; font-size: 15px; line-height: 1.4; color: var(--ink); }
-.next-step-why p + p { color: var(--ink-muted); font-size: 14px; }
 #next-step-go { margin-top: 11px; min-height: 44px; padding: 9px 16px; border-radius: 3px; border: 1px solid var(--brass-dark); background: var(--brass); color: var(--ink); font-weight: 700; cursor: pointer; max-width: 100%; }
 #next-step-go:hover { background: #ebc684; }
 .steps button.next { border-color: var(--brass); box-shadow: inset 0 -3px var(--brass); }
 .tab-next { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
-.give-projection { margin: 8px 0 4px; padding: 8px 10px; border-left: 3px solid var(--brass-dark); background: var(--paper-3); font-size: 15px; color: var(--ink); }
-.give-projection:empty { display: none; }
-.give-projection strong { font-variant-numeric: tabular-nums; }
 [tabindex='-1']:focus:not(:focus-visible) { outline: none; }
 .next-step-record { margin: 10px 0 0; font-size: 14px; color: var(--ink-muted); }
 .next-step-record .link-button { font-size: 14px; min-height: 32px; padding: 4px 0; }
@@ -486,3 +472,37 @@ button { font: inherit; }
 }
 
 .world-navigation #view-deed { min-height:44px; }
+
+/* The world stays primary; checkout is a small, direct form. */
+.journey:has(#panel-give:not([hidden])) { grid-template-columns:minmax(220px,280px) minmax(0,480px); justify-content:center; gap:12px 20px; }
+.quest h2 { font-size:25px; }
+.next-step { margin-top:14px; padding-top:12px; }
+.next-step-record { font-size:13px; }
+#panel-give { padding:24px; }
+#panel-give h3 { font-size:26px; margin-bottom:18px; }
+#panel-give .money { align-items:center; font-size:24px; }
+#give-amount { min-height:64px; font-size:28px; }
+#give-approve-row { margin-top:16px; padding:12px; font-size:17px; }
+#give-mode-note { margin-top:8px; font-size:13px; }
+#give-context:empty { display:none; }
+/* Ivory printed plaques; the lock is the only extra mark on the map. */
+.realm-marker { position:absolute; pointer-events:auto; transform:translate(-50%,-100%); display:flex; align-items:center; justify-content:center; gap:8px; background:var(--paper-3); color:var(--ink); border:1px solid var(--brass-dark); border-radius:0; padding:10px 14px; max-width:224px; min-height:44px; text-align:center; box-shadow:inset 0 0 0 2px var(--paper-3),inset 0 0 0 3px #c9ab6e,0 2px 0 #382f2550; }
+.realm-marker::after { content:''; position:absolute; left:50%; bottom:-7px; width:1px; height:7px; background:var(--brass-dark); }
+.realm-marker strong { display:block; font:400 19px/1.2 Uncial,Georgia,serif; text-wrap:balance; }
+.realm-lock { flex:none; display:flex; color:var(--ink-muted); }
+.realm-marker[data-status='open'] { border-color:var(--brass); }
+.realm-stop { background:var(--paper-3); color:var(--ink); border-color:var(--ink-line); border-radius:0; }
+.realm-stop strong { font:400 17px/1.25 Uncial,Georgia,serif; }
+.realm-stop small,.realm-stop[aria-pressed='true'] small { color:var(--ink-muted); }
+.realm-stop[aria-pressed='true'] { background:var(--paper); color:var(--ink); border-color:var(--brass-dark); }
+@media(max-width:800px) {
+ .journey:has(#panel-give:not([hidden])) { grid-template-columns:minmax(0,1fr); max-width:520px; margin:0 auto; width:calc(100% - 12px); }
+ #panel-give { padding:20px; }
+}
+@media(max-width:640px) {
+ .realm-marker { max-width:164px; padding:8px 10px; gap:6px; }
+ .realm-marker strong { font-size:16px; }
+ .realm-stop strong { font-size:16px; }
+}
+
+#panel-give .money::before { top:50%; transform:translateY(-50%); font-size:24px; }
