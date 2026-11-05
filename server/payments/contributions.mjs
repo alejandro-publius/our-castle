@@ -194,9 +194,12 @@ export function createContributionService({ db, clock, mode, paypal = null, webh
     }
     const capture = unit.payments?.captures?.[0];
     if (!capture) {
+      // A read can be stale: if a verified webhook settled the order while we waited, canonical state wins.
+      const current = orderById(row.id).status;
+      if (SETTLED.has(current)) return result(row, 'already_completed');
       // An unresolved capture attempt (marked pending after PayPal did not answer) stays pending and recheckable until a
       // capture bound to this order is confirmed; a read that still shows none does not hide the recovery action.
-      if (orderById(row.id).status === 'pending') return result(row, 'unknown');
+      if (current === 'pending') return result(row, 'unknown');
       if (order.status === 'APPROVED') setStatus(row, 'created', 'Approved in PayPal but not captured yet.');
       return result(row, 'not_captured');
     }

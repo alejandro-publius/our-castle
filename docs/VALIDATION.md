@@ -4,9 +4,9 @@
 
 The APIMatic PayPal Context Plugin's published skills (marketplace commit 7cbdf85) were applied to a contract review of the official `@paypal/paypal-server-sdk@2.5.0` adapter. Installing the plugin was blocked by automatic permission review and not retried.
 
-Fix: a capture with no answer or a PayPal 5xx is now settled by re-reading the same order. It is left `pending` and recheckable, never `failed`, a webhook-settled order is never downgraded, and a lost refund reply has honest wording.
+Fix: a capture with no answer or a PayPal 5xx is now settled by re-reading the same order. It is left `pending` and recheckable, never `failed`. A webhook-settled order is never downgraded by a failed or stale read, and a lost refund reply has honest wording.
 
-Six fake-sandbox cases were added; each changed behaviour was checked against the earlier code or the reviewed defects. One existing payment case (a 500 on capture) now expects "unknown and pending". Unit suite: 160 cases, 159 passed, 1 existing skip. No PayPal call, order or refund. Details: docs/APIMATIC-USAGE.md.
+Seven fake-sandbox cases were added; each changed behaviour was checked against the earlier code or the reviewed defects. One existing payment case (a 500 on capture) now expects "unknown and pending". Unit suite: 161 cases, 160 passed, 1 existing skip. No PayPal call, order or refund. Details: docs/APIMATIC-USAGE.md.
 
 ## Treasury (AG Studio next-area widget) — November 5, 2026
 

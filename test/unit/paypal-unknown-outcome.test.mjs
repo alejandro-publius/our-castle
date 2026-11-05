@@ -133,3 +133,23 @@ test('a verified webhook that settles the order during the uncertain read is nev
   assert.equal(s.service.contributions(DEMO_GOAL_ID)[0].status, 'completed');
   assert.equal(progress(s) - before, 1500, 'credited once, by the webhook');
 });
+
+test('a webhook settles the order during the read, then the read returns a stale APPROVED snapshot: still completed, one credit', async () => {
+  const s = setupDomain({ mode: 'sandbox', adapter: 'sdk' });
+  const before = progress(s);
+  const created = await s.service.createPayPalOrder(contribution({ amountCents: 1500 }));
+  s.fake.orders.get(created.orderId).status = 'APPROVED';
+  const stale = structuredClone(s.fake.orders.get(created.orderId)); // APPROVED, no capture yet
+  const { captureOrder: realCapture } = s.controllers.orders;
+  s.controllers.orders.captureOrder = async (args) => { await realCapture.call(s.controllers.orders, args); throw dropped(); }; // captured; reply lost
+  s.controllers.orders.getOrder = async () => {
+    const capture = s.fake.orders.get(created.orderId).purchase_units[0].payments.captures[0];
+    const event = { id: 'WH-EVT-RACE-2', event_type: 'PAYMENT.CAPTURE.COMPLETED', resource: { ...capture, supplementary_data: { related_ids: { order_id: created.orderId } } } };
+    assert.equal((await s.service.handleWebhook({ headers: webhookHeaders, rawBody: JSON.stringify(event) })).outcome, 'completed');
+    return { statusCode: 200, headers: {}, body: JSON.stringify(stale) }; // a read that resolves with an older snapshot
+  };
+  const res = await s.service.capturePayPalOrder({ providerOrderId: created.orderId, ...owner });
+  assert.equal(res.outcome, 'already_completed');
+  assert.equal(s.service.contributions(DEMO_GOAL_ID)[0].status, 'completed', 'not downgraded to created');
+  assert.equal(progress(s) - before, 1500, 'credited once');
+});

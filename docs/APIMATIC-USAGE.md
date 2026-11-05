@@ -53,24 +53,25 @@ I did not switch SDKs to fit the plugin. Only its API-level rules were applied, 
   - A read that still shows APPROVED with no capture keeps the order `pending`, so the receipt keeps "Check with PayPal". "Check with PayPal" is read-only and never sends a second capture.
   - A read that fails leaves it unresolved. It is never reported as failed.
   - Refusals PayPal actually answered (4xx such as `INSTRUMENT_DECLINED` or `PAYER_CANNOT_PAY`) stay plain failures, with no extra read.
-- **Webhook race.** Setting the unresolved state re-reads canonical status first. An order a verified webhook completed or refunded meanwhile is never downgraded and is credited once.
+- **Webhook race.** Setting the unresolved state re-reads canonical status first, and so does applying a successful read that shows no capture. An order a verified webhook completed or refunded meanwhile is never downgraded by a failed or stale read, and is credited once.
 - **Refund: honest wording.** A refund with no answer now says it "may or may not have happened. Progress was not changed here. Check this capture in PayPal before trying again." A retry keeps the same `PayPal-Request-Id`, but PayPal keeps request ids only for a limited time, so no indefinite safety is promised.
 - **Browser.** One line for the new `unknown` outcome (`src/app/main.js`).
 - **Not changed:** SDK version, adult amount approval, sandbox-only environment, credit-once rules, refund semantics and the steward allowlist. No new money-moving tool.
 
-Codex reviewed the first version of this change. Its three findings are fixed above and covered by tests: an inconclusive APPROVED read hiding the recheck action, a webhook race that could downgrade a settled order, and over-strong refund wording.
+Codex reviewed this change twice. Its four findings are fixed above and covered by tests: an inconclusive APPROVED read hiding the recheck action, a webhook race on a failed read, a webhook race followed by a stale successful read, and over-strong refund wording.
 
 ## Tests actually run (fakes only; no PayPal call, order or refund)
 
-`test/unit/paypal-unknown-outcome.test.mjs` exercises the official-SDK adapter path with the stateful fake sandbox, which honours `PayPal-Request-Id`. Six cases:
+`test/unit/paypal-unknown-outcome.test.mjs` exercises the official-SDK adapter path with the stateful fake sandbox, which honours `PayPal-Request-Id`. Seven cases:
 1. A capture whose reply is lost after PayPal captured: re-read, credited once, and a second attempt is not credited again.
 2. PayPal unreachable for both capture and read: `unknown` and `pending`, nothing credited; later one capture with the same request id credits once.
 3. An answered 422: plain failure, with no extra read.
 4. A refund whose reply is lost: the new wording, nothing recorded; the retry reuses the request id and reverses progress once.
 5. The review's chain (timeout, then APPROVED with no capture, then another inconclusive check, then COMPLETED): exactly one capture write and one credit.
 6. A verified webhook completing the order during the uncertain read: stays completed, credited once.
+7. A webhook completing the order during the read, followed by a stale successful read (APPROVED, no capture): stays completed, credited once.
 
-Cases 1, 2 and 4 failed against the code before the fix, and cases 5 and 6 failed with the review's defects put back. Case 3 passes in both, as the control. The existing `payments.test.mjs` 500-on-capture case was updated from "rejects" to "unknown and pending, nothing credited", matching the new semantics. Full unit suite: 160 cases, 159 passed, 1 existing skip.
+Cases 1, 2 and 4 failed against the code before the fix, and cases 5, 6 and 7 failed with the review's defects put back. Case 3 passes in both, as the control. The existing `payments.test.mjs` 500-on-capture case was updated from "rejects" to "unknown and pending, nothing credited", matching the new semantics. Full unit suite: 161 cases, 160 passed, 1 existing skip.
 
 ## Pending (owner or provider)
 
