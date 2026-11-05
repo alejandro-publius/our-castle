@@ -9,7 +9,7 @@ const ready = async (page) => {
   await page.waitForFunction(() => document.body.dataset.ready === 'true');
 };
 const scene = (page) => page.evaluate(() => window.__ourCastle.scene());
-const settled = (page) => expect.poll(async () => (await scene(page)).animating, { timeout: 25_000 }).toBe(false);
+const settled = (page, timeout = 25_000) => expect.poll(async () => (await scene(page)).animating, { timeout }).toBe(false);
 const dialog = (page) => page.locator('#deed-dialog');
 const fullyVisible = (locator) => locator.evaluate((el) => { const r = el.getBoundingClientRect(); return r.top >= 0 && r.bottom <= innerHeight && r.left >= 0 && r.right <= innerWidth; });
 function trackWrites(page) {
@@ -232,6 +232,7 @@ test.describe('with reduced motion', () => {
 
 
 test('four journey tabs recover an old Rewards selection and a completed goal visits the castle', async ({ page }) => {
+  test.setTimeout(150_000); // The full route jump also runs on software-rendered CI.
   const writes = trackWrites(page);
   await ready(page);
   await foundHouse(page);
@@ -245,7 +246,7 @@ test('four journey tabs recover an old Rewards selection and a completed goal vi
   await pay(page, '240.00');
   await expect(page.locator('#progress-amount')).toHaveText('$300.00');
   // This jump walks all remaining spaces; wait for that animation before checking the queued cards.
-  await settled(page);
+  await settled(page, 60_000);
   await expect(dialog(page)).toHaveAttribute('open', '');
   await page.getByRole('button', { name: 'Close all' }).click();
   await expect(page.locator('#next-step-go')).toHaveText('Visit your castle');
