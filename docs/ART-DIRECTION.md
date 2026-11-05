@@ -1,5 +1,15 @@
 # Art direction — preserve this visual family
 
+## Rosewind Palace and the eastern woodland (November 4, 2026)
+
+The board is now 228x132 (61% more ground), centred at (32, 0), with seven separate clearings. The earlier six keep their positions, buildings, colour and the Citadel stag. Rosewind Palace adds original ivory masonry, rose-and-wine roofs, five gilt-tipped spires, illuminated arched windows, a balcony, fountain and four rose parterres. A new tributary flows below its raised bridge; the main river, forest, rain and cloud edge extend to the new bounds.
+
+[Reference lock and decision ledger](ROSEWIND-DIRECTION.md). [Palace](screenshots/rosewind-palace.png) · [Expanded realm](screenshots/rosewind-expanded-realm.png) · [Night/rain](screenshots/rosewind-night-rain.png).
+
+Rosewind shares the existing 100% home:castle achievement and receives a separate short rose-banded deed. Princess Sorrel, Lyra, Alma and Lark move here from the existing final-tier cast; the total stays twenty. The Citadel remains the final financial-route destination. The flag carries household heraldry, with no assumed sponsor endorsement. Phone overviews name only the current home; Areas retains every destination and focused views show its full parchment plaque.
+
+The new 320x176 portrait is actual code-native geometry. Its separate generator and source/image hashes are in assets/area-cards/generate-palace.mjs and palace-provenance.json. The older six portraits/provenance remain unchanged. Video work stays paused.
+
 ## Clouds around the woodland (November 4, 2026)
 
 The owner rejected the flat blue empty space and requested mixed fluffy/transparent clouds around the greenery, barely seeping into the map. This is the primary reference lock: the existing woodland, pixel palette and that explicit cloud brief. Bounded secondary research: Adaline (https://www.adaline.ai, Refero 6096b7ca-a126-444b-81c6-8943f0fbec98) supplies misty depth around natural scenery; Air (https://air.inc, c8a666d9-56a3-4aa6-b373-e62a2b07d3cb) supplies layered soft cloud masses. No typography, controls, marketing layout, saturated sky blue or third-party imagery is imported.

@@ -1,0 +1,74 @@
+{
+  "createdAt": "2026-11-05T03:44:06.172Z",
+  "sourceCommit": "aaefae9fc88bc4c86bd10a145b43cd68853e0171",
+  "sourceFiles": [
+    {
+      "file": "src/world/princess-palace.js",
+      "sha256": "2546b33970527887aa9fcbc28397488bbef91a881c658d4a5498be0c39e569da"
+    },
+    {
+      "file": "src/core/realm.js",
+      "sha256": "ad8549548e1228546a95caef6f84940d36243c38fc85f641e38861f1ae1757f5"
+    },
+    {
+      "file": "src/graphics/cloud-compositor.js",
+      "sha256": "1b15eb58353f75da3bde8ae506aa19136f12885d00bebc26c7ba5ae6b9856c38"
+    },
+    {
+      "file": "src/graphics/cloud-surround.js",
+      "sha256": "750c4b4928ccd0c382b6603d21dadb48d04d3ee7694630585c22491a47aedb10"
+    },
+    {
+      "file": "src/world/board-scene.js",
+      "sha256": "35a13907377ecc26f5789a06556db4df7726b7cd5ea39a705a89068ad6965674"
+    },
+    {
+      "file": "src/world/realm-models.js",
+      "sha256": "8ddcb2357fc9b1253df8b83283e91d44d9bf4039692e1b0bc7510a50807e5d70"
+    },
+    {
+      "file": "src/world/estate-models.js",
+      "sha256": "7c7f3c97e449e14b85b078118f9b0862d7a404da209843726a18f0aa794a4024"
+    },
+    {
+      "file": "src/graphics/pixel-renderer.js",
+      "sha256": "a9db4189e63820353acf3b6068186977a1c3970e3230f92b1d854d76e11ef0b2"
+    }
+  ],
+  "author": "Original Our Castle code-rendered art; no external image or generated model",
+  "license": "Same as repository LICENSE; preserve bundled source notices",
+  "method": "Actual existing 90-colour miniature scene, district-focused orthographic camera, pixel size 2 at 640x352; exact nearest-neighbour 2:1 reduction to 320x176. Rosewind Palace in Day/Clear at zoom 1.44; illustration does not grant access.",
+  "previewState": {
+    "builtTier": 3,
+    "estateLevel": 3,
+    "gardens": 0,
+    "crest": "cobalt/stag"
+  },
+  "images": [
+    {
+      "id": "palace",
+      "file": "palace.png",
+      "width": 320,
+      "height": 176,
+      "sha256": "c5c851532bc2ec211b2ec5c2a6efe003f3699f129df73f10f46ade436d043855"
+    }
+  ],
+  "verification": {
+    "pageErrors": [],
+    "externalRequests": [],
+    "paymentCalls": 0,
+    "aiCalls": 0,
+    "serverWrites": 0,
+    "ownerBrowserUsed": false,
+    "originalSceneColours": true,
+    "allDistricts": [
+      "cottage",
+      "manor",
+      "market",
+      "garden",
+      "keep",
+      "castle",
+      "palace"
+    ]
+  }
+}

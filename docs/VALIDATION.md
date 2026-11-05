@@ -1,5 +1,17 @@
 # Validation
 
+## November 4, 2026: Rosewind Palace and a larger connected board
+
+Seven woodland clearings on 228x132 ground; old district coordinates, buildings, twenty financial steps, home thresholds and total court capacity are preserved. The palace and crossing open with the existing completed-goal achievement. Its separate deed survives refunds as a keepsake.
+
+**Actual checks:** 20 focused realm/deed/court/reward unit cases passed with in-memory example states/fake transports. Thirteen applicable desktop/390 px Chromium browser cases passed; one existing phone choreography test is intentionally skipped. Coverage: dry clearings, river below every bridge, old coordinates/continuous route, final simultaneous unlock, replay/refund, no bill shortcut, final example-payment/card queue, Visit focus, Manor bridge/walk/deed order, Day/Night/Rain and refresh, uncluttered phone overview, four journal actions and one general notice.
+
+Initial geography checks found a river bend too near the palace meadow; the bend and downstream main river were moved into the forest corridor before the checks passed. An existing pixel-colour test counted the new clouds as world paint; it now classifies actual fixed-palette surface pixels, keeping its original green/water thresholds. Still review found phone plaque overlap and trees over planted beds; both were corrected.
+
+The original 47 copied art/runtime files, palette, renderer wiring and syntax check passed. Independent read-only Day, Night/Rain, overview and phone still review found no page errors, external requests, writes or financial state change. Forest geometry remains instanced (960 trees in 21 forest batches); this is not a hardware performance claim. The new portrait generator completed in its own no-credentials example context with zero payment/AI calls or server writes.
+
+Evidence on the owner's Mac: `test-results/palace-expansion/` (focused logs, review.json, protected-file checks and local handoff) and tracked `assets/area-cards/palace-provenance.json` (exact source/image hashes). Physical phones, Safari/Firefox and assistive technology were not tested in this pass. No paid AI/PayPal/provider checks or video work occurred. The existing in-app/same-order live integration gap remains.
+
 ## November 4, 2026: soft clouds in place of the navy surround
 
 Empty space around the woodland now contains broad pale cloud banks, thinner haze and light drift. Wisps touch only a few units of the outer forest. Day, Afternoon, Night and Rain tint the same shapes; the world interior, rivers, architecture and controls remain clear. The clouds use smooth alpha after the original world palette pass to avoid night-time colour banding. No image downloads, new notices or controls were added.

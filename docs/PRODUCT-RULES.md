@@ -2,13 +2,13 @@
 
 ## Connected district progression (owner correction)
 
-The realm retains the starting village and every later home as separate destinations. The manor opens at 25%, keep at 60% and citadel at 100%; the market district opens with the existing 40% village-quarter reward. The woodland garden is the existing self-reported bill-habit reward, clearly identified as reported by the household. It is not utility-provider verification.
+The realm retains the starting village and every later home as separate destinations. The manor opens at 25%, keep at 60% and citadel and Rosewind Palace at 100%; the market district opens with the existing 40% village-quarter reward. The woodland garden is the existing self-reported bill-habit reward, clearly identified as reported by the household. It is not utility-provider verification.
 
-All six districts are visible before unlocking. Locked destinations keep their full colours; their named labels, raised drawbridge leaves and closed gates show the lock. An earned destination lowers its crossing; keepsake destinations remain accessible after a refund while the progress ledger updates truthfully. Inspecting a district only changes the camera. A separately labeled art preview can temporarily show a future district in color and lower its bridge without earning it or writing to the server. Returning restores the real locks.
+All seven districts are visible before unlocking. Locked destinations keep their full colours; their named labels, raised drawbridge leaves and closed gates show the lock. An earned destination lowers its crossing; keepsake destinations remain accessible after a refund while the progress ledger updates truthfully. Inspecting a district only changes the camera. Exploring a locked property cannot grant access or credit progress.
 
 ## Living court rewards
 
-The owner requested more guests and princesses as homes grow. The built home unlocks 2 wandering guests at the cottage, 6 at the manor, 12 at the keep and 20 at the castle. Princesses Elowen, Amara and Sorrel arrive at successive home tiers among musicians, nobles, gardeners, merchants, pages and ceremonial guards. These are original fictional characters and cosmetic scenery. Fixed background hamlet locals are separate from this guest count.
+The owner requested more guests and princesses as homes grow. The built home unlocks 2 wandering guests at the cottage, 6 at the manor, 12 at the keep and 20 at the castle. Princesses Elowen, Amara and Sorrel arrive at successive home tiers among musicians, nobles, gardeners, merchants, pages and ceremonial guards. These are original fictional characters and cosmetic scenery. Princess Sorrel, Lyra, Alma and Lark reside at Rosewind at the existing final tier; the Citadel and earlier districts stay inhabited. No extra paid tier or court capacity is introduced. Fixed background hamlet locals are separate from this guest count.
 
 The court follows the already-built home, so a kept home retains its guests after a refund while current progress still falls correctly. A locked-home preview can show its future court without earning it. Guest animations, descriptions and counts cannot confirm a payment or bill, change money, or bypass any existing unlock condition. Reduced motion shows the complete court in still poses.
 
