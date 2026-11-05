@@ -61,9 +61,11 @@ The required result is actual in-app approval, a server-confirmed $15 USD receip
 
 **Production follow-up, not a claim of current support:** real family sign-in, multi-device access, live webhooks, physical-device/screen-reader passes, suitable AG commercial terms and remaining dependency advisories. Utility rewards require genuine authorized provider evidence; there is no such connection.
 
-## 5. Preserved media
+## 5. Current review cut and preserved media
 
-No new video was made for this pass. The owner asked to keep building. Existing sources and captions remain unchanged:
+The owner's November 5 request to finish the release authorized video work again. The new [2:42 current-build review cut](demos/current-review/our-castle-current-review-cut.mp4) is exported with narration, captions, an editable timeline and exact provenance. Its explicit unfilmed checkout insert is at **1:08–1:36**; [kit and recording instructions](demos/current-review/README.md). It has not been uploaded to YouTube or submitted. Historical live sources are labelled separately from the current example game.
+
+All older sources and captions remain unchanged:
 
 | Material | Path and status |
 | --- | --- |

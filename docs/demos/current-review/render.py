@@ -92,7 +92,7 @@ concat=B/'concat.txt';concat.write_text(''.join("file '"+str(B/(s['id']+'.mp4'))
 video=K/'our-castle-current-review-cut.mp4'
 run([FF,'-y','-v','error','-f','concat','-safe','0','-i',str(concat),'-i',str(K/'narration.m4a'),'-map','0:v:0','-map','1:a:0','-c','copy','-t',str(clock),'-movflags','+faststart','-metadata','title=Our Castle — current build review cut','-metadata','comment=Current example-mode app; historical live evidence; actual in-app sandbox and same-order get_order insert still unfilmed. Not submitted.',str(video)])
 with (K/'timeline.csv').open('w',newline='') as f:
- w=csv.DictWriter(f,fieldnames=list(rows[0]));w.writeheader();w.writerows(rows)
+ w=csv.DictWriter(f,fieldnames=list(rows[0]),lineterminator='\n');w.writeheader();w.writerows(rows)
 srt=[];vtt=['WEBVTT','']
 for i,c in enumerate(speech['cues'],1):
  srt += [str(i),stamp(c['start'])+' --> '+stamp(c['end']),c['text'],'']
@@ -100,7 +100,7 @@ for i,c in enumerate(speech['cues'],1):
 (K/'captions.srt').write_text('\n'.join(srt));(K/'captions.vtt').write_text('\n'.join(vtt))
 md=['# Editable narration','','Offline synthetic macOS Daniel voice; not the owner’s voice.','']
 for s,r in zip(T['scenes'],rows):md += [f'## {stamp(r["start"],".")} — {s["id"]}','',' '.join(s['narration']),'']
-(K/'narration.md').write_text('\n'.join(md)+'\n')
+(K/'narration.md').write_text('\n'.join(md).rstrip()+'\n')
 probe=json.loads(subprocess.check_output([FP,'-v','error','-count_frames','-show_entries','format=duration:stream=codec_type,codec_name,width,height,nb_read_frames,r_frame_rate','-of','json',str(video)]))
 duration=float(probe['format']['duration']);assert duration<180 and abs(duration-clock)<.2
 frames=next(s for s in probe['streams'] if s['codec_type']=='video')['nb_read_frames'];assert int(frames)==round(clock*FPS)

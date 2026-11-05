@@ -1,5 +1,19 @@
 # Validation
 
+## Public-clone judge rehearsal — November 5, 2026
+
+An anonymous shallow clone of the public repository at `be73dfb674b444c1f8283aff50029b442d9d63c4` installed with `npm ci` and passed the source/art guard. The actual `npm run demo` launcher then ran on its own OS-assigned IPv4 localhost port, fresh in-memory state, no `.env`, keys or saved household. No installed-package or product-source change was needed.
+
+The corrected current-build recording driver passed **10 checks**: example-only startup; house/crest; two chosen family avatars; reviewed and accepted rules plan; one simulated $15 credit to $75 and Manor with the village retained; Treasury source labels/next area/selected receipt; reload with no duplicate credit or deed; later simulated progression through the nine-area world; a 390×844 touch-phone journal with no horizontal overflow; and zero page errors/outside browser requests. This is isolated Chromium emulation and self-operated interaction, not a human usability study or live provider test.
+
+The first recording attempt passed the main family/contribution/Treasury/reload path but its driver clicked **Close all** on a multi-deed queue and incorrectly waited for the next card. The corrected driver uses **Next**, selects the Los Angeles device time zone and checks journal visibility before opening it on the phone. The failed original/report remain ignored and are excluded from the current edit. No application bug was inferred from that recording error; no complete product suite or paid/provider test was repeated.
+
+The continuous original is preserved at `test-results/judge-final-20261105T210813Z/capture-corrected/`; the public [recording report](demos/current-review/sources/public-demo-capture.json), [source manifest](demos/current-review/sources/manifest.json) and [editable kit](demos/current-review/README.md) identify the exact source and limits. This does **not** establish in-app PayPal approval or same-order real `get_order` reconciliation. Owner data, original environment and 3010/3021 processes were untouched by the cloud check.
+
+The current review cut exported on the Mac: **162.000 seconds, 1920×1080 H.264/AAC, 25 fps, 4,050 video frames**. Offline Daniel narration fits every scene; 14 measured caption cues accompany it. Source/narration hashes, frame count, duration and full decode passed; one representative frame from each of the 14 scenes was inspected. The first audio preparation correctly refused a 0.537-second overrun in the APIMatic sentence; shortening that sentence resolved it. CSV/Markdown whitespace was normalized without changing the exported media. Exact output/hash is in [render-report.json](demos/current-review/render-report.json). The 28-second slate at 1:08 remains unfilmed; no final YouTube upload or Devpost submission is claimed.
+
+A final passive Mac read still found 3010 in sandbox/live-AI/live-merchant configuration and the preserved 3021 rehearsal with **zero orders, one ledger entry and no plan**. These are configuration/local-state checks, not fresh provider authentication. The public source/media package adds no product-source or dependency change, creates no payment or provider call, and preserves the earlier original clips and household data.
+
 ## Mac activation and public source — November 5, 2026
 
 The Mac reconnected. Its original checkout was clean `791e8ae`; the existing Claude session's latest implementation turn ended on November 5 at 12:51 a.m. PST, and no session was interrupted or replaced. Main app 3010 was sandbox/live AI/live merchant; the separate 3021 rehearsal remained sandbox/live AI with zero orders, one starting ledger entry and no plan.
@@ -948,12 +962,3 @@ Items 1 and 3–5 are automated by `npm run verify:live` (items 1 and 5 passed l
 **First working prototype:** 53 unit tests and 19 end-to-end tests passed in example mode and against a fake PayPal REST API.
 
 **Starter:** `npm run check` verified the copied files, palette and syntax. An isolated Chromium pass of the original art preview captured the `references/images/our-house-*.png` screenshots with zero page errors.
-# Public-clone judge rehearsal — November 5, 2026
-
-An anonymous shallow clone of the public repository at `be73dfb674b444c1f8283aff50029b442d9d63c4` installed with `npm ci` and passed the source/art guard. The actual `npm run demo` launcher then ran on its own OS-assigned IPv4 localhost port, fresh in-memory state, no `.env`, keys or saved household. No installed-package or product-source change was needed.
-
-The corrected current-build recording driver passed **10 checks**: example-only startup; house/crest; two chosen family avatars; reviewed and accepted rules plan; one simulated $15 credit to $75 and Manor with the village retained; Treasury source labels/next area/selected receipt; reload with no duplicate credit or deed; later simulated progression through the nine-area world; a 390×844 touch-phone journal with no horizontal overflow; and zero page errors/outside browser requests. This is isolated Chromium emulation and self-operated interaction, not a human usability study or live provider test.
-
-The first recording attempt passed the main family/contribution/Treasury/reload path but its driver clicked **Close all** on a multi-deed queue and incorrectly waited for the next card. The corrected driver uses **Next**, selects the Los Angeles device time zone and checks journal visibility before opening it on the phone. The failed original/report remain ignored and are excluded from the current edit. No application bug was inferred from that recording error; no complete product suite or paid/provider test was repeated.
-
-The continuous original is preserved at `test-results/judge-final-20261105T210813Z/capture-corrected/`; the public [recording report](demos/current-review/sources/public-demo-capture.json), [source manifest](demos/current-review/sources/manifest.json) and [editable kit](demos/current-review/README.md) identify the exact source and limits. This does **not** establish in-app PayPal approval or same-order real `get_order` reconciliation. Owner data, original environment and 3010/3021 processes were untouched by the cloud check.

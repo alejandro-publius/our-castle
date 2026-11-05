@@ -11,8 +11,8 @@ The owner asked Codex to finish the remaining integration and release work. This
 | Mac activation | Current app on 3010 uses reviewed code `9d7a126` in `~/projects/our-castle-reviewed`; original checkout stays at `791e8ae` to preserve the 3021 rehearsal's source |
 | Approved sandbox flow | Still unverified end to end; existing 3021 rehearsal must be preserved |
 | Entry text / current shot plan | Ready in [SUBMISSION-DRAFT.md](SUBMISSION-DRAFT.md) and [SUBMISSION-SHOTLIST.md](SUBMISSION-SHOTLIST.md) |
-| Fresh judge session | `npm run demo`: unused localhost port, in-memory progress, no environment keys or saved data; [review route](JUDGE-HANDOFF.md#1-run-it) and [human playtest sheet](PLAYTEST.md) ready |
-| Final video / YouTube / Devpost | Not completed, uploaded or submitted; older review drafts remain labelled incomplete |
+| Fresh judge session | Anonymous public clone/install/source guard and ten current-build journey/phone checks passed with actual `npm run demo`; no owner keys, data or provider call |
+| Video / YouTube / Devpost | New **2:42 current-build review cut** exported and decoded successfully, with editable timeline/narration/captions/provenance. Actual checkout insert remains unfilmed; no final YouTube upload or Devpost submission |
 
 ## Source review
 
@@ -43,6 +43,6 @@ Private activation evidence is in `~/projects/our-house/test-results/mac-activat
 
 1. **Connect supported browser control for the existing rehearsal.** The Mac file/server connection is restored, but this chat still exposes no browser-control tool. Plugin discovery found no suitable tool for its local browser session. The owner already approved the single $15 sandbox rehearsal and necessary same-order steward call. Consent and keys are not missing. The existing coordinator retains checkout ownership; do not create another rehearsal, order or competing browser operator.
 2. **Complete that one actual flow.** Last inspected 3021 state: zero orders, one $60 reported starting entry, no plan, no waiter or recording. Recheck before proceeding. A $15 USD capture must credit the $300 goal once to $75, open the Manor while retaining the village, and be matched by real `get_order` for the identical household/goal/order/reference/capture. Current fake-provider tests and historical hosted approval do not establish this.
-3. **Finish the reviewed video and entry through authenticated tools.** The missing actual insert is not filmed. No public YouTube URL exists, and no supported authenticated Devpost control is available here. Do not submit the old draft as fully live or reconstruct the missing outcome. Current copy and a 2:45 shot plan are ready; no extra product search, planner call or refund is needed.
+3. **Replace one insert and upload/submit through authenticated tools.** The [current 2:42 review cut](demos/current-review/README.md) is locally playable and validated, with the missing actual insert explicitly marked at **1:08–1:36**. It uses the current public build, the earlier real Channel3 screenshot and live Claude recording, and historical hosted-link payment evidence. None substitutes for the unfilmed popup/same-order check. No public YouTube URL or authenticated Devpost control exists here. The editable 28-second slot can expand to 40 seconds while keeping the cut at 2:54. No extra product search, planner suite or refund is needed.
 
 Hosting, a production Studio licence, real household sign-in and verified utility-provider connections are separate future scope. No live PayPal endpoints or real financial transactions are supported.

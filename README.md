@@ -46,9 +46,10 @@ PayPal JavaScript SDK v6 handles the browser session; Server SDK Orders v2/Payme
 - **Historical live sandbox:** hosted buyer approval, $15 capture, single credit, replay/mismatch checks, matching PayPal order and refund. [Original report](docs/LIVE-VERIFICATION.md)
 - **Historical live AI:** feasible and impossible plans, ledger reading and PayPal transaction listing. [Original report](docs/LIVE-VERIFICATION-AI.md)
 - **Current local checks:** family flow, merchant goal confirmation, world unlocks, Treasury and actual Studio framework on Chromium and Linux WebKit, with fake providers/simulated payments. [Exact runs](docs/VALIDATION.md)
-- **Still outstanding:** actual in-app popup → one credit/Manor unlock → real same-order `get_order`. The prepared Mac rehearsal is blocked on device/browser access. Historical payment evidence does not close this gap.
+- **Fresh public clone:** anonymous clone/install/source guard and ten current-build journey/phone checks passed using the actual isolated `npm run demo` command. [Recording and scope](docs/demos/current-review/sources/public-demo-capture.json)
+- **Still outstanding:** actual in-app popup → one credit/Manor unlock → real same-order `get_order`. The Mac is connected; supported browser control is still unavailable here. Historical payment evidence does not close this gap.
 
-No hackathon entry has been submitted. [Release readiness](docs/RELEASE-READINESS.md) · [Entry copy](docs/SUBMISSION-DRAFT.md) · [Current shot plan](docs/SUBMISSION-SHOTLIST.md). Existing video cuts are historical review drafts with an explicitly unfilmed insert; no new video was produced for this pass.
+No hackathon entry has been submitted. The new [2:42 current-build review cut](docs/demos/current-review/our-castle-current-review-cut.mp4) has narration, measured captions, editable sources and an explicit unfilmed checkout insert. It is not the final submitted video. [Release readiness](docs/RELEASE-READINESS.md) · [Entry copy](docs/SUBMISSION-DRAFT.md) · [Shot list](docs/SUBMISSION-SHOTLIST.md).
 
 ## Real PayPal sandbox and AI
 

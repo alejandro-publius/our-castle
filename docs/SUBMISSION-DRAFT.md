@@ -40,6 +40,7 @@ The Treasury keeps the next area, contribution records and a selected receipt to
 | Same-date live AI run | A feasible plan covering $240 exactly, an impossible plan reporting its $160 shortfall, ledger reading and PayPal transaction listing. No household-order `get_order` was verified in that run. |
 | November 5 Channel3 desktop check | One real search returned three real USD products and rendered their images. Phone and goal-save contracts use fake results. |
 | Current local browser/contract checks | Full family journey, simulated credit/unlocks, real AG Studio widget/framework, cancellation, fallback and selected-order proof with fake providers. Exact runs and limitations are in [VALIDATION.md](VALIDATION.md); these are not new live financial evidence. |
+| November 5 anonymous public clone | Clean install/source guard and ten current-build journey/phone checks passed with actual `npm run demo`; a fresh in-memory example household, no keys, saved data or provider call. |
 
 **Still unverified together:** in-app PayPal popup approval → server receipt/single credit/Manor bridge → real `get_order` reconciliation of that same household order. The approved isolated rehearsal is prepared, and the Mac is connected; browser control for the actual approval is still unavailable. Existing draft videos label the missing insert rather than reconstructing it. No entry has been submitted.
 
