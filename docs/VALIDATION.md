@@ -1,5 +1,15 @@
 # Validation
 
+## November 4, 2026: connected folklore clearings and sword discovery
+
+Added two original tower districts tied to existing home milestones: Starfall Observatory at 60%, Rapunzel's Tower at 100%. They have their own short deeds and river crossings. The hidden sword is camera-only scenery: no payment, reward entry, household write, new tier or change to tracked progress. All earlier locations, financial route, court capacity and cloud shader remain.
+
+Actual checks: 21 unique focused realm/deed/reward/court unit cases passed; the seven geography cases were rechecked after relocating the grove further into the forest. They cover dry clearings, water under all nine bridge centres, existing milestone boundaries, final simultaneous awards, replay, refund keepsakes, bill separation, continuous route and no secret reward gate. Fourteen desktop/390 px phone Chromium cases passed for final/queued deeds, direct district visits, existing Manor animation, time/rain persistence, all nine destinations, non-overlapping plaques, genuine touch/keyboard sword discovery and zero writes during exploration. A focused check of the existing game shell and bridge/walk/deed choreography is recorded separately.
+
+The original 47-file/palette/renderer/syntax guard passed. Read-only still review covered both towers in Day and Night/Rain, the overview, the sword grove and phone views, with nine warm door lights at night and zero page errors, external requests, writes or financial state changes. Phone review exposed the longer menu clipping against the world boundary; both desktop and phone menu height rules now cap against the actual map. Review also strengthened hair/roof appliques for readable pixel interiors.
+
+Evidence: ignored test-results/woodland-legends/{unit.log,realm-final.log,e2e.log,e2e-affected.log,check-final.log,review.json}; tracked assets/area-cards/legends-provenance.json records exact source/image hashes. New portrait generation uses its own empty example database, no credentials, no server writes and no payment/AI calls. Existing live PayPal/AI evidence and unresolved in-app same-order verification remain unchanged. No video work or paid/provider tests were run. Physical phones, Safari/Firefox and assistive technology were not checked in this pass.
+
 ## November 4, 2026: brighter clouds with recognizable contours
 
 Changed only the original cloud-surround helper's shape/colour logic: explicit softly joined lobes replace the noise wash, with irregularly spaced banks, white crowns, light underside shading and thin translucent tails. The first rounded version looked repetitive on a phone, so crown geometry, scale, mirroring and placement were varied before the final review.

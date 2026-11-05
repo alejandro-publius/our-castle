@@ -1,6 +1,6 @@
 # Original district card illustrations
 
-These seven 320 × 176 PNGs are original stills of Our Castle's own miniature woodland, rendered through the existing 90-colour pixel pipeline. They are not downloaded game art. The images keep the existing colourful roofs, heraldic accents, trees, rivers and bridges.
+These nine 320 × 176 PNGs are original stills of Our Castle's own miniature woodland, rendered through the existing 90-colour pixel pipeline. They are not downloaded game art. The images keep the existing colourful roofs, heraldic accents, trees, rivers and bridges.
 
 The images depict all districts in an art-preview state so each card can show its destination. An illustration never grants access or supplies payment or bill-provider evidence. The UI must independently label locked, earned and commemorative states from the server.
 
@@ -11,3 +11,5 @@ To reproduce, run `node assets/area-cards/generate.mjs` from a checkout with its
 Display with explicit width/height and `image-rendering: pixelated`. The PNGs need no new image-generation service or runtime network dependency.
 
 Rosewind is a later, separately rendered addition. Its exact source/image hashes and Day/Clear/zoom settings are in `palace-provenance.json`. Reproduce only that portrait with `node assets/area-cards/generate-palace.mjs`; it refuses occupied port 3166 and starts its own no-credentials example server. The six older portraits, generator and provenance remain unchanged.
+
+The two folklore portraits use their own `legends-provenance.json`. Reproduce them with `node assets/area-cards/generate-legends.mjs` (isolated example server on unused port 3168). The sword is a discovery, not a paid unlock, and has no district deed. Earlier portrait images/generators/provenance remain unchanged.

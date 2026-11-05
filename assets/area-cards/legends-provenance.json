@@ -1,0 +1,87 @@
+{
+  "createdAt": "2026-11-05T04:20:50.316Z",
+  "sourceCommit": "e8bab02021679b9d3bb9ce3f39476cdf3f8fbeb7",
+  "sourceFiles": [
+    {
+      "file": "src/world/woodland-legends.js",
+      "sha256": "9b35ea273c96ed65c7a577574e13b093db84f0aa92772425db277ebf5adef154"
+    },
+    {
+      "file": "src/world/princess-palace.js",
+      "sha256": "2546b33970527887aa9fcbc28397488bbef91a881c658d4a5498be0c39e569da"
+    },
+    {
+      "file": "src/core/realm.js",
+      "sha256": "6caceeabdd6139869b7ff46af20b0fc4c31c2ca619bd9d79ebd77485e20f983d"
+    },
+    {
+      "file": "src/graphics/cloud-compositor.js",
+      "sha256": "1b15eb58353f75da3bde8ae506aa19136f12885d00bebc26c7ba5ae6b9856c38"
+    },
+    {
+      "file": "src/graphics/cloud-surround.js",
+      "sha256": "ce06db12c2101975c590e480ac41a55656206d75bfefafe6d42fc05a2e06d91c"
+    },
+    {
+      "file": "src/world/board-scene.js",
+      "sha256": "1385a363e931532f1ceb2620b5ecca6b13d78fe19420a2cb2c389fe606f9d18d"
+    },
+    {
+      "file": "src/world/realm-models.js",
+      "sha256": "eb6dedeaf066890041fb5f4bfb6fd22fdbd3fdd89109fb51a1cd95b250bdd545"
+    },
+    {
+      "file": "src/world/estate-models.js",
+      "sha256": "7c7f3c97e449e14b85b078118f9b0862d7a404da209843726a18f0aa794a4024"
+    },
+    {
+      "file": "src/graphics/pixel-renderer.js",
+      "sha256": "a9db4189e63820353acf3b6068186977a1c3970e3230f92b1d854d76e11ef0b2"
+    }
+  ],
+  "author": "Original Our Castle code-rendered art; no external image or generated model",
+  "license": "Same as repository LICENSE; preserve bundled source notices",
+  "method": "Actual existing 90-colour miniature scene, district-focused orthographic camera, pixel size 2 at 640x352; exact nearest-neighbour 2:1 reduction to 320x176. Starfall Observatory and Rapunzel’s Tower in Day/Clear at zoom 1.2; illustration does not grant access.",
+  "previewState": {
+    "builtTier": 3,
+    "estateLevel": 3,
+    "gardens": 0,
+    "crest": "cobalt/stag"
+  },
+  "images": [
+    {
+      "id": "wizard",
+      "file": "wizard.png",
+      "width": 320,
+      "height": 176,
+      "sha256": "fe447b1380c3daa96b7197edd8d96271d76d7f8c72775fba976db058fa052307"
+    },
+    {
+      "id": "rapunzel",
+      "file": "rapunzel.png",
+      "width": 320,
+      "height": 176,
+      "sha256": "9dcf8f62203f9b5b9c2e61ce306ce5e88a4b7eff70b9c6cdf9aa365855aa18c0"
+    }
+  ],
+  "verification": {
+    "pageErrors": [],
+    "externalRequests": [],
+    "paymentCalls": 0,
+    "aiCalls": 0,
+    "serverWrites": 0,
+    "ownerBrowserUsed": false,
+    "originalSceneColours": true,
+    "allDistricts": [
+      "cottage",
+      "manor",
+      "market",
+      "garden",
+      "keep",
+      "wizard",
+      "castle",
+      "palace",
+      "rapunzel"
+    ]
+  }
+}

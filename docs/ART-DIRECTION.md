@@ -1,5 +1,17 @@
 # Art direction — preserve this visual family
 
+## Folklore towers and a hidden sword (November 4, 2026)
+
+Starfall Observatory and Rapunzel's Tower occupy two new eastern forest clearings, with narrow tributaries under their raised bridges. The board remains 228x132; all seven earlier estates, the Citadel stag and the defined cumulus clouds remain. The map now has nine districts, nine bridges and six connected river channels.
+
+The Observatory has a stepped stone shaft, plum star-inlaid roof, crescent finial, brass telescope, book stand, herb beds and a small original background wizard. Rapunzel's Tower has ivory stone courses, a verdigris cap, rose balcony, original folklore figure and a visibly braided golden rope of hair. These original figures are scenery, separate from the unchanged twenty-person reward court. The sword sits in a small grove with a carved mossy stone and tiny glint; investigation frames it and displays only its name.
+
+[Reference lock](WOODLAND-LEGENDS.md) · [Observatory](screenshots/wizard-tower.png) · [Rapunzel](screenshots/rapunzel-tower.png) · [Nine-district map](screenshots/legends-realm.png). Internal discovery still: screenshots/sword-in-stone.png.
+
+The two tower cards use actual new model renders, with separate source/image hashes and a reproducible no-credentials generator in assets/area-cards/generate-legends.mjs. Existing portraits/provenance remain unchanged. Roof appliques follow the sloping roof so their gold stays visible; the braid uses overlapping thicker strands so pixel outlines do not swallow it. Do not return to thin black-looking star or hair details.
+
+Keep labels sparse: overview plaques that would overlap are hidden while Areas retains every destination. Phone overviews keep only the current home name and the quiet discovery glint. Menus scroll within the measured map height, including the phone CSS rule, so the final area stays reachable. Video work remains paused.
+
 ## Clearly defined cloud banks (November 4, 2026)
 
 The owner rejected the previous murky grey blur. Replace the fog field with distinct cumulus silhouettes, white rounded crowns, lightly shaded undersides, open light gaps and translucent trailing wisps. Vary width, height, crown shape, orientation and position to avoid identical clouds in rows. Preserve only subtle overlap at the outer forest edge. Day, Afternoon, Night and Rain retain readable contours.

@@ -2,9 +2,11 @@
 
 ## Connected district progression (owner correction)
 
-The realm retains the starting village and every later home as separate destinations. The manor opens at 25%, keep at 60% and citadel and Rosewind Palace at 100%; the market district opens with the existing 40% village-quarter reward. The woodland garden is the existing self-reported bill-habit reward, clearly identified as reported by the household. It is not utility-provider verification.
+The realm retains the starting village and every later home as separate destinations. The manor opens at 25%, keep at 60% and citadel and Rosewind Palace at 100%; the market district opens with the existing 40% village-quarter reward. Starfall Observatory shares the existing 60% keep milestone; Rapunzel’s Tower shares the existing 100% castle milestone. The woodland garden is the existing self-reported bill-habit reward, clearly identified as reported by the household. It is not utility-provider verification.
 
-All seven districts are visible before unlocking. Locked destinations keep their full colours; their named labels, raised drawbridge leaves and closed gates show the lock. An earned destination lowers its crossing; keepsake destinations remain accessible after a refund while the progress ledger updates truthfully. Inspecting a district only changes the camera. Exploring a locked property cannot grant access or credit progress.
+All nine districts are visible before unlocking. Locked destinations keep their full colours; their named labels, raised drawbridge leaves and closed gates show the lock. An earned destination lowers its crossing; keepsake destinations remain accessible after a refund while the progress ledger updates truthfully. Inspecting a district only changes the camera. Exploring a locked property cannot grant access or credit progress.
+
+The sword-in-the-stone discovery is scenery. Investigating its glint frames the grove and names it without a payment, server entry, reward condition or change to savings. The small background tower figures are decorative architecture; the earned court capacity remains twenty.
 
 ## Living court rewards
 
