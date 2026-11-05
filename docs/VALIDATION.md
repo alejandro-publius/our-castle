@@ -1,5 +1,15 @@
 # Validation
 
+## Connected journey (merchant → goal → contribution → world → Treasury) — November 5, 2026
+
+At branch head a4ed597, 14 desktop and touch-phone browser cases passed. These were the connected journey plus the merchant and Treasury specs. The journey ran on one fresh in-memory example household:
+- a fake Channel3 search, a draft with no write, and a confirmed save at the actual $189.50 price (Manor deed);
+- an adult-approved simulated $20 contribution (Market Town deed);
+- the Treasury's next area for the new goal ($80.00 of $113.70);
+- distinct reported and simulated sources, filtering, a receipt leading to Market Town, and reload persistence.
+
+No external requests, no writes beyond the three explicit actions, no horizontal overflow, and no PayPal, AI or live Channel3 call. This is not live payment evidence. Handoff: docs/CONNECTED-HANDOFF.md.
+
 ## APIMatic-informed PayPal review — November 5, 2026
 
 The APIMatic PayPal Context Plugin's published skills (marketplace commit 7cbdf85) were applied to a contract review of the official `@paypal/paypal-server-sdk@2.5.0` adapter. Installing the plugin was blocked by automatic permission review and not retried.
