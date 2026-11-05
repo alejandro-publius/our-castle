@@ -12,6 +12,8 @@ import { createContributionService } from './payments/contributions.mjs';
 import { createSteward } from './steward/index.mjs';
 import { buildState } from './view.mjs';
 import { publicModes } from './config.mjs';
+import { createMerchant } from './merchant/channel3.mjs';
+import { goalItemFor, saveGoalFromItem } from './merchant/goal-item.mjs';
 
 const MIME = {
   '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8',
@@ -41,7 +43,7 @@ function contentSecurityPolicy(hashes, paymentsMode) {
     "default-src 'self'",
     `script-src 'self' ${hashes.join(' ')}${paypal}`,
     `style-src 'self' 'unsafe-inline'${paypal}`,
-    `img-src 'self' data:${paypal}`,
+    `img-src 'self' data:${paypal} https://*.trychannel3.com`,
     `connect-src 'self'${paypal} https://api.open-meteo.com https://geocoding-api.open-meteo.com`,
     `frame-src${paypal || " 'none'"}`,
     "font-src 'self'",
@@ -100,7 +102,7 @@ function checkHostAndOrigin(req, { write }) {
 
 const str = (v) => (typeof v === 'string' ? v : undefined);
 
-export function createApp({ config, db, clock, paypal = null, aiProvider = null, stewardAi = null, paypalTools = null, stewardFetch, root }) {
+export function createApp({ config, db, clock, paypal = null, aiProvider = null, stewardAi = null, paypalTools = null, stewardFetch, merchant = null, root }) {
   ensureDemoHousehold(db, clock);
   const planner = createPlanner({ db, clock, provider: aiProvider });
   const contributions = createContributionService({ db, clock, mode: config.payments.mode, paypal, webhookId: config.payments.webhookId });
@@ -114,12 +116,19 @@ export function createApp({ config, db, clock, paypal = null, aiProvider = null,
     model: stewardAi?.model ?? null,
     paypalImplementation: paypal?.implementation ?? null,
   };
-  const state = () => buildState({ db, householdId, planner, contributions, config, steward: stewardInfo });
+  // Market Town merchant (Channel3). Tests inject a merchant with a fake transport; otherwise the key decides.
+  const shop = merchant ?? createMerchant({ apiKey: config.merchant?.mode === 'live' ? config.merchant.apiKey : null, clock });
+  const state = () => {
+    const s = buildState({ db, householdId, planner, contributions, config, steward: stewardInfo });
+    s.modes.merchant = shop.status();
+    s.goalItem = goalItemFor(db, s.goal);
+    return s;
+  };
   const goalId = () => getActiveGoal(db, householdId).id;
 
   // Each route returns a JSON body. Mutations return the fresh state so the board can update at once.
   const routes = [
-    ['GET', '/api/status', () => publicModes(config)],
+    ['GET', '/api/status', () => ({ ...publicModes(config), merchant: shop.status() })],
     ['GET', '/api/state', () => state()],
     ['POST', '/api/setup', ({ body }) => {
       setupHousehold(db, householdId, { playMode: body.playMode, name: body.name, crest: body.crest });
@@ -154,6 +163,13 @@ export function createApp({ config, db, clock, paypal = null, aiProvider = null,
     ['POST', /^\/api\/plans\/([\w-]+)\/accept$/, ({ params }) => {
       const plan = planner.accept({ householdId, goalId: goalId(), planId: params[0] });
       return { status: 'ok', plan, state: state() };
+    }],
+    // ---- Market Town merchant: explicit product search, and an explicitly confirmed goal draft ----
+    ['POST', '/api/merchant/search', ({ body }) => shop.search({ query: body.query, budgetCents: body.budgetCents ?? null })],
+    ['POST', '/api/merchant/goal', ({ body }) => {
+      const item = shop.draft(str(body.draftId));
+      saveGoalFromItem(db, { householdId, goalId: goalId(), expectedGoalId: str(body.goalId), item, goal: body.goal }, clock);
+      return { status: 'ok', state: state() };
     }],
     ['POST', '/api/steward', async ({ body }) => steward.ask({ question: body.question, memberId: str(body.memberId), focusOrderId: str(body.focusOrderId) })],
     ['POST', '/api/entries', ({ body }) => {
@@ -290,12 +306,12 @@ export function createApp({ config, db, clock, paypal = null, aiProvider = null,
       sendJson(res, 200, result);
     } catch (error) {
       if (error instanceof DomainError || error instanceof HttpError || error instanceof PlanInputError) {
-        return sendJson(res, error.status, { error: { code: error.code, message: error.message, issues: error.issues, debugId: error.debugId } });
+        return sendJson(res, error.status, { error: { code: error.code, message: error.message, issues: error.issues, debugId: error.debugId, minTargetCents: error.minTargetCents } });
       }
       console.error('[our-castle] unexpected error', error);
       sendJson(res, 500, { error: { code: 'server_error', message: 'Unexpected server error. No payment was credited.' } });
     }
   }
 
-  return { handler, planner, contributions, steward, state };
+  return { handler, planner, contributions, steward, merchant: shop, state };
 }

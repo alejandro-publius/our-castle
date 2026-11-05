@@ -35,6 +35,7 @@ server.listen(config.port, config.host, () => {
     ? `PayPal SANDBOX via the PayPal Server SDK (client ${mask(config.payments.clientId)}; webhooks ${config.payments.webhookId ? 'verified via PAYPAL_WEBHOOK_ID' : 'off'})`
     : 'EXAMPLE mode — simulated, no PayPal calls'}`);
   console.log(`  Planner: ${config.ai.mode === 'live' ? `AI via ${config.ai.provider} (${config.ai.model})` : 'EXAMPLE mode — built-in rules, no AI'}`);
+  console.log(`  Merchant: ${config.merchant.mode === 'live' ? 'Channel3 product search (CHANNEL3_API_KEY set, server-side only)' : 'off — Channel3 not connected (needs CHANNEL3_API_KEY)'}`);
   console.log(`  Steward: ${live ? `AI (${config.ai.model})${sandbox ? ' with read-only PayPal Agent Toolkit tools' : ', ledger only (payments in example mode)'}` : 'off — needs AI_API_KEY'}`);
   console.log(`  Data: ${dbFile}`);
   for (const warning of config.warnings) console.warn(`  Warning: ${warning}`);

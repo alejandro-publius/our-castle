@@ -1,5 +1,27 @@
 # Validation
 
+## Market Town merchant (Channel3) — November 5, 2026
+
+Eleven unit cases and six desktop/touch-phone browser cases passed. They use a fake Channel3 transport with the documented response shape and invented products, plus fresh in-memory example databases on separate ports. They cover:
+- the exact request, with no household data sent;
+- valid, missing-price, non-USD, malformed, error, timeout and unreachable answers;
+- cache and burst limits;
+- explicit search only, with stale answers dropped;
+- the unsaved Plan draft and its confirmed save, which writes provenance only, with no ledger, order or area change;
+- the area-opening and below-price refusals;
+- Escape/focus return and the not-connected state;
+- the additive `goal_items` migration.
+
+The avatar migration fixture now models version one without `goal_items` and expects schema version 3. The 47-file original-art/palette/renderer guard passed.
+
+I also ran the existing specs that touch the board foot, deed button and Plan form (area-cards, journey, estate, game-shell, realm-focus): 50 passed, 3 were intentional skips and 4 cases failed. Each of the four also fails on unmodified main 877764e, so none comes from the merchant:
+- area-cards :87, a threshold text expecting $240 where $225 is shown;
+- area-cards :234, Citadel marker focus;
+- estate :67, which expects the old 164-wide region;
+- journey :216, a canceled-record receipt selection.
+
+One owner-authorized live search ran on 2026-11-05 at 07:13 UTC: "camping tent", budget $250, a single provider call. It returned three real USD products with Channel3-CDN images, rendered in the actual desktop flow, and matched the documented schema. The live phone render and live draft/save were not exercised (the phone page load timed out, and no second credit was spent). Details: docs/CHANNEL3-MERCHANT.md. No PayPal, AI or checkout evidence is implied.
+
 ## Overlapping clouds — November 5, 2026
 
 Two GPU regression cases passed on desktop and touch-phone projects. They execute the actual cloud-bank GLSL over three spatial sample windows and require cloud-body coverage above 99.75%, preventing a return to broad backdrop gaps. A separate 384×384 diagnostic measured 18.51% covered samples before this change and 99.987% afterward (coverage threshold 240/255); this is a finite shader-mask sample, not a guarantee for every possible camera coordinate.

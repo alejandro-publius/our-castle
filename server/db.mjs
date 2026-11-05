@@ -123,6 +123,23 @@ const MIGRATIONS = [
   );
   `,
   `ALTER TABLE members ADD COLUMN avatar_id TEXT;`,
+  // The Channel3 item a family explicitly saved as its goal: provenance only, never money or progress.
+  `
+  CREATE TABLE IF NOT EXISTS goal_items (
+    goal_id TEXT PRIMARY KEY REFERENCES goals(id) ON DELETE CASCADE,
+    provider TEXT NOT NULL CHECK (provider = 'channel3'),
+    product_id TEXT NOT NULL,
+    title TEXT NOT NULL,
+    merchant TEXT NOT NULL,
+    url TEXT NOT NULL,
+    price_cents INTEGER NOT NULL CHECK (price_cents > 0),
+    currency TEXT NOT NULL,
+    availability TEXT,
+    checked_at TEXT NOT NULL,
+    goal_name TEXT NOT NULL,
+    saved_at TEXT NOT NULL
+  );
+  `,
 ];
 
 export function openDatabase(file) {

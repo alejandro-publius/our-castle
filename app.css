@@ -395,6 +395,68 @@ button { font: inherit; }
   .deed-band h2 { font-size: 24px; }
 }
 
+/* Market Town merchant (see docs/CHANNEL3-MERCHANT.md): the deed's pixel-framed parchment, one search, at most three rows.
+   Product photos stay inside their rows; the pixel landscape is never changed by a search. */
+#open-merchant { margin-left:auto; }
+#open-merchant:not([hidden]) + #view-deed { margin-left:0; }
+.merchant-dialog { padding:0; border:0; background:transparent; width:min(468px, calc(100vw - 20px)); max-width:none; max-height:calc(100dvh - 20px); overflow:auto; overscroll-behavior:contain; color:var(--ink); }
+.merchant-dialog::backdrop { background:rgb(8 18 22 / .72); }
+.merchant-paper { padding:14px 16px 16px; }
+.merchant-head { position:relative; display:grid; grid-template-columns:1fr; margin:4px 4px 12px; }
+.merchant-banner { display:block; width:100%; height:58px; object-fit:cover; object-position:center 42%; image-rendering:pixelated; border:3px solid var(--ink); background:var(--board); }
+.merchant-head h2 { margin:10px 44px 0 2px; font-size:24px; line-height:1.1; color:var(--ink); }
+.merchant-head h2:focus { outline:none; }
+.merchant-close { position:absolute; right:-4px; bottom:-8px; width:44px; height:44px; border:0; background:transparent; color:var(--ink); font:28px/1 Alegreya, Arial, sans-serif; cursor:pointer; }
+.merchant-form { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:8px 10px; align-items:end; margin:0 4px; }
+.merchant-field { display:grid; gap:4px; font-size:15px; font-weight:500; }
+.merchant-field small { font-weight:400; color:var(--ink-muted); }
+.merchant-query { grid-column:1 / -1; }
+.merchant-field input { width:100%; min-height:44px; padding:8px 10px; border:1px solid var(--ink-line); border-radius:2px; background:var(--paper-3); color:var(--ink); font:inherit; font-weight:400; }
+.merchant-field input:focus { border-color:#7a4f12; }
+.merchant-field input[aria-invalid='true'] { border-color:var(--warn); box-shadow:0 0 0 1px var(--warn); }
+.merchant-field input:disabled { background:var(--paper-2); color:var(--ink-muted); }
+.merchant-form button, .merchant-use { min-height:44px; padding:9px 16px; border:2px solid var(--ink); border-radius:0; background:var(--brass); color:var(--ink); font:700 16px Alegreya, Arial, sans-serif; cursor:pointer; box-shadow:3px 3px 0 var(--ink); }
+.merchant-form button:hover:not(:disabled), .merchant-use:hover:not(:disabled) { background:#ebc684; }
+.merchant-form button:disabled, .merchant-use:disabled { background:var(--paper-2); color:var(--ink-muted); border-color:var(--ink-muted); box-shadow:none; cursor:default; }
+.merchant-status { margin:12px 4px 0; font-size:15px; line-height:1.4; }
+.merchant-status:empty { display:none; }
+.merchant-status[data-kind='error'] { color:var(--warn); font-weight:500; }
+.merchant-status[data-kind='off'] { padding:9px 11px; border:1px dashed var(--brass-dark); background:var(--paper-3); }
+.merchant-results { list-style:none; margin:10px 0 0; padding:0; display:grid; gap:8px; }
+.merchant-results[aria-busy='true'] { opacity:.55; }
+.merchant-item { display:grid; grid-template-columns:64px minmax(0,1fr) auto; gap:4px 12px; align-items:start; padding:10px; background:var(--paper-3); border:1px solid var(--ink-line); }
+.merchant-item-image { display:block; width:64px; height:64px; object-fit:contain; background:#fff; border:2px solid var(--ink); }
+.merchant-item-image.empty { background:repeating-linear-gradient(45deg, var(--paper-2) 0 6px, var(--paper) 6px 12px); }
+.merchant-item-text { min-width:0; }
+.merchant-item-name { margin:0; font:700 16px/1.25 Alegreya, Arial, sans-serif; overflow-wrap:anywhere; }
+.merchant-item-meta { margin:3px 0 0; font-size:15px; font-variant-numeric:tabular-nums; }
+.merchant-item-note { margin:2px 0 0; font-size:14px; color:var(--warn); }
+.merchant-item-more { margin-top:2px; font-size:14px; color:var(--ink-muted); }
+.merchant-item-more summary { min-height:32px; display:inline-flex; align-items:center; cursor:pointer; color:var(--ink); text-decoration:underline; text-underline-offset:3px; }
+.merchant-item-more p { margin:0 0 4px; overflow-wrap:anywhere; }
+.merchant-item-more a { color:#6e4a12; }
+.merchant-use { align-self:center; padding:8px 12px; font-size:15px; }
+.merchant-source { margin:10px 4px 0; font-size:13px; line-height:1.4; color:var(--ink-muted); }
+.merchant :focus-visible { outline:3px solid #7a4f12; outline-offset:2px; }
+@media (max-width: 480px) {
+  .merchant-paper { padding:12px 10px 14px; }
+  .merchant-item { grid-template-columns:56px minmax(0,1fr); }
+  .merchant-item-image { width:56px; height:56px; }
+  .merchant-use { grid-column:1 / -1; width:100%; }
+}
+/* The merchant's unsaved draft inside the Plan form, and the saved item's provenance line. */
+.goal-draft { margin:0 0 14px; padding:12px 14px; background:var(--paper-3); border:1px dashed var(--brass-dark); }
+.goal-draft h4 { font-size:16px; }
+.goal-draft h4:focus { outline:none; }
+.goal-draft-item { display:flex; gap:12px; align-items:flex-start; margin:8px 0 6px; }
+.goal-draft-item img { flex:none; width:56px; height:56px; object-fit:contain; background:#fff; border:2px solid var(--ink); }
+.goal-draft-item p { margin:0; font-size:15px; line-height:1.4; }
+.goal-draft-item strong { display:block; }
+.goal-draft-effect { margin:0 0 8px; font-size:14px; color:var(--ink-muted); }
+.goal-draft .actions { margin-top:6px; }
+.goal-item { margin:-6px 0 0; font-size:14px; color:var(--ink-muted); overflow-wrap:anywhere; }
+.goal-item a { color:#6e4a12; }
+
 
 /* Ivory printed plaques; the lock is the only extra mark on the map. */
 .realm-marker { position:absolute; pointer-events:auto; transform:translate(-50%,-100%); display:flex; align-items:center; justify-content:center; gap:8px; background:var(--paper-3); color:var(--ink); border:1px solid var(--brass-dark); border-radius:0; padding:10px 14px; max-width:224px; min-height:44px; text-align:center; box-shadow:inset 0 0 0 2px var(--paper-3),inset 0 0 0 3px #c9ab6e,0 2px 0 #382f2550; }

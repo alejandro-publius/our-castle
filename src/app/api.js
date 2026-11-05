@@ -6,10 +6,11 @@ export class ApiError extends Error {
     this.code = error.code;
     this.issues = error.issues;
     this.debugId = error.debugId;
+    this.minTargetCents = error.minTargetCents; // merchant goal: the smallest amount that opens no area
   }
 }
 
-async function request(method, url, body) {
+async function request(method, url, body, { signal } = {}) {
   let response;
   try {
     response = await fetch(url, {
@@ -17,8 +18,10 @@ async function request(method, url, body) {
       credentials: 'same-origin',
       headers: body === undefined ? { Accept: 'application/json' } : { 'Content-Type': 'application/json', Accept: 'application/json' },
       body: body === undefined ? undefined : JSON.stringify(body),
+      signal,
     });
-  } catch {
+  } catch (error) {
+    if (error?.name === 'AbortError') throw error; // the caller cancelled a request it no longer needs
     throw new ApiError(0, { code: 'network', message: 'Could not reach the Our Castle server. Is it still running?' });
   }
   const data = await response.json().catch(() => ({}));
@@ -28,7 +31,7 @@ async function request(method, url, body) {
 
 export const api = {
   get: (url) => request('GET', url),
-  post: (url, body = {}) => request('POST', url, body),
+  post: (url, body = {}, options) => request('POST', url, body, options),
   put: (url, body = {}) => request('PUT', url, body),
 };
 

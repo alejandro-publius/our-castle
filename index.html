@@ -98,7 +98,7 @@
             </div>
           </details>
         </div>
-        <div class="board-foot"><p id="realm-focus-status" class="area-status" role="status" aria-live="polite"></p><button type="button" class="chip" id="view-deed" aria-describedby="realm-focus-status" hidden>View deed</button><p id="board-status" class="sr-only" role="status" aria-live="polite"></p><ol id="tier-track" class="sr-only" aria-label="House milestones"></ol></div>
+        <div class="board-foot"><p id="realm-focus-status" class="area-status" role="status" aria-live="polite"></p><button type="button" class="chip" id="open-merchant" aria-label="Open the Market Town merchant" hidden>Merchant</button><button type="button" class="chip" id="view-deed" aria-describedby="realm-focus-status" hidden>View deed</button><p id="board-status" class="sr-only" role="status" aria-live="polite"></p><ol id="tier-track" class="sr-only" aria-label="House milestones"></ol></div>
         <p id="world-fallback" class="world-fallback" hidden>The board is unavailable. Your journal still works. <a href="references/images/our-house-castle.png">See the realm.</a></p>
         <div id="celebration" class="celebration" hidden></div>
       </section>
@@ -150,8 +150,19 @@
         <section class="panel parchment" id="panel-plan" role="tabpanel" aria-labelledby="tab-plan" hidden>
           <h3 id="plan-heading" tabindex="-1">Plan the journey</h3>
           <p class="lede" id="planner-lede"></p>
+          <!-- A Market Town merchant result waiting for the family's confirmation. Nothing is saved until "Save as our goal". -->
+          <section class="goal-draft" id="goal-draft" hidden aria-labelledby="goal-draft-title">
+            <h4 id="goal-draft-title" tabindex="-1">Draft from the market</h4>
+            <div class="goal-draft-item">
+              <img id="goal-draft-image" alt="" width="56" height="56" decoding="async" referrerpolicy="no-referrer" hidden>
+              <p><strong id="goal-draft-name"></strong><span id="goal-draft-facts"></span></p>
+            </div>
+            <p class="goal-draft-effect" id="goal-draft-effect"></p>
+            <div class="actions"><button type="button" class="primary" id="goal-draft-save">Save as our goal</button><button type="button" id="goal-draft-discard">Discard draft</button></div>
+          </section>
           <form id="plan-form" class="grid-form" novalidate>
             <label class="field span-2"><span>Goal</span><input id="goal-name-input" type="text" maxlength="60" required></label>
+            <p class="goal-item span-2" id="goal-item" hidden></p>
             <label class="field"><span>Goal amount</span><span class="money"><input id="goal-target" inputmode="decimal" autocomplete="off" required></span></label>
             <label class="field"><span>Already set aside <small>(you report this)</small></span><span class="money"><input id="goal-starting" inputmode="decimal" autocomplete="off" required></span></label>
             <label class="field"><span>Target date</span><input id="goal-date" type="date" required></label>
@@ -299,6 +310,26 @@
           <button type="button" id="deed-next" hidden>Next deed</button>
           <button type="button" id="deed-close">Close</button>
         </div>
+      </div>
+    </article>
+  </dialog>
+  <!-- Market Town merchant: Channel3 product search on request. It never buys, credits money, saves a goal or opens an area. -->
+  <dialog id="merchant-dialog" class="merchant-dialog" aria-labelledby="merchant-title">
+    <article class="deed merchant">
+      <div class="deed-paper merchant-paper">
+        <header class="merchant-head">
+          <img class="merchant-banner" src="assets/area-cards/market.png" alt="" width="320" height="176" decoding="async">
+          <h2 id="merchant-title" tabindex="-1">Market merchant</h2>
+          <button type="button" class="merchant-close" id="merchant-close" aria-label="Close the merchant">×</button>
+        </header>
+        <form id="merchant-form" class="merchant-form" role="search" novalidate>
+          <label class="merchant-field merchant-query"><span>What is the family saving for?</span><input id="merchant-query" type="search" maxlength="80" autocomplete="off" spellcheck="false" required></label>
+          <label class="merchant-field merchant-budget"><span>Budget <small>(optional)</small></span><span class="money"><input id="merchant-budget" inputmode="decimal" autocomplete="off" maxlength="12"></span></label>
+          <button type="submit" id="merchant-search">Search</button>
+        </form>
+        <p id="merchant-status" class="merchant-status" role="status" aria-live="polite"></p>
+        <ol id="merchant-results" class="merchant-results" aria-label="Merchant results"></ol>
+        <p id="merchant-source" class="merchant-source" hidden></p>
       </div>
     </article>
   </dialog>

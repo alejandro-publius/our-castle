@@ -66,8 +66,12 @@ export function loadConfig(env = {}, { root = process.cwd() } = {}) {
     }
   }
 
+  // Market Town merchant: Channel3 product search. Server-side only; absent means a plain "not connected" state.
+  const channel3Key = trimmed('CHANNEL3_API_KEY');
+  const merchant = channel3Key ? { mode: 'live', apiKey: channel3Key } : { mode: 'off' };
+
   const dataDir = path.resolve(root, trimmed('OUR_CASTLE_DATA_DIR') || 'data');
-  return { port: Number.isFinite(port) ? port : 3010, host, payments, ai, dataDir, warnings };
+  return { port: Number.isFinite(port) ? port : 3010, host, payments, ai, merchant, dataDir, warnings };
 }
 
 /** Public, secret-free description of the active modes, safe to send to the browser. */

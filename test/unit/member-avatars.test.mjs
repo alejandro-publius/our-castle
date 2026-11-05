@@ -50,10 +50,10 @@ test('the additive avatar migration preserves an existing version-one household 
   const s=setupDomain({file});let db=s.db;
   try {
     // Model the real prior schema in a synthetic fixture, never the owner's file.
-    db.exec('ALTER TABLE members DROP COLUMN avatar_id; PRAGMA user_version = 1;');
+    db.exec('ALTER TABLE members DROP COLUMN avatar_id; DROP TABLE goal_items; PRAGMA user_version = 1;');
     const financial=financialSnapshot(db),members=people(db);
     db.close();db=openDatabase(file);
-    assert.equal(db.prepare('PRAGMA user_version').get().user_version,2);
+    assert.equal(db.prepare('PRAGMA user_version').get().user_version,3); // avatar column, then the merchant's goal_items table
     assert.deepEqual(people(db),members);
     assert.deepEqual(financialSnapshot(db),financial);
     assert.deepEqual(getMembers(db,s.householdId).map(m=>m.avatarId),['ranger','bard']);

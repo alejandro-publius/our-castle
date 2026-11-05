@@ -15,6 +15,7 @@ import { TIME_MODES, WEATHER_MODES, resolveAtmosphere } from '../core/atmosphere
 import { WEATHER_TTL_MS, createWeatherClient } from './local-weather.js';
 import { REALM_DISTRICTS, REALM_LEGENDS, realmAccess, districtById, homeDistrict } from '../core/realm.js';
 import { ledgerTrail } from '../core/ledger.js';
+import { createMerchantDialog, resultFacts } from './merchant.js';
 
 // ---------- small helpers ----------
 const $ = (selector, root = document) => root.querySelector(selector);
@@ -67,6 +68,7 @@ let paypal = null;
 let paypalMount = null;
 let ledgerGrid = null;
 let familyAvatars = null;
+let merchant = null;
 const ui = {
   tab: 'house',
   personaId: pref.get('persona'),
@@ -90,6 +92,7 @@ const ui = {
   navigation: 0,
   ledgerLayout: Promise.resolve(),
   deeds: { queue: [], index: 0, mode: 'new', origin: null, visiting: false },
+  goalDraft: null, // a Market Town merchant result shown in the Plan form, not saved until the family confirms
 };
 const persona = () => state?.members.find((m) => m.id === ui.personaId) ?? null;
 const isSandbox = () => state?.modes.payments.mode === 'sandbox';
@@ -515,6 +518,8 @@ function syncRealmMarkers({focus,points}){
   if(!state)return;
   const regions=realmAccess({builtTier:state.board.builtTier,estateLevel:state.board.estateLevel,gardens:state.board.gardens});
   const d=regions.find(d=>d.id===focus);
+  const merchantButton = $('#open-merchant');
+  if (merchantButton.hidden !== (focus !== 'market')) merchantButton.hidden = focus !== 'market';
   const deedButton = $('#view-deed');
   deedButton.hidden = !d?.open;
   if (d?.open) {
@@ -702,6 +707,7 @@ function renderPlan() {
   $('#planner-lede').textContent = '';
   $('#planner-lede').hidden = true;
   $('#ask-planner').textContent = modes.ai.mode === 'live' ? 'Ask the AI planner' : 'Make an example plan';
+  renderGoalDraft();
   if (!ui.planFormDirty) {
     $('#goal-name-input').value = goal.name;
     $('#goal-target').value = centsToInput(goal.targetCents);
@@ -751,6 +757,81 @@ function renderPlan() {
   accept.textContent = accepted ? 'Plan in use ✓' : 'Use this plan';
 }
 
+// ---------- Market Town merchant draft: shown in the Plan form, saved only on "Save as our goal" ----------
+const goalNameFor = (title) => {
+  const words = title.replace(/…$/, '').split(' ');
+  let name = '';
+  for (const w of words) { if (`${name} ${w}`.trim().length > 60) break; name = `${name} ${w}`.trim(); }
+  return name.length >= 2 ? name : title.slice(0, 60);
+};
+function renderGoalDraft() {
+  const draft = ui.goalDraft, box = $('#goal-draft');
+  box.hidden = !draft;
+  $('#ask-planner').disabled = Boolean(draft); // one explicit decision at a time: save or discard the draft first
+  const item = state.goalItem;
+  const line = $('#goal-item');
+  line.hidden = Boolean(draft) || !item;
+  if (item && !draft) {
+    line.replaceChildren(`Goal item: ${item.title} · ${formatCents(item.priceCents, item.currency)} at ${item.merchant}, Channel3 price checked ${timeLabel(item.checkedAt)}. `,
+      h('a', { href: item.url, target: '_blank', rel: 'noopener noreferrer nofollow' }, 'Retailer page', h('span', { class: 'sr-only' }, ' (opens a retailer site in a new tab)')));
+  }
+  if (!draft) return;
+  const image = $('#goal-draft-image');
+  image.hidden = !draft.image;
+  if (draft.image && image.getAttribute('src') !== draft.image.url) image.setAttribute('src', draft.image.url);
+  $('#goal-draft-name').textContent = draft.title;
+  $('#goal-draft-facts').textContent = ` ${resultFacts(draft).join(' · ')} · Channel3, checked ${timeLabel(draft.checkedAt)}`;
+  const { goal, progress } = state;
+  const effects = [`Not saved yet. Saving replaces “${goal.name}” (${money(goal.targetCents)}) with the name and amount below`];
+  if (progress.progressCents > 0) effects.push(`; the ${money(progress.progressCents)} already tracked stays with the goal`);
+  if (state.plan) effects.push('; the current plan is set aside, so make a new one afterwards');
+  effects.push('. The price excludes tax and shipping; nothing is bought.');
+  $('#goal-draft-effect').textContent = effects.join('');
+}
+function useMerchantItem(item) {
+  ui.goalDraft = item;
+  ui.planFormDirty = true;
+  $('#goal-name-input').value = goalNameFor(item.title);
+  $('#goal-target').value = centsToInput(item.priceCents);
+  for (const field of ['#goal-name-input', '#goal-target']) $(field).removeAttribute('aria-invalid');
+  setStatus('#plan-status', '', '');
+  selectTab('plan', { focus: false });
+  renderGoalDraft();
+  $('#goal-draft-title').focus();
+}
+function discardGoalDraft() {
+  ui.goalDraft = null;
+  ui.planFormDirty = false;
+  renderPlan();
+  setStatus('#plan-status', 'info', 'Draft discarded. The goal is unchanged.');
+  $('#goal-name-input').focus();
+}
+async function saveGoalDraft() {
+  const draft = ui.goalDraft;
+  if (!draft) return;
+  const { goal, errors } = readGoalFields();
+  if (errors.length) { setStatus('#plan-status', 'error', 'Please fix these first:', { issues: errors }); return; }
+  const button = $('#goal-draft-save');
+  button.disabled = true;
+  setStatus('#plan-status', 'working', 'Saving the goal…');
+  try {
+    const res = await api.post('/api/merchant/goal', { draftId: draft.draftId, goalId: state.goal.id, goal });
+    ui.goalDraft = null;
+    ui.planFormDirty = false;
+    applyState(res.state);
+    setStatus('#plan-status', 'ok', `Goal saved: ${res.state.goal.name}, ${money(res.state.goal.targetCents)}. Make a plan when you are ready.`);
+    $('#goal-name-input').focus();
+  } catch (error) {
+    const fix = error.code === 'merchant_would_open_areas' && Number.isSafeInteger(error.minTargetCents) ? error.minTargetCents : null;
+    setStatus('#plan-status', 'error', error.message, fix ? {
+      action: h('button', { type: 'button', onclick: () => { $('#goal-target').value = centsToInput(fix); setStatus('#plan-status', '', ''); $('#goal-target').focus(); } }, `Set the goal to ${money(fix)}`),
+    } : {});
+    if (error.code === 'merchant_draft_expired' || error.code === 'goal_changed') { ui.goalDraft = null; renderGoalDraft(); }
+  } finally {
+    button.disabled = false;
+  }
+}
+
 function renderCommitments() {
   $('#commitment-rows').replaceChildren(...ui.commitments.map((c, i) => h('div', { class: 'commitment' },
     h('label', { class: 'field commitment-label' }, h('span', {}, 'Bill'), h('input', { value: c.label, maxlength: 40, 'data-i': i, 'data-k': 'label', 'aria-label': `Bill ${i + 1} name` })),
@@ -760,7 +841,7 @@ function renderCommitments() {
     h('button', { type: 'button', 'data-remove': i, 'aria-label': `Remove bill ${i + 1}` }, 'Remove'))));
 }
 
-function readPlanForm() {
+function readGoalFields() {
   const errors = [];
   const fields = [['#goal-target', 'targetCents', 'goal amount'], ['#goal-starting', 'startingCents', 'amount already set aside'], ['#goal-weekly', 'weeklyBudgetCents', 'weekly amount']];
   const goal = { name: $('#goal-name-input').value.trim(), targetDate: $('#goal-date').value };
@@ -771,6 +852,11 @@ function readPlanForm() {
   }
   if (goal.name.length < 2) errors.push('Name the goal.');
   if (!goal.targetDate) errors.push('Choose a target date.');
+  return { goal, errors };
+}
+
+function readPlanForm() {
+  const { goal, errors } = readGoalFields();
   const commitments = [];
   ui.commitments.forEach((c, i) => {
     if (!c.label.trim() && !c.amount.trim()) return;
@@ -783,6 +869,7 @@ function readPlanForm() {
 
 async function askPlanner(event) {
   event?.preventDefault();
+  if (ui.goalDraft) { setStatus('#plan-status', 'error', 'Save or discard the market draft first.'); return; }
   const { goal, commitments, errors } = readPlanForm();
   if (errors.length) { setStatus('#plan-status', 'error', 'Please fix these first:', { issues: errors }); return; }
   const button = $('#ask-planner');
@@ -809,7 +896,7 @@ async function askPlanner(event) {
   } catch (error) {
     setStatus('#plan-status', 'error', error.message, { issues: error.issues });
   } finally {
-    button.disabled = false;
+    button.disabled = Boolean(ui.goalDraft);
   }
 }
 
@@ -1316,6 +1403,10 @@ function bindEvents() {
     const id = e.currentTarget.dataset.district;
     if (id) openDeedFromMap(id, e.currentTarget);
   });
+  merchant = createMerchantDialog({ getState: () => state, onUse: useMerchantItem });
+  $('#open-merchant').addEventListener('click', (e) => merchant.open(e.currentTarget));
+  $('#goal-draft-save').addEventListener('click', saveGoalDraft);
+  $('#goal-draft-discard').addEventListener('click', discardGoalDraft);
   $('#tabs').addEventListener('click', (e) => { const b = e.target.closest('[role="tab"]'); if (b) selectTab(b.id.slice(4), { focus: false }); });
   $('#tabs').addEventListener('keydown', (e) => {
     const i = TABS.indexOf(ui.tab);
@@ -1429,7 +1520,7 @@ function bindEvents() {
     e.currentTarget.dataset.armed = 'false'; e.currentTarget.textContent = 'Reset the example household';
     try {
       const res = await api.post('/api/demo/reset');
-      Object.assign(ui, { receipt: null, receiptReviewed: null, houseDirty: false, planFormDirty: false, scheduleDirty: false, amountTouched: false });
+      Object.assign(ui, { receipt: null, receiptReviewed: null, houseDirty: false, planFormDirty: false, scheduleDirty: false, amountTouched: false, goalDraft: null });
       sessionTab.set(null);
       applyState(res.state, { animate: false });
       selectTab('house');
