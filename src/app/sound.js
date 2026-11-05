@@ -67,6 +67,7 @@ function tap(start, pitch = 1) {
 }
 
 const CUES = {
+  bridge: (t) => { tone(NOTE.D4 / 2, t, .18, { gain: .13, reverb: false }); tone(NOTE.A4 / 2, t + .08, .24, { gain: .10 }); },
   hop: (t, detail) => tap(t, detail?.direction < 0 ? 0.8 : 1 + ((detail?.position ?? 0) % 3) * 0.06),
   chime: (t) => { tone(NOTE.E5 * 2, t, 0.35, { type: 'sine', gain: 0.18 }); tone(NOTE.A5 * 1.5, t + 0.07, 0.5, { type: 'sine', gain: 0.16 }); },
   fanfare: (t, detail) => {

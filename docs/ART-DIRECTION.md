@@ -1,5 +1,11 @@
 # Art direction — preserve this visual family
 
+## Record-to-realm journey (November 4, 2026)
+
+Reuse the current owner-approved game frame and the existing Refero reference lock in INTERFACE-DIRECTION.md. The bounded map-selection pattern supplies one selected ledger record, not a new dashboard or reward catalogue. Keep the owned fonts/palette, one general footer notice, source labels on records and all six forest districts.
+
+A newly earned area temporarily frames its river crossing, lowers the bridge, lets the family cross, then focuses the destination for the existing cue and compact deed. Manual camera changes take priority; reduced motion resolves without movement. The ledger selects one receipt, searches source/order/capture text, and links a calculated milestone to the already-earned district. Details about IDs and AI tool checks open on request. Bills/gifts stay separate and pending attempts never imply credit. No sponsor logo strip or extra product disclaimer is added.
+
 ## One Citadel lawn sculpture (November 4, 2026)
 
 The owner asked for at least one highly detailed lawn statue on a fancier estate, without overdecorating. Reference lock: the existing Citadel detail capture, the owned stone/cream/brass palette and existing woodland deer are primary. Live Refero review of Eduardo del Fraile (https://www.eduardodelfraile.com, style 36be0546-da09-4d6b-ba8b-27495bb71cda) contributes only one isolated sculptural focal point with breathing room; none of its interface, typography or black gallery canvas is imported.

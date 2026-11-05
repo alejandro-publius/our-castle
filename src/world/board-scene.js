@@ -4,7 +4,7 @@ import { CREST_FIELDS, ROUTE_LENGTH } from '../core/rules.js';
 import { addEstateGeometry, createEstateModels } from './estate-models.js';
 import { createEstateCourt } from './court.js';
 import { createRealmModels } from './realm-models.js';
-import { REALM_SIZE, REALM_DISTRICTS, REALM_ROUTE, homeDistrict, districtById, journeyLeg, journeyPosition } from '../core/realm.js';
+import { REALM_SIZE, REALM_DISTRICTS, REALM_BRIDGES, REALM_ROUTE, homeDistrict, districtById, journeyLeg, journeyPosition } from '../core/realm.js';
 
 // The playable woodland board. It extends the original art-preview vocabulary (MiniBuilder,
 // layered trees, antlered deer, stone towers) and renders through the original 90-colour
@@ -83,7 +83,8 @@ export function createBoardScene(container, { reducedMotion = false, onEvent = (
   // Ambient life (Hollybrook-style principle: the world keeps living at a low, cheap frame rate).
   const grazers = [];
   const rotators = [];
-  const view = { angle: 0.66, zoom: 1, panX: 0, panY: 0, worldPerPixel: null, focus: null };
+  const view = { angle: 0.66, zoom: 1, panX: 0, panY: 0, worldPerPixel: null, focus: null, crossing: null };
+  let viewRevision = 0;
   const pointers = new Map();
   const interactions = [];
   const flutterers = [];
@@ -415,8 +416,9 @@ export function createBoardScene(container, { reducedMotion = false, onEvent = (
     const aspect = width / height; const narrow = width < 640;
     camera.updateMatrixWorld();
     let minX = Infinity; let maxX = -Infinity; let minY = Infinity; let maxY = -Infinity;
-    const focused = districtById(view.focus);
-    const frame = focused ? [-1,1].flatMap(x=>[-1,1].flatMap(z=>[-2,focused.height].map(y=>new THREE.Vector3(focused.x+x*(focused.width/2+2),y,focused.z+z*(focused.depth/2+2))))) : FRAME_POINTS;
+    const focused = districtById(view.focus), bridge = REALM_BRIDGES.find((b) => b.id === view.crossing);
+    const framed = bridge ? [districtById(bridge.from), districtById(bridge.to)] : focused ? [focused] : [];
+    const frame = framed.length ? framed.flatMap((d) => [-1,1].flatMap(x=>[-1,1].flatMap(z=>[-2,d.height].map(y=>new THREE.Vector3(d.x+x*(d.width/2+2),y,d.z+z*(d.depth/2+2)))))) : FRAME_POINTS;
     for (const point of frame) {
       scratch.copy(point).applyMatrix4(camera.matrixWorldInverse);
       minX = Math.min(minX, scratch.x); maxX = Math.max(maxX, scratch.x); minY = Math.min(minY, scratch.y); maxY = Math.max(maxY, scratch.y);
@@ -436,7 +438,9 @@ export function createBoardScene(container, { reducedMotion = false, onEvent = (
     renderer.setSize(width, height, false); pipeline.setSize(width, height); draw();
   }
   function updateCamera() {
-    const focus = districtById(view.focus), x=focus?.x??0,z=focus?.z??0;
+    const focus = districtById(view.focus), bridge = REALM_BRIDGES.find((b) => b.id === view.crossing);
+    const from = bridge && districtById(bridge.from), to = bridge && districtById(bridge.to);
+    const x = bridge ? (from.x + to.x) / 2 : focus?.x ?? 0, z = bridge ? (from.z + to.z) / 2 : focus?.z ?? 0;
     camera.position.set(x+Math.sin(view.angle)*180,150,z+Math.cos(view.angle)*180);
     camera.lookAt(x,1.2,z);camera.updateMatrixWorld();
   }
@@ -459,6 +463,7 @@ export function createBoardScene(container, { reducedMotion = false, onEvent = (
     bind('pointermove', (e) => {
       const prior = pointers.get(e.pointerId); if (!prior) return;
       const dx = e.clientX - prior.x; const dy = e.clientY - prior.y;
+      viewRevision++;
       if (pointers.size === 2) {
         // Two fingers: pinch to zoom, move together to pan.
         const other = [...pointers.entries()].find(([id]) => id !== e.pointerId)?.[1];
@@ -474,7 +479,7 @@ export function createBoardScene(container, { reducedMotion = false, onEvent = (
     });
     const release = (e) => pointers.delete(e.pointerId);
     bind('pointerup', release); bind('pointercancel', release); bind('lostpointercapture', release);
-    bind('wheel', (e) => { e.preventDefault(); view.zoom = clampZoom(view.zoom * Math.exp(-e.deltaY * 0.001)); resize(); }, { passive: false });
+    bind('wheel', (e) => { e.preventDefault(); viewRevision++; view.zoom = clampZoom(view.zoom * Math.exp(-e.deltaY * 0.001)); resize(); }, { passive: false });
   }
 
   // ---------- Setup ----------
@@ -515,6 +520,8 @@ export function createBoardScene(container, { reducedMotion = false, onEvent = (
         if (crestChanged || prev.playMode !== state.playMode) buildToken();
         if (prev.gardens !== state.gardens) buildGardens();
         const tierUp = state.builtTier > prev.builtTier;
+        const cameraRevision = viewRevision;
+        let openedBridge = null;
         animating = true;
         try {
           const rebuild = crestChanged || prev.builtTier!==state.builtTier || prev.estateLevel!==state.estateLevel || prev.gardens!==state.gardens || prev.previewFeature!==state.previewFeature;
@@ -522,7 +529,14 @@ export function createBoardScene(container, { reducedMotion = false, onEvent = (
             const oldOpen = new Set(realm.bridges.filter(b=>b.open).map(b=>b.id));
             buildLandscape();buildCastle();applyAtmosphere(); // new materials take the current light and wetness
             const opening = realm.bridges.filter(b=>b.open&&!oldOpen.has(b.id));
-            if(animate&&opening.length)await run(600,(t)=>{for(const bridge of opening)for(const panel of bridge.panels)panel.group.rotation.z=panel.sign*1.03*(1-easeInOut(t));});
+            if (animate && opening.length) {
+              openedBridge = opening.find((b) => b.to === homeDistrict(state.builtTier).id) ?? opening[0];
+              for (const bridge of opening) for (const panel of bridge.panels) panel.group.rotation.z = panel.sign * 1.03;
+              Object.assign(view, { focus: null, crossing: openedBridge.id, zoom: 1, panX: 0, panY: 0 }); updateCamera(); resize();
+              emit('bridge:start', { id: openedBridge.id, district: openedBridge.to });
+              await run(850, (t) => { for (const bridge of opening) for (const panel of bridge.panels) panel.group.rotation.z = panel.sign * 1.03 * (1 - easeInOut(t)); });
+              emit('bridge:open', { id: openedBridge.id, district: openedBridge.to });
+            }
           }
           if (shownPosition !== state.position) {
             // Keep the old path/banners while walking; they update when the travelers arrive.
@@ -536,7 +550,11 @@ export function createBoardScene(container, { reducedMotion = false, onEvent = (
           buildRoute();
           if (crestChanged || prev.estateLevel !== state.estateLevel || prev.previewFeature !== state.previewFeature) buildEstate();
           if (crestChanged || prev.builtTier !== state.builtTier) buildCourt();
+          if (openedBridge && viewRevision === cameraRevision) {
+            Object.assign(view, { crossing: null, focus: openedBridge.to, zoom: 1, panX: 0, panY: 0 }); updateCamera(); resize();
+          }
           if (tierUp && animate) await rise();
+          if (openedBridge) emit('arrival', { district: openedBridge.to, tier: state.builtTier });
         } finally {
           animating = false;
           draw();
@@ -546,6 +564,7 @@ export function createBoardScene(container, { reducedMotion = false, onEvent = (
     },
     /** Buttons and keyboard: zoom, turn, pan or reset the view. Presentation only. */
     adjustView(action) {
+      viewRevision++;
       if (action === 'in') view.zoom = clampZoom(view.zoom * 1.2);
       if (action === 'out') view.zoom = clampZoom(view.zoom / 1.2);
       if (action === 'left') view.angle -= 0.26;
@@ -555,13 +574,13 @@ export function createBoardScene(container, { reducedMotion = false, onEvent = (
       if (action === 'pan-right') pan(-step, 0);
       if (action === 'pan-up') pan(0, step);
       if (action === 'pan-down') pan(0, -step);
-      if (action === 'reset' || action === 'overview') Object.assign(view, { angle: 0.66, zoom: 1, panX: 0, panY: 0, focus: null });
+      if (action === 'reset' || action === 'overview') Object.assign(view, { angle: 0.66, zoom: 1, panX: 0, panY: 0, focus: null, crossing: null });
       updateCamera(); resize();
       return { ...view };
     },
     focusDistrict(id) {
       if(!districtById(id))return;
-      Object.assign(view,{focus:id,zoom:1,panX:0,panY:0});updateCamera();resize();
+      viewRevision++; Object.assign(view,{focus:id,crossing:null,zoom:1,panX:0,panY:0});updateCamera();resize();
     },
     setPixelMode(on) { pipeline.configure({ pixelMode: on }); draw(); },
     /** Cosmetic light and weather: period 'day' | 'afternoon' | 'night', weather 'clear' | 'rain' | 'overcast'. */

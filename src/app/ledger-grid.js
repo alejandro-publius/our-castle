@@ -42,10 +42,12 @@ const PARCHMENT = {
 
 const byIso = (a, b, nodeA, nodeB) => (nodeA.data?.whenIso ?? '').localeCompare(nodeB.data?.whenIso ?? '');
 
-export function createLedgerGrid(container, { formatMoney }) {
+export function createLedgerGrid(container, { formatMoney, onSelect = () => {} }) {
   let api = null;
   let failed = false;
   let filter = 'all';
+  let search = '';
+  let selected = null;
   let rows = [];
   let total = null;
 
@@ -63,6 +65,7 @@ export function createLedgerGrid(container, { formatMoney }) {
     {
       colId: 'record', headerName: 'Record', minWidth: 102, flex: 1, sortable: false,
       cellRenderer: (p) => (p.node.rowPinned ? twoLine('Total', '') : twoLine(p.data.record, p.data.source)),
+      getQuickFilterText: (p) => p.data?.searchText ?? '',
     },
     {
       colId: 'entry', field: 'entry', headerName: 'Entry', minWidth: 136, flex: 1.6, sort: 'desc', comparator: byIso, autoHeight: true,
@@ -75,8 +78,14 @@ export function createLedgerGrid(container, { formatMoney }) {
     { colId: 'counts', field: 'counts', headerName: 'Counts toward goal', minWidth: 92, flex: 0.9, wrapText: true, autoHeight: true, wrapHeaderText: true, autoHeaderHeight: true },
   ];
 
+  function choose(row) {
+    if (!row || row.id === 'total') return;
+    selected = String(row.id);
+    onSelect(row);
+  }
   function fallback() {
-    const all = [...rows].sort((a, b) => b.whenIso.localeCompare(a.whenIso)).filter((r) => filter === 'all' || r.category === filter);
+    const all = [...rows].sort((a, b) => b.whenIso.localeCompare(a.whenIso)).filter((r) =>
+      (filter === 'all' || r.category === filter) && (!search || r.searchText.toLowerCase().includes(search.toLowerCase())));
     const table = document.createElement('table');
     table.className = 'ledger-table';
     table.innerHTML = '<thead><tr><th scope="col">When</th><th scope="col">Record</th><th scope="col">Entry</th><th scope="col">Source</th><th scope="col" class="amount">Amount</th><th scope="col">Toward goal</th></tr></thead>';
@@ -87,7 +96,14 @@ export function createLedgerGrid(container, { formatMoney }) {
       for (const [key, cls] of [['when'], ['record'], ['entry'], ['source'], ['amountText', 'amount'], ['counts']]) {
         const td = document.createElement('td');
         if (cls) td.className = cls;
-        td.textContent = r[key] ?? '';
+        if (key === 'entry' && r !== total) {
+          const button = document.createElement('button');
+          button.type = 'button'; button.className = 'ledger-record-button';
+          button.textContent = r[key] ?? '';
+          button.setAttribute('aria-pressed', String(String(r.id) === selected));
+          button.addEventListener('click', () => { choose(r); fallback(); });
+          td.append(button);
+        } else td.textContent = r[key] ?? '';
         tr.append(td);
       }
       body.append(tr);
@@ -114,6 +130,9 @@ export function createLedgerGrid(container, { formatMoney }) {
         isExternalFilterPresent: () => filter !== 'all',
         doesExternalFilterPass: (node) => node.data?.category === filter,
         getRowId: (p) => String(p.data.id),
+        rowSelection: { mode: 'singleRow', checkboxes: false, enableClickSelection: true, isRowSelectable: (node) => !node.rowPinned },
+        onSelectionChanged: (event) => { const row = event.api.getSelectedRows()[0]; if (row) choose(row); },
+        onCellKeyDown: (event) => { if (event.event?.key === 'Enter' && !event.node.rowPinned) event.node.setSelected(true); },
         rowClassRules: { 'not-savings': (p) => !p.node.rowPinned && p.data?.category !== 'goal' },
         ensureDomOrder: true,
         suppressColumnVirtualisation: true,
@@ -142,6 +161,16 @@ export function createLedgerGrid(container, { formatMoney }) {
     setFilter(next) {
       filter = next;
       if (api) api.onFilterChanged(); else if (failed) fallback();
+    },
+    setSearch(next) {
+      search = String(next).trim();
+      if (api) api.setGridOption('quickFilterText', search); else if (failed) fallback();
+    },
+    selectRecord(id) {
+      selected = id == null ? null : String(id);
+      if (api) {
+        api.forEachNode((node) => { if (node.isSelected() !== (String(node.id) === selected)) node.setSelected(String(node.id) === selected); });
+      } else if (failed) fallback();
     },
     get mode() { return api ? 'ag-grid' : failed ? 'fallback' : 'loading'; },
   };

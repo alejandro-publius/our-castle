@@ -43,7 +43,7 @@ test('the steward checks a payment with PayPal’s read-only get_order and repor
     message([{ type: 'text', text: `Yes — PayPal shows order ${env.orderId} completed for $15.00, and it is counted toward your $300.00 goal. The Keep is next at $180.00, $105.00 away.` }]),
   ]);
   const steward = createSteward({ db: env.db, contributions: env.service, householdId: env.householdId, ai, paypalTools, fetch: anthropic.fetch, clock: env.clock });
-  const result = await steward.ask({ question: 'Did PayPal confirm our $15 contribution?', memberId: 'm_wren' });
+  const result = await steward.ask({ question: 'Did PayPal confirm our $15 contribution?', memberId: 'm_wren', focusOrderId: env.orderId });
 
   assert.equal(result.status, 'ok');
   assert.match(result.answer, /completed for \$15\.00/);
@@ -54,7 +54,9 @@ test('the steward checks a payment with PayPal’s read-only get_order and repor
   assert.equal(paypalCheck.reconciliation.verdict, 'match');
   assert.equal(paypalCheck.reconciliation.paypalAmountCents, 1500);
 
+  assert.deepEqual(result.verification, { orderId: env.orderId, status: 'verified' });
   const [first, second] = anthropic.requests;
+  assert.deepEqual(first.tool_choice, { type: 'tool', name: 'get_order' });
   assert.deepEqual(first.tools.map((t) => t.name), ['read_household_ledger', 'get_order', 'list_transactions']);
   assert.deepEqual(first.tools[1].input_schema.properties.order_id.enum, [env.orderId], 'only this household’s orders can be looked up');
   assert.ok(first.tools.every((t) => t.strict === true));
@@ -140,4 +142,34 @@ test('PayPal Agent Toolkit wrapper: sandbox only, read-only tools only, server-b
   await tools.getOrder('5O190127TN364715T');
   assert.deepEqual(calls[1], { name: 'get_order', args: { id: '5O190127TN364715T' } });
   assert.throws(() => tools.getOrder('../../v1/oauth2/token'), /Invalid PayPal order id/);
+});
+
+test('a focused request rejects an unknown household order before any AI call', async () => {
+  const env = await sandboxWithCapture();
+  const anthropic = scriptedAnthropic([message([{ type: 'text', text: 'Unused.' }])]);
+  const steward = createSteward({ db: env.db, contributions: env.service, householdId: env.householdId, ai,
+    paypalTools: { getOrder: async () => { throw new Error('Must not run'); } }, fetch: anthropic.fetch, clock: env.clock });
+  await assert.rejects(steward.ask({ question: 'Verify this payment', memberId: 'm_rowan', focusOrderId: 'SOMEONEELSESORDER' }), { code: 'order_not_found' });
+  assert.equal(anthropic.requests.length, 0);
+  const unavailable = createSteward({ db: env.db, contributions: env.service, householdId: env.householdId, ai, paypalTools: null, fetch: anthropic.fetch, clock: env.clock });
+  await assert.rejects(unavailable.ask({ question: 'Verify this payment', memberId: 'm_rowan', focusOrderId: env.orderId }), { code: 'paypal_tools_unavailable' });
+  assert.equal(anthropic.requests.length, 0);
+});
+test('a fluent answer without the selected get_order result remains unverified', async () => {
+  const env = await sandboxWithCapture();
+  const anthropic = scriptedAnthropic([message([{ type: 'text', text: 'The $15.00 payment is complete.' }])]);
+  const steward = createSteward({ db: env.db, contributions: env.service, householdId: env.householdId, ai,
+    paypalTools: { getOrder: async () => { throw new Error('The fake model did not call it'); } }, fetch: anthropic.fetch, clock: env.clock });
+  const result = await steward.ask({ question: 'Verify this payment', memberId: 'm_rowan', focusOrderId: env.orderId });
+  assert.equal(result.verification.status, 'unverified');
+  assert.match(result.warnings.join(' '), /same PayPal order/);
+  assert.deepEqual(result.checks, []);
+});
+test('matching amounts alone cannot reconcile a different order or capture', () => {
+  const ours = { id: 'ctb_1', providerOrderId: 'ORDER1', amountCents: 1500, currency: 'USD', status: 'completed', captures: [{ captureId: 'CAP1', credited: true }] };
+  const unit = { reference_id: 'ctb_1', payments: { captures: [{ id: 'CAP1', status: 'COMPLETED', amount: { currency_code: 'USD', value: '15.00' } }] } };
+  assert.equal(reconcileOrder({ id: 'OTHER', status: 'COMPLETED', purchase_units: [unit] }, ours).verdict, 'differs');
+  const wrongCapture = { ...unit, payments: { captures: [{ ...unit.payments.captures[0], id: 'OTHER-CAP' }] } };
+  assert.equal(reconcileOrder({ id: 'ORDER1', status: 'COMPLETED', purchase_units: [wrongCapture] }, ours).verdict, 'differs');
+  assert.equal(reconcileOrder({ id: 'ORDER1', status: 'COMPLETED', purchase_units: [unit] }, ours).verdict, 'match');
 });

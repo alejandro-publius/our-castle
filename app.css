@@ -429,3 +429,16 @@ button { font: inherit; }
  .area-status { max-width:calc(100% - 80px); }
 }
 @media(prefers-reduced-motion:reduce) { .meter-fill { transition:none; }.celebration { animation:none; } }
+
+/* Selected ledger record: one receipt, with provenance available on request. */
+.ledger-search { margin: 8px 0; }
+.ledger-search input { min-height:44px; }
+.ledger-record-button { min-height:44px; padding:4px 6px; background:transparent; border:0; color:var(--ink); text-align:left; text-decoration:underline; }
+.ledger-record-button[aria-pressed="true"] { font-weight:700; }
+.ledger-impact { display:flex; flex-wrap:wrap; gap:4px 14px; align-items:center; margin:10px 0; font-size:15px; }
+.ledger-impact .link-button { min-height:44px; }
+.record-ids, .verification-details { margin-top:8px; font-size:14px; }
+.record-ids summary, .verification-details summary { min-height:44px; display:flex; align-items:center; cursor:pointer; color:var(--ink-muted); }
+.verification-details .checks { margin-top:8px; }
+.verification-title { font-family:inherit; font-size:18px; }
+.verification-title.verified { color:#33533e; }

@@ -50,11 +50,14 @@ export function reconcileOrder(order, contribution) {
     ledgerCounted: credited,
   };
   if (order?.error || !order?.id) return { ...facts, verdict: 'unavailable', note: 'PayPal did not return this order.' };
+  if (order.id !== contribution.providerOrderId || unit?.reference_id !== contribution.id)
+    return { ...facts, verdict: 'differs', note: 'PayPal returned a different order or contribution reference. Nothing was changed.' };
+  const captureMatches = !capture || contribution.captures.some((c) => c.captureId === capture.id && c.credited);
   const paypalComplete = ['COMPLETED', 'PARTIALLY_REFUNDED', 'REFUNDED'].includes(capture?.status);
   const amountsMatch = paypalCents === contribution.amountCents && capture?.amount?.currency_code === contribution.currency;
-  if (paypalComplete && amountsMatch && credited) return { ...facts, verdict: 'match', note: 'PayPal and the ledger agree.' };
+  if (paypalComplete && amountsMatch && credited && captureMatches) return { ...facts, verdict: 'match', note: 'PayPal and the ledger agree.' };
   if (!capture && !credited) return { ...facts, verdict: 'match', note: 'Not captured in PayPal, and not counted in the ledger.' };
-  if (capture?.status === 'PENDING' && !credited) return { ...facts, verdict: 'match', note: 'Pending in PayPal, and not counted yet.' };
+  if (capture?.status === 'PENDING' && amountsMatch && !credited) return { ...facts, verdict: 'match', note: 'Pending in PayPal, and not counted yet.' };
   if (paypalComplete && amountsMatch && !credited) return { ...facts, verdict: 'action', note: 'PayPal shows a completed capture the ledger has not counted. Use “Check with PayPal” to let the server verify and record it.' };
   return { ...facts, verdict: 'differs', note: 'PayPal and the ledger disagree. Nothing was changed; review this contribution.' };
 }
@@ -139,8 +142,11 @@ export function createSteward({ db, contributions, householdId, ai = null, paypa
       const { list, ledger } = snapshot();
       const paypalOrders = list.filter((c) => !c.simulated && c.providerOrderId);
       const knownOrderIds = paypalOrders.map((c) => c.providerOrderId);
-      const focus = focusOrderId && knownOrderIds.includes(focusOrderId) ? focusOrderId : null;
-      const tools = toolsFor(knownOrderIds);
+      if (focusOrderId !== null && !knownOrderIds.includes(focusOrderId))
+        throw new DomainError(404, 'order_not_found', 'That order is not a PayPal contribution for this household and goal.');
+      const focus = focusOrderId;
+      if (focus && !paypalTools) throw new DomainError(409, 'paypal_tools_unavailable', 'PayPal verification is not available on this server.');
+      const tools = toolsFor(focus ? [focus] : knownOrderIds);
 
       const checks = [];
       const shown = [ledger];
@@ -150,6 +156,7 @@ export function createSteward({ db, contributions, householdId, ai = null, paypa
           return ledger;
         }
         if (name === 'get_order' && paypalTools) {
+          if (focus && input?.order_id !== focus) return { error: 'Check only the selected household order.' };
           const contribution = paypalOrders.find((c) => c.providerOrderId === input?.order_id);
           if (!contribution) return { error: 'That order is not one of this household\'s PayPal orders.' };
           const order = await paypalTools.getOrder(contribution.providerOrderId);
@@ -193,6 +200,7 @@ export function createSteward({ db, contributions, householdId, ai = null, paypa
             output_config: { effort: 'low' },
             system: STEWARD_SYSTEM,
             tools,
+            ...(focus && turn === 0 ? { tool_choice: { type: 'tool', name: 'get_order' } } : {}),
             messages,
           });
           model = response.model ?? model;
@@ -231,7 +239,11 @@ export function createSteward({ db, contributions, householdId, ai = null, paypa
         ? [`The steward mentioned ${unknown.map((c) => formatCents(c)).join(', ')}, which does not appear in the ledger or PayPal data it checked. Treat ${unknown.length === 1 ? 'it' : 'them'} as unverified.`]
         : [];
       if (!checks.length) warnings.push('The steward answered without checking the ledger or PayPal.');
-      return { status: 'ok', answer, checks, warnings, model, paypalTools: Boolean(paypalTools) };
+      const focusedCheck = focus ? checks.find((c) => c.tool === 'get_order' && c.orderId === focus) : null;
+      const verification = focus ? { orderId: focus, status: focusedCheck?.reconciliation?.verdict === 'match' ? 'verified' : 'unverified' } : null;
+      if (focus && verification.status !== 'verified')
+        warnings.push('This payment has not been verified against the same PayPal order. No progress was changed.');
+      return { status: 'ok', answer, checks, warnings, model, paypalTools: Boolean(paypalTools), verification };
     },
   };
 }

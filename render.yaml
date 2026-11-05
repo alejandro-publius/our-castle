@@ -1,0 +1,28 @@
+# Optional, undeployed example service. Import only after the owner approves publication.
+# No credentials or real household data. Example state is disposable on this free plan.
+services:
+  - type: web
+    name: our-castle-example
+    runtime: node
+    plan: free
+    autoDeployTrigger: "off"
+    buildCommand: npm ci --omit=dev
+    startCommand: npm start
+    healthCheckPath: /api/status
+    envVars:
+      - key: NODE_VERSION
+        value: "26.0.0"
+      - key: HOST
+        value: "0.0.0.0"
+      - key: OUR_CASTLE_ENV_FILE
+        value: none
+      - key: OUR_CASTLE_DATA_DIR
+        value: /tmp/our-castle-example
+      - key: PAYPAL_ENV
+        value: sandbox
+      - key: PAYPAL_CLIENT_ID
+        value: ""
+      - key: PAYPAL_CLIENT_SECRET
+        value: ""
+      - key: AI_API_KEY
+        value: ""

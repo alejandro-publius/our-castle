@@ -1,5 +1,17 @@
 # Validation
 
+## November 4, 2026: record-to-realm integration and exact-order verification
+
+The existing Community grid now supports source/order/capture search, keyboard/single-row selection, one selected receipt and a link from a calculated milestone to the already-earned district. Pending/failed attempts are visible with zero credited impact. Refunds retain their own amount and reference. The pinned total remains current server progress, independent of search/filtering. Plain-table selection/search remains if AG Grid cannot load.
+
+New-area choreography temporarily frames both banks, lowers the bridge, follows the family, then focuses the destination for the original fanfare and compact deed. Manual camera input takes priority. No access rule, payment credit or utility-provider claim changed.
+
+Focused AI verification now requests get_order first for the selected household/goal order. Order, contribution reference and credited capture identity must match before reconciliation succeeds. A fluent model answer without that exact tool proof remains unverified, and changing the selected payment clears a stale answer. Tool/model details are collapsed. The AI still cannot create, capture or refund.
+
+**Checks:** 12 unit cases passed with fake AI/PayPal transports; a focused guard follow-up verifies that missing PayPal tools reject before an AI call. Fifteen applicable desktop/phone Chromium browser cases passed, with one intentional phone animation skip. These cover the new grid/trail, pending/completion/refund, fallback, the actual bridge/walk/fanfare/deed order, queued cards, saved-record navigation and a mocked AI proof presenter. The initial grid tests used pre-v36 container selectors; the installed 36.2 DOM was inspected and the selectors corrected. A real initial-selection issue was fixed so a newly returned pending payment selects its own record. Initial failures and traces remain in ignored test-results/award-finish/.
+
+This is not a full suite or live-provider retest. No new PayPal order, paid AI call, external bill verification or public deployment was made by these checks. Current product-doc reads, actual integration and prize-rule uncertainty are separated in [AWARD-STRATEGY.md](AWARD-STRATEGY.md). Render's example Blueprint is prepared, not deployed. The approved sandbox checkout/same-order recording remains with the existing browser operator.
+
 ## November 4, 2026: one carved stag for the Citadel lawn
 
 Added one static ivory stag on a stepped, carved plinth, with branching gilt antlers, facial cuts, cloven hooves and a household-color crest plaque. It uses the original geometry/material batching. No other district, building, interface or progression rule changed. [Estate view](screenshots/citadel-statue.png) · [detail](screenshots/citadel-stag-detail.png).
