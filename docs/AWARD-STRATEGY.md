@@ -19,6 +19,8 @@ Rechecked November 5, 2026 against the official public [rules](https://paypalaih
 
 Official entry requirements and judging still apply. The owner has requested finishing the release/submission work. Source-publication status and the remaining actual-payment/video/browser blockers are tracked in [RELEASE-READINESS.md](RELEASE-READINESS.md). No eligibility guarantee or winner status is claimed.
 
+The November 5 rules allow at most **one Grand Prize plus one Sponsor Prize**, or **one Honorable Mention plus one Sponsor Prize**. Entering all three relevant sponsor categories does not mean three sponsor awards can be combined. The strongest presentation targets are the creative consumer/family experience, PayPal + AI and a clear demonstration; do not describe the read-only steward as an autonomous purchasing agent.
+
 ## Handoff
 
 [CONNECTED-HANDOFF.md](CONNECTED-HANDOFF.md) records the exact flow, settings, live-versus-fake checks and current blockers. Original art, palette and renderer are preserved. No new PayPal order, refund or paid AI test was made for this work.

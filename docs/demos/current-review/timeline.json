@@ -1,0 +1,201 @@
+{
+  "title": "Our Castle — current build review cut",
+  "status": "Review cut, not submitted. One live sandbox popup/same-order steward insert is unfilmed.",
+  "source_commit": "be73dfb674b444c1f8283aff50029b442d9d63c4",
+  "render": {
+    "width": 1920,
+    "height": 1080,
+    "fps": 25,
+    "voice": "Daniel",
+    "speech_rate": 178
+  },
+  "reference_lock": "Actual current app, large world, one journal, bundled Uncial/Alegreya fonts and ivory/brass. Small source labels, measured captions. No reconstructed payment or model response, no repeated product disclaimers, no stock music.",
+  "sources_manifest": "sources/manifest.json",
+  "scenes": [
+    {
+      "id": "intro",
+      "duration": 9,
+      "kind": "video",
+      "label": "Current build · example household",
+      "narration": [
+        "Our Castle turns a shared family goal into a growing woodland realm. This tour uses example mode."
+      ],
+      "media": "sources/intro.mp4"
+    },
+    {
+      "id": "family",
+      "duration": 12,
+      "kind": "video",
+      "label": "Current build · family and crest",
+      "narration": [
+        "Choose a family banner and your own pixel characters. One household journal holds the plan, contributions and records, while the world stays in view."
+      ],
+      "media": "sources/family.mp4"
+    },
+    {
+      "id": "merchant",
+      "duration": 11,
+      "kind": "portrait",
+      "label": "Channel3 · real search recorded November 4",
+      "narration": [
+        "Market Town finds real products within a budget. These are actual earlier Channel3 results. Use as goal creates a draft for the family to confirm."
+      ],
+      "media": "sources/merchant-recorded.png",
+      "crop": [
+        488,
+        110,
+        466,
+        780
+      ],
+      "still": true
+    },
+    {
+      "id": "plan",
+      "duration": 8,
+      "kind": "video",
+      "label": "Current build · built-in example plan",
+      "narration": [
+        "The family reviews a weekly schedule before accepting it. This fresh example uses built-in rules."
+      ],
+      "media": "sources/plan.mp4",
+      "hold": 1
+    },
+    {
+      "id": "live-ai",
+      "duration": 10,
+      "kind": "portrait",
+      "label": "Live Claude result · earlier interface · November 3",
+      "narration": [
+        "This earlier recording shows a real Claude plan: eight thirty-dollar weeks cover the two hundred forty dollar gap. The server checks the arithmetic."
+      ],
+      "media": "../woodland-review/sources/planner-result.mp4",
+      "hold": 0.04
+    },
+    {
+      "id": "contribution",
+      "duration": 6,
+      "kind": "video",
+      "label": "Current build · simulated contribution",
+      "narration": [
+        "A contribution starts with a chosen amount and explicit adult approval."
+      ],
+      "media": "sources/contribution.mp4"
+    },
+    {
+      "id": "paypal-history",
+      "duration": 12,
+      "kind": "slide",
+      "label": "PayPal sandbox · historical verifier · November 3",
+      "narration": [
+        "An earlier hosted-link sandbox test captured fifteen dollars and credited it once. Replay and wrong-household checks passed. That test did not record the in-app popup."
+      ],
+      "title": "Captured once. Checked on the server.",
+      "lines": [
+        "$15 USD · buyer-approved hosted link",
+        "$60 reported → $75 tracked",
+        "Replay and household mismatch checks passed"
+      ],
+      "note": "Historical report: docs/LIVE-VERIFICATION.md · subsequently refunded"
+    },
+    {
+      "id": "owner-insert",
+      "duration": 28,
+      "kind": "insert",
+      "label": "Recording gap · not a payment demonstration",
+      "narration": [
+        "This review cut reserves one insert for the actual in-app sandbox checkout, saved receipt and steward verification of that same order. That sequence is not yet recorded."
+      ],
+      "title": "Checkout recording still needed",
+      "lines": [
+        "Sandbox popup → receipt → same-order steward"
+      ],
+      "note": "No popup approval or get_order reconciliation is reconstructed here."
+    },
+    {
+      "id": "manor",
+      "duration": 10,
+      "kind": "video",
+      "label": "Current build · simulated $15 unlock",
+      "narration": [
+        "Here, a simulated fifteen-dollar contribution opens Manor Gardens. The deed carries the family crest and chosen characters. The village remains."
+      ],
+      "media": "sources/manor.mp4",
+      "crop": [
+        560,
+        200,
+        800,
+        680
+      ]
+    },
+    {
+      "id": "treasury",
+      "duration": 14,
+      "kind": "video",
+      "label": "AG Grid + AG Studio · example records",
+      "narration": [
+        "The Treasury keeps the next area, searchable records and a receipt together. AG Grid and a custom Studio widget fit the same journal. The read-only steward stays closed until needed."
+      ],
+      "media": "sources/treasury.mp4",
+      "hold": 6
+    },
+    {
+      "id": "apimatic",
+      "duration": 10,
+      "kind": "slide",
+      "label": "APIMatic · developer integration",
+      "narration": [
+        "Behind the scenes, APIMatic context guided PayPal integration and recovery checks. Eight SDK-specific skills are installed. It adds no extra step for the family."
+      ],
+      "title": "PayPal context, behind the scenes.",
+      "lines": [
+        "8 installed SDK context skills",
+        "PayPal Server SDK 2.5.0",
+        "Uncertain captures recheck the same order"
+      ],
+      "note": "Actual implementation and checks: docs/APIMATIC-CODEX.md"
+    },
+    {
+      "id": "completed",
+      "duration": 12,
+      "kind": "video",
+      "label": "Current build · later simulated progression",
+      "narration": [
+        "Later milestones extend the same forest into a citadel, a palace and two towers. The earlier homes stay connected by rivers and bridges."
+      ],
+      "media": "sources/completed.mp4"
+    },
+    {
+      "id": "atmosphere",
+      "duration": 10,
+      "kind": "montage",
+      "label": "Current build · manual night and rain",
+      "narration": [
+        "At night, windows and lanterns glow. Rain changes the atmosphere. These controls change the scenery, never the household ledger."
+      ],
+      "parts": [
+        {
+          "media": "sources/night.mp4",
+          "in": 0,
+          "duration": 5
+        },
+        {
+          "media": "sources/rain.mp4",
+          "in": 0,
+          "duration": 5
+        }
+      ]
+    },
+    {
+      "id": "close",
+      "duration": 10,
+      "kind": "video",
+      "label": "Public source · fresh local game",
+      "narration": [
+        "Try Our Castle from the public repository. The fresh demo needs no credentials and keeps its example progress separate from any saved household."
+      ],
+      "media": "sources/intro.mp4",
+      "hold": 1,
+      "end_card": true
+    }
+  ]
+}

@@ -1,0 +1,151 @@
+{
+  "continuous_original": {
+    "path": "/workspace/our-castle-finish/test-results/judge-final-20261105T210813Z/capture-corrected/page@c729590be21024d3961a4756126be562.webm",
+    "sha256": "a68c52c62ab680d6975b73d27fe22eb0da6f7b63830896e25f66d94a8291d1aa",
+    "note": "Continuous original Playwright recording; no edits or inserted outcomes."
+  },
+  "source_commit": "be73dfb674b444c1f8283aff50029b442d9d63c4",
+  "method": "Fresh public clone; actual npm run demo; a new empty headless Chromium development context; reduced motion; America/Los_Angeles device time zone. No owner browser, saved household, key or provider used.",
+  "cuts": [
+    {
+      "file": "sources/intro.mp4",
+      "marker": "realm-intro",
+      "original_in": 4.5808,
+      "duration": 9.0,
+      "speed": 1,
+      "edits": "trim; silent H.264/25fps derivative; no reconstructed UI or time acceleration"
+    },
+    {
+      "file": "sources/family.mp4",
+      "marker": "family",
+      "original_in": 21.9923,
+      "duration": 12.0,
+      "speed": 1,
+      "edits": "trim; silent H.264/25fps derivative; no reconstructed UI or time acceleration"
+    },
+    {
+      "file": "sources/plan.mp4",
+      "marker": "plan-result",
+      "original_in": 38.6076,
+      "duration": 6.96,
+      "speed": 1,
+      "edits": "trim; silent H.264/25fps derivative; no reconstructed UI or time acceleration"
+    },
+    {
+      "file": "sources/contribution.mp4",
+      "marker": "contribute",
+      "original_in": 46.0961,
+      "duration": 5.96,
+      "speed": 1,
+      "edits": "trim; silent H.264/25fps derivative; no reconstructed UI or time acceleration"
+    },
+    {
+      "file": "sources/manor.mp4",
+      "marker": "deed-manor-gardens",
+      "original_in": 52.3347,
+      "duration": 9.96,
+      "speed": 1,
+      "edits": "trim; silent H.264/25fps derivative; no reconstructed UI or time acceleration"
+    },
+    {
+      "file": "sources/treasury.mp4",
+      "marker": "treasury",
+      "original_in": 69.9452,
+      "duration": 8.0,
+      "speed": 1,
+      "edits": "trim; silent H.264/25fps derivative; no reconstructed UI or time acceleration"
+    },
+    {
+      "file": "sources/completed.mp4",
+      "marker": "completed-realm",
+      "original_in": 158.41639999999998,
+      "duration": 11.96,
+      "speed": 1,
+      "edits": "trim; silent H.264/25fps derivative; no reconstructed UI or time acceleration"
+    },
+    {
+      "file": "sources/night.mp4",
+      "marker": "night",
+      "original_in": 171.1109,
+      "duration": 7.0,
+      "speed": 1,
+      "edits": "trim; silent H.264/25fps derivative; no reconstructed UI or time acceleration"
+    },
+    {
+      "file": "sources/rain.mp4",
+      "marker": "rain",
+      "original_in": 177.0026,
+      "duration": 6.96,
+      "speed": 1,
+      "edits": "trim; silent H.264/25fps derivative; no reconstructed UI or time acceleration"
+    }
+  ],
+  "historical_sources": [
+    {
+      "file": "sources/merchant-recorded.png",
+      "kind": "Actual Channel3 desktop result screenshot; original bytes unchanged",
+      "checked_at_utc": "2026-11-05T07:13:36.917Z",
+      "date_pst": "November 4, 2026",
+      "original": "/Users/alexvintera/projects/our-castle-channel3/test-results/channel3-merchant/live/live-results-desktop.png",
+      "summary_sha256": "61fdcf5f1fbbaf8b438aece7dd050f3bb2170663b6c703518ce4b6af3cb615c0",
+      "scope": "One actual earlier camping tent search under $250; three results at $62.82, $95.99 and $219.99 USD. Not a current price/stock promise, new API call, live phone check, or recorded goal save."
+    },
+    {
+      "file": "../woodland-review/sources/planner-result.mp4",
+      "sha256": "809ca81f712c77e7508888a933a168d262dec61d1d209d59a680f13c7644aef2",
+      "kind": "Unchanged earlier evidence; see woodland-review/sources/manifest.json for original ranges and hashes"
+    },
+    {
+      "file": "../woodland-review/sources/historical-paypal-verification.md",
+      "sha256": "dc470d491d724b47fcc8a198d0dd2f86d1987d6bee98b7ac3e5436cd9a6e9bba",
+      "kind": "Unchanged earlier evidence; see woodland-review/sources/manifest.json for original ranges and hashes"
+    }
+  ],
+  "files": {
+    "sources/completed.mp4": {
+      "sha256": "fdcd9c8ffcbc907137fbf43168c5477ce52a4d3743451d18a99c03d30d7474a3",
+      "bytes": 656404
+    },
+    "sources/contribution.mp4": {
+      "sha256": "ac31cedc939d77ed34c99bdf23163cdc744ba50a350f6af9e23ef02d1526ffb3",
+      "bytes": 311689
+    },
+    "sources/family.mp4": {
+      "sha256": "3df414987813e35b0326b46fe22e90524a6c1f339025aa3d5da89ee8fe613d54",
+      "bytes": 743656
+    },
+    "sources/intro.mp4": {
+      "sha256": "1e7266c62a34760c10d604471468fb5c6cd639ac32728ea954838ab1e52c1594",
+      "bytes": 257882
+    },
+    "sources/manor.mp4": {
+      "sha256": "918c1b048580d149737af4dad082e3c75ea1e325badb19ad3d476ce0b90f5613",
+      "bytes": 622785
+    },
+    "sources/merchant-recorded.png": {
+      "sha256": "5e99ff85a7f28b0d4d18d921383749bd9c40829625814c12c84eeb61b9a69dca",
+      "bytes": 269706
+    },
+    "sources/night.mp4": {
+      "sha256": "289e60f70eb55871c239dcfaeb76bd441587bae7d318656686bb0346456194e4",
+      "bytes": 532378
+    },
+    "sources/plan.mp4": {
+      "sha256": "6f506ba85171df02b11929a04ba906fd58dbf1f8739ef88745410e390163ea13",
+      "bytes": 262247
+    },
+    "sources/public-demo-capture.json": {
+      "sha256": "6483749e46fa9381bc5587976f2d7bf003b566e439d1b42e53406cb918459599",
+      "bytes": 4457
+    },
+    "sources/rain.mp4": {
+      "sha256": "665ddbea989ee2d950d0a3876459ded382767eef0e499e98901d6023b2919631",
+      "bytes": 227405
+    },
+    "sources/treasury.mp4": {
+      "sha256": "127730205f61e2daa7e8bd649dcc042ddb03cfd2a6d60624cd5f52c845394f97",
+      "bytes": 360313
+    }
+  },
+  "scope": "Current game footage is simulated example mode. Historical live sources retain their dates and narrower verified scope. The actual in-app popup and same-order get_order insert remains unfilmed."
+}

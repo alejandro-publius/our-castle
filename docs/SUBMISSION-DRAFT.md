@@ -61,3 +61,11 @@ Complete the approved in-app sandbox evidence and final public video. Beyond the
 - Public YouTube video under three minutes: **not uploaded**. Existing cuts are review drafts; the missing live insert remains unfilmed.
 - Functional demo: repository setup instructions; a hosted site is not required by the checked rules.
 - Sponsor entries: Channel3, AG Grid/Studio and APIMatic; describe the exact use above. No award eligibility or result is guaranteed.
+
+## Prepared video upload fields
+
+**Title:** Our Castle — a family goal becomes a living realm | PayPal AI Hackathon
+
+**Description:** Our Castle keeps a shared family goal, an editable weekly plan and contribution records inside a growing pixel woodland. Market Town uses Channel3 product search; the Treasury uses AG Grid and AG Studio; APIMatic context supports the PayPal integration. Source and local setup: https://github.com/alejandro-publius/our-castle .
+
+The actual current-build review cut, source labels, captions and remaining insert are in [the current edit kit](demos/current-review/README.md). Replace its unfilmed insert and recheck this description against the recorded evidence before upload. The final visibility required by the checked rules is public. No video URL or submitted-entry confirmation exists yet.

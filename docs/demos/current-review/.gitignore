@@ -1,0 +1,6 @@
+render-work/
+*-0?.txt
+*.aiff
+*.wav
+audio-concat.txt
+__pycache__/

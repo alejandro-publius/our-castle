@@ -1,0 +1,208 @@
+{
+  "status": "passed",
+  "checkedAt": "2026-11-05T21:21:20.463Z",
+  "sourceCommit": "be73dfb674b444c1f8283aff50029b442d9d63c4",
+  "command": "npm run demo",
+  "viewport": {
+    "width": 1920,
+    "height": 1080
+  },
+  "reducedMotion": true,
+  "mode": {
+    "payments": {
+      "mode": "example",
+      "label": "Example payments (simulated)"
+    },
+    "ai": {
+      "mode": "example",
+      "label": "Example planner (built-in rules, no AI)"
+    },
+    "warnings": [],
+    "merchant": {
+      "mode": "off",
+      "provider": "Channel3",
+      "label": "Channel3 not connected",
+      "setup": "Add CHANNEL3_API_KEY to the server\u2019s local .env, then restart the server."
+    }
+  },
+  "initial": {
+    "targetCents": 30000,
+    "reportedStartingCents": 6000
+  },
+  "contribution": {
+    "amountCents": 1500,
+    "simulated": true,
+    "creditedOnce": true
+  },
+  "checks": [
+    {
+      "id": "public-launcher-example-only",
+      "value": true
+    },
+    {
+      "id": "house-and-crest",
+      "value": true
+    },
+    {
+      "id": "two-family-avatars",
+      "value": true
+    },
+    {
+      "id": "reviewed-built-in-plan",
+      "value": true
+    },
+    {
+      "id": "example-credit-once-manor-with-village",
+      "value": true
+    },
+    {
+      "id": "treasury-source-labels-next-area-receipt",
+      "value": true
+    },
+    {
+      "id": "refresh-persists-no-duplicate-credit-or-deed",
+      "value": true
+    },
+    {
+      "id": "isolated-example-9-district-tour",
+      "value": true
+    },
+    {
+      "id": "phone-journal-no-overflow",
+      "value": true
+    },
+    {
+      "id": "no-page-errors-or-outside-requests",
+      "value": true
+    }
+  ],
+  "phases": [
+    {
+      "id": "realm-intro",
+      "seconds": 4.5808
+    },
+    {
+      "id": "family",
+      "seconds": 21.9923
+    },
+    {
+      "id": "plan",
+      "seconds": 35.745400000000004
+    },
+    {
+      "id": "plan-result",
+      "seconds": 38.6076
+    },
+    {
+      "id": "contribute",
+      "seconds": 46.0961
+    },
+    {
+      "id": "deed-manor-gardens",
+      "seconds": 52.3347
+    },
+    {
+      "id": "receipt",
+      "seconds": 62.105199999999996
+    },
+    {
+      "id": "treasury",
+      "seconds": 69.9452
+    },
+    {
+      "id": "deed-market-town",
+      "seconds": 82.5956
+    },
+    {
+      "id": "deed-stone-keep",
+      "seconds": 105.26219999999999
+    },
+    {
+      "id": "deed-starfall-observatory",
+      "seconds": 121.5899
+    },
+    {
+      "id": "deed-royal-citadel",
+      "seconds": 127.6572
+    },
+    {
+      "id": "deed-rosewind-palace",
+      "seconds": 147.396
+    },
+    {
+      "id": "deed-rapunzel-s-tower",
+      "seconds": 152.839
+    },
+    {
+      "id": "completed-realm",
+      "seconds": 158.41639999999998
+    },
+    {
+      "id": "palace",
+      "seconds": 164.81310000000002
+    },
+    {
+      "id": "night",
+      "seconds": 171.1109
+    },
+    {
+      "id": "rain",
+      "seconds": 177.0026
+    }
+  ],
+  "writes": [
+    {
+      "path": "/api/setup",
+      "method": "POST",
+      "seconds": 24.034943532
+    },
+    {
+      "path": "/api/members/m_rowan/avatar",
+      "method": "PUT",
+      "seconds": 24.843797902
+    },
+    {
+      "path": "/api/members/m_wren/avatar",
+      "method": "PUT",
+      "seconds": 25.17580213
+    },
+    {
+      "path": "/api/plans",
+      "method": "POST",
+      "seconds": 38.356765104
+    },
+    {
+      "path": "/api/plans/plan_d94850907ed74af6af82/accept",
+      "method": "POST",
+      "seconds": 46.071894191
+    },
+    {
+      "path": "/api/example/contributions",
+      "method": "POST",
+      "seconds": 52.100996765000005
+    },
+    {
+      "path": "/api/example/contributions",
+      "method": "POST",
+      "seconds": 82.08593076400001
+    },
+    {
+      "path": "/api/example/contributions",
+      "method": "POST",
+      "seconds": 105.013391624
+    },
+    {
+      "path": "/api/example/contributions",
+      "method": "POST",
+      "seconds": 127.355123698
+    }
+  ],
+  "errors": [],
+  "outside": [],
+  "note": "Actual recorded example interactions. No PayPal popup, live payment, runtime AI, live Channel3 search or human playtest.",
+  "recording": {
+    "path": "/workspace/our-castle-finish/test-results/judge-final-20261105T210813Z/capture-corrected/page@c729590be21024d3961a4756126be562.webm",
+    "sha256": "a68c52c62ab680d6975b73d27fe22eb0da6f7b63830896e25f66d94a8291d1aa",
+    "note": "Continuous original Playwright recording; no edits or inserted outcomes."
+  }
+}
