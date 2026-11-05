@@ -4,6 +4,10 @@ Commands and integration setup for Our Castle. Current state and live-proof limi
 
 ## Run it
 
+**Fresh, no-credentials session:** after `npm ci`, run `npm run demo` and open its printed localhost URL. This portable command uses an unused port and an in-memory household; it never reads `.env`, inherited provider settings or saved data. Progress survives browser refresh until Ctrl+C ends the session. Start it again for a clean game. The owner's persistent 3010 app and separate 3021 rehearsal remain separate.
+
+**Persistent/configured app:** use the commands below.
+
 Requires **Node.js 22.16 or later** (uses the built-in `node:sqlite`).
 
 ```sh

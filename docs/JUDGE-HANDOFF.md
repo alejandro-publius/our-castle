@@ -12,11 +12,11 @@ The repository remains private after GitHub denied this connection's visibility 
 git clone https://github.com/alejandro-publius/our-castle.git
 cd our-castle
 npm ci
-OUR_CASTLE_ENV_FILE=none OUR_CASTLE_DATA_DIR="$(mktemp -d)" PAYPAL_CLIENT_ID= PAYPAL_CLIENT_SECRET= AI_API_KEY= CHANNEL3_API_KEY= AG_STUDIO_LICENSE_KEY= PORT=3134 npm start
-# Open http://localhost:3134/
+npm run demo
+# Open the localhost URL printed in the terminal.
 ```
 
-Use a free port; stop on `EADDRINUSE`. This command ignores `.env` and uses a fresh database. It does not reset the owner's household. It is a POSIX shell command; PowerShell users can instead run ordinary `npm start` in a fresh checkout without a `.env`, which uses port 3010 and `data/`.
+Use the same command from a POSIX shell or PowerShell; the launcher has no shell-specific environment syntax. It uses an OS-assigned localhost port and a fresh in-memory database, ignoring `.env`, inherited provider keys, `HOST`, `PORT` and data-directory settings. It leaves existing servers and households alone. Refresh retains progress; Ctrl+C ends the session. A new run starts fresh. Use ordinary `npm start` for the separately configured, persistent app.
 
 For live integrations on another machine, use your own sandbox developer credentials and runtime API key following [the README](../README.md#real-paypal-sandbox-and-ai). Channel3 needs a server key; Studio's local trial is not bundled. Studio may show its evaluation notice without a suitable licence. No runtime secrets or owner databases are distributed.
 
@@ -31,6 +31,8 @@ For live integrations on another machine, use your own sandbox developer credent
 7. Refresh. Goal, contribution, receipt and earned areas persist. Explore night/rain, the palace, towers and sword without changing any finances.
 
 Searching does not buy a product. Bills/gifts do not count toward savings. No verified utility provider is connected.
+
+New unlock cards briefly welcome the household's selected pixel characters beside the crest. The parallel banner is suppressed for the same event; reopening a deed uses the original compact face. [Reference lock](UNLOCK-CELEBRATION.md). For observed usability sessions, use the [three-person playtest sheet](PLAYTEST.md); no participant results have been invented.
 
 ## 3. Evidence, without mixing modes
 

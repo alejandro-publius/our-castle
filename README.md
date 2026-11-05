@@ -16,11 +16,11 @@ Use **Node.js 22.16+** (verified on Node 26):
 git clone https://github.com/alejandro-publius/our-castle.git
 cd our-castle
 npm ci
-npm start
-# http://localhost:3010/
+npm run demo
+# Open the local URL printed in the terminal.
 ```
 
-A fresh checkout without a `.env` runs simulated payments and a rules-based planner. Its labels distinguish that mode from real sandbox/AI integrations. Records persist in local SQLite. [Isolated run and review route](docs/JUDGE-HANDOFF.md#1-run-it) · [Detailed runbook](docs/RUNBOOK.md)
+The demo starts a fresh in-memory household on an unused localhost port. It ignores `.env`, configured keys and saved records. Progress survives refresh while the demo runs; closing it ends that session. Payments are simulated and the planner uses built-in rules, with their existing labels. For persistent local records and configured sandbox/AI integrations, use `npm start` and [the runbook](docs/RUNBOOK.md). [Short review route](docs/JUDGE-HANDOFF.md#2-a-short-review-route)
 
 ## A connected family journey
 

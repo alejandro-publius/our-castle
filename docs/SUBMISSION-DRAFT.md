@@ -16,7 +16,7 @@ Choose a house name and crest, set a goal and make an editable weekly plan. Our 
 
 Market Town's merchant searches real products through Channel3. Three compact results show price and availability; **Use as goal** creates an unsaved draft. The family confirms the goal before anything changes. A contribution tracks progress toward that goal; it does not purchase the merchant item.
 
-An adult approves a specific contribution amount, then PayPal sandbox handles checkout. The server checks the completed capture before crediting progress once. At 25%, Manor Gardens opens across its bridge; 40% opens Market Town; 60% opens Stone Keep and Starfall Observatory; 100% opens the Royal Citadel, Rosewind Palace and Rapunzel's Tower. The starting village and earlier buildings remain. Each new area has a short pixel deed card.
+An adult approves a specific contribution amount, then PayPal sandbox handles checkout. The server checks the completed capture before crediting progress once. At 25%, Manor Gardens opens across its bridge; 40% opens Market Town; 60% opens Stone Keep and Starfall Observatory; 100% opens the Royal Citadel, Rosewind Palace and Rapunzel's Tower. The starting village and earlier buildings remain. Each new area has a short pixel deed card with the house crest and selected family characters.
 
 The nine-district woodland has flowing rivers, drawbridges, family avatars, roaming guests, farm animals, a tavern and a hidden sword in the stone. Day, afternoon, night and rain change its light; optional city weather uses Open-Meteo. PayPal supplies no location or utility-bill verification.
 
