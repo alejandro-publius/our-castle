@@ -1,13 +1,13 @@
 # Judge and demo handoff
 
-Start here to run, evaluate or present Our Castle. State as of **November 4, 2026**, on the local branch `expansion/wider-estate`:
+Start here to run, evaluate or present Our Castle. State as of **November 4, 2026**, on the private GitHub `main` branch:
 
 - **Latest owner direction:** keep building, with video work paused. The realm now has nine woodland districts, including Starfall Observatory and Rapunzel's Tower at existing milestones. The hidden sword is discovered by an accessible glint without changing money or rewards. All earlier estates, Rosewind, the Citadel stag and the defined bright clouds remain. [Towers](screenshots/wizard-tower.png) · [Rapunzel](screenshots/rapunzel-tower.png) · [Current realm](screenshots/legends-realm.png).
 - **Record to realm (817c19c):** select/search an AG Grid record, inspect its receipt and visit a calculated milestone district. Focused AI verification is scoped to the selected household order and checks order/reference/capture identity. [Award targets and actual integration](AWARD-STRATEGY.md). The 3010 backend was restarted for this code with all user-table digests and .env preserved; the existing 3021 rehearsal was not restarted or changed.
 - **App:** the woodland realm is `ce43a0f`; the clearer family journey is `2a18bc5`, with the lazy-Ledger focus follow-up at `ecc7cc5`. District-deed cards are `da602b8`; time, rain and optional city weather are `feada574`; destination exploration language is `78033cc`. All are promoted to the primary local branch. The earlier `7468b57` island layout and preserved clips are historical.
 - **Interface:** four journey steps (House, Plan, Contribute, Ledger). The owner removed the Rewards catalogue and future-tier tour banners. Unlock cards remain automatic; select an earned district and use View deed to reopen its card. A completed goal points directly to the castle. Unlock cards now have only their name, pixel art, crest and one milestone line ([current card](screenshots/deed-manor-simple.png)).
 - **Current interface:** the realm is beside one collapsible journal with House / Plan / Contribute / Ledger. The header shows the goal once; Areas, View and World settings open on request. The footer has one general notice. Amount approval and actual receipt/ledger source labels remain. The pixel world, ivory district plaques, deeds, light/weather and gentle river current are unchanged. See [the reference lock](INTERFACE-DIRECTION.md) [Current desktop](screenshots/game-interface-contribute.png) · [whole realm](screenshots/game-interface-world.png) · [phone](screenshots/game-interface-phone.png)..
-- **Not pushed:** the GitHub `main` branch still holds only the original concept handoff (`5cf8363`), so **cloning GitHub does not give you this prototype**. Review it from the owner's checkout or from the private offline review kit (section 1).
+- **GitHub source:** private [main](https://github.com/alejandro-publius/our-castle/tree/main) contains the full current game and its visual/sponsor handoffs. An authenticated clone works. Runtime secrets, owner data and ignored local captures are excluded; the repository is still private and no site is deployed.
 - **Status:** the repository is private, everything runs against the PayPal **sandbox**, and no hackathon entry has been submitted.
 
 | Look at | Where |
@@ -45,9 +45,23 @@ The main app starts from `~/projects/our-house` with `npm start`, reading the gi
 
   If it prints `Error: listen EADDRINUSE` instead of `Payments: EXAMPLE mode`, stop. Something else owns the port; don't reuse it, reset it or run Postman against it.
 
+### From private GitHub main (another machine)
+
+Authenticate with a GitHub account that can read the private repository, then:
+
+```sh
+git clone https://github.com/alejandro-publius/our-castle.git
+cd our-castle
+npm ci
+OUR_CASTLE_ENV_FILE=none OUR_CASTLE_DATA_DIR="$(mktemp -d)" PAYPAL_CLIENT_ID= PAYPAL_CLIENT_SECRET= AI_API_KEY= PORT=3134 npm start
+# Open http://localhost:3134/
+```
+
+Use Node.js 22.16 or later (Node 26 was used for the verified build). The separate no-credentials example runs without provider accounts. Do not point it at the owner's database or reuse an occupied port. For visual work start with [Claude's handoff](CLAUDE-VISUAL-HANDOFF.md); integration work starts with [Astra's handoff](ASTRA-INTEGRATION-HANDOFF.md).
+
 ### From the private offline review kit (another machine)
 
-Cloning GitHub does not work for this yet: `main` has only the original starter, and pushing is the owner's decision. Instead, the owner can hand over the kit's zip. It is a source snapshot of one committed HEAD under a single `our-castle/` folder, with no Git history, `.env`, data or `node_modules`. Its adjacent manifest gives the commit and the SHA-256 hashes.
+The full game can now be cloned from private GitHub main with an authorized account. The owner can still share the earlier offline zip as a versioned snapshot; its adjacent manifest identifies its source commit, so it may predate the latest realm. Neither route includes .env, local data or node_modules.
 
 Requires Node.js 22.16 or later. `npm ci` installs the exact versions in `package-lock.json` and needs network access to the npm registry, or a warm npm cache.
 
@@ -174,7 +188,7 @@ Items 1–3 can be closed by one payment (next actions, step 1).
 
 **B. Submission decisions** (owner only; the owner currently wants private development). The requirements below come from the owner's pasted Devpost page, summarized in [HACKATHON.md](HACKATHON.md). Deadline: **November 12, 2026, 12:00 p.m. PST**.
 
-- **A public repository with a visible license.** This means bringing the prototype onto the branch that is shared, because `main` lacks it today. It also means deciding how the original Tiny Castle art is licensed before public distribution ([NOTICE.md](../NOTICE.md)).
+- **A public repository with a visible license.** The complete code is now on private main. Making it public and confirming original-art distribution licensing remain owner decisions before submission ([NOTICE.md](../NOTICE.md)).
 - **A public YouTube demo under three minutes** that shows the project working. The 36-second clip doesn't meet this on its own: it shows no PayPal or AI.
 - **The Devpost text**, from [SUBMISSION-DRAFT.md](SUBMISSION-DRAFT.md), including confirming the coding-assistant disclosure.
 - **Hosting is not required.** Run instructions in the repository satisfy the "functional demo" requirement.

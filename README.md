@@ -14,6 +14,8 @@ Built for the PayPal AI Hackathon as a local prototype, with PayPal at the cente
 
 > Private repository, sandbox only. No real money moves, nothing is deployed, and no hackathon entry has been submitted.
 
+**Workstreams:** [Claude visuals](docs/CLAUDE-VISUAL-HANDOFF.md) · [Astra sponsor/integration engineering](docs/ASTRA-INTEGRATION-HANDOFF.md). CLAUDE-START.md now starts a focused visual pass. The Astra handoff records existing sponsor use, remaining live-proof gaps and dependency advisories; it is not a claim that those gaps are fixed.
+
 **Judges and demo:** start with [docs/JUDGE-HANDOFF.md](docs/JUDGE-HANDOFF.md). It covers how to run the app, what is verified and by which evidence, and what still needs the owner.
 
 **Game controls:** the world sits beside one collapsible household journal. House, Plan, Contribute and Ledger keep their existing actions; the header shows the goal once. Areas, View and World settings hold occasional controls. There is one general notice in the footer; approval and actual receipt/source facts remain at the relevant action. See [interface direction and references](docs/INTERFACE-DIRECTION.md) [Current interface](docs/screenshots/game-interface-contribute.png) · [Whole realm](docs/screenshots/game-interface-world.png) · [Phone](docs/screenshots/game-interface-phone.png)..
@@ -35,7 +37,7 @@ Built for the PayPal AI Hackathon as a local prototype, with PayPal at the cente
 **Preserved earlier review draft:** [2:51 woodland/family MP4](docs/demos/woodland-review/our-castle-family-woodland-review-draft.mp4), with [editable narration, captions, timeline and source notes](docs/demos/woodland-review/README.md). It shows the example-mode family journey and forest before the district-deed and atmosphere additions, earlier recorded live AI and historical sandbox evidence. A visible 24-second approved sandbox insert remains unfilmed at 2:17–2:41. Private, not submitted, and not proof of a completed in-app checkout/get_order flow. The [earlier 2:36 review](docs/demos/judge-review/README.md) is preserved as a historical version.
 
 - **Historical world clip:** [docs/demos/our-castle-connected-realm.mp4](docs/demos/our-castle-connected-realm.mp4), a silent 36-second walkthrough in example mode. It is not proof of the PayPal or AI integrations ([provenance](docs/demos/README.md)). Its island artwork predates the current green forest.
-- **Where the prototype lives:** only on the owner's local branch and in the private offline review kit described in the handoff. GitHub `main` still holds just the original concept starter.
+- **Current source:** the full working game and reference assets are on the private [GitHub main branch](https://github.com/alejandro-publius/our-castle/tree/main). Local .env files, databases, account records, node_modules and ignored test captures are excluded. Existing media is historical; video work remains paused.
 
 ## Status — what works and what is not yet verified
 

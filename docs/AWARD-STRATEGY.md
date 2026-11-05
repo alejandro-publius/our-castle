@@ -23,8 +23,12 @@ These are targets, not eligibility or winning claims. The canonical event URL/fu
 
 Local copies, retrieval results and SHA-256 hashes: ignored test-results/award-finish/research/. Runtime dependencies are pinned by package-lock.json. No new APIMatic account, paid SDK generation, external family-data upload, utility-provider integration, payment order or paid AI call is implied by this research.
 
+## Current engineering handoff
+
+[ASTRA-INTEGRATION-HANDOFF.md](ASTRA-INTEGRATION-HANDOFF.md) separates the implemented sponsor layers from the next engineering work. A clean install during the main sync reported 12 npm advisory entries in the toolkit dependency tree; review upstream fixes/compatibility before deployment, without silently downgrading the pinned toolkit or running audit fix --force. [CLAUDE-VISUAL-HANDOFF.md](CLAUDE-VISUAL-HANDOFF.md) defines the other workstream. The private GitHub sync does not publish a site or establish prize eligibility.
+
 ## Hosting handoff
 
 The service in render.yaml is intentionally example-only, with no .env and blank API keys. It binds to Render's interface and port, uses /api/status for health, and keeps throwaway data under /tmp. It starts with the existing built-in planner and labelled simulated payments. Existing local .env, household records and the approved 3021 rehearsal must never be uploaded into that service.
 
-After an explicit owner decision, push the chosen working branch, import its Blueprint in Render and verify the labelled example modes. No public deployment, account provisioning, billing selection or visibility change was performed here. A private, persistent service with real provider keys would need a separate deployment review.
+The owner has authorized syncing the current build to private GitHub main. Importing the Blueprint into Render, choosing a hosted service and verifying a public example link still require a separate deployment decision. No public deployment, account provisioning, billing selection or visibility change was performed here. A private, persistent service with real provider keys would need a separate deployment review.

@@ -10,5 +10,5 @@ if [ -z "$our_castle_claude" ]; then
   printf '%s\n' 'Install Claude Code, then open this folder and paste CLAUDE-START.md.'
   exit 1
 fi
-printf '%s\n' 'Opening Claude Code in Our Castle with the bundled concept and art handoff.'
+printf '%s\n' 'Opening Claude Code in Our Castle with the current visual handoff.'
 exec "$our_castle_claude" "$(cat CLAUDE-START.md)"

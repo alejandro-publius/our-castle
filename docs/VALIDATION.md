@@ -1,5 +1,15 @@
 # Validation
 
+## November 5, 2026 UTC: private main sync and split handoff
+
+The owner authorized moving the full working game to private GitHub main, with Claude responsible for visuals and Astra for sponsor/integration engineering. CLAUDE-START.md and the launcher text now point to the visual handoff; active README/judge instructions now support an authenticated clone rather than describing main as the starter. Existing financial code, visuals, assets, reference notices and historical videos are unchanged by this handoff.
+
+Actual clean-checkout checks: npm ci installed the locked dependencies; the original 47-file/palette/renderer/syntax guard passed; eight server cases passed with fake/in-memory transports; shell syntax and diff whitespace checks passed. An isolated no-credentials server from that clean main checkout served nine districts on desktop and a 390 px touch context, reached the last Areas item, supported keyboard/touch sword discovery, loaded the three newest portrait assets and produced no page errors, external requests, writes or state change.
+
+npm audit reports twelve advisory entries (eleven high, one moderate) in the toolkit dependency graph. These remain open for compatibility/reachability triage in ASTRA-INTEGRATION-HANDOFF.md; the suggested toolkit replacement is not silently applied. No paid payment/AI/provider suite was rerun, no real financial action occurred, and no site was deployed. The owner's .env/household data and the 3021 rehearsal are not part of Git.
+
+Ignored evidence on the owner's Mac: test-results/main-sync/{npm-ci.log,npm-audit.json,source-check.log,server-tests.log,fresh-smoke.json}. Final publication/secret-scan evidence is recorded alongside those files.
+
 ## November 4, 2026: connected folklore clearings and sword discovery
 
 Added two original tower districts tied to existing home milestones: Starfall Observatory at 60%, Rapunzel's Tower at 100%. They have their own short deeds and river crossings. The hidden sword is camera-only scenery: no payment, reward entry, household write, new tier or change to tracked progress. All earlier locations, financial route, court capacity and cloud shader remain.
