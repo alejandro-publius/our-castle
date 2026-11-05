@@ -120,9 +120,12 @@ for (const adapter of ['rest', 'sdk']) {
     assert.equal(c.contribution.status, 'approval_canceled');
     assert.equal(progressFor(canceled.db, DEMO_GOAL_ID).progressCents, 6000);
 
+    // A PayPal server error on capture is an uncertain outcome (the capture may have happened): the order is re-read and
+    // left pending and recheckable, never reported as failed. Nothing is credited.
     const failing = setupDomain({ adapter, mode: 'sandbox', paypalOptions: { captureError: { status: 500, issue: 'INTERNAL_SERVER_ERROR' } } });
     const orderId3 = await approvedOrder(failing);
-    await assert.rejects(capture(failing, orderId3), { code: 'paypal_error' });
+    const uncertain = await capture(failing, orderId3);
+    assert.deepEqual([uncertain.outcome, uncertain.contribution.status], ['unknown', 'pending']);
     assert.equal(progressFor(failing.db, DEMO_GOAL_ID).progressCents, 6000);
   });
 

@@ -1,5 +1,13 @@
 # Validation
 
+## APIMatic-informed PayPal review — November 5, 2026
+
+The APIMatic PayPal Context Plugin's published skills (marketplace commit 7cbdf85) were applied to a contract review of the official `@paypal/paypal-server-sdk@2.5.0` adapter. Installing the plugin was blocked by automatic permission review and not retried.
+
+Fix: a capture with no answer or a PayPal 5xx is now settled by re-reading the same order. It is left `pending` and recheckable, never `failed`, a webhook-settled order is never downgraded, and a lost refund reply has honest wording.
+
+Six fake-sandbox cases were added; each changed behaviour was checked against the earlier code or the reviewed defects. One existing payment case (a 500 on capture) now expects "unknown and pending". Unit suite: 160 cases, 159 passed, 1 existing skip. No PayPal call, order or refund. Details: docs/APIMATIC-USAGE.md.
+
 ## Treasury (AG Studio next-area widget) — November 5, 2026
 
 Three unit cases and six desktop/touch-phone browser cases passed, using fresh in-memory example databases, simulated payments only, no licence and no provider credentials. They cover:

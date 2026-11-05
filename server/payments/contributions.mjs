@@ -194,6 +194,9 @@ export function createContributionService({ db, clock, mode, paypal = null, webh
     }
     const capture = unit.payments?.captures?.[0];
     if (!capture) {
+      // An unresolved capture attempt (marked pending after PayPal did not answer) stays pending and recheckable until a
+      // capture bound to this order is confirmed; a read that still shows none does not hide the recovery action.
+      if (orderById(row.id).status === 'pending') return result(row, 'unknown');
       if (order.status === 'APPROVED') setStatus(row, 'created', 'Approved in PayPal but not captured yet.');
       return result(row, 'not_captured');
     }
@@ -207,6 +210,14 @@ export function createContributionService({ db, clock, mode, paypal = null, webh
       throw new DomainError(409, 'order_mismatch', 'That order belongs to a different household or goal. Nothing was captured.');
     }
     return row;
+  }
+
+  // No HTTP answer (timeout, dropped connection) or a PayPal server error: a write may already have taken effect.
+  const outcomeUnknown = (error) => !Number.isInteger(error.status) || error.status >= 500;
+  const UNRESOLVED = 'PayPal did not confirm this capture in time, so its outcome is not known yet. Nothing was credited; check with PayPal.';
+  /** Mark a capture attempt unresolved (pending, recheckable), unless a verified webhook already settled it meanwhile. */
+  function markUnresolved(row) {
+    if (!SETTLED.has(orderById(row.id).status)) setStatus(row, 'pending', UNRESOLVED);
   }
 
   function paypalFailure(row, error, message) {
@@ -333,6 +344,14 @@ export function createContributionService({ db, clock, mode, paypal = null, webh
           } else if (error.hasIssue('ORDER_NOT_APPROVED')) {
             setStatus(row, 'created', 'PayPal has not recorded an approval for this order yet.');
             return result(row, 'not_approved');
+          } else if (outcomeUnknown(error)) {
+            // The capture may have happened. Mark it unresolved, then settle from what PayPal holds for this same order;
+            // never report it as failed. (2) A webhook may settle the order while we wait: canonical state is re-read.
+            markUnresolved(row);
+            try { ({ data: order } = await paypal.getOrder(providerOrderId)); } catch (readError) {
+              if (!(readError instanceof PayPalError)) throw readError;
+              return result(row, SETTLED.has(orderById(row.id).status) ? 'already_completed' : 'unknown');
+            }
           } else throw paypalFailure(row, error, 'PayPal sandbox could not capture this order.');
         }
         return applyOrder(row, order);
@@ -369,6 +388,11 @@ export function createContributionService({ db, clock, mode, paypal = null, webh
       try {
         ({ data } = await paypal.refundCapture(cap.capture_id, { amountCents: refundable, currency: cap.currency, requestId: `refund-${cap.capture_id}-${count + 1}` }));
       } catch (error) {
+        if (error instanceof PayPalError && outcomeUnknown(error)) {
+          // The refund may have happened. Nothing is recorded here. A retry keeps the same PayPal-Request-Id, but PayPal
+          // keeps request ids only for a limited time, so the adult is asked to check PayPal first rather than promised safety.
+          throw new DomainError(502, 'paypal_unknown', 'PayPal did not confirm this refund, so it may or may not have happened. Progress was not changed here. Check this capture in PayPal before trying again.', { debugId: error.debugId });
+        }
         if (error instanceof PayPalError) throw new DomainError(502, 'paypal_error', 'PayPal sandbox could not refund this capture. Progress was not changed.', { debugId: error.debugId, issues: error.issues });
         throw error;
       }

@@ -1062,6 +1062,7 @@ const OUTCOME_TEXT = {
   not_captured: ['info', 'Approved but not captured yet. No progress was recorded.'],
   rejected_mismatch: ['error', 'The payment did not match what this server expected, so it was not counted.'],
   not_credited: ['error', 'PayPal reported an unexpected status. No progress was recorded.'],
+  unknown: ['info', 'PayPal did not confirm this payment in time, so its outcome is not known yet. Nothing was credited; check it from its Ledger receipt.'],
 };
 
 function handleContributionResult(res) {
