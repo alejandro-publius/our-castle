@@ -1,5 +1,11 @@
 # Art direction — preserve this visual family
 
+## One Citadel lawn sculpture (November 4, 2026)
+
+The owner asked for at least one highly detailed lawn statue on a fancier estate, without overdecorating. Reference lock: the existing Citadel detail capture, the owned stone/cream/brass palette and existing woodland deer are primary. Live Refero review of Eduardo del Fraile (https://www.eduardodelfraile.com, style 36be0546-da09-4d6b-ba8b-27495bb71cda) contributes only one isolated sculptural focal point with breathing room; none of its interface, typography or black gallery canvas is imported.
+
+Build one ivory stag on a carved, stepped plinth, with branching gilt antlers, chiseled facial details, articulated stone legs, cloven hooves and a small household-color shield plaque. Place it on the Royal Citadel front lawn at local (8.5, 15.4), between the two guest lanes, away from the gate and existing flower parterres. Keep its base aligned with the lawn; only the stag turns. No second statue, new interface text, reward rule or financial behavior. Use existing geometry/material batches and no animation loop. [Estate view](screenshots/citadel-statue.png) · [sculpture detail](screenshots/citadel-stag-detail.png).
+
 ## Game interface around the world (November 4, 2026)
 
 The owner rejected the surrounding website chrome, repeated explanations and disclaimers, while keeping the pixel world. The new target is a compact game frame: one header goal, a large realm, one collapsible household journal, and occasional utilities behind Areas, View and World settings. There is one general notice in the footer. Exact-amount consent and the actual source/status of a receipt stay attached to that action or record.

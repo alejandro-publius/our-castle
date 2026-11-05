@@ -1,5 +1,13 @@
 # Validation
 
+## November 4, 2026: one carved stag for the Citadel lawn
+
+Added one static ivory stag on a stepped, carved plinth, with branching gilt antlers, facial cuts, cloven hooves and a household-color crest plaque. It uses the original geometry/material batching. No other district, building, interface or progression rule changed. [Estate view](screenshots/citadel-statue.png) · [detail](screenshots/citadel-stag-detail.png).
+
+**Checks:** the source/asset/palette/renderer check passed. A focused read-only Chromium review of isolated example data confirmed all six districts and the still-locked Citadel, reviewed Day and Night, and found no 390 px overflow, page errors, writes or external requests. Household state was identical before/after. The first placement intersected the final journey approach; the statue was moved to the opposite front lawn. The final base clears all sampled guest routes by at least 0.755 world units and the journey route by 6.8 units. The antler widths were refined after viewing the actual pixel render. The original failed review is retained in ignored test-results/citadel-statue/.
+
+The closest detail capture uses only the normal camera zoom and pan controls. Physical phones, Safari/Firefox and hardware performance were not checked. No full suite, payment order, paid AI or provider call was run. Earlier videos and the approved sandbox-insert gap are unchanged. All seven protected owner/rehearsal files retained their hashes, permissions and timestamps.
+
 ## November 4, 2026: a compact game frame and one general notice
 
 The owner rejected the surrounding website chrome and repeated explanations. The realm now sits beside one collapsible household journal, with the four existing actions. Goal and progress appear once in the header. Areas, camera controls and World settings open on request. Model IDs and integration details moved out of the main header; duplicate slogans, summaries and general financial/persona paragraphs were removed. One footer notice states the active payment mode and the limits of profiles/reported progress. Exact-amount approval, error states and source/status labels on actual receipts and records remain.

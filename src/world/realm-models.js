@@ -232,6 +232,77 @@ export function createRealmModels({ builder, part: addPart, models, colours: C }
       for(let k=0;k<3;k++){rock(group,px-.35+k*.35,.82,z,.36,.32,.36,C.leaf);rock(group,px-.35+k*.35,1.0,z+.05,.18,.18,.18,[C.red,C.gold,F.pink][(i+k)%3]);}
     }
   }
+  // One ceremonial lawn artwork, kept clear of the Citadel gate and the two horizontal guest lanes.
+  function stagMonument(group, x, z, flag) {
+    const g = new THREE.Group(); g.name = 'citadel-stag-monument'; g.position.set(x, 0, z); group.add(g);
+    const stone = F.pale, shade = C.stone, cut = F.course;
+    // Stepped limestone footing, recessed die, carved corner ribs and a narrow gilt cornice.
+    box(g,0,.33,0,3.4,.16,3.0,shade); box(g,0,.52,0,3.0,.22,2.6,stone);
+    box(g,0,.74,0,2.52,.2,2.2,stone); box(g,0,.88,0,2.2,.1,1.94,cut);
+    box(g,0,1.56,0,1.84,1.28,1.6,stone); box(g,0,.98,0,1.96,.08,1.72,C.cream);
+    box(g,0,2.22,0,2.16,.14,1.92,shade); box(g,0,2.34,0,2.44,.12,2.14,stone);
+    box(g,0,2.42,0,2.46,.04,2.16,C.gold); box(g,0,2.49,0,2.24,.1,2.0,stone);
+    for (const sx of [-1,1]) for (const sz of [-1,1]) {
+      box(g,sx*.85,1.58,sz*.73,.14,1.16,.14,C.cream);
+      rock(g,sx*.85,2.08,sz*.73,.19,.19,.19,C.gold);
+    }
+    for (const side of [-1,1]) for (let i=-2;i<=2;i++)
+      box(g,side*.93,1.56,i*.23,.035,.88,.055,cut);
+    for (const y of [1.08,2.02]) box(g,0,y,.81,1.44,.045,.04,shade);
+    models.shield(g,0,1.67,.83,flag,.84);
+    // The plinth stays square to the lanes; the sculpted animal turns into a three-quarter profile.
+    const stag = new THREE.Group(); stag.rotation.y = -.45; g.add(stag);
+    const rod = (a,b,width,colour=stone) => {
+      const dx=b[0]-a[0],dy=b[1]-a[1],dz=b[2]-a[2],length=Math.hypot(dx,dy,dz);
+      part(stag,'round',(a[0]+b[0])/2,(a[1]+b[1])/2,(a[2]+b[2])/2,width,length,width,colour,
+        Math.atan2(dz,-dx),Math.acos(Math.max(-1,Math.min(1,dy/length))));
+    };
+    rock(stag,0,4.22,-.12,1.03,1.04,2.08,stone);
+    rock(stag,0,4.3,.62,.95,1.12,1.0,C.cream);
+    rock(stag,0,4.18,-.82,.94,.88,.83,stone);
+    box(stag,0,4.66,-.13,.16,.09,1.34,C.cream);
+    rod([0,4.48,.57],[0,5.19,1.0],.64);
+    rod([0,4.4,.89],[0,5.12,1.17],.35,C.cream);
+    for(let i=0;i<4;i++) rock(stag,0,4.47+i*.18,1.0+i*.07,.45,.25,.3,i%2?C.cream:stone);
+    // A lifted forehoof and bent hocks read as carved anatomy rather than a miniature live deer.
+    const legs = [
+      [[-.39,4.13,-.68],[-.43,3.59,-.95],[-.4,3.1,-.6],[-.4,2.67,-.82]],
+      [[ .39,4.13,-.68],[ .43,3.59,-.95],[ .4,3.1,-.6],[ .4,2.67,-.82]],
+      [[ .38,4.17,.59],[ .38,3.62,.59],[ .39,2.67,.79]],
+      [[-.38,4.17,.67],[-.42,3.67,.76],[-.42,3.36,1.18]],
+    ];
+    for(const points of legs) {
+      for(let i=1;i<points.length;i++) {
+        rod(points[i-1],points[i],i===1?.23:.14);
+        rock(stag,...points[i],.23,.23,.25,C.cream);
+      }
+      const [hx,hy,hz]=points.at(-1);
+      box(stag,hx,hy-.035,hz+.04,.26,.18,.36,shade);
+      box(stag,hx,hy-.025,hz+.075,.035,.18,.36,cut);
+    }
+    rock(stag,0,5.42,1.07,.65,.76,.73,stone);
+    rock(stag,0,5.2,1.49,.45,.32,.58,C.cream);
+    box(stag,0,5.09,1.68,.29,.035,.045,cut);
+    for(const side of [-1,1]) {
+      box(stag,side*.29,5.48,1.25,.065,.065,.13,C.dark);
+      box(stag,side*.13,5.19,1.76,.045,.05,.035,cut);
+      part(stag,'rock',side*.39,5.73,.82,.25,.63,.3,stone,0,-side*.58);
+      part(stag,'rock',side*.43,5.74,.94,.12,.36,.1,shade,0,-side*.58);
+      // Three main antler segments plus brow and crown tines, in restrained old gold.
+      const a=[side*.2,5.7,.84],b=[side*.43,6.08,.5],c=[side*.83,6.53,.2],d=[side*.98,6.89,0];
+      rod(a,b,.15,C.gold);rod(b,c,.12,C.gold);rod(c,d,.09,C.gold);
+      rod(b,[side*.18,6.43,.83],.10,C.gold);
+      rod([side*.65,6.32,.34],[side*.52,6.74,.64],.09,C.gold);
+      rod(c,[side*1.2,6.82,.36],.09,C.gold);
+      for(const [yy,zz] of [[4.32,.1],[4.39,.3],[4.43,.5]])
+        box(stag,side*.46,yy,zz,.035,.17,.06,shade);
+    }
+    rod([0,4.95,1.0],[0,5.04,1.06],.75,C.gold);
+    rock(stag,0,4.95,1.36,.15,.2,.08,flag);
+    rod([0,4.36,-1.02],[0,4.48,-1.37],.16,C.cream);
+    rock(stag,0,4.48,-1.35,.2,.29,.28,C.cream);
+  }
+
   function decor(group,d,state,flag,helpers){
     if(d.id==='cottage'){
       for(const[x,z]of[[-10,11],[8,11]])models.cottage(group,x,z,{w:2.7,h:1.8,d:2.2,roofColor:z>0?C.red:C.blue,shutters:C.blue});
@@ -267,6 +338,7 @@ export function createRealmModels({ builder, part: addPart, models, colours: C }
         round(group,x,.4,z,3,.3,3,C.cream);round(group,x,.58,z,3.1,.06,3.1,C.gold);round(group,x,.7,z,2.5,.35,2.5,C.pine);rock(group,x,1.15,z,1.3,1,1.3,C.leaf);
         for(let k=0;k<6;k++){const a=k*Math.PI/3;rock(group,x+Math.cos(a)*.95,1.0,z+Math.sin(a)*.95,.3,.3,.3,[C.red,C.gold,F.pink][k%3]);}
       }
+      stagMonument(group,8.5,15.4,flag);
       models.bunting(group,-17,18,17,18,[C.red,C.gold,C.blue]);
     }
     if(d.id==='market'){
