@@ -18,6 +18,8 @@ For a clean visual checkout, use Node 26 (minimum 22.16), `npm ci`, then an unus
 
 ## Preserve
 
+Market tavern: retain the existing market house with striped porch, mug sign and three background townsfolk around its outdoor table. Read docs/TAVERN.md. Preserve bounded gestures, quiet interface, existing market access and the unchanged earned court; do not count the three scenic figures as new financial rewards.
+
 Farm life: retain the two royal stables/four horses, village henhouse/three hens/goat, and two Manor sheep. Read docs/FARM-LIFE.md. Keep reserved plot clearances, night lanterns, bounded grazing clock and cleanup on rebuild; animals remain scenery separate from the twenty-person court.
 
 Family avatars: Journal → House now saves one of eight original portraits per existing member, with matching map travelers. Read docs/FAMILY-AVATARS.md and inspect docs/screenshots/family-avatars.png. Keep those choices and the additive avatar column; avatars do not change roles or the twenty-person reward court.

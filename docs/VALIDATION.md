@@ -1,5 +1,12 @@
 # Validation
 
+## Market Town tavern — November 5, 2026
+
+Four focused browser cases passed across desktop and touch phone. They check three animated background townsfolk, unchanged family/farms/access and financial state, still reduced-motion poses, hidden-tab pause, bounded resumption, and four tier/crest render rebuilds without accumulated people or geometry. Requests were limited to same-origin GET: no household writes or provider calls.
+
+The original-cottage/tavern detail, actual Day Market Town, and actual Night/Rain views were reviewed on isolated example data, with no page errors/external calls and unchanged server state. The source/47-file original-art/palette/renderer guard passed. Evidence is in docs/TAVERN.md and ignored test-results/tavern/ under the owner's checkout. No new live integration evidence is implied.
+
+
 ## Stables and farm life — November 5, 2026
 
 Six focused browser cases passed across desktop and touch phone: scenery counts, unchanged financial state/family/access, eight visual realm rebuilds without accumulating animals or geometry, retained twenty-person court, reduced motion, hidden-tab pause and bounded clock resumption. All browser requests were restricted to same-origin GET; no provider/AI/payment calls or household writes.

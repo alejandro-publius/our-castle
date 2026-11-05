@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { createTavern, inTavernPlot, TAVERN_SITE } from './tavern.js';
 import { createFarmLife } from './farm-life.js';
 import { FARM_SITES, inFarmPlot } from './farm-locations.js';
 import { createWoodlandLegends } from './woodland-legends.js';
@@ -40,6 +41,7 @@ const nearBridge = (x, z, margin) => REALM_BRIDGES.some(({ a, b }) => {
 export function createRealmModels({ builder, part: addPart, models, colours: C }) {
   let part = addPart;
   const farm = createFarmLife({ part: addPart, models, colours: C });
+  const tavern = createTavern({ part: addPart, models, colours: C });
   const farmWorldPlots = FARM_SITES.map(s => { const d=REALM_DISTRICTS.find(d=>d.id===s.district);return [d.x+s.bounds[0],d.x+s.bounds[1],d.z+s.bounds[2],d.z+s.bounds[3]]; });
   const palace = createPrincessPalace({ part: addPart, models, colours: C });
   const legends = createWoodlandLegends({ part: addPart, models, colours: C });
@@ -221,12 +223,12 @@ export function createRealmModels({ builder, part: addPart, models, colours: C }
     // Each clearing has its own copses rather than a single square tree border.
     for(let i=0;i<24;i++){
       const x=Math.sin(i*2.37)*(d.width/2-3),z=Math.cos(i*3.73)*(d.depth/2-3);
-      if(inFarmPlot(d.id,x,z,1.2)||d.id==='palace'&&Math.abs(x)<19&&z>-12&&z<22||Math.abs(x)<12*d.scale&&Math.abs(z)<11*d.scale||nearJourney(d.x+x,d.z+z))continue;
+      if(inTavernPlot(d.id,x,z,.7)||inFarmPlot(d.id,x,z,1.2)||d.id==='palace'&&Math.abs(x)<19&&z>-12&&z<22||Math.abs(x)<12*d.scale&&Math.abs(z)<11*d.scale||nearJourney(d.x+x,d.z+z))continue;
       helpers.tree(group,x,z,1.1+(i%5)*.16,i%3!==0);
     }
     for(let i=0;i<26;i++){
       const x=Math.sin(i*3.9)*(d.width*.41),z=Math.cos(i*2.7)*(d.depth*.4);
-      if(inFarmPlot(d.id,x,z,.5)||d.id==='palace'&&Math.abs(x)<19&&z>-12&&z<22||Math.abs(x)<7&&Math.abs(z)<6||nearJourney(d.x+x,d.z+z))continue;
+      if(inTavernPlot(d.id,x,z,.4)||inFarmPlot(d.id,x,z,.5)||d.id==='palace'&&Math.abs(x)<19&&z>-12&&z<22||Math.abs(x)<7&&Math.abs(z)<6||nearJourney(d.x+x,d.z+z))continue;
       rock(group,x,.34,z,.5,.32,.4,C.leaf);rock(group,x,.57,z,.2,.23,.2,[C.gold,C.red,F.pink,F.violet][i%4]);
     }
   }
@@ -366,6 +368,7 @@ export function createRealmModels({ builder, part: addPart, models, colours: C }
     if(d.id==='market'){
       models.extras(group,2,flag,null,{ramparts:false});
       models.cottage(group,-6,-1,{w:6,h:4,d:5,roofColor:C.red,shutters:C.blue});models.banner(group,-6,3,1.6,flag,1,1.3);
+      tavern.build(group,flag);
       for(const[x,z]of[[-9,-9],[3,-9],[-7,9]])models.cottage(group,x,z,{w:3,h:2.2,d:2.7,roofColor:C.blue,shutters:C.red});
       models.well(group,-3,6);
       round(group,9,3,-8,1.8,5.5,1.8,C.cream);part(group,'cone',9,6.3,-8,2.4,1.5,2.4,C.blue);rock(group,9,7.15,-8,.3,.3,.3,C.gold);
@@ -460,7 +463,7 @@ export function createRealmModels({ builder, part: addPart, models, colours: C }
     return landscape;
   }
   function build(group,state,helpers,flag){
-    farm.reset();
+    farm.reset();tavern.reset();
     const started=performance.now(),districts=realmAccess(state),bridges=[];
     for(const d of districts){
       const region=new THREE.Group();region.position.set(d.x,0,d.z);group.add(region);
@@ -484,11 +487,14 @@ export function createRealmModels({ builder, part: addPart, models, colours: C }
       const d=REALM_DISTRICTS.find(d=>d.id===site.district);
       spots.push({kind:'stable',district:d.id,x:d.x+site.x,z:d.z+site.z+2.8});
     }
+    const market=REALM_DISTRICTS.find(d=>d.id===TAVERN_SITE.district);
+    spots.push({kind:'tavern',district:market.id,x:market.x+TAVERN_SITE.patioX,z:market.z+TAVERN_SITE.patioZ});
     for (const b of REALM_BRIDGES) for (const [x, z] of [b.a, b.b]) spots.push({ kind: 'gate', bridge: b.id, x, z });
     return spots;
   }
   return {woodland,build,home,finish,lightSpots,
     stepFarm: (seconds) => farm.tick(seconds), farmDebug: () => farm.debug(),
+    stepTavern: (seconds) => tavern.tick(seconds), tavernDebug: () => tavern.debug(),
     stepCurrent: (seconds) => current?.tick(seconds), currentDebug: () => current?.debug() ?? null,
     surfaces: () => ({...surfaceMeshes, ripples: current?.mesh}),
   };

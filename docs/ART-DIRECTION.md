@@ -1,5 +1,12 @@
 # Art direction — preserve this visual family
 
+## Market Town tavern (November 5, 2026)
+
+The existing market house gains a small striped porch, hanging tankard sign and an outdoor table with two seated neighbors and an innkeeper. Bread, mugs, barrels and a warm lantern make the gathering readable without extra interface. Occasional head/mug gestures use the existing ambient clock; reduced motion and hidden-tab pause remain. The market, well, stalls, windmill, earlier houses, farms and twenty-person court stay intact.
+
+[Reference lock and boundaries](TAVERN.md) · [Tavern detail](screenshots/market-tavern-detail.png) · [Actual Night/Rain](screenshots/market-tavern-night-rain.png).
+
+
 ## Stables and small farms (November 5, 2026)
 
 The Citadel and Rosewind each have a detailed stable and two horses. The village gains one henhouse, three hens and a goat; the Manor gains two sheep. Roofs, heraldry, hay, timber framing, warm lanterns and animal anatomy use the original miniature palette. Buildings and guests remain; farm plots sit clear of their routes and the river banks. Grazing/pecking/tail motion uses the existing clock and respects reduced motion and hidden tabs. No extra controls or text.
