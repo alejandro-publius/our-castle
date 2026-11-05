@@ -1,0 +1,222 @@
+{
+  "voice": "Daniel",
+  "rate": 178,
+  "method": "Offline macOS say; one phrase per audio file; captions use measured phrase durations",
+  "duration": 162,
+  "audio_duration": 161.999958,
+  "audio_sha256": "a50672d48ecb0a18282698d979c3c67c7d32e8e26849d0b4cc8117ec55cc272f",
+  "scenes": [
+    {
+      "id": "intro",
+      "start": 0,
+      "duration": 9,
+      "speech_end": 5.846939,
+      "silence_after": 3.153061
+    },
+    {
+      "id": "family",
+      "start": 9,
+      "duration": 12,
+      "speech_end": 8.923583,
+      "silence_after": 3.076417
+    },
+    {
+      "id": "merchant",
+      "start": 21,
+      "duration": 11,
+      "speech_end": 9.051293,
+      "silence_after": 1.948707
+    },
+    {
+      "id": "plan",
+      "start": 32,
+      "duration": 8,
+      "speech_end": 5.846939,
+      "silence_after": 2.153061
+    },
+    {
+      "id": "live-ai",
+      "start": 40,
+      "duration": 10,
+      "speech_end": 8.110884,
+      "silence_after": 1.889116
+    },
+    {
+      "id": "contribution",
+      "start": 50,
+      "duration": 6,
+      "speech_end": 4.128662,
+      "silence_after": 1.871338
+    },
+    {
+      "id": "paypal-history",
+      "start": 56,
+      "duration": 12,
+      "speech_end": 9.794331,
+      "silence_after": 2.205669
+    },
+    {
+      "id": "owner-insert",
+      "start": 68,
+      "duration": 28,
+      "speech_end": 9.550522,
+      "silence_after": 18.449478
+    },
+    {
+      "id": "manor",
+      "start": 96,
+      "duration": 10,
+      "speech_end": 9.109342,
+      "silence_after": 0.890658
+    },
+    {
+      "id": "treasury",
+      "start": 106,
+      "duration": 14,
+      "speech_end": 10.51415,
+      "silence_after": 3.48585
+    },
+    {
+      "id": "apimatic",
+      "start": 120,
+      "duration": 10,
+      "speech_end": 7.762585,
+      "silence_after": 2.237415
+    },
+    {
+      "id": "completed",
+      "start": 130,
+      "duration": 12,
+      "speech_end": 8.087664,
+      "silence_after": 3.912336
+    },
+    {
+      "id": "atmosphere",
+      "start": 142,
+      "duration": 10,
+      "speech_end": 7.797415,
+      "silence_after": 2.202585
+    },
+    {
+      "id": "close",
+      "start": 152,
+      "duration": 10,
+      "speech_end": 8.308254,
+      "silence_after": 1.691746
+    }
+  ],
+  "cues": [
+    {
+      "scene": "intro",
+      "start": 0.1,
+      "end": 5.846939,
+      "local_start": 0.1,
+      "local_end": 5.846939,
+      "text": "Our Castle turns a shared family goal into a growing woodland realm. This tour uses example mode."
+    },
+    {
+      "scene": "family",
+      "start": 9.1,
+      "end": 17.923583,
+      "local_start": 0.1,
+      "local_end": 8.923583,
+      "text": "Choose a family banner and your own pixel characters. One household journal holds the plan, contributions and records, while the world stays in view."
+    },
+    {
+      "scene": "merchant",
+      "start": 21.1,
+      "end": 30.051293,
+      "local_start": 0.1,
+      "local_end": 9.051293,
+      "text": "Market Town finds real products within a budget. These are actual earlier Channel3 results. Use as goal creates a draft for the family to confirm."
+    },
+    {
+      "scene": "plan",
+      "start": 32.1,
+      "end": 37.846939,
+      "local_start": 0.1,
+      "local_end": 5.846939,
+      "text": "The family reviews a weekly schedule before accepting it. This fresh example uses built-in rules."
+    },
+    {
+      "scene": "live-ai",
+      "start": 40.1,
+      "end": 48.110884,
+      "local_start": 0.1,
+      "local_end": 8.110884,
+      "text": "This earlier recording shows a real Claude plan: eight thirty-dollar weeks cover the two hundred forty dollar gap. The server checks the arithmetic."
+    },
+    {
+      "scene": "contribution",
+      "start": 50.1,
+      "end": 54.128662,
+      "local_start": 0.1,
+      "local_end": 4.128662,
+      "text": "A contribution starts with a chosen amount and explicit adult approval."
+    },
+    {
+      "scene": "paypal-history",
+      "start": 56.1,
+      "end": 65.794331,
+      "local_start": 0.1,
+      "local_end": 9.794331,
+      "text": "An earlier hosted-link sandbox test captured fifteen dollars and credited it once. Replay and wrong-household checks passed. That test did not record the in-app popup."
+    },
+    {
+      "scene": "owner-insert",
+      "start": 68.1,
+      "end": 77.550522,
+      "local_start": 0.1,
+      "local_end": 9.550522,
+      "text": "This review cut reserves one insert for the actual in-app sandbox checkout, saved receipt and steward verification of that same order. That sequence is not yet recorded."
+    },
+    {
+      "scene": "manor",
+      "start": 96.1,
+      "end": 105.109342,
+      "local_start": 0.1,
+      "local_end": 9.109342,
+      "text": "Here, a simulated fifteen-dollar contribution opens Manor Gardens. The deed carries the family crest and chosen characters. The village remains."
+    },
+    {
+      "scene": "treasury",
+      "start": 106.1,
+      "end": 116.51415,
+      "local_start": 0.1,
+      "local_end": 10.51415,
+      "text": "The Treasury keeps the next area, searchable records and a receipt together. AG Grid and a custom Studio widget fit the same journal. The read-only steward stays closed until needed."
+    },
+    {
+      "scene": "apimatic",
+      "start": 120.1,
+      "end": 127.762585,
+      "local_start": 0.1,
+      "local_end": 7.762585,
+      "text": "APIMatic\u2019s eight installed context skills guided PayPal integration and recovery checks, without adding any extra step for the family."
+    },
+    {
+      "scene": "completed",
+      "start": 130.1,
+      "end": 138.087664,
+      "local_start": 0.1,
+      "local_end": 8.087664,
+      "text": "Later milestones extend the same forest into a citadel, a palace and two towers. The earlier homes stay connected by rivers and bridges."
+    },
+    {
+      "scene": "atmosphere",
+      "start": 142.1,
+      "end": 149.797415,
+      "local_start": 0.1,
+      "local_end": 7.797415,
+      "text": "At night, windows and lanterns glow. Rain changes the atmosphere. These controls change the scenery, never the household ledger."
+    },
+    {
+      "scene": "close",
+      "start": 152.1,
+      "end": 160.308254,
+      "local_start": 0.1,
+      "local_end": 8.308254,
+      "text": "Try Our Castle from the public repository. The fresh demo needs no credentials and keeps its example progress separate from any saved household."
+    }
+  ]
+}

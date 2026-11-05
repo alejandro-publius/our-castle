@@ -1,0 +1,165 @@
+{
+  "status": "Review cut, not submitted. One live sandbox popup/same-order steward insert is unfilmed.",
+  "video": "our-castle-current-review-cut.mp4",
+  "duration": 162.0,
+  "sha256": "47e8176064e380ecc652949a24d5c24ff3a75506eb12263622289cdbffa09e10",
+  "bytes": 15326684,
+  "source_commit": "be73dfb674b444c1f8283aff50029b442d9d63c4",
+  "frames": 4050,
+  "probe": {
+    "programs": [],
+    "stream_groups": [],
+    "streams": [
+      {
+        "codec_name": "h264",
+        "codec_type": "video",
+        "width": 1920,
+        "height": 1080,
+        "r_frame_rate": "25/1",
+        "nb_read_frames": "4050"
+      },
+      {
+        "codec_name": "aac",
+        "codec_type": "audio",
+        "r_frame_rate": "0/0",
+        "nb_read_frames": "3797"
+      }
+    ],
+    "format": {
+      "duration": "162.000000"
+    }
+  },
+  "full_decode": "passed",
+  "caption_cues": 14,
+  "narration_sha256": "a50672d48ecb0a18282698d979c3c67c7d32e8e26849d0b4cc8117ec55cc272f",
+  "manifest_sha256": "0759b0477573b909f38f10d9d55ebf08b02f1749566dff04e12ff88468e2281c",
+  "new_provider_calls": 0,
+  "scenes": [
+    {
+      "id": "intro",
+      "start": 0,
+      "end": 9,
+      "duration": 9,
+      "kind": "video",
+      "media": "sources/intro.mp4",
+      "label": "Current build \u00b7 example household"
+    },
+    {
+      "id": "family",
+      "start": 9,
+      "end": 21,
+      "duration": 12,
+      "kind": "video",
+      "media": "sources/family.mp4",
+      "label": "Current build \u00b7 family and crest"
+    },
+    {
+      "id": "merchant",
+      "start": 21,
+      "end": 32,
+      "duration": 11,
+      "kind": "portrait",
+      "media": "sources/merchant-recorded.png",
+      "label": "Channel3 \u00b7 real search recorded November 4"
+    },
+    {
+      "id": "plan",
+      "start": 32,
+      "end": 40,
+      "duration": 8,
+      "kind": "video",
+      "media": "sources/plan.mp4",
+      "label": "Current build \u00b7 built-in example plan"
+    },
+    {
+      "id": "live-ai",
+      "start": 40,
+      "end": 50,
+      "duration": 10,
+      "kind": "portrait",
+      "media": "../woodland-review/sources/planner-result.mp4",
+      "label": "Live Claude result \u00b7 earlier interface \u00b7 November 3"
+    },
+    {
+      "id": "contribution",
+      "start": 50,
+      "end": 56,
+      "duration": 6,
+      "kind": "video",
+      "media": "sources/contribution.mp4",
+      "label": "Current build \u00b7 simulated contribution"
+    },
+    {
+      "id": "paypal-history",
+      "start": 56,
+      "end": 68,
+      "duration": 12,
+      "kind": "slide",
+      "media": "",
+      "label": "PayPal sandbox \u00b7 historical verifier \u00b7 November 3"
+    },
+    {
+      "id": "owner-insert",
+      "start": 68,
+      "end": 96,
+      "duration": 28,
+      "kind": "insert",
+      "media": "",
+      "label": "Recording gap \u00b7 not a payment demonstration"
+    },
+    {
+      "id": "manor",
+      "start": 96,
+      "end": 106,
+      "duration": 10,
+      "kind": "video",
+      "media": "sources/manor.mp4",
+      "label": "Current build \u00b7 simulated $15 unlock"
+    },
+    {
+      "id": "treasury",
+      "start": 106,
+      "end": 120,
+      "duration": 14,
+      "kind": "video",
+      "media": "sources/treasury.mp4",
+      "label": "AG Grid + AG Studio \u00b7 example records"
+    },
+    {
+      "id": "apimatic",
+      "start": 120,
+      "end": 130,
+      "duration": 10,
+      "kind": "slide",
+      "media": "",
+      "label": "APIMatic \u00b7 developer integration"
+    },
+    {
+      "id": "completed",
+      "start": 130,
+      "end": 142,
+      "duration": 12,
+      "kind": "video",
+      "media": "sources/completed.mp4",
+      "label": "Current build \u00b7 later simulated progression"
+    },
+    {
+      "id": "atmosphere",
+      "start": 142,
+      "end": 152,
+      "duration": 10,
+      "kind": "montage",
+      "media": "sources/night.mp4; sources/rain.mp4",
+      "label": "Current build \u00b7 manual night and rain"
+    },
+    {
+      "id": "close",
+      "start": 152,
+      "end": 162,
+      "duration": 10,
+      "kind": "video",
+      "media": "sources/intro.mp4",
+      "label": "Public source \u00b7 fresh local game"
+    }
+  ]
+}

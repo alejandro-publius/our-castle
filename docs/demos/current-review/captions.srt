@@ -1,0 +1,55 @@
+1
+00:00:00,100 --> 00:00:05,847
+Our Castle turns a shared family goal into a growing woodland realm. This tour uses example mode.
+
+2
+00:00:09,100 --> 00:00:17,924
+Choose a family banner and your own pixel characters. One household journal holds the plan, contributions and records, while the world stays in view.
+
+3
+00:00:21,100 --> 00:00:30,051
+Market Town finds real products within a budget. These are actual earlier Channel3 results. Use as goal creates a draft for the family to confirm.
+
+4
+00:00:32,100 --> 00:00:37,847
+The family reviews a weekly schedule before accepting it. This fresh example uses built-in rules.
+
+5
+00:00:40,100 --> 00:00:48,111
+This earlier recording shows a real Claude plan: eight thirty-dollar weeks cover the two hundred forty dollar gap. The server checks the arithmetic.
+
+6
+00:00:50,100 --> 00:00:54,129
+A contribution starts with a chosen amount and explicit adult approval.
+
+7
+00:00:56,100 --> 00:01:05,794
+An earlier hosted-link sandbox test captured fifteen dollars and credited it once. Replay and wrong-household checks passed. That test did not record the in-app popup.
+
+8
+00:01:08,100 --> 00:01:17,551
+This review cut reserves one insert for the actual in-app sandbox checkout, saved receipt and steward verification of that same order. That sequence is not yet recorded.
+
+9
+00:01:36,100 --> 00:01:45,109
+Here, a simulated fifteen-dollar contribution opens Manor Gardens. The deed carries the family crest and chosen characters. The village remains.
+
+10
+00:01:46,100 --> 00:01:56,514
+The Treasury keeps the next area, searchable records and a receipt together. AG Grid and a custom Studio widget fit the same journal. The read-only steward stays closed until needed.
+
+11
+00:02:00,100 --> 00:02:07,763
+APIMatic’s eight installed context skills guided PayPal integration and recovery checks, without adding any extra step for the family.
+
+12
+00:02:10,100 --> 00:02:18,088
+Later milestones extend the same forest into a citadel, a palace and two towers. The earlier homes stay connected by rivers and bridges.
+
+13
+00:02:22,100 --> 00:02:29,797
+At night, windows and lanterns glow. Rain changes the atmosphere. These controls change the scenery, never the household ledger.
+
+14
+00:02:32,100 --> 00:02:40,308
+Try Our Castle from the public repository. The fresh demo needs no credentials and keeps its example progress separate from any saved household.

@@ -1,0 +1,15 @@
+id,start,end,duration,kind,media,label
+intro,0,9,9,video,sources/intro.mp4,Current build · example household
+family,9,21,12,video,sources/family.mp4,Current build · family and crest
+merchant,21,32,11,portrait,sources/merchant-recorded.png,Channel3 · real search recorded November 4
+plan,32,40,8,video,sources/plan.mp4,Current build · built-in example plan
+live-ai,40,50,10,portrait,../woodland-review/sources/planner-result.mp4,Live Claude result · earlier interface · November 3
+contribution,50,56,6,video,sources/contribution.mp4,Current build · simulated contribution
+paypal-history,56,68,12,slide,,PayPal sandbox · historical verifier · November 3
+owner-insert,68,96,28,insert,,Recording gap · not a payment demonstration
+manor,96,106,10,video,sources/manor.mp4,Current build · simulated $15 unlock
+treasury,106,120,14,video,sources/treasury.mp4,AG Grid + AG Studio · example records
+apimatic,120,130,10,slide,,APIMatic · developer integration
+completed,130,142,12,video,sources/completed.mp4,Current build · later simulated progression
+atmosphere,142,152,10,montage,sources/night.mp4; sources/rain.mp4,Current build · manual night and rain
+close,152,162,10,video,sources/intro.mp4,Public source · fresh local game
