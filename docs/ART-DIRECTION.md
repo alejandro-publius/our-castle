@@ -2,6 +2,8 @@
 
 ## Larger world, quiet contributions, parchment names (November 4, 2026)
 
+Current references: [home close-up](screenshots/home-close-detail.png), [ivory nameplates](screenshots/realm-parchment.png), [castle detail](screenshots/citadel-parchment-detail.png), [contribution step](screenshots/contribution-quiet.png). Captured from isolated example data; no payment or live-weather evidence.
+
 The owner asked for visible architectural detail, less information in the contribution screen, and ivory/parchment property names with better lettering. Reference lock: today's owner screenshots identify the exact deletion/restyle targets; the established Tiny Castle palette, Uncial type, pixel renderer and connected realm remain primary. Refero's copywriting guidance supplies orientation, status and action, without repeated implementation explanations.
 
 | Decision | Source | Role |
