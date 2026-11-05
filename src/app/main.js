@@ -1202,10 +1202,17 @@ function recordImpact(row) {
 function renderTreasury() {
   if (ui.tab !== 'ledger') return;
   treasury ??= createTreasury($('#treasury-next'), { formatMoney: money, onVisit: visitDistrict,
+    requestSteward: (payload, options) => api.post('/api/steward', payload, options),
+    getStewardScope: () => JSON.stringify([state.household.id, state.household.name, state.goal, state.progress, state.plan?.id, state.acceptedPlanId,
+      state.contributions.map((c) => [c.id, c.status, c.updatedAt]), persona()?.id, ui.ledgerRecord]),
     getLicence: () => api.get('/api/treasury/studio').then((r) => r.licenseKey ?? null) });
   treasury.update(state);
 }
 function renderLedgerRecord() {
+  if (treasury?.refreshScope()) {
+    $('#steward-answer').hidden = true;
+    if (!ui.stewardBusy) setStatus('#steward-status', '', '');
+  }
   const row = ledgerRows().find((r) => r.id === ui.ledgerRecord), c = row?.contribution;
   const list = $('#ledger-contributions');
   $('#ledger-contrib-title').textContent = row?.record ?? 'Selected record';
@@ -1272,7 +1279,7 @@ async function askSteward(question, focusOrderId = null) {
   setStatus('#steward-status', 'working', state.steward.paypalTools ? 'The steward is reading the ledger and checking with PayPal…' : 'The steward is reading the ledger…');
   $('#steward-answer').hidden = true;
   try {
-    const res = await api.post('/api/steward', { question, memberId: persona()?.id, focusOrderId });
+    const res = await treasury.askSteward({ question, memberId: persona()?.id, focusOrderId });
     if (res.status !== 'ok') { setStatus('#steward-status', 'error', `The steward could not answer: ${res.error.message}`); return; }
     if (focusOrderId && ledgerRows().find((r) => r.id === ui.ledgerRecord)?.contribution?.providerOrderId !== focusOrderId) {
       setStatus('#steward-status', 'info', 'The payment selection changed. Verify the selected record.'); return;

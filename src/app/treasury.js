@@ -1,7 +1,9 @@
 // Treasury next-area milestone: an AG Studio custom widget inside the Ledger, fed by the server's own treasury rows.
 // AG Studio (local evaluation licence) is loaded only when the Ledger is first shown. If it cannot load, the same
 // milestone is drawn as plain DOM from the same server data, so the Ledger never loses it. No provider, model or write
-// request is made here: the widget reads Studio's in-page data engine, and "View on map" only moves the camera.
+// request is made by the widget: it reads Studio's in-page data engine, and "View on map" only moves the camera.
+// The existing steward can explicitly start a scoped, headless Agent Framework run through askSteward.
+import { createTreasuryAgent } from './treasury-agent.js';
 
 let loading = null;
 function loadStudio() {
@@ -106,12 +108,14 @@ const fallbackNext = (state) => {
  * @param options.onVisit (districtId, event) => void — focus the district on the map (no writes)
  * @param options.getLicence () => Promise<string|null> — the local AG Studio evaluation licence, if any
  */
-export function createTreasury(container, { formatMoney, onVisit, getLicence }) {
-  let studio = null, failed = false, starting = null, latest = null;
+export function createTreasury(container, { formatMoney, onVisit, getLicence, requestSteward, getStewardScope = () => '' }) {
+  let studio = null, failed = false, starting = null, latest = null, lib = null, agent = null;
+  let stewardScope = getStewardScope();
   const status = { source: 'pending', licensed: false, error: null, next: undefined };
   // Size the Ledger's container to the drawn milestone (names wrap on phones). Studio itself is not re-laid out.
   const fit = (root) => { const height = root.offsetHeight; if (height > 0 && container.style.height !== `${height}px`) container.style.height = `${height}px`; };
   const context = { formatMoney, onVisit, rendered: (next, root) => { status.next = next; requestAnimationFrame(() => fit(root)); } };
+  const agentFor = (api = studio) => (agent ??= createTreasuryAgent({ lib, studio: api, request: requestSteward, getScope: getStewardScope }));
 
   function fallback() {
     container.dataset.source = 'fallback';
@@ -124,7 +128,9 @@ export function createTreasury(container, { formatMoney, onVisit, getLicence }) 
 
   async function start() {
     try {
-      const [lib, licence] = await Promise.all([loadStudio(), getLicence().catch(() => null)]);
+      const loaded = await Promise.all([loadStudio(), getLicence().catch(() => null)]);
+      lib = loaded[0];
+      const licence = loaded[1];
       if (licence) { lib.AgStudioLicenseManager.setLicenseKey(licence); status.licensed = true; } // before createStudio, as documented
       container.replaceChildren();
       container.dataset.source = 'ag-studio';
@@ -132,6 +138,7 @@ export function createTreasury(container, { formatMoney, onVisit, getLicence }) 
       studio = lib.createStudio(container, {
         mode: 'view',
         panels: { view: { left: [], right: [] } },
+        ai: ({ api }) => agentFor(api).harness,
         theme: lib.studioTheme.withParams(PARCHMENT),
         loadThemeGoogleFonts: false,
         layout: LAYOUT,
@@ -149,6 +156,9 @@ export function createTreasury(container, { formatMoney, onVisit, getLicence }) 
       });
       status.source = 'ag-studio';
     } catch (error) {
+      agent?.cancel();
+      agent?.harness?.dispose?.();
+      agent = null; lib = null;
       failed = true;
       status.source = 'fallback';
       status.error = error.message;
@@ -165,6 +175,19 @@ export function createTreasury(container, { formatMoney, onVisit, getLicence }) 
       starting ??= start();
       return starting;
     },
-    status: () => ({ ...status }),
+    async askSteward(payload) {
+      const scope = getStewardScope();
+      await starting;
+      if (scope !== getStewardScope()) throw new DOMException('The records changed. Check the current record again.', 'AbortError');
+      if (failed) { lib = null; agent ??= createTreasuryAgent({ request: requestSteward, getScope: getStewardScope }); }
+      return agentFor().ask(payload);
+    },
+    refreshScope() {
+      const scope = getStewardScope(), changed = scope !== stewardScope;
+      stewardScope = scope;
+      agent?.refreshScope();
+      return changed;
+    },
+    status: () => ({ ...status, agent: agent?.status() ?? null }),
   };
 }

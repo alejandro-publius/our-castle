@@ -12,7 +12,7 @@ Bridges and districts open in the world itself, with the existing deed card. The
 - **Next area.** For example: "Next area · Manor Gardens · 25% milestone · $60.00 of $75.00 · $15.00 to go". Districts that open together are named together, for example "Stone Keep & Starfall Observatory". When every milestone area is open, it says so. "View on map" moves the camera to that district and focuses its map control. It writes nothing.
 - **Every record.** This is the existing AG Grid Community grid: each record's amount, date and source (reported, simulated or PayPal sandbox) and whether it counts. Search and the All/Goal progress/Bills/Gifts filters only change what is listed. The pinned total and the next area always come from the server's canonical progress.
 - **Selected record.** Tapping a row shows its short receipt: amount, status, source tag and, for a payment, order, capture and refund ids. It keeps the existing actions: complete a pending simulated payment, check a pending sandbox order, refund with adult confirmation. "Visit …" appears when that record crossed an area that is open now.
-- **House steward.** The existing read-only steward and its server checks are unchanged. It now sits at the end of the Ledger in a closed disclosure instead of leading it. A receipt's "Ask the steward to verify" opens it. This is a presentation change only.
+- **House steward.** The existing read-only steward sits at the end of the Ledger in a closed disclosure. A receipt's "Ask the steward to verify" opens it. AG Studio's Agent Framework now manages that explicit check behind the same controls; no second chat or roster is added. Server-side tools and reconciliation still determine the result.
 
 ## How it works
 
@@ -30,6 +30,16 @@ Bridges and districts open in the world itself, with the existing deed card. The
 - **Fallback.** If Studio cannot load, the same markup is drawn from the same `state.treasury`, so the Ledger never loses the milestone.
 - **No requests on load, filter or selection.** No provider, model or write request is made. The page reads the Studio bundle and `GET /api/treasury/studio` once.
 
+### Agent Framework: the existing steward, scoped to current records
+
+`src/app/treasury-agent.js` uses the installed Studio 3.0.0 `createAiHarness` API and a custom `house-steward` runner. The Studio `ai` configuration installs this harness while view panels remain empty. This is real framework use, not an added model label or an unused dependency.
+
+- One explicit ask creates one temporary framework thread and sends one `/api/steward` request. The server keeps the Anthropic conversation and PayPal read-only tools. It returns the same structured answer and checks used by the existing receipt UI.
+- The runner emits AG-UI run, tool-result and answer events from that server response. These are returned server checks, not additional browser-executed PayPal tools. It does not delegate to Studio's built-in dashboard agents.
+- Household, goal, progress, plan, member or selected-record changes cancel the scoped run. The browser aborts its fetch, discards late results and clears previous answers on selection changes. This does **not** promise cancellation of an already-running server/provider request.
+- Completion, failure and cancellation close/delete the temporary thread. Errors do not retry automatically. If Studio cannot load, the original server-backed steward remains available and reports fallback internally.
+- No question is asked merely by opening the Ledger, filtering, selecting a row or visiting the map. No model key moves into Studio/browser configuration.
+
 ## AG Studio package and licence
 
 - **Package.** `ag-studio@3.0.0`, pinned exactly. It depends on `ag-grid-enterprise ~36.2.0`, `ag-charts-enterprise ~14.2.0` and `ag-stack ~36.2.0`, and dedupes with the app's existing `ag-grid-community@36.2.0`.
@@ -45,9 +55,9 @@ Bridges and districts open in the world itself, with the existing deed card. The
     - expiry "19 December 2026" (the owner's note says 20 December; the SDK's date is the conservative one), and not expired.
   - In the browser, licensed, there were no licence console messages and no external requests.
   - Unlicensed, the page logs AG's "License Key Not Found… unlocked for trial" notice, which is what tests show. The watermark element stayed hidden at this widget size in both runs, so the console messages and `getLicenseDetails` are the evidence.
-- **Not used.** Studio AI and agents. The supplied licence includes the AI tier, but nothing here calls a model, and the owner's simplicity direction rules out a question box.
+- **Agent use.** The supplied licence includes the AI tier. The framework manages the existing explicit steward interaction; it does not introduce another model, dashboard chatbot or paid call on render.
 
-Docs read: https://www.ag-grid.com/studio/javascript/quick-start/, `/custom-widgets/`, `/licence-install/`, `/ai-agents/` (index only), the installed type definitions, and npm metadata. The webinar guidance for the grid session (published description: an async data source, and translating dashboard filters and paging into the real query contract) was applied as: records come from the server's confirmed ledger; filters never change canonical totals; no provider call on render. This comes from the published session description and chapters, not a watched talk.
+Docs read: https://www.ag-grid.com/studio/javascript/quick-start/, `/custom-widgets/`, `/licence-install/`, `/ai-agents/` and its custom-runner/harness guidance, checked against the installed 3.0.0 type definitions. The webinar guidance for the grid session (published description: an async data source, and translating dashboard filters and paging into the real query contract) was applied as: records come from the server's confirmed ledger; filters never change canonical totals; no provider call on render. This comes from the published session description and chapters, not a watched talk.
 
 ## Evidence
 
@@ -72,6 +82,7 @@ Docs read: https://www.ag-grid.com/studio/javascript/quick-start/, `/custom-widg
   - the fallback when Studio is unavailable, and keyboard access to the map button;
   - no horizontal overflow.
 - **Stills**, licensed local render with example data: [Ledger](screenshots/treasury-ledger.png), [phone](screenshots/treasury-phone.png).
+- **Framework follow-up** (`test/e2e/studio-agent.spec.mjs`): actual Studio harness with scripted fake Anthropic/PayPal transports, covering one scoped request, cleanup, late-result suppression, explicit retry after failure, unavailable-Studio fallback and exact-order server proof. Current counts and browser scope are in [VALIDATION.md](VALIDATION.md). This does not close the live popup/get_order gap.
 
 ## Not done / limits
 

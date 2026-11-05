@@ -1,5 +1,22 @@
 # Validation
 
+## AG Studio Agent Framework and release handoff — November 5, 2026
+
+The existing closed House steward now runs through the installed **AG Studio 3.0.0 Agent Framework**: native `createAiHarness`, a custom server-backed runner, AG-UI events and one temporary thread per explicit question. All Anthropic/PayPal tools and deterministic reconciliation remain on the server. No new chat panel, model, credential or provider call on render was introduced. This uses a custom runner inside Studio's harness; it does not claim built-in-agent delegation or a replacement harness.
+
+**28 focused browser cases passed across the recorded runs:**
+
+- Chromium desktop and touch-phone: 18/18, comprising ten new framework cases, six existing Treasury cases and two complete fresh-family journeys.
+- Linux WebKit desktop and touch-phone: 10/10 new framework cases, in the official Playwright `v1.64.1-noble` container.
+
+The five new cases at each size/browser use the actual Studio bundle/harness with scripted fake Anthropic transport: one request and temporary-thread cleanup; a member change during a held request suppressing a late result; explicit retry after an HTTP failure without automatic retry; original fallback when Studio cannot load; and exact selected-order server proof using fake PayPal. Record changes also hide previous completed answers. Financial table signatures stay unchanged during steward asks. This is browser emulation, not a real-phone or macOS Safari pass, and fake provider proof does **not** close the actual in-app popup/same-order gap. Browser fetch cancellation does not assert upstream provider cancellation.
+
+The 47-file original-art/palette/renderer/syntax guard passed. No world/CSS/markup/payment-server/credential/data file changed. Desktop/phone stills were inspected. Ignored evidence: `test-results/studio-agent/{chromium.log,webkit.log,source-check.log,desktop-existing-steward.png,phone-existing-steward.png}`; the separate configurations/artifact directories identify each run. No full unit/provider suite was repeated after the already-passing maintenance checks.
+
+Judge/run instructions, entry copy, current 2:45 shot list, sponsor-use notes and the AG Studio commercial notice were updated. Historical verification reports and all recorded footage/captions remain unchanged. The README now leads with the game and a short local setup; detailed operational commands moved to RUNBOOK.md. [RELEASE-READINESS.md](RELEASE-READINESS.md) records the actual publication audit/status.
+
+No real Channel3 credit, PayPal order/refund, paid AI call, household change or new video was made. The owner's Mac is still offline; the latest cloud build is not installed there. Existing 3010/3021 data, keys and servers were not accessed or changed. The rehearsal's **last inspected**, not freshly read, state remains zero orders, one reported starting entry and no plan. No supported authenticated browser control is available here.
+
 ## Sponsor/Toolkit maintenance — November 5, 2026
 
 **40 focused sponsor/payment cases passed**, using fake transports and fresh example/in-memory states. Five new real-Toolkit/wrapper/compatibility cases cover actual OAuth/read request shapes with native network blocked, exact sandbox URLs, stalled/late reads, malformed output, and the scoped LangChain patch. An additional steward case verifies that a timed-out selected order stays unverified after late success/model claims and never changes ledger rows. Existing Merchant, Treasury, SDK and uncertain-capture contracts passed in the same focused run.
