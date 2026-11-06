@@ -1,6 +1,6 @@
 # Devpost entry copy — not submitted
 
-Prepared November 5, 2026. This describes the current build; it does not replace the live-evidence notes below. Check final URLs and results against [release readiness](RELEASE-READINESS.md) before sending the entry.
+Prepared November 5, 2026; story and sponsor wording revised the same day (PST). This describes the current build; it does not replace the live-evidence notes below. Check final URLs and results against [release readiness](RELEASE-READINESS.md) before sending the entry.
 
 ## Name and tagline
 
@@ -8,27 +8,30 @@ Prepared November 5, 2026. This describes the current build; it does not replace
 
 ## Inspiration
 
-A shared goal is easier to follow when everyone can see it grow. We wanted a family saving for a trip, instrument or repair to have something more inviting than a spreadsheet: one crest, a living woodland and a new place to explore at each milestone.
+Most families save for one thing at a time: a camping trip, a bike, a repair. The plan usually lives in one adult's head or in a spreadsheet nobody else opens, so the rest of the household cannot see how close they are or feel part of getting there. We wanted the goal to be a place the whole family can look at together: a pixel woodland where each milestone opens a new district, where a child can ask how far the Manor is, and where the money part stays exact, adult-approved and honest about what has and has not been confirmed.
 
 ## What it does
 
-Choose a house name and crest, set a goal and make an editable weekly plan. Our Castle keeps the world in the foreground and the household journal one click away.
+Our Castle gives a family one shared goal, one editable plan and one growing realm. Adults keep control of every payment; children see progress as places opening up. The journey is four steps:
 
-Market Town's merchant searches real products through Channel3. Three compact results show price and availability; **Use as goal** creates an unsaved draft. The family confirms the goal before anything changes. A contribution tracks progress toward that goal; it does not purchase the merchant item.
+1. **Find it — Channel3 Merchant.** In Market Town the merchant searches real products within a budget and shows three results with price and availability. **Use as goal** drafts the goal at the item's actual price. Nothing changes until the family confirms **Save as our goal**; a search never buys anything.
+2. **Plan it — Claude planner.** The household enters its reported starting progress, a target date and a weekly amount it chooses. The AI planner proposes an editable weekly schedule with its arithmetic written out. The server re-checks every date, amount and total and says plainly when the goal is out of reach. Without an AI key, a built-in rules plan appears, labelled as such.
+3. **Contribute — PayPal.** An adult approves one specific amount, then PayPal sandbox checkout runs in the page. The server captures the order, checks amount, currency, household, goal and capture identity, and credits progress once. Pending, declined, timed-out and refunded outcomes are recorded as exactly that; nothing is credited on a redirect, a retry or a claim.
+4. **Unlock.** At 25% the bridge to Manor Gardens lowers; 40% opens Market Town; 60% opens Stone Keep and Starfall Observatory; 100% opens the Royal Citadel, Rosewind Palace and Rapunzel's Tower. Each new district arrives with a short deed card showing the house crest and the family's chosen characters. Earlier districts stay. A refund lowers progress truthfully; an earned deed remains as a keepsake and says so.
 
-An adult approves a specific contribution amount, then PayPal sandbox handles checkout. The server checks the completed capture before crediting progress once. At 25%, Manor Gardens opens across its bridge; 40% opens Market Town; 60% opens Stone Keep and Starfall Observatory; 100% opens the Royal Citadel, Rosewind Palace and Rapunzel's Tower. The starting village and earlier buildings remain. Each new area has a short pixel deed card with the house crest and selected family characters.
+Between steps, the Treasury keeps the next area, the contribution records and one selected receipt together, and the house steward answers questions such as "did PayPal confirm our last contribution?" It is read-only: it reads the ledger and, through PayPal's Agent Toolkit, looks up the selected order. The server records what was checked and whether PayPal and the ledger agree; a model's sentence alone never verifies a payment, and the steward cannot create, capture or refund anything.
 
-The nine-district woodland has flowing rivers, drawbridges, family avatars, roaming guests, farm animals, a tavern and a hidden sword in the stone. Day, afternoon, night and rain change its light; optional city weather uses Open-Meteo. PayPal supplies no location or utility-bill verification.
-
-The Treasury keeps the next area, contribution records and a selected receipt together. Its existing read-only steward can check a selected household order. Changing the member, goal or selected record clears stale answers.
+The nine-district woodland has flowing rivers, drawbridges, family avatars, roaming guests, farm animals, a tavern and a hidden sword in the stone. Day, afternoon, night and rain change its light; optional city weather uses Open-Meteo. The ledger is a goal-progress record, not a bank balance: bills and gifts are recorded separately and never count as savings, and no utility provider is connected.
 
 ## How we built it
 
-- **PayPal:** JavaScript SDK v6 for in-app checkout; official Server SDK 2.5.0 for sandbox Orders v2 and refunds. Integer cents, request idempotency and unique capture/refund records prevent duplicate credit. Amount, currency, household, goal, order reference and capture identity are checked server-side. A timeout rechecks the same order instead of declaring a payment failed or creating a replacement.
-- **Runtime AI:** Anthropic Claude (`claude-opus-5-5`) proposes the weekly schedule and answers read-only household questions. The server independently validates dates, cents, totals and feasibility. The PayPal Agent Toolkit permits only scoped `get_order` and `list_transactions`; AI cannot authorize, capture or refund money. A model claim alone cannot establish payment verification.
-- **Channel3:** server-side product search with an optional budget, at most three results and explicit goal confirmation. Credentials stay on the server; a search does not trigger a payment.
-- **AG Grid / AG Studio:** searchable records, a parchment-themed custom next-area widget using Studio's data engine, and the Studio Agent Framework behind the existing steward. A custom server-backed runner uses Studio's native harness, scoped cancellation and temporary thread cleanup. No second chatbot or dashboard roster is added; no built-in-agent delegation is claimed.
-- **APIMatic:** PayPal's APIMatic-generated Server SDK plus eight installed, discovery-verified SDK context skills used by Codex. The context review informed uncertain-capture recovery, stale-read protection and bounded read waits. Documented fake-provider checks cover the changes.
+Each sponsor does one specific job for the family; none is decorative.
+
+- **PayPal — the contribution.** JavaScript SDK v6 for in-page checkout; the official Server SDK 2.5.0 for sandbox Orders v2 and refunds; verified Webhooks v1 events. Integer cents, request idempotency and unique capture/refund records prevent duplicate credit. Amount, currency, household, goal, order reference and capture identity are checked server-side before progress moves. A timed-out capture rechecks the same order instead of being declared failed or replaced, and a refund made in the PayPal dashboard is picked up from the order record once even when its webhook never arrives.
+- **Anthropic Claude — the plan and the steward.** `claude-opus-5-5` through the Messages API, server-side only. The planner returns a structured schedule that the server validates for dates, cents, totals and feasibility. The steward answers household questions with two read-only PayPal Agent Toolkit tools, scoped `get_order` and `list_transactions`; it cannot authorize, capture or refund. Names, product titles and payment notes are treated as data, never instructions: tests play a model that obeys an injected product title or transaction note and confirm the server still refuses to verify or credit anything.
+- **Channel3 — the goal.** Server-side product search with an optional budget, at most three results, and the item's real price as the drafted goal amount. Credentials stay on the server; the family confirms before the goal changes, and a search never triggers a payment.
+- **AG Grid / AG Studio — the Treasury.** AG Grid Community lists searchable contribution records and receipts. AG Studio renders a parchment-themed custom next-area widget from a typed data model with a calculated share-of-threshold field evaluated by Studio's engine, and its Agent Framework runs the existing steward through a custom server-backed runner with scoped cancellation and thread cleanup. No second chatbot or generic dashboard is added; no built-in-agent delegation is claimed.
+- **APIMatic — the PayPal integration's reference.** PayPal's APIMatic-generated Server SDK plus eight installed, discovery-verified SDK context skills used by Codex. That context informed uncertain-capture recovery, stale-read protection, bounded waits on every PayPal call and raw-body webhook verification, each covered by documented fake-provider tests.
 - **Postman:** guarded example and opt-in sandbox walkthroughs, including replay and wrong-household checks.
 - **Stack and art:** Node.js (`node:http`, `node:sqlite`), browser JavaScript and Three.js. Original Tiny Castle art, fonts and the 90-colour renderer carry over from the owner's earlier project; the connected world and PayPal/AI/sponsor experience were built for Our Castle. Inspiration references contributed no copied third-party game art or code.
 
