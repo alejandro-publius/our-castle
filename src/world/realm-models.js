@@ -5,6 +5,8 @@ import { FARM_SITES, inFarmPlot } from './farm-locations.js';
 import { createWoodlandLegends } from './woodland-legends.js';
 import { createPrincessPalace } from './princess-palace.js';
 import { createRiverCurrent } from './river-current.js';
+import { FRONTIER_CLEARINGS, MOUNTAIN_PEAKS, terrainElevation } from '../core/realm-terrain.js';
+import { addPayPalHillside } from './paypal-hillside.js';
 import { REALM_SIZE, REALM_BOUNDS, REALM_DISTRICTS, REALM_LEGENDS, REALM_BRIDGES, RIVER_PATHS, journeyLeg, realmAccess, bridgeAccess, riverAt } from '../core/realm.js';
 
 // One continuous woodland. The districts are meadow clearings in a single forest floor; narrow rivers are cut into that
@@ -32,7 +34,8 @@ function clearingDepth(x, z, d) {
   const corner = (.89 - ax / d.width - az / d.depth) * Math.min(d.width, d.depth) * .7;
   return Math.min(d.width / 2 - ax, d.depth / 2 - az, corner);
 }
-const deepestClearing = (x, z) => [...REALM_DISTRICTS, ...REALM_LEGENDS].reduce((best, d) => Math.max(best, clearingDepth(x, z, d)), -Infinity);
+const ALL_CLEARINGS = [...REALM_DISTRICTS, ...REALM_LEGENDS, ...FRONTIER_CLEARINGS];
+const deepestClearing = (x, z) => ALL_CLEARINGS.reduce((best, d) => Math.max(best, clearingDepth(x, z, d)), -Infinity);
 const nearBridge = (x, z, margin) => REALM_BRIDGES.some(({ a, b }) => {
   const dx = b[0] - a[0], dz = b[1] - a[1], t = Math.max(-.15, Math.min(1.15, ((x - a[0]) * dx + (z - a[1]) * dz) / (dx * dx + dz * dz)));
   return Math.hypot(x - a[0] - dx * t, z - a[1] - dz * t) < margin;
@@ -112,8 +115,10 @@ export function createRealmModels({ builder, part: addPart, models, colours: C }
       const x = REALM_BOUNDS.minX + i, z = REALM_BOUNDS.minZ + j, river = riverAt(x, z), clearing = deepestClearing(x, z);
       // Banks run from 1.1 outside the water line down to the bed just inside it.
       const cut = smooth((river.depth + 1.1) / 1.4), bump = clearing > 0 ? 0 : (noise(x / 5, z / 5) - .5) * .12 * (1 - cut);
-      positions.push(x, lerp(L.ground + bump, L.bed, cut), z);
+      const rise=terrainElevation(x,z,river);
+      positions.push(x, lerp(L.ground + bump + rise, L.bed, cut), z);
       if (cut > .05) paint(F.bank, F.bed, smooth((cut - .3) / .7));
+      else if(rise>1)paint(rise>23?F.course:rise>7?0x52685a:F.floor,rise>23?F.pale:F.fern,.08+noise(x/4,z/4)*.16);
       else if (clearing > -1.5) paint(F.floor, C.grass, smooth((clearing + 1.5) / 3.5));
       else paint(F.floor, F.moss, noise(x / 9 + 40, z / 9) > .55 ? .8 : 0);
     }
@@ -159,23 +164,23 @@ export function createRealmModels({ builder, part: addPart, models, colours: C }
   }
 
   // ---------- The forest between the clearings: groves and glades, not a fence ----------
-  function forestTree(g, x, z, size, kind, seed) {
+  function forestTree(g, x, z, size, kind, seed, elevation=0) {
     // A low understory mound under every crown hides the trunk: layered woodland, and smaller depth steps for the outline
     // pass at a distance.
-    rock(g, x + .2 * size, L.ground + .75 * size, z + .15 * size, 3.3 * size, 1.6 * size, 3.2 * size, kind === 'pine' ? C.grass : F.oak);
+    rock(g, x + .2 * size, L.ground + elevation + .75 * size, z + .15 * size, 3.3 * size, 1.6 * size, 3.2 * size, kind === 'pine' ? C.grass : F.oak);
     if (kind === 'pine') {
       const shade = [C.pine, C.grass, C.pine][seed % 3];
-      for (let k = 0; k < 3; k++) cone(g, x, (1.2 + k * .52) * size, z, (2.4 - k * .55) * size, (1.4 - k * .18) * size, (2.4 - k * .55) * size, k === 1 ? C.grass : shade);
+      for (let k = 0; k < 3; k++) cone(g, x, elevation + (1.2 + k * .52) * size, z, (2.4 - k * .55) * size, (1.4 - k * .18) * size, (2.4 - k * .55) * size, k === 1 ? C.grass : shade);
     } else if (kind === 'birch') {
-      part(g, 'trunk', x, .9 * size, z, .22 * size, 1.8 * size, .22 * size, F.birch);
-      box(g, x, .7 * size, z + .11 * size, .14 * size, .08 * size, .02, C.dark);
-      rock(g, x, 2.1 * size, z, 1.35 * size, 1.4 * size, 1.35 * size, C.leaf);
-      rock(g, x + .3 * size, 2.55 * size, z - .2 * size, .9 * size, .9 * size, .9 * size, F.leaf2);
+      part(g, 'trunk', x, elevation + .9 * size, z, .22 * size, 1.8 * size, .22 * size, F.birch);
+      box(g, x, elevation + .7 * size, z + .11 * size, .14 * size, .08 * size, .02, C.dark);
+      rock(g, x, elevation + 2.1 * size, z, 1.35 * size, 1.4 * size, 1.35 * size, C.leaf);
+      rock(g, x + .3 * size, elevation + 2.55 * size, z - .2 * size, .9 * size, .9 * size, .9 * size, F.leaf2);
     } else {
       const greens = [C.grass, F.oak, C.leaf, F.oak, F.fern];
       for (let k = 0; k < 3; k++) {
         const a = seed * 1.7 + k * 2.1, r = k === 2 ? .1 * size : .48 * size;
-        rock(g, x + Math.sin(a) * r, (1.6 + (k === 2 ? .5 : k * .12)) * size, z + Math.cos(a) * r, (k === 2 ? 1.6 : 1.45) * size, 1.35 * size, (k === 2 ? 1.6 : 1.45) * size, greens[(seed + k) % 5]);
+        rock(g, x + Math.sin(a) * r, elevation + (1.6 + (k === 2 ? .5 : k * .12)) * size, z + Math.cos(a) * r, (k === 2 ? 1.6 : 1.45) * size, 1.35 * size, (k === 2 ? 1.6 : 1.45) * size, greens[(seed + k) % 5]);
       }
     }
   }
@@ -190,6 +195,7 @@ export function createRealmModels({ builder, part: addPart, models, colours: C }
       const x = gx + (hash(i, j) - .5) * step * .9, z = gz + (hash(j, i) - .5) * step * .9;
       if (x < REALM_BOUNDS.minX + .8 || x > REALM_BOUNDS.maxX - .8 || z < REALM_BOUNDS.minZ + .8 || z > REALM_BOUNDS.maxZ - .8) continue;
       const river = riverAt(x, z), clearing = deepestClearing(x, z), density = noise(x / 13, z / 13), species = noise(x / 19 + 20, z / 19 - 7);
+      if(terrainElevation(x,z,river)>.6)continue;
       if (river.depth > -1.5 || nearBridge(x, z, 3.6) || nearJourney(x, z, 2.7) || farmWorldPlots.some(([a,b,c,d])=>x>a-1.4&&x<b+1.4&&z>c-1.4&&z<d+1.4)) continue;
       // Trees may step up to about 2.5 units into a clearing edge, so no district has a straight tree line.
       if (clearing > 1.1 + 1.4 * noise(x / 4, z / 4)) continue;
@@ -216,6 +222,17 @@ export function createRealmModels({ builder, part: addPart, models, colours: C }
       else if (extra < .145) { part(group, 'trunk', x + .8, L.ground + .18, z - .9, .38, 2.2, .38, C.soil, seed, Math.PI / 2); counts.details++; }
     }
     return counts;
+  }
+  function highlandPines(group){
+    let count=0;
+    for(const [i,p] of MOUNTAIN_PEAKS.entries())for(let k=0;k<5;k++){
+      const x=p.x+Math.sin(i*1.7+k*2.4)*p.rx*.72,z=p.z+Math.cos(i*2.1+k*1.8)*p.rz*.78;
+      if(x<REALM_BOUNDS.minX+1||x>REALM_BOUNDS.maxX-1||z<REALM_BOUNDS.minZ+1||z>REALM_BOUNDS.maxZ-1)continue;
+      const h=terrainElevation(x,z);
+      if(h<1||h>p.height*.7||deepestClearing(x,z)>-2)continue;
+      forestTree(group,x,z,.75+hash(i,k)*.4,'pine',i+k,h);count++;
+    }
+    return count;
   }
 
   // ---------- Districts: meadow clearings with their own copses and flowers ----------
@@ -448,8 +465,8 @@ export function createRealmModels({ builder, part: addPart, models, colours: C }
       if (!buckets.has(key)) buckets.set(key, { kind, colour, parts: [] });
       buckets.get(key).parts.push([x, y, z, w, h, d, ry, rz]);
     };
-    let counts, rivers;
-    try { counts = forest(woods); rivers = riverDetails(woods); } finally { part = addPart; }
+    let counts, rivers, highlandTrees;
+    try { counts = forest(woods); highlandTrees=highlandPines(woods); rivers = riverDetails(woods); } finally { part = addPart; }
     for (const { kind, colour, parts } of buckets.values()) {
       if (!materials.has(colour)) materials.set(colour, new THREE.MeshLambertMaterial({ color: colour, flatShading: true }));
       const mesh = new THREE.InstancedMesh(builder.geo[kind], materials.get(colour), parts.length);
@@ -458,8 +475,9 @@ export function createRealmModels({ builder, part: addPart, models, colours: C }
     }
     let instances = 0, meshes = 0; woods.traverse((o) => { if (o.isInstancedMesh) { meshes++; instances += o.count; } });
     for(const d of REALM_LEGENDS){const secret=new THREE.Group();secret.position.set(d.x,0,d.z);group.add(secret);legends.sword(secret);builder.flush();finish(secret);}
+    const hillsideSign=addPayPalHillside(group,{builder,part:addPart,colours:C});
     current = createRiverCurrent(L.water, F.ripple); group.add(current.mesh);
-    landscape = { ground: land, forest: { ...counts, meshes, instances }, rivers: { count: RIVER_PATHS.length, ...rivers }, buildMs: Math.round(performance.now() - started) };
+    landscape = { ground: land, forest: { ...counts, meshes, instances }, rivers: { count: RIVER_PATHS.length, ...rivers }, frontier:{clearings:FRONTIER_CLEARINGS.length,mountainPeaks:MOUNTAIN_PEAKS.length,highlandTrees,hillsideSign}, buildMs: Math.round(performance.now() - started) };
     return landscape;
   }
   function build(group,state,helpers,flag){

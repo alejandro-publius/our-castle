@@ -27,7 +27,7 @@ test.beforeEach(async({page,request})=>{
 test('future castles are separate locked destinations in one green woodland behind raised bridges and gates; inspecting them cannot unlock them',async({page,request})=>{
   const errors=[];page.on('pageerror',e=>errors.push(e.message));
   const initial=await scene(page),before=await(await request.get('/api/state')).json();
-  expect(initial.region).toEqual({width:228,depth:132,centerX:32,centerZ:0});
+  expect(initial.region).toEqual({width:292,depth:196,centerX:32,centerZ:0});
   expect(initial.districts).toHaveLength(9);
   expect(initial.districts.filter(d=>d.open).map(d=>d.id)).toEqual(['cottage']);
   // Locked is shown by labels, raised leaves and closed gates. Every district keeps its full colours.

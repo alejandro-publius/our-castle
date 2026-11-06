@@ -1,5 +1,11 @@
 # Validation
 
+## Mountain border and PayPal hillside — November 5, 2026
+
+The board expands from 228×132 to 292×196 around its unchanged interior. Twelve unbuilt meadows, faceted mountain ridges, river valleys and highland pines add depth without new districts, reward thresholds or financial actions. Six solid extruded letters use PayPal's official wordmark outline, with white faces and grounded rear supports. Font software is not bundled. [Source, reference lock, captures and exact checks](MOUNTAIN-BORDER.md).
+
+10 realm/terrain unit cases and six existing desktop/phone exploration/unlock cases passed. Final desktop/phone visual review covered day, rotation, night/rain, old-property focus, no overflow/errors/outside requests/writes and unchanged example progress. Original art/renderer/palette/syntax guard passed. All activity used isolated example data; no provider call, new payment or video. Original high-sign/pale-rock trials remain preserved.
+
 ## Fairy and wizard staff — November 5, 2026
 
 Rapunzel's balcony now has one hovering fairy with four pale wings, a rose/teal dress and small wand; the Observatory's existing wizard is more readable, with a crystal-tipped staff and two restrained sparks. Both use the existing ambient tick, pause behind modals and stay still under reduced motion. No UI, unlock threshold, financial record, provider call or dependency was added. [Reference lock, actual renders and precise checks](WOODLAND-LEGENDS.md#fairy-and-staff--november-5-reference-lock).

@@ -1,5 +1,7 @@
 // One connected world. District access is a presentation of existing earned achievements, never a payment decision.
-export const REALM_SIZE = Object.freeze({ width: 228, depth: 132, centerX: 32, centerZ: 0 });
+export const REALM_INTERIOR = Object.freeze({ width: 228, depth: 132, centerX: 32, centerZ: 0 });
+export const REALM_BORDER = 32;
+export const REALM_SIZE = Object.freeze({ width: REALM_INTERIOR.width + REALM_BORDER * 2, depth: REALM_INTERIOR.depth + REALM_BORDER * 2, centerX: 32, centerZ: 0 });
 export const REALM_BOUNDS = Object.freeze({
   minX: REALM_SIZE.centerX - REALM_SIZE.width / 2, maxX: REALM_SIZE.centerX + REALM_SIZE.width / 2,
   minZ: REALM_SIZE.centerZ - REALM_SIZE.depth / 2, maxZ: REALM_SIZE.centerZ + REALM_SIZE.depth / 2,
@@ -39,12 +41,12 @@ export const REALM_BRIDGES = Object.freeze([
 // bridges: the main river under the garden, keep and royal-procession crossings; a west tributary under the manor
 // crossing; an east tributary under the citadel and market crossings. Control points are joined by Catmull-Rom curves.
 export const REALM_RIVERS = Object.freeze([
-  { id: 'main', halfWidth: 2.4, points: [[-86, 3], [-72, -2.5], [-60, .5], [-49, 4], [-38, 1.5], [-24, -3], [-10, -.5], [3, 2.5], [17, -.5], [30, .5], [44, 3], [57, .5], [70, 3.5], [83, 3], [98, 2], [113, 3.5], [130, 2], [150, 2]] },
-  { id: 'west', halfWidth: 1.9, points: [[-38, 1.5], [-35.5, 9], [-37.5, 17], [-36.5, 26], [-34.5, 35], [-37.5, 45], [-36, 72]] },
-  { id: 'east', halfWidth: 1.9, points: [[16, -72], [18, -47], [15, -38], [16.5, -28], [18, -18], [15.5, -9], [17, -.5], [20, 8], [17.5, 17], [19, 26], [21.5, 35], [18, 45], [20, 72]] },
-  { id: 'rose', halfWidth: 1.9, points: [[82, -72], [80, -58], [81, -45], [82, -28], [79, -15], [81, -6], [83, 3]] },
-  { id: 'starfall', halfWidth: 1.45, points: [[70, 3.5], [72.5, 14], [71.5, 28], [70.5, 43], [73, 72]] },
-  { id: 'braid', halfWidth: 1.4, points: [[113, 3.5], [112.5, 16], [111.5, 30], [112, 44], [112, 72]] },
+  { id: 'main', halfWidth: 2.4, points: [[-120, 3], [-86, 3], [-72, -2.5], [-60, .5], [-49, 4], [-38, 1.5], [-24, -3], [-10, -.5], [3, 2.5], [17, -.5], [30, .5], [44, 3], [57, .5], [70, 3.5], [83, 3], [98, 2], [113, 3.5], [130, 2], [150, 2], [184, 2]] },
+  { id: 'west', halfWidth: 1.9, points: [[-38, 1.5], [-35.5, 9], [-37.5, 17], [-36.5, 26], [-34.5, 35], [-37.5, 45], [-36, 72], [-36, 104]] },
+  { id: 'east', halfWidth: 1.9, points: [[16, -104], [16, -72], [18, -47], [15, -38], [16.5, -28], [18, -18], [15.5, -9], [17, -.5], [20, 8], [17.5, 17], [19, 26], [21.5, 35], [18, 45], [20, 72], [20, 104]] },
+  { id: 'rose', halfWidth: 1.9, points: [[82, -104], [82, -72], [80, -58], [81, -45], [82, -28], [79, -15], [81, -6], [83, 3]] },
+  { id: 'starfall', halfWidth: 1.45, points: [[70, 3.5], [72.5, 14], [71.5, 28], [70.5, 43], [73, 72], [73, 104]] },
+  { id: 'braid', halfWidth: 1.4, points: [[113, 3.5], [112.5, 16], [111.5, 30], [112, 44], [112, 72], [112, 104]] },
 ].map((r) => Object.freeze({ ...r, points: Object.freeze(r.points.map((p) => Object.freeze(p))) })));
 function sampleRiver(points, steps = 10) {
   const out = [], at = (i) => points[Math.max(0, Math.min(points.length - 1, i))];

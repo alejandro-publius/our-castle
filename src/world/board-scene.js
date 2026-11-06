@@ -9,6 +9,7 @@ import { createEstateCourt } from './court.js';
 import { createRealmModels } from './realm-models.js';
 import { createGoldFountains } from './gold-fountain.js';
 import { REALM_SIZE, REALM_BOUNDS, REALM_DISTRICTS, REALM_LEGENDS, REALM_BRIDGES, REALM_ROUTE, homeDistrict, districtById, legendById, viewLocation, journeyLeg, journeyPosition } from '../core/realm.js';
+import { MOUNTAIN_PEAKS } from '../core/realm-terrain.js';
 
 // The playable woodland board. It extends the original art-preview vocabulary (MiniBuilder,
 // layered trees, antlered deer, stone towers) and renders through the original 90-colour
@@ -428,6 +429,7 @@ export function createBoardScene(container, { reducedMotion = false, isOccluded 
   const half = { x: REALM_SIZE.width / 2 + 0.2, z: REALM_SIZE.depth / 2 + 0.2 };
   for (const x of [REALM_SIZE.centerX - half.x, REALM_SIZE.centerX + half.x]) for (const z of [REALM_SIZE.centerZ - half.z, REALM_SIZE.centerZ + half.z]) for (const y of [-2.4, 4.2]) FRAME_POINTS.push(new THREE.Vector3(x, y, z));
   for (const d of REALM_DISTRICTS) FRAME_POINTS.push(new THREE.Vector3(d.x,d.height,d.z));
+  for(const p of MOUNTAIN_PEAKS)FRAME_POINTS.push(new THREE.Vector3(p.x,p.height+3,p.z));
   const ZOOM = { min: 0.55, max: 2.8 };
   const scratch = new THREE.Vector3();
   function resize() {
@@ -525,7 +527,8 @@ export function createBoardScene(container, { reducedMotion = false, isOccluded 
   for (const name of ['woodland', 'land', 'route', 'gardens', 'token', 'fx', 'estate', 'court', 'atmosphere']) { groups[name] = new THREE.Group(); scene.add(groups[name]); }
   court = createEstateCourt(groups.court, builder, colours);
   groups.castle = new THREE.Group(); scene.add(groups.castle);
-  realmModels.woodland(groups.woodland);
+  const scenery=realmModels.woodland(groups.woodland),hillSign=scenery.frontier.hillsideSign;
+  FRAME_POINTS.push(new THREE.Vector3(hillSign.x,hillSign.top,hillSign.z));
   buildAtmosphere();
   buildLandscape();buildRoute(); buildGardens(); buildCastle(); buildEstate(); buildToken(); buildCourt();
   observer = new ResizeObserver(resize); observer.observe(container); resize();

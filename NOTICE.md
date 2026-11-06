@@ -10,6 +10,8 @@ Hollybrook Open and Nightshoal are inspiration links/descriptions only. Their so
 
 ## Dependencies added for the application
 
+The official PayPal wordmark in `assets/brand/paypal/` comes from PayPal's public CDN. Its sampled outlines form the in-world hillside lettering; no font software is bundled. The logo/name remain PayPal trademarks, excluded from the MIT source licence and the owner's original-art scope. Source, checksum and transformation notes are in that directory's README. The use does not claim endorsement or an awarded sponsor prize.
+
 Installed from npm, not vendored:
 
 - `@anthropic-ai/sdk` 1.4.0 (MIT): the runtime AI client.

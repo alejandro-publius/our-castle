@@ -1,0 +1,29 @@
+{
+  "date_pacific": "2026-11-05",
+  "base_commit": "2c10f93390f810f498dbbaf9f49d8024b2d143f4",
+  "scope": "Actual Chromium renders from fresh in-memory example sessions, reduced motion; no provider calls or owner records.",
+  "sources": {
+    "src/core/realm.js": "ffddde56ad174d484f82ac8a99a12e72856fd256877d35ae3f13e9d7e72d728c",
+    "src/core/realm-terrain.js": "f3750cb146f470db458e3b79cf85068ff3c3b616b52478cb82552f15bf7a3ddf",
+    "src/world/realm-models.js": "7fd581e386fae84ae464949dbe53dcf5f54a6d61104d0d4e2a7541dae12a5d7e",
+    "src/world/board-scene.js": "af92c178a370f6fc89d22fce538668d78be9caebce722dc455c151ced956adf5",
+    "src/world/paypal-hillside.js": "5949d31f8d3d91e4e76ca0b4c5b8af3f3d437bc499b6c8cc985741927194db83",
+    "assets/brand/paypal/paypal-wordmark.svg": "f766ba6d9471acc787c0808b8c30f38494d12b287ccfb2ff610fd617cfa2a432",
+    "assets/brand/paypal/wordmark-shapes.js": "e2483318ae404bfff36ceaf31a58b16faf2d23883c37314d12de662566b1ec14"
+  },
+  "images": {
+    "docs/screenshots/mountain-border-day.png": {
+      "sha256": "7a854ed72aac98b3fa2ffac63bed532742ce9e5a06e65286ee26c5dd22eabc12",
+      "original": "test-results/mountain-border/final/desktop-whole-realm.png"
+    },
+    "docs/screenshots/mountain-border-turned.png": {
+      "sha256": "974f36b97e112503bfa5011bfa1cc1224fa406db39ad3b6eb03da622f30d040f",
+      "original": "test-results/mountain-border/final/desktop-turned.png"
+    },
+    "docs/screenshots/mountain-border-phone.png": {
+      "sha256": "7cfffc2c87e82d4fbc05f4ce1f015432cd1d2f452c3eb841b6eb0c7e54227f23",
+      "original": "test-results/mountain-border/final/phone-whole-realm.png"
+    }
+  },
+  "checks": "10 geometry/realm unit cases, six existing desktop/phone exploration/unlock cases, final desktop/phone day/rotation/night-rain/old-property/no-write visual review. Initial high sign and palette trials remain under ignored test-results/mountain-border/."
+}

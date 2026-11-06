@@ -1,5 +1,11 @@
 # Art direction — preserve this visual family
 
+## Mountain border and PayPal hillside (November 5, 2026)
+
+The board is now 292×196, with one 32-unit unbuilt land row on every side of the original 228×132 interior. Twelve empty meadow clearings have no labels or reward rules. Green-and-stone mountain ridges rise beyond them, taller at the rear and lower at the front, with river valleys and a few highland pines. Every existing property, route and bridge stays at its previous location/ground level. The whole-realm camera fits the new relief; home/district close views remain unchanged.
+
+Six separate solid letters form a Hollywood-style PayPal sign on the rear hillside. The exact outlines/spacing come from PayPal's official wordmark; no proprietary font or substitute typeface is bundled. White faces, shaded sides and narrow rear supports use the original pixel pipeline. [Reference lock, brand source and verification](MOUNTAIN-BORDER.md) · [Whole realm](screenshots/mountain-border-day.png) · [Turned](screenshots/mountain-border-turned.png).
+
 ## Overlapping cloud surround (November 5, 2026)
 
 The owner clarified that separate clouds over grey gaps were the wrong target. Larger crowns now overlap in tightly layered rows, filling the surround continuously with pale cloud light and soft underside seams. Keep recognizable puffs and thin wisps; no exposed grey sheet between them. The forest-edge mask, world, buildings, farms, tavern, avatars, original renderer/palette and controls remain unchanged.
