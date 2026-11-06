@@ -266,13 +266,18 @@ test('a refund lowers progress and moves the travelers back; the Manor stays as 
   await expect(page.locator('#ledger-contributions')).toContainText('Refunded — progress reversed');
 });
 
-test('without an AI key the steward explains it is off and cannot be used', async ({ page }) => {
+test('without an AI key model questions stay disabled while saved confirmations remain local', async ({ page }) => {
   await ready(page);
   await page.getByRole('tab', { name: /Ledger/ }).click();
-  await expect(page.locator('#steward-note')).toHaveText('Steward unavailable.');
+  await expect(page.locator('#steward-note')).toHaveText('Saved confirmations');
   await expect(page.locator('#steward-ask')).toBeDisabled();
   await expect(page.locator('#steward-suggestions button').first()).toBeDisabled();
   await expect(page.locator('#ledger-goal[data-grid="ag-grid"]')).toBeVisible();
+  await page.locator('#steward-block > summary').click();
+  await page.getByRole('button', { name: 'Last confirmation', exact: true }).click();
+  await expect(page.locator('#steward-answer')).toContainText('There is no saved PayPal confirmation for this goal.');
+  await expect(page.locator('#steward-answer')).toContainText('No new PayPal check was made.');
+  await expect(page.locator('#steward-answer .verification-title')).toHaveText('Saved confirmation');
 });
 
 test('layout: no horizontal overflow in any step and amounts stay readable', async ({ page }) => {

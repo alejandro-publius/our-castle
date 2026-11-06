@@ -18,6 +18,7 @@ import { REALM_DISTRICTS, REALM_LEGENDS, realmAccess, districtById, homeDistrict
 import { ledgerTrail } from '../core/ledger.js';
 import { createMerchantDialog, resultFacts } from './merchant.js';
 import { createTreasury } from './treasury.js';
+import { CONFIRMATION_HISTORY_QUESTION, isConfirmationHistoryQuestion } from '../core/steward-questions.js';
 
 // ---------- small helpers ----------
 const $ = (selector, root = document) => root.querySelector(selector);
@@ -1274,17 +1275,25 @@ const STEWARD_SUGGESTIONS = ['Did PayPal confirm our last contribution?', 'How c
 
 function renderSteward() {
   const { steward } = state;
-  $('#steward-note').textContent = !steward.available ? 'Steward unavailable.' : steward.paypalTools ? 'AI · can check PayPal records' : 'AI · household records';
+  $('#steward-note').textContent = !steward.available ? (steward.localHistory ? 'Saved confirmations' : 'Steward unavailable.') : steward.paypalTools ? 'AI · can check PayPal records' : 'AI · household records';
   const suggestions = $('#steward-suggestions');
   if (!suggestions.childElementCount) {
     suggestions.append(h('button', { type: 'button', 'data-question': STEWARD_SUGGESTIONS[0], 'aria-label': STEWARD_SUGGESTIONS[0] }, h('span', {}, 'Check last payment')));
+    suggestions.append(h('button', { type: 'button', 'data-question': CONFIRMATION_HISTORY_QUESTION }, 'Last confirmation'));
   }
   const disabled = !steward.available || ui.stewardBusy;
-  for (const el of [...$$('#steward-suggestions button'), $('#steward-form input'), $('#steward-ask')]) el.disabled = disabled;
+  for (const el of [$('#steward-form input'), $('#steward-ask')]) el.disabled = disabled;
+  $('#steward-form').hidden = !steward.available;
+  for (const button of $$('#steward-suggestions button')) {
+    const local = isConfirmationHistoryQuestion(button.dataset.question);
+    button.hidden = local ? !steward.localHistory : !steward.available;
+    button.disabled = ui.stewardBusy || !(local ? steward.localHistory : steward.available);
+  }
 }
 
 async function askSteward(question, focusOrderId = null) {
-  if (!state.steward.available || ui.stewardBusy) return;
+  const local = state.steward.localHistory && isConfirmationHistoryQuestion(question);
+  if ((!state.steward.available && !local) || ui.stewardBusy) return;
   if (focusOrderId) ui.ledgerRecord = ledgerRows().find((r) => r.contribution?.providerOrderId === focusOrderId)?.id ?? ui.ledgerRecord;
   if (ui.tab !== 'ledger') selectTab('ledger', { focus: false });
   $('#steward-block').open = true; // the steward is disclosed on request; a verification asked from a receipt opens it
@@ -1292,7 +1301,7 @@ async function askSteward(question, focusOrderId = null) {
   ui.stewardFocus = focusOrderId;
   ui.stewardBusy = true;
   renderSteward();
-  setStatus('#steward-status', 'working', state.steward.paypalTools ? 'The steward is reading the ledger and checking with PayPal…' : 'The steward is reading the ledger…');
+  setStatus('#steward-status', 'working', local ? 'Reading saved confirmations…' : state.steward.paypalTools ? 'The steward is reading the ledger and checking with PayPal…' : 'The steward is reading the ledger…');
   $('#steward-answer').hidden = true;
   try {
     const res = await treasury.askSteward({ question, memberId: persona()?.id, focusOrderId });
@@ -1316,14 +1325,15 @@ function renderStewardAnswer(res) {
   const box = $('#steward-answer'), focus = ui.stewardFocus;
   const proof = res.checks.find((c) => c.tool === 'get_order' && (!focus || c.orderId === focus) && c.reconciliation);
   const matched = proof?.reconciliation?.verdict === 'match' && (!focus || res.verification?.status === 'verified');
+  const local = res.source === 'local-records';
   box.hidden = false;
   box.replaceChildren(
     h('strong', { class: `verification-title ${matched ? 'verified' : ''}` },
-      matched ? 'PayPal and ledger match' : focus ? 'Payment not yet verified' : 'House steward'),
+      local ? 'Saved confirmation' : matched ? 'PayPal and ledger match' : focus ? 'Payment not yet verified' : 'House steward'),
     h('p', { class: 'steward-text' }, res.answer),
     ...(res.warnings.length ? [h('div', { class: 'callout warn' }, res.warnings.join(' '))] : []),
     h('details', { class: 'verification-details' }, h('summary', {}, 'What was checked'),
-      h('small', {}, `${res.model} · read-only${res.paypalTools ? ' · PayPal Agent Toolkit' : ''}`),
+      h('small', {}, local ? 'Saved household record · read-only' : `${res.model} · read-only${res.paypalTools ? ' · PayPal Agent Toolkit' : ''}`),
       h('ul', { class: 'checks' }, ...(res.checks.length ? res.checks.map((c) => h('li', {},
         h('span', { class: `tag ${c.source.startsWith('PayPal') ? 'sandbox' : 'reported'}` }, c.source), ' ', c.summary,
         c.reconciliation ? h('span', { class: `verdict ${VERDICT_CLASS[c.reconciliation.verdict] ?? 'warn'}` }, c.reconciliation.note) : null,

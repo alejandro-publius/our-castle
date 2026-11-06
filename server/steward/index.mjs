@@ -3,6 +3,8 @@ import { decimalStringToCents, formatCents, milestoneTargets, nextMilestone } fr
 import { DomainError, getActiveGoal, getHousehold, getMember, progressFor } from '../household.mjs';
 import { PlannerProviderError, mapAnthropicError } from '../planner/anthropic-provider.mjs';
 import { dollarFigures } from '../planner/validate.mjs';
+import { isConfirmationHistoryQuestion } from '../../src/core/steward-questions.js';
+import { confirmationHistoryAnswer } from './confirmation-history.mjs';
 
 // The house steward answers a family's questions about their goal and payments. It is read-only:
 // it can read the household ledger and, in sandbox mode, look things up through PayPal's Agent
@@ -16,6 +18,8 @@ Answer the family's question in 2–5 short, warm sentences suitable for parents
 You are read-only. You can read the household ledger and, when the tools are offered, check PayPal sandbox records through PayPal's Agent Toolkit. You cannot create, approve, capture, refund or schedule payments. If asked to, explain that an adult does that in the app with PayPal approval.
 
 Before saying whether a payment went through, check it: use get_order for a specific contribution and report what PayPal says (status, capture id, amount) and whether it matches the ledger. Recent payments can take a while to appear in transaction search, so prefer get_order for one payment.
+
+Saved checks in the ledger are historical records. Their timestamps do not establish a new PayPal lookup. A saved match can describe a pending or uncaptured order, so do not call it a completed-payment confirmation. Distinguish saved history from current provider verification.
 
 Only mention money amounts that appear in tool results. Simulated example-mode contributions have no PayPal record; say so if relevant. The ledger tracks progress toward one goal; never call it a bank balance, and PayPal does not see the household's other bills.
 
@@ -126,6 +130,8 @@ export function createSteward({ db, contributions, householdId, ai = null, paypa
           counted_toward_goal: c.captures.some((x) => x.credited),
           refunded: money(c.captures.reduce((s, x) => s + x.refundedCents, 0)),
           recorded_at: c.updatedAt,
+          last_saved_check: c.lastCheck ? { checked_at: c.lastCheck.checkedAt, verdict: c.lastCheck.verdict,
+            capture_status: c.lastCheck.captureStatus, amount: money(c.lastCheck.amountCents), currency: c.lastCheck.currency } : null,
         })),
       },
     };
@@ -160,9 +166,9 @@ export function createSteward({ db, contributions, householdId, ai = null, paypa
   return {
     available: Boolean(client),
     paypalToolsAvailable: Boolean(client && paypalTools),
+    localHistoryAvailable: true,
 
     async ask({ question, memberId, focusOrderId = null }) {
-      if (!client) throw new DomainError(409, 'steward_unavailable', 'The house steward needs an AI key (AI_API_KEY) in the server’s .env file.');
       const text = typeof question === 'string' ? question.trim().replace(/\s+/g, ' ') : '';
       if (text.length < 3 || text.length > 300) throw new DomainError(400, 'invalid_question', 'Ask a question of 3–300 characters.');
       const member = getMember(db, householdId, memberId);
@@ -174,6 +180,8 @@ export function createSteward({ db, contributions, householdId, ai = null, paypa
       if (focusOrderId !== null && !knownOrderIds.includes(focusOrderId))
         throw new DomainError(404, 'order_not_found', 'That order is not a PayPal contribution for this household and goal.');
       const focus = focusOrderId;
+      if (isConfirmationHistoryQuestion(text)) return confirmationHistoryAnswer(list, focus);
+      if (!client) throw new DomainError(409, 'steward_unavailable', 'The house steward needs an AI key (AI_API_KEY) in the server’s .env file.');
       if (focus && !paypalTools) throw new DomainError(409, 'paypal_tools_unavailable', 'PayPal verification is not available on this server.');
       const tools = toolsFor(focus ? [focus] : knownOrderIds);
 

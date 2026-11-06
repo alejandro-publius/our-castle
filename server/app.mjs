@@ -117,6 +117,7 @@ export function createApp({ config, db, clock, paypal = null, aiProvider = null,
   const stewardInfo = {
     available: steward.available,
     paypalTools: steward.paypalToolsAvailable,
+    localHistory: steward.localHistoryAvailable,
     model: stewardAi?.model ?? null,
     paypalImplementation: paypal?.implementation ?? null,
   };

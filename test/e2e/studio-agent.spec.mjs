@@ -141,7 +141,7 @@ test('the framework preserves exact-order proof from the server and clears it on
   await expect(page.locator('#steward-answer')).toContainText('PayPal and ledger match');
   await expect(page.locator('#steward-answer .checks')).toContainText(s.orderId);
   await expect.poll(() => agent(page)).toMatchObject({ source: 'ag-studio-agent-framework', completed: 1, threads: 0 });
-  expect(s.aiRequests[0].tool_choice).toEqual({ type: 'tool', name: 'get_order' });
+  expect(s.aiRequests[0].tool_choice).toEqual({ type: 'auto' });
   expect(s.aiRequests[0].tools.find((t) => t.name === 'get_order').input_schema.properties.order_id.enum).toEqual([s.orderId]);
   expect(s.writes).toEqual(['POST /api/steward']);
   expect(s.finance()).toBe(before);

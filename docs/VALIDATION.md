@@ -1,5 +1,13 @@
 # Validation
 
+## Local confirmation history — November 5 PST / November 6 UTC, 2026
+
+The existing closed steward now offers **Last confirmation**, or accepts “When was our last contribution confirmed?” through the existing request. It reads this household/active goal's saved checks locally, including with no AI key. A completed stored match must bind to a credited capture with the same identity, amount and currency; pending matches never become completed confirmations. Refunds and a newer failed check remain explicit. Missing history produces no invented timestamp. The response is labelled **Saved confirmation**, has no fresh `verification` result, and makes no model/PayPal call or database write. General model questions and the explicit fresh `get_order` path retain their boundaries. No payment, webhook, toolkit allowlist, schema, dependency or visual renderer changed.
+
+**22 focused unit cases and six desktop/390 px touch-phone Chromium cases passed.** New cases cover saved/absent/pending/refunded/failed history, current-order selection, foreign-order/member refusal, simulated records, no-key use, no provider calls and unchanged application rows. Browser coverage uses the real Studio harness, local answer/reload, keyless availability and the existing exact-order provider-proof path with fakes. The latter's stale forced-tool expectation was aligned with the already-documented supported `auto` setting. Actual desktop/phone captures were inspected; the source/47-file/palette/renderer guard and diff checks passed. These are isolated/fake-provider checks, not a repeated real payment or new live AI result. No full suite or recording was run.
+
+Ignored evidence: `test-results/local-confirmation/{unit.log,browser.log,browser-artifacts/,source-check.log,functional.config.mjs}`. The earlier actual $15 order and check-history table are left as stored; this feature does not backfill a historical check or silently fetch one.
+
 ## Phone Journal accessible name — November 5 PST / November 6 UTC, 2026
 
 Automated/semantic inspection reproduced the unnamed phone Journal toggle after its visible text was hidden by responsive CSS. An explicit **Journal** label fixes it without changing layout or behavior. The existing journal test now locates the control by accessible role/name: **two desktop/phone cases passed** for keyboard navigation, draft retention, focus return, preference/reload and skip-link access.
