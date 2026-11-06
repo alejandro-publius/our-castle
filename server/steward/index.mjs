@@ -54,10 +54,23 @@ export function reconcileOrder(order, contribution) {
   if (order?.error || !order?.id) return { ...facts, verdict: 'unavailable', note: 'PayPal did not return this order.' };
   if (order.id !== contribution.providerOrderId || unit?.reference_id !== contribution.id)
     return { ...facts, verdict: 'differs', note: 'PayPal returned a different order or contribution reference. Nothing was changed.' };
-  const captureMatches = !capture || contribution.captures.some((c) => c.captureId === capture.id && c.credited);
+  const recordedCapture = contribution.captures.find((c) => c.captureId === capture?.id && c.credited);
+  const captureMatches = !capture || Boolean(recordedCapture);
   const paypalComplete = ['COMPLETED', 'PARTIALLY_REFUNDED', 'REFUNDED'].includes(capture?.status);
   const amountsMatch = paypalCents === contribution.amountCents && capture?.amount?.currency_code === contribution.currency;
-  if (paypalComplete && amountsMatch && credited && captureMatches) return { ...facts, verdict: 'match', note: 'PayPal and the ledger agree.' };
+  if (paypalComplete && amountsMatch && credited && captureMatches) {
+    const refunds = (unit.payments?.refunds ?? []).filter(r => r.status === 'COMPLETED' && (
+      r.links?.some(l => l.rel === 'up' && l.href?.endsWith(`/captures/${capture.id}`)) || (!r.links?.some(l => l.rel === 'up') && unit.payments.captures.length === 1)
+    ));
+    const refundAmounts = refunds.map(r => r.amount?.currency_code === contribution.currency ? decimalStringToCents(r.amount.value) : null);
+    if (refundAmounts.some(c => c === null || c <= 0)) return { ...facts, verdict: 'differs', note: 'PayPal returned refund details that cannot be compared safely. Nothing was changed.' };
+    const refunded = capture.status === 'REFUNDED' ? paypalCents : refundAmounts.reduce((total, c) => total + c, 0);
+    const recordedRefund = recordedCapture.refundedCents ?? 0;
+    if (refunded > recordedRefund || (capture.status === 'PARTIALLY_REFUNDED' && refunds.length === 0))
+      return { ...facts, verdict: 'action', note: 'PayPal reports a refund that needs checking against this receipt. Use “Check with PayPal” to refresh the server record.' };
+    if (refunded !== recordedRefund) return { ...facts, verdict: 'differs', note: 'PayPal and the ledger show different refunded amounts. Nothing was changed.' };
+    return { ...facts, verdict: 'match', note: 'PayPal and the ledger agree.' };
+  }
   if (!capture && !credited) return { ...facts, verdict: 'match', note: 'Not captured in PayPal, and not counted in the ledger.' };
   if (capture?.status === 'PENDING' && amountsMatch && !credited) return { ...facts, verdict: 'match', note: 'Pending in PayPal, and not counted yet.' };
   if (paypalComplete && amountsMatch && !credited) return { ...facts, verdict: 'action', note: 'PayPal shows a completed capture the ledger has not counted. Use “Check with PayPal” to let the server verify and record it.' };

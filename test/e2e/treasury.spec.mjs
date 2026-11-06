@@ -15,6 +15,8 @@ const evidence = fileURLToPath(new URL('../../test-results/treasury/evidence/', 
 let s;
 const issues = new WeakMap();
 const writes = new WeakMap();
+// This suite verifies records and Studio queries, not world animation; keep captures stable on software renderers.
+test.use({ reducedMotion: 'reduce' });
 test.afterEach(async ({ page }) => { expect(issues.get(page)).toEqual([]); await s?.close(); s = null; });
 
 async function startServer() {
@@ -70,7 +72,9 @@ test('Ledger: one next area from AG Studio, records and receipts on tap; no ques
   await expect(milestone(page).locator('.next-area-name')).toHaveText('Next area Manor Gardens 25% milestone');
   await expect(milestone(page).locator('.next-area-meta')).toHaveText('$60.00 of $75.00 · $15.00 to go');
   await expect(milestone(page).getByRole('meter', { name: 'Progress toward Manor Gardens' })).toHaveAttribute('aria-valuenow', '6000');
-  expect((await treasury(page)).next).toMatchObject({ id: 'manor', thresholdCents: 7500, remainingCents: 1500 });
+  expect((await treasury(page)).next).toMatchObject({ id: 'manor', thresholdCents: 7500, remainingCents: 1500, share: .8 });
+  await expect(milestone(page).locator('.next-area-bar > span')).toHaveCSS('width', /px$/);
+  expect(await milestone(page).locator('.next-area-bar > span').evaluate(el => el.style.width)).toBe('80%');
 
   // The simple design: no question box, Explain button, bridge question, chat or model label in the Treasury.
   const ledger = page.locator('#panel-ledger');
@@ -117,6 +121,8 @@ test('a completed contribution opens the Manor once; the Treasury moves on, surv
   await openLedger(page);
   await expect(milestone(page).locator('.next-area-name')).toHaveText('Next area Market Town 40% milestone');
   await expect(milestone(page).locator('.next-area-meta')).toHaveText('$75.00 of $120.00 · $45.00 to go');
+  expect((await treasury(page)).next.share).toBe(.625);
+  expect(await milestone(page).locator('.next-area-bar > span').evaluate(el => el.style.width)).toBe('62.5%');
 
   // The contribution's receipt names its source and status, and leads to the area it opened.
   await page.locator('#ledger-goal').getByText('Simulated contribution', { exact: false }).first().click();
@@ -143,6 +149,7 @@ test('a completed contribution opens the Manor once; the Treasury moves on, surv
   await openLedger(page);
   await expect(milestone(page).locator('.next-area-meta')).toHaveText('$60.00 of $120.00 · $60.00 to go');
   await expect(milestone(page).locator('.next-area-name')).toContainText('Market Town');
+  expect((await treasury(page)).next.share).toBe(.5);
   expect(await page.evaluate(() => window.__ourCastle.state.rewards.realm.districts.find((d) => d.id === 'manor').open)).toBe(true);
 });
 
@@ -150,6 +157,7 @@ test('if AG Studio cannot load, the same milestone is drawn from the same server
   await open(page, { studio: false });
   await openLedger(page, 'fallback');
   await expect(milestone(page).locator('.next-area-meta')).toHaveText('$60.00 of $75.00 · $15.00 to go');
+  expect(await milestone(page).locator('.next-area-bar > span').evaluate(el => el.style.width)).toBe('80%');
   expect((await treasury(page)).error).toBe('AG Studio could not be loaded');
   // Keyboard: from the Ledger tab, Tab reaches the milestone's map button.
   await page.locator('#tab-ledger').focus();

@@ -167,6 +167,14 @@ export function createContributionService({ db, clock, mode, paypal = null, webh
         upsertCapture(row, capture.id, amountCents, currency, 'PENDING');
         if (!SETTLED.has(orderById(row.id).status)) setStatus(row, 'pending', `PayPal is holding this capture${capture.status_details?.reason ? ` (${capture.status_details.reason})` : ''}. Progress updates only when it completes.`);
         return result(row, 'pending');
+      case 'REFUNDED':
+      case 'PARTIALLY_REFUNDED':
+        // Refunded after we credited it: the credit stands and the refunds themselves are applied by applyOrder/webhooks.
+        if (captureById(capture.id)?.credited) return result(row, 'already_completed');
+        // Refunded before this server ever saw it complete: never credit retroactively, and say what happened.
+        upsertCapture(row, capture.id, amountCents, currency, capture.status);
+        if (!SETTLED.has(orderById(row.id).status)) setStatus(row, 'failed', 'This capture was refunded in PayPal before any progress was recorded here. Nothing was credited.');
+        return result(row, 'not_credited');
       case 'DECLINED':
       case 'DENIED':
       case 'FAILED':
@@ -174,7 +182,7 @@ export function createContributionService({ db, clock, mode, paypal = null, webh
         if (!SETTLED.has(orderById(row.id).status)) setStatus(row, 'declined', 'PayPal declined this capture. No progress was recorded.');
         return result(row, 'declined');
       default: {
-        // e.g. REFUNDED before we ever saw COMPLETED: never credit retroactively.
+        // A status this server does not know: never credit on a guess.
         upsertCapture(row, capture.id, amountCents, currency, String(capture.status));
         if (!SETTLED.has(orderById(row.id).status)) setStatus(row, 'failed', `Unexpected capture status ${capture.status}. No progress was recorded.`);
         return result(row, 'not_credited');
@@ -203,7 +211,21 @@ export function createContributionService({ db, clock, mode, paypal = null, webh
       if (order.status === 'APPROVED') setStatus(row, 'created', 'Approved in PayPal but not captured yet.');
       return result(row, 'not_captured');
     }
-    return applyCapture(row, capture, unit.custom_id);
+    const applied = applyCapture(row, capture, unit.custom_id);
+    // Refunds listed on the order are applied too (once per refund id), so a refund made in the PayPal dashboard is not
+    // lost when its webhook was never delivered: PayPal stops retrying after 3 days, and local runs often have no tunnel.
+    let refunded = false;
+    for (const refund of unit.payments?.refunds ?? []) {
+      const up = (refund.links ?? []).find((l) => l.rel === 'up')?.href ?? '';
+      const captureId = decodeURIComponent(/\/captures\/([^/?#]+)/.exec(up)?.[1] ?? capture.id);
+      if (!unit.payments.captures.some((c) => c.id === captureId)) continue;
+      const outcome = applyRefund({
+        refundId: refund.id, captureId, amountCents: decimalStringToCents(refund.amount?.value),
+        currency: refund.amount?.currency_code, status: refund.status,
+      }).outcome;
+      if (outcome === 'refunded') refunded = true;
+    }
+    return refunded ? result(row, 'refunded') : applied;
   }
 
   function ownedOrder(providerOrderId, householdId, goalId, provider = 'paypal-sandbox') {
@@ -288,6 +310,10 @@ export function createContributionService({ db, clock, mode, paypal = null, webh
     if (!cap.credited) throw new DomainError(409, 'not_refundable', 'Only credited contributions can be refunded.');
     const refundable = cap.amount_cents - cap.refunded_cents;
     if (refundable <= 0) throw new DomainError(409, 'already_refunded', 'This contribution was already refunded.');
+    // A pending refund has not reduced refunded_cents yet, so a second request could ask PayPal to refund the same money.
+    if (db.prepare("SELECT 1 FROM payment_refunds WHERE capture_id = ? AND credited = 0 AND status = 'PENDING'").get(cap.capture_id)) {
+      throw new DomainError(409, 'refund_pending', 'A refund for this contribution is already pending in PayPal. Progress changes when it completes.');
+    }
     return { cap, row, refundable };
   }
 
@@ -415,8 +441,8 @@ export function createContributionService({ db, clock, mode, paypal = null, webh
       let event;
       try { event = JSON.parse(rawBody); } catch { throw new DomainError(400, 'invalid_json', 'Webhook body is not JSON.'); }
       let verified = false;
-      try { verified = await paypal.verifyWebhookSignature({ headers, event, webhookId }); } catch (error) {
-        if (error instanceof PayPalError) throw new DomainError(502, 'paypal_error', 'Could not verify the webhook with PayPal.');
+      try { verified = await paypal.verifyWebhookSignature({ headers, rawBody, event, webhookId }); } catch (error) {
+        if (error instanceof PayPalError) throw new DomainError(502, 'paypal_error', 'Could not verify the webhook with PayPal.', { debugId: error.debugId });
         throw error;
       }
       if (!verified) throw new DomainError(400, 'invalid_signature', 'Webhook signature verification failed. The event was ignored.');
@@ -452,7 +478,7 @@ export function createContributionService({ db, clock, mode, paypal = null, webh
     async clientToken({ domains }) {
       requireMode('sandbox');
       try { return await paypal.generateClientToken({ domains }); } catch (error) {
-        if (error instanceof PayPalError) throw new DomainError(502, 'paypal_error', 'Could not create a PayPal sandbox client token.');
+        if (error instanceof PayPalError) throw new DomainError(502, 'paypal_error', 'Could not create a PayPal sandbox client token.', { debugId: error.debugId });
         throw error;
       }
     },

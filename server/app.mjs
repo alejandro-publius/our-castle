@@ -313,6 +313,8 @@ export function createApp({ config, db, clock, paypal = null, aiProvider = null,
       sendJson(res, 200, result);
     } catch (error) {
       if (error instanceof DomainError || error instanceof HttpError || error instanceof PlanInputError) {
+        // PayPal's debug id is what its support and the AI Toolkit's explain-error need; keep it in the server log too.
+        if (error.debugId) console.warn(`[our-castle] ${error.code} (PayPal debug id ${error.debugId})`);
         return sendJson(res, error.status, { error: { code: error.code, message: error.message, issues: error.issues, debugId: error.debugId } });
       }
       console.error('[our-castle] unexpected error', error);
