@@ -13,6 +13,18 @@ Owner request, November 4, 2026: a wizard tower, a Rapunzel tower and a sword-in
 
 Use original code-native meshes/instancing and the preserved 90-colour renderer. New portraits must be actual renders with source hashes. No downloaded/branded film art, new catalogue, repeated disclaimer, paid tests or video work.
 
+## Flowering tower vines — November 5, 2026
+
+Direct build against the existing [Rapunzel daylight](screenshots/rapunzel-fairy.png) and [night](screenshots/rapunzel-fairy-night.png) renders, with the existing rose beds supplying the botanical colours. Current Refero Wayfinder and MekaVerse references were reviewed again: borrow only organic environmental storytelling and small details inside the world, without their interface or palette.
+
+| Decision | Source / boundary |
+| --- | --- |
+| Two slender, irregular stems climb the shaft, with short upward forks and tapering leaves | Owner's lightly overgrown upward accents; leave most ivory stone exposed |
+| Small pink and ivory flower clusters with gold centres | Existing balcony roses, garden beds and world palette |
+| Keep windows, crest, braid, balcony and fairy readable | Existing tower silhouette; static shared mesh parts, no controls or reward changes |
+
+Actual [tower detail](screenshots/rapunzel-vines.png), [390 px phone](screenshots/rapunzel-vines-phone.png) and [source/capture hashes](screenshots/rapunzel-vines-capture.json). Desktop/phone daylight and Night/Rain reviews passed, including rotated detail, original figures/bridges/court/access, unchanged full example household state and zero page errors, writes, outside requests or horizontal overflow. The source/art guard and final syntax/diff checks passed. The first review incorrectly compared GPU-resident geometry counts before and after rain first rendered; its failure and captures are retained in ignored `test-results/rapunzel-vines/`. The corrected final review checks the unchanged scene and household directly. No full suite, provider call, new payment or video was needed.
+
 ## Fairy and staff — November 5 reference lock
 
 Owner request: a fairy at Rapunzel's Tower and a wizard with a readable staff carrying a small amount of magic. Direct build against the existing [Observatory](screenshots/wizard-tower.png), [Rapunzel tower](screenshots/rapunzel-tower.png) and shared miniature characters. The current world remains the primary reference. Refero research reviewed [Wayfinder](https://wayfinder.nfb.ca) for environmental storytelling and [MekaVerse](https://themekaverse.com) for tiny accents within a detailed world; borrow only those imagery roles, not their UI, fonts or palettes.

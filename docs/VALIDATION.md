@@ -1,5 +1,11 @@
 # Validation
 
+## Flowering Rapunzel vines — November 5 PST / November 6 UTC, 2026
+
+Two slender climbers with upward forks, small green leaves and nine pink/ivory blooms replace the old barely visible ivy. Most ivory stone remains exposed; windows, braid, crest, balcony and fairy stay readable. Static parts share existing geometry/material batches and add no controls, timers, rewards or provider actions. [Reference lock, actual renders and exact evidence](WOODLAND-LEGENDS.md#flowering-tower-vines--november-5-2026).
+
+Final desktop/390 px touch-phone Chromium reviews passed: day, Night/Rain, zoom/rotation, original figures/court/bridges/access, unchanged full example household state, no overflow, page errors, writes or outside requests. The initial review-driver assumption about not-yet-rendered rain geometry is recorded with its failed capture; no product bug or passed full suite is claimed. Original 47-file/palette/renderer guard and final changed-source syntax/diff checks passed. This used fresh in-memory example data only; no new order, paid call or video.
+
 ## Villager candle lanterns — November 5 PST / November 6 UTC, 2026
 
 Kit carries the village's candle lantern; Oswin adds a second at the Manor. Tiny night-only flames, two short-range shadowless lights and small warm ground pools follow their actual articulated hands. The existing ambient tick supplies restrained flicker; daylight/afternoon extinguish both, and reduced motion/modal pause freeze the effect. No extra guests, controls, reward gates, provider calls or dependencies.
