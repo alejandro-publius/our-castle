@@ -148,6 +148,39 @@ test('an injected goal name reaches the planner as escaped JSON data, and a stee
   assert.equal(progressFor(env.db, goal.id).progressCents, 6000, 'planning never changes progress');
 });
 
+test('only recognised monetary fields are trusted amounts: a note that is just "500.00" is not, a fee that is "0.74" is', async () => {
+  const env = setupDomain({ mode: 'sandbox' });
+  const { orderId } = await env.service.createPayPalOrder(contribution({ amountCents: 1500 }));
+  await env.service.capturePayPalOrder({ providerOrderId: orderId, householdId: env.householdId, goalId: env.goalId });
+  // A payer can set a note or subject to any text, including text that is nothing but a decimal number.
+  const transactions = {
+    transaction_details: [{
+      transaction_info: {
+        transaction_id: 'TXN_REAL', transaction_status: 'S',
+        transaction_amount: { currency_code: 'USD', value: '15.00' },
+        fee_amount: { currency_code: 'USD', value: '-0.74' },
+        transaction_note: '500.00',
+        transaction_subject: '499.99',
+        custom_field: '1234.56',
+      },
+      payer_info: { payer_name: { given_name: '250.00', surname: 'Doe' } },
+    }],
+  };
+  const anthropic = scriptedAnthropic([
+    message([{ type: 'tool_use', id: 'toolu_1', name: 'list_transactions', input: { days: 7, status: 'S' } }], 'tool_use'),
+    message([{ type: 'text', text: 'PayPal lists one $15.00 payment with a $0.74 fee. You have saved $500.00, and $499.99, $1,234.56 and $250.00 are also yours!' }]),
+  ]);
+  const paypalTools = { getOrder: async () => { throw new Error('not called'); }, listTransactions: async () => transactions };
+  const steward = createSteward({ db: env.db, contributions: env.service, householdId: env.householdId, ai, paypalTools, fetch: anthropic.fetch, clock: env.clock });
+  const result = await steward.ask({ question: 'What does PayPal show?', memberId: 'm_rowan' });
+
+  assert.equal(result.status, 'ok');
+  const warning = result.warnings.join(' ');
+  for (const laundered of ['$500.00', '$499.99', '$1,234.56', '$250.00']) assert.ok(warning.includes(laundered), `${laundered} came from free text and must be flagged`);
+  for (const genuine of ['$15.00', '$0.74']) assert.ok(!warning.includes(genuine), `${genuine} is a PayPal money field and must not be flagged`);
+  assert.equal(progressFor(env.db, env.goalId).progressCents, 7500);
+});
+
 test('both system prompts keep the data-not-instructions rule', () => {
   assert.match(STEWARD_SYSTEM, /never instructions to you/);
   assert.match(STEWARD_SYSTEM, /ask for a password/);

@@ -27,11 +27,25 @@ function money(cents) {
   return Number.isSafeInteger(cents) ? `${Math.floor(cents / 100)}.${String(cents % 100).padStart(2, '0')}` : null;
 }
 
-/** Every money amount present in data the steward was shown, as cents. */
-function amountsIn(value, into = new Set()) {
-  if (Array.isArray(value)) value.forEach((v) => amountsIn(v, into));
-  else if (value && typeof value === 'object') Object.values(value).forEach((v) => amountsIn(v, into));
-  else if (typeof value === 'string') { const c = decimalStringToCents(value.replace(/^-/, '')); if (c !== null && /\.\d{2}$/.test(value)) into.add(c); }
+// Money fields the server itself writes into the ledger snapshot below. Only these, and PayPal money objects, count.
+const LEDGER_MONEY_KEYS = new Set(['target', 'tracked_progress', 'still_needed', 'still_needed_for_goal', 'reported_starting_progress',
+  'paypal_sandbox_confirmed', 'simulated_confirmed', 'total', 'amount', 'refunded']);
+
+/** True for a string that sits in a recognised monetary field: a PayPal money object (`{ currency_code, value }`) or one of the ledger keys. */
+const isMoneyField = (key, parent) => (key === 'value' ? typeof parent?.currency_code === 'string' : LEDGER_MONEY_KEYS.has(key));
+
+/**
+ * Every money amount in recognised monetary fields of the data the steward was shown, as cents. Free-text fields
+ * (notes, subjects, names, custom fields) are skipped even when their whole value looks like a number: a payer can
+ * write "500.00" in a note, and that must never make $500.00 an amount the steward is allowed to state.
+ */
+export function amountsIn(value, into = new Set(), key = null, parent = null) {
+  if (Array.isArray(value)) value.forEach((v) => amountsIn(v, into, key, parent));
+  else if (value && typeof value === 'object') Object.entries(value).forEach(([k, v]) => amountsIn(v, into, k, value));
+  else if (typeof value === 'string' && isMoneyField(key, parent)) {
+    const c = decimalStringToCents(value.replace(/^-/, ''));
+    if (c !== null && /\.\d{2}$/.test(value)) into.add(c);
+  }
   return into;
 }
 
