@@ -1,5 +1,11 @@
 # Validation
 
+## Villager candle lanterns — November 5 PST / November 6 UTC, 2026
+
+Kit carries the village's candle lantern; Oswin adds a second at the Manor. Tiny night-only flames, two short-range shadowless lights and small warm ground pools follow their actual articulated hands. The existing ambient tick supplies restrained flicker; daylight/afternoon extinguish both, and reduced motion/modal pause freeze the effect. No extra guests, controls, reward gates, provider calls or dependencies.
+
+Focused Chromium review used a fresh in-memory example with **$75 explicitly reported test progress**, not a PayPal payment. Actual desktop/390 px touch-phone renders were inspected. Day/night/afternoon switching, night refresh, reduced motion, six tier/crest rebuilds and twelve normal-motion samples passed. Rebuilds retained one carrier at the cottage, two at Manor/final tier, the original 2/6/20 guests, nine districts/bridges and a stable 21 geometries. Actual light positions followed the corresponding hand near each walker and paused under an occluding modal. The browser made no writes or outside requests, raised no page errors and left household/financial state unchanged. Three existing court unit cases and the 47-file/palette/renderer/syntax guard passed. Evidence: ignored `test-results/villager-lanterns/`; this is Chromium emulation, not a physical-device or performance claim. No payment, paid AI call or video was made.
+
 ## Fairy flight and Rachel handoff — November 5, 2026
 
 The fairy now makes brief, bounded balcony loops with longer hovering pauses on the existing ambient clock. A fresh-example Chromium review sampled 44 normal-motion poses, verified multiple flight/rest positions, advancing rendered frames, modal pause and unchanged progress/contributions. A touch-phone reduced-motion review sampled five identical poses with ambient animation off. Neither produced a page error, write or outside request; the actual flight frame was inspected. Original 47-file art/palette/renderer/syntax guard passed. No new full suite, provider call, order or video was needed. Evidence: ignored `test-results/fairy-flight/`.
