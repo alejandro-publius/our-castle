@@ -10,6 +10,8 @@ Actual combined-source checks: **185 unit tests, 184 passed, one existing intent
 
 An initial default-motion Treasury screenshot timed out on software rendering after its functional assertions passed. That run was stopped (one following case interrupted); its log/traces are retained. The records/query suite now uses reduced motion and all eight relevant cases pass. Evidence: ignored `test-results/rachel-pr-review/{before-fix.log,payment-fix.log,refund-reconciliation-before.log,refund-reconciliation-after.log,unit.log,browser.log,browser-artifacts/}`. No product animation assertion was removed.
 
+Both reviewed PRs were then activated locally at `2dc00e0` after consistent database backups and zero-active-order checks. Owner 3010 PID 41956 and preserved rehearsal 3021 PID 41966 retain identical application-table signatures, environment bytes/mode/mtime, runtime modes and progress ($60 / $75). Four served app/world source hashes match. No provider call was made. Private activation evidence: `~/projects/our-house/test-results/rachel-pr-activation-20261106T041716Z/report.json`.
+
 ## Flowering Rapunzel vines — November 5 PST / November 6 UTC, 2026
 
 Two slender climbers with upward forks, small green leaves and nine pink/ivory blooms replace the old barely visible ivy. Most ivory stone remains exposed; windows, braid, crest, balcony and fairy stay readable. Static parts share existing geometry/material batches and add no controls, timers, rewards or provider actions. [Reference lock, actual renders and exact evidence](WOODLAND-LEGENDS.md#flowering-tower-vines--november-5-2026).
