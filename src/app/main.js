@@ -418,10 +418,15 @@ async function readFamilyState({ background = false, throttle = false } = {}) {
 }
 // The one connection state: shown only when live updates have been away for a while, with the action that helps.
 function setLiveStatus(status) {
+  const was = family.status;
   family.status = status;
+  if (status === 'down') {
+    // Timed from the first failure: the browser's own retries every few seconds do not restart the wait.
+    if (was !== 'down') family.statusTimer = setTimeout(() => showLiveStatus(!family.lost && family.status === 'down'), 8_000);
+    return;
+  }
   clearTimeout(family.statusTimer);
-  if (status !== 'down') { showLiveStatus(false); return; }
-  family.statusTimer = setTimeout(() => showLiveStatus(!family.lost && family.status === 'down'), 8_000);
+  showLiveStatus(false);
 }
 function showLiveStatus(show) {
   const box = $('#live-status');
@@ -953,6 +958,7 @@ function renderPlanForm() {
     ui.planGoalId = goal.id;
     ui.planGoalRevision = state.merchantGoalRevision;
     ui.planProjectKind = goal.projectKind;
+    ui.planBaseline = planFieldValues(state); // what the form shows; a live update can move the state on past it
     $('#goal-project').value = goal.projectKind;
     $('#goal-name-input').value = goal.name;
     $('#goal-target').value = centsToInput(goal.targetCents);
@@ -962,7 +968,7 @@ function renderPlanForm() {
     if (plan?.inputs?.commitments) ui.commitments = plan.inputs.commitments.map((c) => ({ label: c.label, amount: centsToInput(c.amountCents), cadence: c.cadence }));
     renderCommitments();
   }
-  planCheck ??= createPlanCheck({ getState: () => state, isBlocked: () => Boolean(ui.goalDraft), refreshGoal: refreshPlanGoal });
+  planCheck ??= createPlanCheck({ getState: () => state, isBlocked: () => Boolean(ui.goalDraft), isStale: planFormStale, refreshGoal: refreshPlanGoal });
   planCheck.update();
   const result = $('#plan-result');
   if (!plan) { result.hidden = true; return; }
@@ -1014,9 +1020,12 @@ function renderPlanForm() {
   accept.textContent = accepted ? 'Plan in use ✓' : 'Use this plan';
 }
 
+const planFieldValues = (s) => ({ 'goal-name-input': s.goal.name, 'goal-target': centsToInput(s.goal.targetCents), 'goal-starting': centsToInput(s.progress.startingCents), 'goal-weekly': centsToInput(s.goal.weeklyBudgetCents), 'goal-date': s.goal.targetDate, 'goal-project': s.goal.projectKind });
+// The Plan form's goal is older than the household's (another member saved a newer one while this form was being edited).
+const planFormStale = () => Boolean(state && ui.planFormDirty && ui.planGoalRevision && ui.planGoalRevision !== state.merchantGoalRevision);
 async function refreshPlanGoal() {
-  const goalValues = (s) => ({ 'goal-name-input': s.goal.name, 'goal-target': centsToInput(s.goal.targetCents), 'goal-starting': centsToInput(s.progress.startingCents), 'goal-weekly': centsToInput(s.goal.weeklyBudgetCents), 'goal-date': s.goal.targetDate, 'goal-project': s.goal.projectKind });
-  const saved = goalValues(state), fields = Object.keys(saved);
+  // Fields still showing what the form was filled with are the family's untouched fields; any other value is an edit.
+  const shown = ui.planBaseline ?? planFieldValues(state), fields = Object.keys(shown);
   const before = Object.fromEntries(fields.map(id => [id, $(`#${id}`).value]));
   const latest = await api.get('/api/state');
   // Keep current trial inputs and optional bill rows, including edits made while this local read was pending.
@@ -1024,11 +1033,12 @@ async function refreshPlanGoal() {
   ui.planFormDirty = true;
   applyState(latest);
   if (ui.goalDraft) return false;
-  const values = goalValues(latest);
-  for (const id of fields) if (before[id] === saved[id] && $(`#${id}`).value === before[id]) $(`#${id}`).value = values[id];
-  ui.planGoalId = latest.goal.id;
-  ui.planGoalRevision = latest.merchantGoalRevision;
-  ui.planProjectKind = latest.goal.projectKind; // a Build choice the family made still differs from it and is sent
+  const values = planFieldValues(state); // the newest state shown: this answer, or a newer live one
+  for (const id of fields) if (before[id] === shown[id] && $(`#${id}`).value === before[id]) $(`#${id}`).value = values[id];
+  ui.planBaseline = values;
+  ui.planGoalId = state.goal.id;
+  ui.planGoalRevision = state.merchantGoalRevision;
+  ui.planProjectKind = state.goal.projectKind; // a Build choice the family made still differs from it and is sent
   return true;
 }
 

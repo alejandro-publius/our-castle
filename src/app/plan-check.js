@@ -12,7 +12,7 @@ function el(tag, text, className) {
   return node;
 }
 
-export function createPlanCheck({ getState, isBlocked = () => false, refreshGoal }) {
+export function createPlanCheck({ getState, isBlocked = () => false, isStale = () => false, refreshGoal }) {
   const button = $('check-schedule'), result = $('plan-check-result');
   let sequence = 0, controller = null, stateKey = null, blockedKey = isBlocked();
   const inputs = () => Object.fromEntries(fields.map(id => [id, $(id).value]));
@@ -107,6 +107,11 @@ export function createPlanCheck({ getState, isBlocked = () => false, refreshGoal
     if (isBlocked()) {
       message('Save or discard the market draft first.', { error: true });
       $('goal-draft-title').focus(); return;
+    }
+    // Another member saved a newer goal while this form was being edited: offer it, keeping this member's own edits.
+    if (isStale()) {
+      message('Your goal or contributions changed. Load the latest goal before checking again.', { error: true, reload: true });
+      return;
     }
     const s = getState(), values = inputs();
     if (values['goal-name-input'].trim() !== s.goal.name
