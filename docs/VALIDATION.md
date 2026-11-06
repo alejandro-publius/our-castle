@@ -8,6 +8,8 @@ Reproduced two stale-draft failures: a same-ID goal edit and a changed starting-
 
 Ignored evidence in `test-results/merchant-recovery/`: `before.log`, `stale-form-before.log`, `unit-final.log`, `injection.log`, `browser-final.log`, `journey.log`, `browser-artifacts/`, `journey-artifacts/`, and `source-check-final.log`. [Behavior and API boundary](CHANNEL3-MERCHANT.md), [existing interface references](INTERFACE-DIRECTION.md).
 
+**Mac activation:** `7f87a35` is running on owner 3010 and the preserved 3021 rehearsal. Consistent backups preceded the restart; every existing application table has identical rows, schema remains 4, `.env` bytes/mode/mtime and modes match, and served frontend hashes match tested files. Owner $60/$300 and rehearsal $75/$300 are unchanged. Only local state/static reads were used. [Current runtime handoff](RELEASE-READINESS.md#current-mac-app).
+
 ## Local confirmation history — November 5 PST / November 6 UTC, 2026
 
 The existing closed steward now offers **Last confirmation**, or accepts “When was our last contribution confirmed?” through the existing request. It reads this household/active goal's saved checks locally, including with no AI key. A completed stored match must bind to a credited capture with the same identity, amount and currency; pending matches never become completed confirmations. Refunds and a newer failed check remain explicit. Missing history produces no invented timestamp. The response is labelled **Saved confirmation**, has no fresh `verification` result, and makes no model/PayPal call or database write. General model questions and the explicit fresh `get_order` path retain their boundaries. No payment, webhook, toolkit allowlist, schema, dependency or visual renderer changed.
