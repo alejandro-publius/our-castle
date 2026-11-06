@@ -1,10 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import http from 'node:http';
 import { createPayPalClient, PayPalError } from '../../server/payments/paypal-client.mjs';
 import { createContributionService } from '../../server/payments/contributions.mjs';
 import { DEMO_GOAL_ID, DEMO_HOUSEHOLD_ID } from '../../server/household.mjs';
 import { contribution, setupDomain } from '../helpers/setup.mjs';
 import { webhookHeaders } from '../helpers/fake-paypal.mjs';
+import { reconcileOrder } from '../../server/steward/index.mjs';
 
 // Webinar follow-ups (W1 webhooks, W2 resilience, W4 missed refunds), checked against the stateful fake sandbox and
 // a recording fetch. These prove what this server does with PayPal's answers; they are not a live sandbox run.
@@ -35,7 +37,7 @@ test('webhook verification sends the delivered body byte-for-byte, not a re-seri
   assert.equal(await client.verifyWebhookSignature({ headers: webhookHeaders, rawBody, event, webhookId: 'WH-TEST' }), true);
 
   const [body] = sent;
-  assert.ok(body.endsWith(`,"webhook_event":${rawBody.trim()}}`), 'the event is embedded exactly as delivered');
+  assert.ok(body.endsWith(`,"webhook_event":${rawBody}}`), 'the complete event, including trailing whitespace, is embedded exactly as delivered');
   const parsed = JSON.parse(body);
   assert.equal(parsed.webhook_id, 'WH-TEST');
   assert.equal(parsed.transmission_id, webhookHeaders['paypal-transmission-id']);
@@ -79,6 +81,57 @@ test('a REST call that never answers is bounded, and a capture that times out be
   await assert.rejects(bug.getOrder('ORDER1'), RangeError, 'other errors are not disguised as PayPal outages');
 });
 
+test('a capture whose headers arrive but body stalls stays pending and recheckable', async () => {
+  const env = setupDomain({ mode: 'sandbox' });
+  const server = http.createServer((req, res) => { res.writeHead(200, { 'Content-Type': 'application/json' }); res.write('{'); });
+  await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+  let captures = 0;
+  const fetch = (url, init) => {
+    if (!/\/capture$/.test(new URL(url).pathname)) return env.fake.fetch(url, init);
+    captures++;
+    return globalThis.fetch(`http://127.0.0.1:${server.address().port}/stalled`, init);
+  };
+  try {
+    const paypal = createPayPalClient({ clientId: 'test-client-id', clientSecret: 'test-client-secret', fetch, timeoutMs: 100 });
+    const service = createContributionService({ db: env.db, clock: env.clock, mode: 'sandbox', paypal, webhookId: 'WH-TEST' });
+    const before = progress(env);
+    const { orderId } = await service.createPayPalOrder(contribution());
+    const started = Date.now();
+    const result = await service.capturePayPalOrder({ providerOrderId: orderId, ...owner });
+    assert.ok(Date.now() - started < 2000);
+    assert.equal(captures, 1);
+    assert.equal(result.outcome, 'unknown');
+    assert.equal(result.contribution.status, 'pending');
+    assert.equal(progress(env), before);
+  } finally {
+    server.closeAllConnections(); await new Promise(resolve => server.close(resolve)); env.db.close();
+  }
+});
+
+test('a body connection reset after capture recovers the same order and credits it only once', async () => {
+  const env = setupDomain({ mode: 'sandbox' });
+  let captures = 0;
+  const fetch = async (url, init) => {
+    const response = await env.fake.fetch(url, init);
+    if (/\/capture$/.test(new URL(url).pathname)) {
+      captures++;
+      response.text = async () => { throw new TypeError('terminated'); };
+    }
+    return response;
+  };
+  const paypal = createPayPalClient({ clientId: 'test-client-id', clientSecret: 'test-client-secret', fetch });
+  const service = createContributionService({ db: env.db, clock: env.clock, mode: 'sandbox', paypal, webhookId: 'WH-TEST' });
+  const before = progress(env);
+  const { orderId } = await service.createPayPalOrder(contribution());
+  const result = await service.capturePayPalOrder({ providerOrderId: orderId, ...owner });
+  assert.equal(result.outcome, 'completed');
+  assert.equal(progress(env), before + 1500);
+  assert.equal((await service.capturePayPalOrder({ providerOrderId: orderId, ...owner })).outcome, 'already_completed');
+  assert.equal(captures, 1);
+  assert.equal(progress(env), before + 1500);
+  env.db.close();
+});
+
 test('a refund made in the PayPal dashboard is picked up from get_order once, and its late webhook is a duplicate', async () => {
   const env = setupDomain({ mode: 'sandbox' });
   const before = progress(env);
@@ -119,6 +172,24 @@ test('a capture first seen as REFUNDED is never credited and says so', async () 
   assert.equal(res.contribution.status, 'failed');
   assert.match(res.contribution.statusDetail, /refunded in PayPal before any progress was recorded/);
   assert.equal(progress(env), before);
+});
+
+test('the steward requires the refund total to agree before saying PayPal and the ledger match', async () => {
+  const env = setupDomain({ mode: 'sandbox' });
+  const { orderId, captureId } = await captured(env);
+  const provider = env.fake.orders.get(orderId), unit = provider.purchase_units[0];
+  const row = () => env.service.contributions(env.goalId).find(c => c.providerOrderId === orderId);
+  unit.payments.captures[0].status = 'PARTIALLY_REFUNDED';
+  unit.payments.refunds = [{ id: 'PARTIALREFUND001', status: 'COMPLETED', amount: { currency_code: 'USD', value: '5.00' }, links: [{ rel: 'up', href: `https://api-m.sandbox.paypal.com/v2/payments/captures/${captureId}` }] }];
+  assert.equal(reconcileOrder(provider, row()).verdict, 'action');
+  await env.service.refreshPayPalOrder({ providerOrderId: orderId, ...owner });
+  assert.equal(reconcileOrder(provider, row()).verdict, 'match');
+  unit.payments.captures[0].status = 'REFUNDED';
+  unit.payments.refunds.push({ id: 'FINALREFUND002', status: 'COMPLETED', amount: { currency_code: 'USD', value: '10.00' }, links: unit.payments.refunds[0].links });
+  assert.equal(reconcileOrder(provider, row()).verdict, 'action');
+  await env.service.refreshPayPalOrder({ providerOrderId: orderId, ...owner });
+  assert.equal(reconcileOrder(provider, row()).verdict, 'match');
+  env.db.close();
 });
 
 test('a second refund is refused while the first is still pending in PayPal', async () => {

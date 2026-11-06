@@ -108,8 +108,8 @@ export const AREA_FIELDS = Object.freeze([
   { id: 'name', name: 'Area', format: 'textFormat', description: 'District name shown on the map.' },
   { id: 'groupLabel', name: 'Opens with', format: 'textFormat', description: 'Every district that opens at the same milestone.' },
   { id: 'percent', name: 'Milestone', format: 'integerFormat', description: 'Share of the goal, in percent, at which this area opens.' },
-  cents('thresholdCents', 'Opens at (cents)', 'Confirmed progress, in integer cents, that opens this area.'),
-  cents('progressCents', 'Progress (cents)', 'Confirmed goal progress counted toward this threshold, capped at it.'),
+  cents('thresholdCents', 'Opens at (cents)', 'Server-tracked goal progress, in integer cents, required for this area.'),
+  cents('progressCents', 'Progress (cents)', 'Server-tracked goal progress toward this threshold, capped at it. May include reported or simulated entries; not PayPal verification.'),
   cents('remainingCents', 'To go (cents)', 'Cents still needed; zero once open.'),
   { id: 'open', name: 'Open', format: 'booleanFormat', description: 'Opened by an earned server achievement.' },
   { id: 'next', name: 'Next', format: 'booleanFormat', description: 'Part of the lowest locked milestone group.' },
@@ -120,7 +120,7 @@ export const AREA_EXPRESSIONS = Object.freeze([{
   expression: { operator: 'divide', inputs: [{ id: 'areas.progressCents' }, { id: 'areas.thresholdCents' }] },
 }]);
 const dataFor = (state) => ({
-  description: "One family's savings goal as milestone areas of a woodland realm. Read-only rows from the server's confirmed ledger.",
+  description: "One family's goal as milestone areas of a woodland realm. Read-only server ledger rows may include reported savings, simulated payments or confirmed sandbox contributions; not a bank balance.",
   sources: [{ id: 'areas', name: 'Areas', description: 'Milestone districts in opening order.', data: rowsFor(state), fields: AREA_FIELDS }],
   expressions: AREA_EXPRESSIONS,
 });

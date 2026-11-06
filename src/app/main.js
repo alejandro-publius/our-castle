@@ -1242,7 +1242,7 @@ function renderLedgerRecord() {
     const refundId = row.recordEntry?.effect < 0 ? row.recordEntry.sourceRef?.split(':').at(-1) : null;
     const actions = [];
     if (c.status === 'pending' && c.simulated) actions.push(h('button', { type: 'button', onclick: () => completePending(c.id) }, 'Simulate PayPal completing it'));
-    if (c.status === 'pending' && !c.simulated) actions.push(h('button', { type: 'button', onclick: () => refreshOrder(c.providerOrderId) }, 'Check with PayPal'));
+    if (!c.simulated && c.providerOrderId && ['pending', 'completed', 'partially_refunded'].includes(c.status)) actions.push(h('button', { type: 'button', onclick: () => refreshOrder(c.providerOrderId) }, 'Check with PayPal'));
     if (!c.simulated && c.providerOrderId && state.steward.paypalTools) {
       actions.push(h('button', { type: 'button', onclick: () => askSteward(`Did PayPal confirm the ${money(c.amountCents)} contribution?`, c.providerOrderId) }, 'Ask the steward to verify'));
     }

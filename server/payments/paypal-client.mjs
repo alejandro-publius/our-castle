@@ -22,21 +22,26 @@ export class PayPalError extends Error {
 export function createPayPalClient({ clientId, clientSecret, fetch: rawFetch = globalThis.fetch, now = () => Date.now(), timeoutMs = 30_000 }) {
   if (!clientId || !clientSecret) throw new Error('PayPal sandbox credentials are required');
   const base = PAYPAL_SANDBOX_API;
+  function transportError(error, debugId = null) {
+    if (error?.name === 'TimeoutError' || error?.name === 'AbortError') return new PayPalError('PayPal sandbox did not answer in time.', { name: 'TIMEOUT', debugId });
+    if (error instanceof TypeError) return new PayPalError('Could not reach PayPal sandbox.', { name: 'NETWORK_ERROR', debugId });
+    return error;
+  }
   // Every REST call has a bounded wait, like the Server SDK client. No answer (timed out) and no connection (fetch's
   // TypeError) are both reported as a PayPalError without an HTTP status, which callers already treat as an unknown
   // outcome rather than a failure. Any other error is a bug and is left alone.
   async function fetch(url, init) {
-    try { return await rawFetch(url, { ...init, signal: AbortSignal.timeout(timeoutMs) }); } catch (error) {
-      if (error?.name === 'TimeoutError' || error?.name === 'AbortError') throw new PayPalError('PayPal sandbox did not answer in time.', { name: 'TIMEOUT' });
-      if (error instanceof TypeError) throw new PayPalError('Could not reach PayPal sandbox.', { name: 'NETWORK_ERROR' });
-      throw error;
-    }
+    try { return await rawFetch(url, { ...init, signal: AbortSignal.timeout(timeoutMs) }); }
+    catch (error) { throw transportError(error); }
   }
   const basic = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
   let cached = null;
 
   async function readJson(response) {
-    const text = await response.text();
+    // fetch resolves at the response headers; its timeout/reset can still happen while consuming the body.
+    let text;
+    try { text = await response.text(); }
+    catch (error) { throw transportError(error, response.headers.get('paypal-debug-id')); }
     if (!text) return null;
     try { return JSON.parse(text); } catch { return { raw: text.slice(0, 500) }; }
   }
@@ -151,7 +156,7 @@ export function createPayPalClient({ clientId, clientSecret, fetch: rawFetch = g
       });
       // The request body is assembled as text so the delivered event is embedded byte-for-byte: `fields` minus its
       // closing brace, then the event as PayPal sent it. `rawBody` was already parsed by the caller, so it is valid JSON.
-      const deliveredEvent = typeof rawBody === 'string' ? rawBody.trim() : JSON.stringify(event);
+      const deliveredEvent = typeof rawBody === 'string' ? rawBody : JSON.stringify(event);
       const { data } = await request('POST', '/v1/notifications/verify-webhook-signature', {
         prefer: null,
         json: `${fields.slice(0, -1)},"webhook_event":${deliveredEvent}}`,
