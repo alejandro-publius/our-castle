@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync } from 'node:fs';
+import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { openDatabase } from '../../server/db.mjs';
@@ -20,6 +20,29 @@ async function captured(env, amountCents = 1500) {
   const res = await env.service.capturePayPalOrder({ providerOrderId: orderId, ...owner });
   return { orderId, res };
 }
+
+test('upgrading an existing schema-3 household preserves every application row and its completed receipt', async (t) => {
+  const dir = mkdtempSync(path.join(tmpdir(), 'our-castle-check-migration-'));
+  const file = path.join(dir, 'household.sqlite');
+  const env = setupDomain({ mode: 'sandbox', file });
+  let db = env.db;
+  t.after(() => { try { db.close(); } catch {} rmSync(dir, { recursive: true, force: true }); });
+  await captured(env);
+  const receipt = env.service.contributions(DEMO_GOAL_ID)[0];
+  const rows = (database) => Object.fromEntries(database.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name != 'order_checks' ORDER BY name").all()
+    .map(({ name }) => [name, database.prepare(`SELECT * FROM "${name}" ORDER BY rowid`).all()]));
+  const before = rows(db);
+  // Migrations 1–3 are unchanged. Remove the new empty table to prepare the actual previous schema with saved data.
+  db.exec('DROP TABLE order_checks; PRAGMA user_version = 3;');
+  db.close();
+  db = openDatabase(file);
+  assert.equal(db.prepare('PRAGMA user_version').get().user_version, 4);
+  assert.deepEqual(rows(db), before);
+  assert.deepEqual(checkRows(db), []);
+  const service = createContributionService({ db, clock: env.clock, mode: 'sandbox', paypal: null });
+  assert.deepEqual(service.contributions(DEMO_GOAL_ID)[0], receipt);
+  assert.equal(progress(db), 7500);
+});
 
 test('an explicit check records a compact, reconciled result; repeated checks never credit again', async () => {
   const env = setupDomain({ mode: 'sandbox' });

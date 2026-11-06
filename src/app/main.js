@@ -1336,7 +1336,15 @@ async function completePending(id) {
   try { handleContributionResult(await api.post(`/api/example/contributions/${id}/complete`, { householdId: state.household.id })); } catch (error) { setStatus('#ledger-status', 'error', error.message); }
 }
 async function refreshOrder(orderId) {
-  try { handleContributionResult(await api.post(`/api/paypal/orders/${encodeURIComponent(orderId)}/refresh`, ownership())); } catch (error) { setStatus('#ledger-status', 'error', error.message, { debugId: error.debugId }); }
+  try { handleContributionResult(await api.post(`/api/paypal/orders/${encodeURIComponent(orderId)}/refresh`, ownership())); }
+  catch (error) {
+    // PayPal failures are also saved checks. Read the local record so an older successful line cannot look current;
+    // this GET never asks PayPal again. Keep the original error even if the local state cannot be read.
+    if (error.code === 'paypal_error') {
+      try { applyState(await api.get('/api/state'), { animate: false }); } catch {}
+    }
+    setStatus('#ledger-status', 'error', error.message, { debugId: error.debugId });
+  }
 }
 async function refund(captureId, simulated) {
   ui.refundArm = null;
