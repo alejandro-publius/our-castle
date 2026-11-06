@@ -1,0 +1,59 @@
+{
+  "date": "2026-11-06",
+  "source": "claude/goal-projects working tree (uncommitted at capture time; the committed branch contains the same files), Chromium 1.64.1 headless with SwiftShader WebGL, reduced motion",
+  "mode": "isolated example server on 127.0.0.1:3171 (OUR_CASTLE_ENV_FILE=none, empty PayPal/AI/Channel3/AG Studio keys, temporary data directory) and the Playwright example web server on 3111; synthetic House of Alder $300 goal; no provider, model, merchant or payment call",
+  "procedure": "Review captures: reset the example household, POST /api/setup, then PUT /api/goal with the example goal, projectKind and a reported starting amount that sets the stage; load /, select the project marker by keyboard, press View > Zoom in three times, nudge the viewport once so the headless compositor shows the redraw, and screenshot .realm-map. The plan capture comes from the committed browser test.",
+  "limits": "Example-mode pictures for visual review, not family playtest observations, physical-device, GPU or performance evidence. Stages set through the reported starting amount, not contributions (the browser tests cover contributions and refunds).",
+  "images": {
+    "docs/screenshots/goal-projects-plan-desktop.png": {
+      "sha256": "bc7c27552d09cad795123efeb3001227d5649156af3581c1374d858c5ad29004",
+      "capture": "test/e2e/goal-projects.spec.mjs, first case after reload (desktop 1440x1000)",
+      "shows": "Plan with Build = Garden saved; stage line and Visit link follow the saved choice"
+    },
+    "docs/screenshots/goal-projects-garden-construction.png": {
+      "sha256": "4640daa734f2dd4a20e03bbd1852d030b5d6258e32f283f7686aec31bc08b2ea",
+      "capture": "review capture, desktop 1440x1000, focused meadow + 3 zoom steps",
+      "shows": "garden, Under construction with the 40% detail (reported start $120 of $300)"
+    },
+    "docs/screenshots/goal-projects-garden-planted.png": {
+      "sha256": "97e5f6d38c4270733cfe07a8e529614ee2b50a9fed10864efc3a1150a5b79d17",
+      "capture": "review capture, desktop 1440x1000, focused meadow + 3 zoom steps",
+      "shows": "garden, Planted garden at 60% ($180 of $300)"
+    },
+    "docs/screenshots/goal-projects-garden-bloom.png": {
+      "sha256": "d9e6e2ee29ebc12ce7882dfe881d3092348290a2e083141d2b4c68df6edb9eaf",
+      "capture": "review capture, desktop 1440x1000, focused meadow + 3 zoom steps",
+      "shows": "garden, Garden in bloom at 100% ($300 of $300)"
+    },
+    "docs/screenshots/goal-projects-garden-night.png": {
+      "sha256": "0103896dfc871f9ca5bdd1e43ddcda8e10f500270cb0fecd8dda2d020d864702",
+      "capture": "review capture, desktop 1440x1000, night, focused meadow + 3 zoom steps",
+      "shows": "garden, Garden in bloom at 100%, night period"
+    },
+    "docs/screenshots/goal-projects-schoolhouse-construction.png": {
+      "sha256": "0565cd73ca15e805758e6982929e639ea4b7de6eea5ac9d4007338ffe65347ad",
+      "capture": "review capture, desktop 1440x1000, focused meadow + 3 zoom steps",
+      "shows": "schoolhouse, Under construction with the 40% detail; bell on its cradle"
+    },
+    "docs/screenshots/goal-projects-schoolhouse-finished.png": {
+      "sha256": "f5bea07abcec7ef1809acbdbb48008d7dc187d02c0a84ca45f9d1f487373f87d",
+      "capture": "review capture, desktop 1440x1000, focused meadow + 3 zoom steps",
+      "shows": "schoolhouse, Finished schoolhouse at 60%"
+    },
+    "docs/screenshots/goal-projects-schoolhouse-night.png": {
+      "sha256": "63b445f8408b9bdba2f11efcdee5d8810a06f7bbfd2e8d5500a9f8ea110c3d6d",
+      "capture": "review capture, desktop 1440x1000, night, focused meadow + 3 zoom steps",
+      "shows": "schoolhouse, Gathering place at 100%, night period"
+    },
+    "docs/screenshots/goal-projects-phone-garden.png": {
+      "sha256": "2d00ee34042f5beeab7ae749e36e19fa6bb13cae1e65c09e992665068bfa4c14",
+      "capture": "review capture, emulated 390x844 touch phone (DPR 2), focused meadow, default zoom",
+      "shows": "garden, Garden in bloom at 100%"
+    },
+    "docs/screenshots/goal-projects-phone-schoolhouse.png": {
+      "sha256": "205e20b2b218de0e3e7175103504a39b490fc64aa9d86d1e8de937b4a7166190",
+      "capture": "review capture, emulated 390x844 touch phone (DPR 2), focused meadow, default zoom",
+      "shows": "schoolhouse, Gathering place at 100%"
+    }
+  }
+}

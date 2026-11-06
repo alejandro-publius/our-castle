@@ -1,7 +1,8 @@
 import { createBoardScene } from '../world/board-scene.js';
 import { createFamilyAvatars } from './family-avatars.js';
 import { memberAvatar, avatarImage } from '../core/avatars.js';
-import { api, newRequestId } from './api.js';
+import { api, newRequestId, setSession } from './api.js';
+import { createAccessDialog, renderFamilyAccess } from './family-access.js';
 import { bus } from './bus.js';
 import { chargeIcon, crestChoices, crestSvg } from './crest.js';
 import { TIERS, formatCents, formatPercent, parseAmountToCents, ROUTE_LENGTH } from '../core/rules.js';
@@ -18,7 +19,7 @@ import { REALM_DISTRICTS, REALM_LEGENDS, realmAccess, districtById, homeDistrict
 import { ledgerTrail } from '../core/ledger.js';
 import { createMerchantDialog, resultFacts } from './merchant.js';
 import { createTreasury } from './treasury.js';
-import { FAMILY_PROJECT_SITE, projectLabel, projectStage } from '../core/family-project.js';
+import { FAMILY_PROJECT_SITE, PROJECT_KINDS, projectKind, projectLabel, projectStage } from '../core/family-project.js';
 import { CONFIRMATION_HISTORY_QUESTION, NEEDS_CHECK_QUESTION, isLocalQuestion, isNeedsCheckQuestion } from '../core/steward-questions.js';
 import { checkStatus } from '../core/check-status.js';
 import { createPlanCheck } from './plan-check.js';
@@ -45,6 +46,15 @@ const dateLabel = (iso) => {
   return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
 };
 const timeLabel = (iso) => new Date(iso).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+// The family project's stage, read from the server's progress and goal, drawn as the goal's saved Build choice.
+const currentProject = () => projectStage(state.progress.progressCents, state.goal.targetCents, state.goal.projectKind);
+// Its map marker, in the quiet gold-and-ink glint style: a tent, a sprout in its bed, or a schoolhouse with its bell.
+const PROJECT_ICON_STROKE = 'stroke="#3b2a12" stroke-width="1.6" stroke-linejoin="round"';
+const PROJECT_ICONS = {
+  campsite: `<svg viewBox="0 0 28 28" width="28" height="28" fill="none" aria-hidden="true"><path d="M14 4 2.5 24h23L14 4Z" fill="currentColor" ${PROJECT_ICON_STROKE}/><path d="M14 11.5 9 24h10l-5-12.5Z" fill="#3b2a12"/><path d="M14 1v3" stroke="#3b2a12" stroke-width="1.6" stroke-linecap="round"/></svg>`,
+  garden: `<svg viewBox="0 0 28 28" width="28" height="28" fill="none" aria-hidden="true"><path d="M14 19.5V10" stroke="#3b2a12" stroke-width="1.8" stroke-linecap="round"/><path d="M13.6 14.2C8.4 14.6 5.2 11.6 5 6.6c5.1-.3 8.4 2.6 8.6 7.6Z" fill="currentColor" ${PROJECT_ICON_STROKE}/><path d="M14.4 11.2c.2-5 3.5-7.9 8.6-7.6-.2 5-3.4 8-8.6 7.6Z" fill="currentColor" ${PROJECT_ICON_STROKE}/><path d="M3 25h22l-2.4-5.6H5.4L3 25Z" fill="currentColor" ${PROJECT_ICON_STROKE}/></svg>`,
+  schoolhouse: `<svg viewBox="0 0 28 28" width="28" height="28" fill="none" aria-hidden="true"><path d="M10.6 9.5V4.2h6.8v5.3" fill="currentColor" ${PROJECT_ICON_STROKE}/><path d="M9.4 4.4 14 1.3l4.6 3.1H9.4Z" fill="#3b2a12"/><circle cx="14" cy="6.6" r="1.35" fill="#3b2a12"/><path d="M3.5 15.4 14 8.6l10.5 6.8v9.4h-21v-9.4Z" fill="currentColor" ${PROJECT_ICON_STROKE}/><path d="M12 24.8v-5.4h4v5.4" fill="#3b2a12"/></svg>`,
+};
 const pref = {
   get(key) { try { return localStorage.getItem(`our-castle:${key}`); } catch { return null; } },
   set(key, value) { try { localStorage.setItem(`our-castle:${key}`, value); } catch { /* private mode: fine */ } },
@@ -86,6 +96,7 @@ const ui = {
   planFormDirty: false,
   planGoalId: null,
   planGoalRevision: null,
+  planProjectKind: null, // the saved Build choice the Plan form last loaded; only a change from it is sent
   scheduleDirty: false,
   schedulePlanId: null,
   commitments: [{ label: 'Internet bill', amount: '60.00', cadence: 'monthly' }],
@@ -245,6 +256,32 @@ function bindAtmosphere() {
 }
 
 async function boot() {
+  // The server says whether this is the example household or shared families, and who (if anyone) is signed in. A
+  // shared family's page shows nothing of the realm until a passkey signs someone in: no world, journal or records.
+  let session = { mode: 'example' };
+  try { session = await api.get('/api/session'); } catch { /* the household read below reports an unreachable server */ }
+  const invite = takeInvitationFromUrl();
+  if (session.mode === 'family') {
+    family.on = true;
+    document.body.dataset.access = 'family';
+    family.dialog = createAccessDialog({ signedIn: session.signedIn });
+    // An invitation link opened in a tab that is already open changes only the fragment; take it the same way.
+    window.addEventListener('hashchange', () => {
+      const token = takeInvitationFromUrl();
+      if (token) family.dialog.open({ invite: token, signedIn: Boolean(state) && !family.lost });
+    });
+    if (!session.signedIn) {
+      document.body.dataset.signedIn = 'false';
+      $('#world').setAttribute('aria-busy', 'false');
+      await family.dialog.open({ invite });
+      exposeDebug();
+      document.body.dataset.ready = 'true';
+      return;
+    }
+    setSession({ csrf: session.csrfToken, lost: sessionLost });
+    ui.personaId = session.member.id;
+    ui.commitments = []; // a real family reports its own bills; the example bill row is example data
+  }
   try {
     // The board announces hops and tier rises on the bus; sound (and tests) listen. Nothing calls audio directly.
     scene = createBoardScene($('#world'), {
@@ -266,18 +303,58 @@ async function boot() {
   applySky();
   loadLocalWeather();
   buildCrestPickers();
+  buildProjectChoices();
   bindEvents();
   try {
+    if (family.on && invite) family.dialog.open({ invite, signedIn: true });
     applyState(await api.get('/api/state'), { animate: false });
     selectTab(resumeTab(), { focus: false, remember: false, open: false });
     setJournalOpen(pref.get('journal') !== 'closed', { remember: false });
     scene?.focusDistrict(homeDistrict(state.board.builtTier).id);
+    if (family.on) startFamilyRefresh();
   } catch (error) {
     $('#honesty').textContent = `Could not load the household: ${error.message}`;
   }
+  exposeDebug();
   document.body.dataset.ready = 'true';
-  window.__ourCastle = { get state() { return state; }, scene: () => scene?.debug() ?? null, treasury: () => treasury?.status() ?? null, sky: () => ({ time: sky.time, weather: sky.weather, place: sky.place, loading: sky.loading, error: sky.error, result: sky.result && { kind: sky.result.kind, label: sky.result.label, expiresAt: sky.result.expiresAt }, resolved: sky.resolved }), route: () => scene?.routeOnScreen() ?? null, bus, sound: () => ({ enabled: sound.enabled, played: sound.played() }) };
   window.__booted = true;
+}
+function exposeDebug() {
+  window.__ourCastle = { get state() { return state; }, scene: () => scene?.debug() ?? null, treasury: () => treasury?.status() ?? null, sky: () => ({ time: sky.time, weather: sky.weather, place: sky.place, loading: sky.loading, error: sky.error, result: sky.result && { kind: sky.result.kind, label: sky.result.label, expiresAt: sky.result.expiresAt }, resolved: sky.resolved }), route: () => scene?.routeOnScreen() ?? null, bus, sound: () => ({ enabled: sound.enabled, played: sound.played() }), family: () => ({ on: family.on, refreshes: family.refreshes, lost: family.lost }) };
+}
+
+// ---------- Family access (shared families with passkeys; absent in example mode) ----------
+const family = { on: false, dialog: null, lost: false, timer: null, lastRefresh: 0, refreshes: 0 };
+// An invitation arrives in the link's fragment, which is never sent to the server by the browser. Take it out of the
+// address bar and history at once; it is used only through a checked same-origin request.
+function takeInvitationFromUrl() {
+  if (!location.hash.startsWith('#invite=')) return null;
+  const token = location.hash.slice('#invite='.length);
+  history.replaceState(null, '', location.pathname + location.search);
+  return /^[A-Za-z0-9_-]{20,100}$/.test(token) ? token : 'invalid';
+}
+// The session ended (expired, signed out elsewhere or access removed): stop refreshing and ask for the passkey again.
+// The household stays behind the dialog's backdrop; signing in reloads the page for whoever signs in.
+function sessionLost(error) {
+  if (family.lost) return;
+  family.lost = true;
+  clearInterval(family.timer);
+  setSession({});
+  document.body.dataset.signedIn = 'false'; // nothing of this household stays visible behind the sign-in dialog
+  family.dialog.open({ message: error.message, signedIn: false });
+}
+// Collaborators see each other's saved changes: a quiet state read when the tab is shown or focused, and at most every
+// 45 seconds while it stays visible. Reads only; unsaved form edits are kept by the existing dirty-form guards.
+function startFamilyRefresh() {
+  const refresh = async () => {
+    if (document.visibilityState !== 'visible' || family.lost || Date.now() - family.lastRefresh < 5_000) return;
+    family.lastRefresh = Date.now();
+    try { applyState(await api.get('/api/state')); family.refreshes++; } catch { /* a lost session opens sign-in; a network blip waits for the next focus */ }
+  };
+  family.lastRefresh = Date.now();
+  document.addEventListener('visibilitychange', refresh);
+  window.addEventListener('focus', refresh);
+  family.timer = setInterval(refresh, 45_000);
 }
 
 // A returning family lands on the tab they last chose in this browser tab; otherwise on the tab holding their next step.
@@ -297,7 +374,8 @@ function applyState(next, { animate = true, result = null } = {}) {
   const opened = newlyOpenedDistricts(state, next);
   const scope = { householdId: next.household.id, goalId: next.goal.id };
   state = next;
-  if (!persona()) ui.personaId = state.members.find((m) => m.role === 'adult')?.id ?? state.members[0]?.id;
+  if (state.access) ui.personaId = state.access.me.memberId; // a signed-in member is always themselves
+  else if (!persona()) ui.personaId = state.members.find((m) => m.role === 'adult')?.id ?? state.members[0]?.id;
   renderHeader();
   renderQuest();
   renderNextStep();
@@ -405,6 +483,9 @@ function renderHeader() {
       modes.ai.mode === 'live' ? 'AI planner' : 'Built-in planner'),
   );
   const select = $('#persona');
+  select.closest('.persona').hidden = Boolean(state.access);
+  $('#signed-in').hidden = !state.access;
+  if (state.access) { const me = members.find((m) => m.id === state.access.me.memberId); $('#signed-in').textContent = `${me?.name ?? ''} · ${state.access.me.role === 'adult' ? 'Adult' : 'Child'}`; return; }
   select.replaceChildren(...members.map((m) => h('option', { value: m.id, selected: m.id === ui.personaId }, `${m.name} · ${m.role === 'adult' ? 'Adult' : 'Child'}`)));
 }
 
@@ -464,8 +545,9 @@ function renderBoard({ animate, result, added = [], hasNewDistrict = false }) {
     playMode: household.playMode,
     members: state.members,
     milestoneSpaces: board.milestoneSpaces.map((m) => m.space),
-    // The campsite's stage is read from the server's progress and goal through the existing milestone rules.
-    project: (({ index, key, detail }) => ({ index, key, detail }))(projectStage(state.progress.progressCents, state.goal.targetCents)),
+    // The project's stage is read from the server's progress and goal through the existing milestone rules; what it
+    // builds is the family's saved choice, never an unsaved Plan field.
+    project: (({ index, key, detail, kind }) => ({ index, key, detail, kind }))(currentProject()),
   }, { animate }).then(() => {
     if (!hasNewDistrict && (result?.awarded?.length || added.length)) celebrate(result?.awarded ?? [], added);
   });
@@ -496,9 +578,10 @@ function renderRealmNavigation() {
   $('#realm-markers').replaceChildren(...regions.map((d) => h('button', { type: 'button', class: 'realm-marker', 'data-district': d.id, 'data-status': d.status, 'aria-label': `Inspect ${d.name} on the map`, hidden: true },
     !d.open && h('span', { class: 'realm-lock', 'aria-hidden': 'true', html: lock }), h('strong', {}, d.name))));
   $('#realm-markers').append(h('button', {type:'button',id:'sword-glint',class:'realm-legend','data-legend':'sword-stone','aria-label':'Investigate the glint in the trees','aria-pressed':'false',hidden:true},h('span',{'aria-hidden':'true'},'✦')));
-  // The family campsite: a small tent marker in the west meadow. Selecting it only moves the camera and names its stage.
-  const tent = '<svg viewBox="0 0 28 28" width="28" height="28" fill="none" aria-hidden="true"><path d="M14 4 2.5 24h23L14 4Z" fill="currentColor" stroke="#3b2a12" stroke-width="1.6" stroke-linejoin="round"/><path d="M14 11.5 9 24h10l-5-12.5Z" fill="#3b2a12"/><path d="M14 1v3" stroke="#3b2a12" stroke-width="1.6" stroke-linecap="round"/></svg>';
-  $('#realm-markers').append(h('button', {type:'button',id:'project-marker',class:'realm-legend realm-project','data-legend':FAMILY_PROJECT_SITE.id,'aria-label':`Visit the ${FAMILY_PROJECT_SITE.name.toLowerCase()}`,'aria-pressed':'false',hidden:true},h('span',{'aria-hidden':'true',html:tent})));
+  // The family project: a small marker in the west meadow drawn as the chosen place (a tent, a sprout or a schoolhouse
+  // with its bell). Selecting it only moves the camera and names its stage.
+  const kind = projectKind(state.goal.projectKind);
+  $('#realm-markers').append(h('button', {type:'button',id:'project-marker',class:'realm-legend realm-project','data-legend':FAMILY_PROJECT_SITE.id,'data-kind':kind.key,'aria-label':`Visit the ${kind.name.toLowerCase()}`,'aria-pressed':'false',hidden:true},h('span',{'aria-hidden':'true',html:PROJECT_ICONS[kind.key]})));
   $('#realm-focus-status').textContent = 'Select a district.';
 }
 function syncRealmMarkers({focus,points}){
@@ -544,7 +627,7 @@ function syncRealmMarkers({focus,points}){
     deedButton.setAttribute('aria-label', `View deed for ${d.name}`);
   } else delete deedButton.dataset.district;
   const secret = REALM_LEGENDS.find(d=>d.id===focus);
-  const message=focus===FAMILY_PROJECT_SITE.id ? projectLabel(projectStage(state.progress.progressCents, state.goal.targetCents)) : secret ? secret.name : d && !d.open ? `${d.name} · ${districtCondition(d)}` : '';
+  const message=focus===FAMILY_PROJECT_SITE.id ? projectLabel(currentProject()) : secret ? secret.name : d && !d.open ? `${d.name} · ${districtCondition(d)}` : '';
   if($('#realm-focus-status').textContent!==message)$('#realm-focus-status').textContent=message;
 }
 
@@ -670,6 +753,10 @@ function buildCrestPickers() {
     h('input', { type: 'radio', name: 'crestCharge', value: c.key, 'aria-label': c.label }),
     h('span', { html: `${chargeIcon(c.key)}<span>${c.label}</span>` }))));
 }
+// The Plan form's "Build" choice: the listed places only. Its value is saved with the goal, never on change.
+function buildProjectChoices() {
+  $('#goal-project').replaceChildren(...PROJECT_KINDS.map((k) => h('option', { value: k.key }, k.label)));
+}
 
 function houseDraft() {
   if (!ui.houseDirty || !ui.houseDraft) {
@@ -694,11 +781,18 @@ function renderHouse() {
   for (const input of $$('input[name="crestCharge"]')) input.checked = input.value === draft.crest.charge;
   $('#crest-preview').innerHTML = crestSvg(draft.crest, { title: `${draft.name || 'Your house'} crest` });
   $('#save-house').textContent = setup ? 'Save house and crest' : 'Raise our banner';
+  // Shared families: members are the people who enrolled; only the owner names the house; each member edits their own avatar.
+  const access = state.access, owner = !access || access.me.owner;
+  $('#play-mode').hidden = Boolean(access);
+  nameInput.disabled = !owner;
+  for (const input of $$('input[name="crestField"], input[name="crestCharge"]')) input.disabled = !owner;
+  $('#save-house').hidden = !owner;
   if (!familyAvatars) familyAvatars = createFamilyAvatars($('#family-avatars'), { save: async (memberId, avatarId) => {
     const res = await api.put('/api/members/' + encodeURIComponent(memberId) + '/avatar', { avatarId });
     applyState(res.state, { animate: false });
-  } });
-  familyAvatars.update(state.members);
+  }, canEdit: (member) => !state.access || member.id === state.access.me.memberId });
+  familyAvatars.update(access ? state.members.filter((m) => access.members.some((a) => a.id === m.id && a.access === 'active')) : state.members);
+  renderFamilyAccess(state, { onState: (next) => applyState(next, { animate: false }), onStatus: (kind, message) => setStatus('#house-status', kind, message) });
 }
 
 async function saveHouse() {
@@ -727,16 +821,28 @@ async function saveHouse() {
 }
 
 // ---------- 2. Plan ----------
-function renderPlan() {
+function renderPlan() { renderPlanForm(); lockPlanForChildren(); }
+// A child in a shared family sees the goal and plan and may try a weekly amount or date with the read-only check, but
+// changes neither; the server refuses those requests anyway.
+function lockPlanForChildren() {
+  if (!state.access || state.access.me.role === 'adult') return;
+  for (const el of $$('#plan-form input:not(#goal-weekly):not(#goal-date), #plan-form select, #plan-form button:not(#check-schedule), #plan-schedule input, #save-edits, #accept-plan, #goal-draft button')) el.disabled = true;
+  $('#planner-lede').textContent = 'Adults in the family change the goal and the plan.';
+  $('#planner-lede').hidden = false;
+}
+function renderPlanForm() {
   const { goal, progress, modes, plan } = state;
   $('#planner-lede').textContent = '';
   $('#planner-lede').hidden = true;
-  $('#plan-project-stage').textContent = projectLabel(projectStage(progress.progressCents, goal.targetCents));
+  $('#plan-project-stage').textContent = projectLabel(currentProject());
+  $('#visit-campsite').textContent = `Visit ${projectKind(goal.projectKind).label.toLowerCase()}`;
   $('#ask-planner').textContent = modes.ai.mode === 'live' ? 'Ask the AI planner' : 'Make an example plan';
   renderGoalDraft();
   if (!ui.planFormDirty) {
     ui.planGoalId = goal.id;
     ui.planGoalRevision = state.merchantGoalRevision;
+    ui.planProjectKind = goal.projectKind;
+    $('#goal-project').value = goal.projectKind;
     $('#goal-name-input').value = goal.name;
     $('#goal-target').value = centsToInput(goal.targetCents);
     $('#goal-starting').value = centsToInput(progress.startingCents);
@@ -798,7 +904,7 @@ function renderPlan() {
 }
 
 async function refreshPlanGoal() {
-  const goalValues = (s) => ({ 'goal-name-input': s.goal.name, 'goal-target': centsToInput(s.goal.targetCents), 'goal-starting': centsToInput(s.progress.startingCents), 'goal-weekly': centsToInput(s.goal.weeklyBudgetCents), 'goal-date': s.goal.targetDate });
+  const goalValues = (s) => ({ 'goal-name-input': s.goal.name, 'goal-target': centsToInput(s.goal.targetCents), 'goal-starting': centsToInput(s.progress.startingCents), 'goal-weekly': centsToInput(s.goal.weeklyBudgetCents), 'goal-date': s.goal.targetDate, 'goal-project': s.goal.projectKind });
   const saved = goalValues(state), fields = Object.keys(saved);
   const before = Object.fromEntries(fields.map(id => [id, $(`#${id}`).value]));
   const latest = await api.get('/api/state');
@@ -811,6 +917,7 @@ async function refreshPlanGoal() {
   for (const id of fields) if (before[id] === saved[id] && $(`#${id}`).value === before[id]) $(`#${id}`).value = values[id];
   ui.planGoalId = latest.goal.id;
   ui.planGoalRevision = latest.merchantGoalRevision;
+  ui.planProjectKind = latest.goal.projectKind; // a Build choice the family made still differs from it and is sent
   return true;
 }
 
@@ -820,6 +927,16 @@ async function showPlanError(error) {
     try { applyState(await api.get('/api/state')); } catch { /* retain the original actionable error */ }
     setStatus('#plan-status', state.planReview?.factsChanged ? '' : 'error', state.planReview?.factsChanged ? '' : 'Goal or progress changed. Make a new plan using the latest figures.');
     $('#ask-planner').focus();
+    return;
+  }
+  if (error.code === 'goal_changed' && !ui.goalDraft) {
+    // Another member saved a newer goal. Nothing was overwritten; keep this family member's edits and offer the newer goal.
+    setStatus('#plan-status', 'error', error.message, { action: h('button', { type: 'button', onclick: async (e) => {
+      e.currentTarget.disabled = true;
+      try {
+        if (await refreshPlanGoal()) setStatus('#plan-status', 'info', 'Latest goal loaded. Fields you changed are kept; review them, then save again.');
+      } catch (err) { setStatus('#plan-status', 'error', err.message); }
+    } }, 'Load latest goal') });
     return;
   }
   setStatus('#plan-status', 'error', error.message, { issues: error.code === 'invalid_edit' ? [] : error.issues });
@@ -950,6 +1067,9 @@ function readGoalFields() {
   }
   if (goal.name.length < 2) errors.push('Name the goal.');
   if (!goal.targetDate) errors.push('Choose a target date.');
+  // The Build choice travels only when the family changed it, so an untouched form never reverts a newer saved choice.
+  const project = $('#goal-project').value;
+  if (project && project !== ui.planProjectKind) goal.projectKind = project;
   return { goal, errors };
 }
 
@@ -974,7 +1094,7 @@ async function askPlanner(event) {
   button.disabled = true;
   setStatus('#plan-status', 'working', state.modes.ai.mode === 'live' ? 'The AI planner is writing your plan. This can take up to a minute…' : 'Working out the example plan…');
   try {
-    const res = await api.post('/api/plans', { goal, commitments });
+    const res = await api.post('/api/plans', { goal, commitments, expectedGoalRevision: ui.planGoalRevision });
     ui.planFormDirty = false;
     if (res.status === 'ok') {
       ui.scheduleDirty = false;
@@ -1000,7 +1120,7 @@ async function askPlanner(event) {
 
 async function useRulesPlan(goal, commitments) {
   try {
-    const res = await api.post('/api/plans/rules', { goal, commitments, afterAiFailure: true });
+    const res = await api.post('/api/plans/rules', { goal, commitments, afterAiFailure: true, expectedGoalRevision: ui.planGoalRevision });
     applyState(res.state);
     setStatus('#plan-status', 'info', 'Showing the example rules plan, clearly labeled. It was not written by AI.');
   } catch (error) {
@@ -1080,7 +1200,7 @@ function renderGive() {
     approve.checked = false;
     approve.disabled = true;
     row.classList.add('blocked');
-    $('#give-approve-text').textContent = 'Switch to an adult to contribute.';
+    $('#give-approve-text').textContent = state.access ? 'An adult in the family approves contributions.' : 'Switch to an adult to contribute.';
   } else {
     approve.disabled = !setup || done || Boolean(check.error);
     row.classList.remove('blocked');
@@ -1209,7 +1329,7 @@ function renderReceipt() {
     h('dl', {},
       h('dt', {}, 'Status'), h('dd', {}, receiptStatus(c)),
       h('dt', {}, 'Toward'), h('dd', {}, state.goal.name),
-      h('dt', {}, 'Approved by'), h('dd', {}, approver ? `${approver.name} (adult, example persona)` : c.approvedBy),
+      h('dt', {}, 'Approved by'), h('dd', {}, approver ? `${approver.name} (adult${state.access ? '' : ', example persona'})` : c.approvedBy),
       h('dt', {}, c.simulated ? 'Simulated order' : 'PayPal order'), h('dd', {}, c.providerOrderId ?? '—'),
       h('dt', {}, c.simulated ? 'Simulated capture' : 'PayPal capture'), h('dd', {}, capture?.captureId ?? 'none yet'),
       h('dt', {}, 'Recorded'), h('dd', {}, timeLabel(c.updatedAt)),
@@ -1309,7 +1429,8 @@ function visitDistrict(id, e) {
   const marker = $(`#realm-markers [data-district="${CSS.escape(id)}"]`);
   marker?.focus({ preventScroll: true }); revealRealm(marker, { instant: e?.detail === 0 });
 }
-// The same journey as "Visit <district>", to the campsite: close the journal, focus the meadow, land on its marker.
+// The same journey as "Visit <district>", to the family project (campsite, garden or schoolhouse): close the journal,
+// focus the meadow, land on its marker.
 function visitCampsite(e) {
   setJournalOpen(false); scene?.focusLegend(FAMILY_PROJECT_SITE.id); $('.realm-map').dataset.focused = 'true';
   const marker = $('#project-marker');

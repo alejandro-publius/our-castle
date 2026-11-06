@@ -9,6 +9,7 @@
     "start": "node server/index.mjs",
     "dev": "node --watch server/index.mjs",
     "demo": "node scripts/demo.mjs",
+    "family": "node scripts/family.mjs",
     "art-preview": "node scripts/serve.mjs",
     "check": "node scripts/check.mjs",
     "check:postman-guard": "node scripts/check-postman-guard.mjs",
@@ -26,6 +27,8 @@
     "@anthropic-ai/sdk": "1.4.0",
     "@paypal/agent-toolkit": "1.11.0",
     "@paypal/paypal-server-sdk": "2.5.0",
+    "@simplewebauthn/browser": "14.0.0",
+    "@simplewebauthn/server": "14.0.3",
     "ag-grid-community": "36.2.0",
     "ag-studio": "3.0.0"
   },

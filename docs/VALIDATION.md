@@ -1,5 +1,47 @@
 # Validation
 
+## Shared families: passkeys, invitations and permissions — November 6, 2026
+
+Claude branch `claude/shared-family-access`, stacked on `claude/goal-projects`; not merged or activated. See [FAMILY-ACCESS.md](FAMILY-ACCESS.md).
+
+- **Mode and data.** This is an opt-in family access mode (`npm run family`, or `OUR_CASTLE_ACCESS=family` plus an exact `OUR_CASTLE_ORIGIN`). It uses its own database file. Migration 6 adds new tables only.
+- **Library.** WebAuthn uses `@simplewebauthn/server` 14.0.3 and `@simplewebauthn/browser` 14.0.0, pinned exactly.
+- **Unchanged.** Example mode and the example household are unchanged.
+
+**Unit: 268 cases, 267 passed, 1 pre-existing skip.**
+- New: 10 family-access cases over real HTTP. A test-only software authenticator produces genuinely signed responses, so the pinned library's real verification runs. Coverage is listed in FAMILY-ACCESS.md.
+- Changed: three older migration fixtures now pin version 6, and the goal-project upgrade test starts from the schema before `project_kind`.
+
+**Browser, `family-access.spec.mjs`: 4 cases.** Chromium's virtual authenticator, one per person, in independent contexts:
+- an owner, an adult, a child and a separate family, the whole journey on desktop;
+- session expiry and invitation link states;
+- a real restart of the runner process;
+- a 390 px phone fit.
+
+Related suites rerun together with it: `family-journey`, `plan-check`, `goal-projects`, `channel3-merchant` (fake Channel3 transport) and `paypal-callbacks` (fake PayPal sandbox transport), on desktop and phone.
+- Result: **59 passed, 11 deliberate viewport skips, 0 failed** (10.7 min).
+- `family-access` was then rerun on the final code: 4 passed.
+- `npm run check` passed.
+
+Captures: `docs/screenshots/family-access-*.png` with [provenance](screenshots/family-access-sources.json). Images showing invitation links were deliberately not committed.
+
+**Limits.**
+- The virtual and software authenticators are not real phones, Touch ID, Face ID or security keys.
+- Rate limits are in memory.
+- The family runner uses simulated payments and the built-in planner. PayPal sandbox in family mode was not exercised; only the fake-transport regression ran.
+- No public hosting, security certification or real family use is claimed. Rachel's playtests remain open.
+
+## What the family builds: campsite, garden or schoolhouse — November 6, 2026
+
+Claude branch `claude/goal-projects` (from `e7afafc`; not merged or activated). Plan → **Build** chooses what the goal builds in the west meadow; see [FAMILY-PROJECT.md](FAMILY-PROJECT.md#what-the-family-builds). The choice is saved only with the goal's normal save, stored in the additive `goals.project_kind` (migration 5, default `campsite`) and changes only the picture.
+
+- **Unit: 258 cases, 257 passed, 1 pre-existing skip.** New: the three listed choices and nothing else (look-alikes, free text, objects); identical stage/threshold/detail arithmetic for every choice across three targets; the same site with per-place frame heights; an upgrade from a version-4 file on a temporary path (only the new column, set to `campsite`; a goal named "Garden shed fund" stays a campsite; the database refuses other values; reopening runs nothing twice); a kind-only change leaves figures, every plan including the accepted one, achievements, ledger, goal items and orders identical; an unsupported value beside valid new figures writes nothing; a confirmed market item saves the choice with its provenance and never derives it from the item; the Plan save over HTTP keeps the plan in use and survives a restart; a fake planner provider receives byte-identical input for all three choices. Three existing migration fixtures now also drop the new column when they model older schemas, and expect version 5.
+- **Model (no WebGL): 2 cases, 4 passes (desktop and phone projects).** Every place builds every stage with finite geometry and its named parts (frame → rafters → glazed glasshouse; frame with the bell on its cradle → belfry with the bell hung); only the campsite has live parts, and rebuilding another place leaves none. Separately, the campsite model emits exactly the same parts and transforms as `origin/main` at all eight stage/detail combinations (scripted comparison, not committed).
+- **Browser, new `goal-projects.spec.mjs`: 5 passes, 3 deliberate phone skips** (desktop 1440 px and emulated 390 px touch phone for the Plan case; three viewport-independent cases on desktop only). Choosing writes nothing and previews nothing; Make a plan sends the choice once with the unchanged figures; progress, achievements, contributions and the plan in use are unchanged; the choice survives reload; keyboard order and 44 px target; Visit lands on the garden's marker; a schoolhouse through 20/25/40/60/100 %, a refund and a larger goal; switching places at the same progress rebuilds only the project (travelers, tier, districts, bridges, court and view unchanged; no leftover campfire smoke; identical garden meshes after a round trip); night lights the school's windows and the glasshouse door with nothing moving under reduced motion; an untouched Build never reverts another member's newer choice; a tampered unlisted value is refused with the goal, plans and picture unchanged.
+- **Related existing suites, rerun unchanged: 38 passed** (19 cases on desktop and phone): `family-project` (campsite stages, night, Visit campsite), `plan-check` and `channel3-merchant` (fake Channel3 transport). `npm run check`: the 47 copied files, the 90-colour palette, renderer wiring and syntax verified.
+
+Captures and provenance: `docs/screenshots/goal-projects-*.png`, [goal-projects-sources.json](screenshots/goal-projects-sources.json). Isolated example servers only (3171 for review captures, 3111 for the browser suites), empty keys, temporary data; no provider, model, merchant or payment call, no 3010/3021 use, no recording. Not checked: physical phones, non-Chromium browsers, GPU rendering or performance, and real family use — Rachel's playtests remain open.
+
 ## Complete mountain slopes and wider terrain — November 6, 2026
 
 The board adds another 32 world units on every side, from 292×196 to **356×260**, keeping its centre and the original property coordinates. Existing mountain footprints are broader and fully contained, so slopes descend before the board edge. All six river channels continue through the new row to the rim. Homes, nine district/bridge access rules, the PayPal sign and original renderer/palette retain their existing roles. [Reference lock and geography](MOUNTAIN-BORDER.md#extra-mountain-room--november-6).

@@ -3,8 +3,8 @@ import { mkdirSync } from 'node:fs';
 import path from 'node:path';
 
 // Durable local storage. One file per payment mode so simulated example entries can never mix
-// with PayPal-sandbox-confirmed ones.
-const MIGRATIONS = [
+// with PayPal-sandbox-confirmed ones. Exported read-only so a test can build an older database and prove an upgrade.
+export const MIGRATIONS = Object.freeze([
   `
   CREATE TABLE households (
     id TEXT PRIMARY KEY,
@@ -159,7 +159,96 @@ const MIGRATIONS = [
   );
   CREATE INDEX IF NOT EXISTS order_checks_order ON order_checks (order_id, id);
   `,
-];
+  // What the family chose the current goal to build in the meadow. A picture only: no amount, date, plan or progress.
+  // Every existing goal keeps the campsite it has always shown.
+  `ALTER TABLE goals ADD COLUMN project_kind TEXT NOT NULL DEFAULT 'campsite' CHECK (project_kind IN ('campsite', 'garden', 'schoolhouse'));`,
+  // Shared families (the opt-in family access mode). An account holds passkeys; a membership ties one account to one
+  // member of one household. Sessions, invitations and ceremony challenges keep only hashes of their secrets. New tables
+  // only: no existing row or column changes, and the example household never has accounts.
+  `
+  CREATE TABLE IF NOT EXISTS accounts (
+    id TEXT PRIMARY KEY,
+    display_name TEXT NOT NULL,
+    user_handle TEXT NOT NULL UNIQUE,
+    created_at TEXT NOT NULL
+  );
+  CREATE TABLE IF NOT EXISTS passkeys (
+    id TEXT PRIMARY KEY,
+    account_id TEXT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+    public_key BLOB NOT NULL,
+    counter INTEGER NOT NULL DEFAULT 0 CHECK (counter >= 0),
+    transports TEXT NOT NULL DEFAULT '[]',
+    device_type TEXT,
+    backed_up INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL,
+    last_used_at TEXT
+  );
+  CREATE INDEX IF NOT EXISTS passkeys_account ON passkeys (account_id);
+  CREATE TABLE IF NOT EXISTS memberships (
+    member_id TEXT PRIMARY KEY REFERENCES members(id) ON DELETE CASCADE,
+    account_id TEXT NOT NULL UNIQUE REFERENCES accounts(id) ON DELETE CASCADE,
+    household_id TEXT NOT NULL REFERENCES households(id) ON DELETE CASCADE,
+    is_owner INTEGER NOT NULL DEFAULT 0 CHECK (is_owner IN (0, 1)),
+    access TEXT NOT NULL DEFAULT 'active' CHECK (access IN ('active', 'revoked')),
+    created_at TEXT NOT NULL,
+    revoked_at TEXT
+  );
+  CREATE INDEX IF NOT EXISTS memberships_household ON memberships (household_id);
+  CREATE TABLE IF NOT EXISTS invitations (
+    id TEXT PRIMARY KEY,
+    household_id TEXT NOT NULL REFERENCES households(id) ON DELETE CASCADE,
+    token_hash TEXT NOT NULL UNIQUE,
+    display_name TEXT NOT NULL,
+    role TEXT NOT NULL CHECK (role IN ('adult', 'child')),
+    status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'accepted', 'revoked')),
+    created_by TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    expires_at TEXT NOT NULL,
+    accepted_at TEXT,
+    accepted_member_id TEXT,
+    revoked_at TEXT
+  );
+  CREATE INDEX IF NOT EXISTS invitations_household ON invitations (household_id, created_at);
+  CREATE TABLE IF NOT EXISTS sessions (
+    id TEXT PRIMARY KEY,
+    token_hash TEXT NOT NULL UNIQUE,
+    csrf_hash TEXT NOT NULL,
+    account_id TEXT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+    member_id TEXT NOT NULL,
+    household_id TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    last_seen_at TEXT NOT NULL,
+    verified_at TEXT NOT NULL,
+    expires_at TEXT NOT NULL,
+    revoked_at TEXT,
+    revoke_reason TEXT
+  );
+  CREATE INDEX IF NOT EXISTS sessions_member ON sessions (member_id);
+  CREATE TABLE IF NOT EXISTS auth_challenges (
+    id TEXT PRIMARY KEY,
+    purpose TEXT NOT NULL CHECK (purpose IN ('create-family', 'accept-invite', 'sign-in', 'add-passkey')),
+    challenge TEXT NOT NULL,
+    flow_hash TEXT,
+    session_id TEXT,
+    invitation_id TEXT,
+    display_name TEXT,
+    user_handle TEXT,
+    created_at TEXT NOT NULL,
+    expires_at TEXT NOT NULL,
+    used_at TEXT
+  );
+  CREATE TABLE IF NOT EXISTS audit_events (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    household_id TEXT,
+    account_id TEXT,
+    member_id TEXT,
+    action TEXT NOT NULL,
+    subject TEXT,
+    created_at TEXT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS audit_household ON audit_events (household_id, id);
+  `,
+]);
 
 export function openDatabase(file) {
   if (file !== ':memory:') mkdirSync(path.dirname(file), { recursive: true });
@@ -190,6 +279,7 @@ export function transaction(db, fn) {
   }
 }
 
-export function databaseFile(dataDir, paymentsMode) {
-  return path.join(dataDir, `our-castle-${paymentsMode === 'sandbox' ? 'sandbox' : 'example'}.sqlite`);
+/** One file per payment mode, and a separate one for family access so shared households never mix with the example. */
+export function databaseFile(dataDir, paymentsMode, accessMode = 'example') {
+  return path.join(dataDir, `our-castle-${accessMode === 'family' ? 'family-' : ''}${paymentsMode === 'sandbox' ? 'sandbox' : 'example'}.sqlite`);
 }

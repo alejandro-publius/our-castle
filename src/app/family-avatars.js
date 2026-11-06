@@ -13,7 +13,7 @@ const portrait = (id, size = 56) => {
 };
 
 /** Cosmetic editing only. Native radio keys, explicit Save, Escape/Cancel and focus return. */
-export function createFamilyAvatars(root, { save }) {
+export function createFamilyAvatars(root, { save, canEdit = () => true }) {
   let members = [], editing = null, draft = null, busy = false;
   const heading = el('h4', '', 'Family'); heading.id = 'family-avatar-heading';
   root.setAttribute('aria-labelledby', heading.id);
@@ -39,7 +39,9 @@ export function createFamilyAvatars(root, { save }) {
       button.setAttribute('aria-controls', form.id);
       button.title = member.name + ' · ' + avatar.label;
       button.append(portrait(avatar.id), el('span', '', member.name));
-      button.addEventListener('click', () => open(member.id));
+      // In a shared family each member changes only their own avatar; the others are shown, not offered.
+      if (!canEdit(member)) { button.disabled = true; button.setAttribute('aria-label', member.name + ', ' + avatar.label); button.removeAttribute('aria-expanded'); button.removeAttribute('aria-controls'); }
+      else button.addEventListener('click', () => open(member.id));
       return button;
     }));
   }

@@ -3,6 +3,7 @@ import { avatarById, memberAvatar } from '../src/core/avatars.js';
 import { transaction } from './db.mjs';
 import { CREST_CHARGES, CREST_FIELDS, CURRENCY, TIERS, formatCents, milestoneCents } from '../src/core/rules.js';
 import { ESTATE_MILESTONES } from '../src/core/rewards.js';
+import { DEFAULT_PROJECT_KIND, isProjectKind } from '../src/core/family-project.js';
 
 export const DEMO_HOUSEHOLD_ID = 'hh_demo';
 export const DEMO_GOAL_ID = 'goal_demo';
@@ -83,6 +84,7 @@ const goalFromRow = (row) => row && ({
   currency: row.currency,
   targetDate: row.target_date,
   weeklyBudgetCents: row.weekly_budget_cents,
+  projectKind: isProjectKind(row.project_kind) ? row.project_kind : DEFAULT_PROJECT_KIND,
   status: row.status,
   createdAt: row.created_at,
 });
@@ -182,6 +184,19 @@ export function updateCrest(db, householdId, { name, crest }) {
   return getHousehold(db, householdId);
 }
 
+/**
+ * Found a shared family's house: its name and crest. Unlike the example setup, members are never replaced or invented;
+ * they are the people who enrolled their own passkeys.
+ */
+export function setupFamilyHouse(db, householdId, { name, crest }) {
+  const cleanName = validateHouseholdName(name);
+  const cleanCrest = validateCrest(crest);
+  const changes = db.prepare('UPDATE households SET name = ?, crest_field = ?, crest_charge = ?, setup_complete = 1 WHERE id = ? AND is_example = 0')
+    .run(cleanName, cleanCrest.field, cleanCrest.charge, householdId).changes;
+  if (changes !== 1) throw new DomainError(404, 'not_found', 'Household not found.');
+  return getHousehold(db, householdId);
+}
+
 export function setStartingProgress(db, goal, cents, at, label = 'Starting progress (user-reported)') {
   const ref = `starting:${goal.id}`;
   db.prepare(`INSERT INTO ledger_entries (household_id, goal_id, kind, effect, amount_cents, currency, source, source_ref, label, created_at)
@@ -190,10 +205,32 @@ export function setStartingProgress(db, goal, cents, at, label = 'Starting progr
     .run(goal.householdId, goal.id, cents, goal.currency, ref, label, at);
 }
 
-/** Edit the goal. Starting progress is the household's own report and stays labeled as such. */
+/** One of the listed meadow projects, or a clean refusal before anything is written. */
+export function validateProjectKind(kind) {
+  if (!isProjectKind(kind)) throw new DomainError(400, 'invalid_project', 'Choose Campsite, Garden or Schoolhouse.');
+  return kind;
+}
+
+/**
+ * Change only what the current goal builds in the meadow. It is a picture: the amount, date, weekly amount, starting
+ * report, plans (the accepted one included), milestones and ledger are untouched, and nothing is sent to a provider.
+ */
+export function updateGoalProject(db, goalId, kind) {
+  const goal = getGoal(db, goalId);
+  if (!goal) throw new DomainError(404, 'not_found', 'Goal not found.');
+  const projectKind = validateProjectKind(kind);
+  db.prepare('UPDATE goals SET project_kind = ? WHERE id = ?').run(projectKind, goalId);
+  return getGoal(db, goalId);
+}
+
+/**
+ * Edit the goal. Starting progress is the household's own report and stays labeled as such. `projectKind` is optional:
+ * left out, the goal keeps what it builds; given, it must be a listed choice and is saved with the rest or not at all.
+ */
 export function updateGoal(db, goalId, input, clock) {
   const goal = getGoal(db, goalId);
   if (!goal) throw new DomainError(404, 'not_found', 'Goal not found.');
+  const projectKind = input.projectKind === undefined ? goal.projectKind : validateProjectKind(input.projectKind);
   const name = typeof input.name === 'string' ? input.name.trim().replace(/\s+/g, ' ') : '';
   if (name.length < 2 || name.length > 60) throw new DomainError(400, 'invalid_goal', 'Goal names need 2–60 characters.');
   const { targetCents, startingCents, weeklyBudgetCents, targetDate } = input;
@@ -211,8 +248,8 @@ export function updateGoal(db, goalId, input, clock) {
     throw new DomainError(400, 'invalid_goal', 'Choose a target date between one week and one year from today.');
   }
   transaction(db, () => {
-    db.prepare('UPDATE goals SET name = ?, target_cents = ?, target_date = ?, weekly_budget_cents = ? WHERE id = ?')
-      .run(name, targetCents, targetDate, weeklyBudgetCents, goalId);
+    db.prepare('UPDATE goals SET name = ?, target_cents = ?, target_date = ?, weekly_budget_cents = ?, project_kind = ? WHERE id = ?')
+      .run(name, targetCents, targetDate, weeklyBudgetCents, projectKind, goalId);
     setStartingProgress(db, goal, startingCents, clock.iso());
     // Changing the goal changes the arithmetic: earlier plans no longer apply.
     db.prepare("UPDATE plans SET status = 'superseded' WHERE goal_id = ? AND status != 'superseded'").run(goalId);

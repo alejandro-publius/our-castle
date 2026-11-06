@@ -387,12 +387,13 @@ test('the goal_items migration is additive: an existing version-two household ke
   let db = s.db;
   const snapshot = (d) => ['households', 'members', 'goals', 'ledger_entries', 'payment_orders', 'payment_captures', 'achievements', 'plans']
     .map((t) => [t, d.prepare(`SELECT * FROM ${t} ORDER BY rowid`).all()]);
-  db.exec('DROP TABLE order_checks; DROP TABLE goal_items; PRAGMA user_version = 2;');
+  // Every record as it is now; the version-two schema had no goal_items, order_checks or goal project_kind (it returns at its campsite default).
   const before = snapshot(db);
+  db.exec('DROP TABLE order_checks; DROP TABLE goal_items; ALTER TABLE goals DROP COLUMN project_kind; PRAGMA user_version = 2;');
   db.close();
   db = openDatabase(file);
   try {
-    assert.equal(db.prepare('PRAGMA user_version').get().user_version, 4); // saved-check migration already on main
+    assert.equal(db.prepare('PRAGMA user_version').get().user_version, 6); // saved checks, the goal's project kind, then family access tables
     assert.deepEqual(snapshot(db), before);
     assert.equal(db.prepare('SELECT COUNT(*) AS n FROM goal_items').get().n, 0);
     assert.equal(db.prepare('SELECT COUNT(*) AS n FROM order_checks').get().n, 0);
