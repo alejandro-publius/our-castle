@@ -1,6 +1,6 @@
 # Release readiness — November 5, 2026
 
-The owner asked Codex to finish the remaining integration and release work. This report separates the reviewed source from the still-unverified live rehearsal and the unsubmitted entry.
+The owner asked Codex to finish the remaining integration and release work. The approved sandbox contribution and same-order steward check now pass; recording and entry submission remain separate unfinished steps. [Current runtime evidence](IN-APP-SANDBOX-VERIFICATION.md).
 
 | Item | Current state |
 | --- | --- |
@@ -9,7 +9,7 @@ The owner asked Codex to finish the remaining integration and release work. This
 | GitHub source release | **Public**, confirmed through anonymous repository metadata and README access. Published using the owner's existing Mac GitHub CLI login |
 | Hosted site | Not deployed; repository run instructions satisfy the checked functional-demo route |
 | Mac activation | Owner app 3010 and isolated rehearsal 3021 use `~/projects/our-castle-reviewed`; original checkout remains `791e8ae`. Both databases and `.env` are preserved; the owner is now the manual checkout operator |
-| Approved sandbox flow | Still unverified end to end; existing 3021 rehearsal must be preserved |
+| Approved sandbox flow | Owner completed one $15 in-app contribution; one credit to $75, village/Manor open, real same-order `get_order` and server `match`; preserve the existing 3021 rehearsal |
 | Entry text / current shot plan | Ready in [SUBMISSION-DRAFT.md](SUBMISSION-DRAFT.md) and [SUBMISSION-SHOTLIST.md](SUBMISSION-SHOTLIST.md) |
 | Fresh judge session | Anonymous public clone/install/source guard and ten current-build journey/phone checks passed with actual `npm run demo`; no owner keys, data or provider call |
 | Video / YouTube / Devpost | New **2:42 current-build review cut** exported and decoded successfully, with editable timeline/narration/captions/provenance. Actual checkout insert remains unfilmed; no final YouTube upload or Devpost submission |
@@ -39,10 +39,10 @@ When the owner explicitly requested opening the pages to do checkout manually, t
 
 Subsequent gold-fountain changes affect frontend presentation only. They require no backend restart, new provider call or database change. Refresh the game only when no checkout is in progress. Server configuration still comes from the existing private environment; no key is bundled. Private handoff/backup metadata is under `~/projects/our-house/test-results/approved-sandbox-insert/manual-handoff-*/`; `session.json` and `RESUME.md` hold the current operator/PID, superseding the older coordinator handoff.
 
-## Precise external blockers
+## Current sandbox result and remaining handoff
 
-1. **Owner completes the browser checkout manually.** The Mac file/server connection works, and both sandbox sign-in and the isolated game were opened as requested. Automated browser clicking remains unavailable in this chat. The owner already approved the single $15 sandbox payment and necessary same-order steward check; no new key or approval is missing. The owner is the sole browser operator. Do not create a competing rehearsal or duplicate order.
-2. **Complete that one actual flow.** Last inspected 3021 state: zero orders, one $60 reported starting entry, no plan, no waiter or recording. Recheck before proceeding. A $15 USD capture must credit the $300 goal once to $75, open the Manor while retaining the village, and be matched by real `get_order` for the identical household/goal/order/reference/capture. Current fake-provider tests and historical hosted approval do not establish this.
-3. **Replace one insert and upload/submit through authenticated tools.** The [current 2:42 review cut](demos/current-review/README.md) is locally playable and validated, with the missing actual insert explicitly marked at **1:08–1:36**. It uses the current public build, the earlier real Channel3 screenshot and live Claude recording, and historical hosted-link payment evidence. None substitutes for the unfilmed popup/same-order check. No public YouTube URL or authenticated Devpost control exists here. The editable 28-second slot can expand to 40 seconds while keeping the cut at 2:54. No extra product search, planner suite or refund is needed.
+1. **Runtime verification is complete.** The owner manually contributed once in the existing 3021 rehearsal. It has one completed $15 USD order/capture, one contribution credit and $75/$300 progress; Hearth and Manor are open. Actual selected-order `get_order` plus ledger read returned `match`, `verified` and no warnings. The first steward request exposed an unsupported forced-tool setting; fix `3f72609` passed 10 focused tests and one necessary runtime retry. No replacement payment or refund was made. [Receipt evidence](IN-APP-SANDBOX-VERIFICATION.md).
+2. **Keep the verified rehearsal.** Its current server PID is **39365**, on the same database, with the steward fix active. Owner 3010 was not restarted and retains its separate original $60 state. No further payment or paid suite is needed to repeat this result. Private session metadata records current ownership and exact evidence paths.
+3. **Resolve recording, then upload/submit.** No continuous checkout recording has been located or confirmed. The [current 2:42 review cut](demos/current-review/README.md) remains unchanged, with its missing insert explicitly marked at **1:08–1:36**. Runtime API evidence does not supply popup, bridge-motion or steward UI footage. No public YouTube URL or authenticated Devpost control exists here. The editable 28-second slot can expand to 40 seconds while keeping the cut at 2:54. No extra product search, planner suite, refund or replacement payment is needed.
 
 Hosting, a production Studio licence, real household sign-in and verified utility-provider connections are separate future scope. No live PayPal endpoints or real financial transactions are supported.

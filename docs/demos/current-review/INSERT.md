@@ -1,12 +1,14 @@
 # One remaining recorded insert
 
+**Runtime status, November 5 PST / November 6 UTC:** the owner has already completed the single approved $15 contribution. One credit gives $75/$300; Hearth and Manor are open. The actual same-order `get_order` check is verified after compatibility fix `3f72609`. [Evidence](../../IN-APP-SANDBOX-VERIFICATION.md). No continuous owner recording has been located or confirmed. Locate any existing original before editing; **do not create a replacement order or repeat the paid steward check to fill this slot**. The shot list below describes required source footage, not authorization for another transaction.
+
 The current **2:42 review cut** reserves **1:08–1:36** for the actual sandbox checkout and same-order steward sequence. The slot is 28 seconds; it may expand to **40 seconds**, bringing the full cut to 2:54. Preserve all prior cuts and the continuous original. Do not upload this review slate as the finished demonstration.
 
 ## Before recording
 
-The owner is now the sole manual browser operator, after explicitly requesting the pages opened to do checkout. Recheck the **3021** rehearsal before any action. At its last read it had zero orders, one $60 reported starting entry and no plan. Do not start an automated or duplicate order.
+The owner is the sole manual browser operator. The **3021** rehearsal now contains one completed order/capture, one contribution credit, the original $60 reported starting entry and no plan. Preserve that result; no payment waiter remains.
 
-The owner app on **3010** and isolated rehearsal on **3021** use `~/projects/our-castle-reviewed`. Preserve the owner's records and `.env`. The same rehearsal database was backed up, migrated schema 1→3 and brought to reviewed source with all existing columns/rows and the owner listener/environment preserved. Current rehearsal PID: **37171**. The gold fountain added later is frontend-only; source synchronization does not restart either backend. Check the actual page/version before filming, and refresh only when no checkout is active. Local `approved-sandbox-insert/session.json` and `RESUME.md` hold the current handoff.
+The owner app on **3010** and isolated rehearsal on **3021** use `~/projects/our-castle-reviewed`. Preserve the owner's records and `.env`. The same rehearsal database was backed up, migrated schema 1→3 and brought to reviewed source. Current rehearsal PID: **39365**, after a 3021-only restart for the steward fix; 3010 was not restarted. The gold fountain is frontend-only. Local `approved-sandbox-insert/session.json` and `RESUME.md` hold the current handoff.
 
 The existing approval covers one **$15 USD sandbox** contribution against a **$300 goal** with **$60 explicitly self-reported starting progress**, plus the necessary steward check of that same order. It does not authorize live funds, another search, planner suite, unrelated refund or replacement orders. Existing local server-side keys are configured. No credential needs to be pasted into chat.
 

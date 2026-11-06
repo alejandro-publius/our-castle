@@ -47,7 +47,7 @@ PayPal JavaScript SDK v6 handles the browser session; Server SDK Orders v2/Payme
 - **Historical live AI:** feasible and impossible plans, ledger reading and PayPal transaction listing. [Original report](docs/LIVE-VERIFICATION-AI.md)
 - **Current local checks:** family flow, merchant goal confirmation, world unlocks, Treasury and actual Studio framework on Chromium and Linux WebKit, with fake providers/simulated payments. [Exact runs](docs/VALIDATION.md)
 - **Fresh public clone:** anonymous clone/install/source guard and ten current-build journey/phone checks passed using the actual isolated `npm run demo` command. [Recording and scope](docs/demos/current-review/sources/public-demo-capture.json)
-- **Still outstanding:** actual in-app popup → one credit/Manor unlock → real same-order `get_order`. The Mac is connected; supported browser control is still unavailable here. Historical payment evidence does not close this gap.
+- **Current in-app sandbox result:** owner-completed $15 contribution, one credit from $60 reported to $75, village/Manor open, and actual same-order `get_order` with server reconciliation `match`. A model compatibility fix passed 10 focused tests. [Evidence and recording limits](docs/IN-APP-SANDBOX-VERIFICATION.md)
 
 No hackathon entry has been submitted. The new [2:42 current-build review cut](docs/demos/current-review/our-castle-current-review-cut.mp4) has narration, measured captions, editable sources and an explicit unfilmed checkout insert. It is not the final submitted video. [Release readiness](docs/RELEASE-READINESS.md) · [Entry copy](docs/SUBMISSION-DRAFT.md) · [Shot list](docs/SUBMISSION-SHOTLIST.md).
 

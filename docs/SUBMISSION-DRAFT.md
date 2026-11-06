@@ -36,13 +36,14 @@ The Treasury keeps the next area, contribution records and a selected receipt to
 
 | Evidence | What it establishes |
 | --- | --- |
+| November 5 PST / November 6 UTC in-app sandbox result | Owner-completed $15 contribution; one persisted credit from $60 reported to $75; village/Manor open; actual same-order Agent Toolkit `get_order` and deterministic server `match`. Subsequent steward verification used the local API. [Exact evidence](IN-APP-SANDBOX-VERIFICATION.md); continuous popup/bridge/steward UI footage is unconfirmed. |
 | November 4 UTC / November 3 PST sandbox verifier | Buyer-approved **hosted approval link**, $15 capture, one credit from $60 to $75, replay safety, wrong-household refusal, matching PayPal record and one refund reversal. It does not establish the in-app popup. |
 | Same-date live AI run | A feasible plan covering $240 exactly, an impossible plan reporting its $160 shortfall, ledger reading and PayPal transaction listing. No household-order `get_order` was verified in that run. |
 | November 5 Channel3 desktop check | One real search returned three real USD products and rendered their images. Phone and goal-save contracts use fake results. |
 | Current local browser/contract checks | Full family journey, simulated credit/unlocks, real AG Studio widget/framework, cancellation, fallback and selected-order proof with fake providers. Exact runs and limitations are in [VALIDATION.md](VALIDATION.md); these are not new live financial evidence. |
 | November 5 anonymous public clone | Clean install/source guard and ten current-build journey/phone checks passed with actual `npm run demo`; a fresh in-memory example household, no keys, saved data or provider call. |
 
-**Still unverified together:** in-app PayPal popup approval → server receipt/single credit/Manor bridge → real `get_order` reconciliation of that same household order. The approved isolated rehearsal is prepared, and the Mac is connected; browser control for the actual approval is still unavailable. Existing draft videos label the missing insert rather than reconstructing it. No entry has been submitted.
+**Runtime check now complete; recorded insert still missing:** the owner completed the approved contribution, and the same-order steward check passed after a focused compatibility fix. No continuous owner recording has been located or confirmed. Existing review videos still label the missing insert; neither their example footage nor the runtime API evidence reconstructs a popup or bridge animation. No entry has been submitted.
 
 ## Challenges and learning
 

@@ -1,5 +1,11 @@
 # Validation
 
+## In-app sandbox and same-order steward — November 5 PST / November 6 UTC, 2026
+
+The owner completed the approved single $15 USD contribution in the preserved 3021 rehearsal. The server has one completed order/capture and one contribution credit: $60 reported + $15 sandbox = $75/$300, with village and Manor open. A real scoped Agent Toolkit `get_order` and ledger read produced deterministic `match`, selected-order `verified` and no warnings. No second payment, refund, planner suite or merchant search was run. [Exact evidence and limits](IN-APP-SANDBOX-VERIFICATION.md).
+
+The first focused steward call received a provider 400 because Opus 5.5 rejects forced tool choice. Fix `3f72609` uses strict automatic tools plus an explicit exact-order instruction; all 10 focused steward tests passed. One necessary runtime retry after a 3021-only restart succeeded. Owner 3010 records/listener were preserved; rehearsal financial rows match before/after. Continuous popup/bridge/steward UI recording remains unconfirmed; current review media is unchanged and not submitted. This newer result supersedes earlier zero-order/unverified runtime statuses below without changing their historical evidence.
+
 ## Gold fountain — November 5, 2026
 
 Small ivory/gold courtyard fountains now accompany the existing Manor/Market/Keep/Citadel access rules. A 48-instance faceted coin spill replaces the old 28 separate spark meshes, and settled gold remains as an earned ornament. There is no new UI, API, dependency, payment action or reward threshold. Original palette/renderer/assets, all nine districts, existing water fountain, bridges, farm life and weather are preserved. [Design, actual render and exact evidence](GOLD-FOUNTAIN.md).

@@ -2,6 +2,8 @@
 
 The owner requested the remaining release work on November 5. The [current edit kit](demos/current-review/README.md) contains actual current-build footage, historical live evidence and an explicit unfilmed insert. It supersedes the older 2:45 shot plan; the original sources remain unchanged.
 
+The [subsequent sandbox contribution and same-order verification](IN-APP-SANDBOX-VERIFICATION.md) now pass at runtime. The video still lacks confirmed source footage for that insert; do not imply this runtime result is already shown or create another payment to recreate it.
+
 | Time | Picture | Source boundary |
 | --- | --- | --- |
 | 0:00–0:09 | Current nine-district forest | Actual fresh public build; example mode |

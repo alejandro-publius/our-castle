@@ -38,6 +38,7 @@ New unlock cards briefly welcome the household's selected pixel characters besid
 
 | Feature | Actual evidence | Limit |
 | --- | --- | --- |
+| Current in-app sandbox / steward | [Owner-completed $15 contribution and exact-order verification](IN-APP-SANDBOX-VERIFICATION.md): one credit to $75, village/Manor open, real `get_order`, deterministic `match` | Subsequent steward request used the local API; continuous popup/bridge/steward UI footage is unconfirmed |
 | PayPal Server SDK | [Historical sandbox run](LIVE-VERIFICATION.md): hosted buyer approval, $15 capture, single credit, replay/mismatch checks, matching order and refund | Not an in-app popup recording |
 | AI planner/steward | [Historical live AI run](LIVE-VERIFICATION-AI.md): exact plan arithmetic, impossible target, ledger and transaction listing | No same-household-order `get_order` in that run |
 | Channel3 Merchant | One real desktop search; local fake-provider phone/save/journey tests | No new credit or live phone/save retest |
@@ -49,13 +50,13 @@ New unlock cards briefly welcome the household's selected pixel characters besid
 
 ## 4. What remains, by who has to act
 
-**Current Mac apps:** the owner household stays at **http://localhost:3010** and the isolated rehearsal at **http://localhost:3021**, both from `~/projects/our-castle-reviewed`. The original checkout stays clean at `791e8ae`; private keys and both existing databases remain. The owner requested manual checkout, so the same rehearsal was backed up, brought to reviewed source, and migrated schema 1→3 with every existing row/column preserved. Its current listener is **37171**; 3010 was not restarted. The subsequent fountain is frontend-only and needs no backend restart. [Current activation/handoff](RELEASE-READINESS.md#current-mac-app).
+**Current Mac apps:** the owner household stays at **http://localhost:3010** and the isolated rehearsal at **http://localhost:3021**, both from `~/projects/our-castle-reviewed`. The original checkout stays clean at `791e8ae`; private keys and both existing databases remain. The rehearsal's current listener is **39365**, with steward compatibility fix `3f72609` active. Owner 3010 was not restarted and retains its original separate $60 state. [Current activation/handoff](RELEASE-READINESS.md#current-sandbox-result-and-remaining-handoff).
 
-**Manual browser handoff:** the owner is now the sole checkout operator. Sandbox sign-in and the isolated game were opened in the Mac's browser. This worker still has no automated browser controls; no login, order or approval was performed by it. Do not start another order or operator. Latest local `approved-sandbox-insert/session.json` supersedes the earlier coordinator handoff.
+**Completed manual checkout:** the owner was the sole browser operator and completed the approved $15 contribution. This worker inspected the saved capture/credit, fixed the provider's forced-tool incompatibility, and made one necessary same-order steward retry through the local API. It genuinely called `get_order`; the server returned `match`, selected-order `verified`, and no warnings. Do not create another payment or repeat paid suites.
 
-The rehearsal's last read-only state was **zero payment orders, one self-reported starting entry, no plan**. There is no order ID, payment waiter, steward call or recording to resume. The owner already approved one $15 sandbox in-app payment and its necessary same-order steward check. Existing keys are configured; no new key or repeated consent is needed when control returns. Verify the current state before proceeding.
+The rehearsal now has **one completed order, one completed capture, two ledger entries ($60 reported plus one $15 sandbox credit), no plan and no payment waiter**. Progress is $75/$300; Hearth and Manor are open. Private `approved-sandbox-insert/session.json` and the linked verification report supersede earlier zero-order statuses.
 
-The required result is actual in-app approval, a server-confirmed $15 USD receipt tied to the correct household/goal, $60→$75 exactly once, the Manor bridge with the village retained, and real `get_order` proof for that exact order. Do not substitute `list_transactions`, a ledger read or model prose.
+**Remaining recording handoff:** locate/confirm any continuous owner recording. None is presently established. The actual bridge movement and steward UI have not been independently filmed; do not imply the API proof supplies that footage. Keep the current review cut and all original sources unchanged until the edit has genuine source material. No final YouTube upload or Devpost submission is claimed.
 
 **Submission:** current entry copy is [SUBMISSION-DRAFT.md](SUBMISSION-DRAFT.md). The current three-minute shot plan is [SUBMISSION-SHOTLIST.md](SUBMISSION-SHOTLIST.md). A public YouTube video is not uploaded, and no authenticated Devpost submission control is available here. Hosting is optional under the checked rules. The deadline is **November 12, 2026, noon PST**.
 

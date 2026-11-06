@@ -1,6 +1,8 @@
 # Current build review cut
 
-The owner's November 5 request to finish the release includes a new video. This cut replaces neither the older sources nor the missing live evidence. **It is a review cut, not a submitted video.**
+The owner's November 5 request to finish the release includes a new video. This cut replaces neither the older sources nor the missing live footage. **It is a review cut, not a submitted video.**
+
+The [actual in-app sandbox contribution and same-order steward check](../../IN-APP-SANDBOX-VERIFICATION.md) subsequently passed. That runtime proof has not been added to this video; continuous popup/bridge/steward UI recording remains unconfirmed. All original media and hashes below are unchanged. No replacement transaction is needed.
 
 The [gold fountain](../../GOLD-FOUNTAIN.md) was added after this recording. Its new animation is not depicted by the older footage; original media and hashes remain unchanged.
 
