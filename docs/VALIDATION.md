@@ -1,5 +1,11 @@
 # Validation
 
+## Fairy flight and Rachel handoff — November 5, 2026
+
+The fairy now makes brief, bounded balcony loops with longer hovering pauses on the existing ambient clock. A fresh-example Chromium review sampled 44 normal-motion poses, verified multiple flight/rest positions, advancing rendered frames, modal pause and unchanged progress/contributions. A touch-phone reduced-motion review sampled five identical poses with ambient animation off. Neither produced a page error, write or outside request; the actual flight frame was inspected. Original 47-file art/palette/renderer/syntax guard passed. No new full suite, provider call, order or video was needed. Evidence: ignored `test-results/fairy-flight/`.
+
+GitHub confirms `rachelselbrede` has write access. [START-HERE-RACHEL.md](../START-HERE-RACHEL.md) provides an isolated no-keys run, three bounded task options, a small Claude prompt and branch/PR workflow. The old visual/integration handoffs now point to the current expanded map and completed exact-order proof, avoiding a duplicate build or paid check. No message/invitation was sent and no access or visibility setting changed.
+
 ## Mountain border and PayPal hillside — November 5, 2026
 
 The board expands from 228×132 to 292×196 around its unchanged interior. Twelve unbuilt meadows, faceted mountain ridges, river valleys and highland pines add depth without new districts, reward thresholds or financial actions. Six solid extruded letters use PayPal's official wordmark outline, with white faces and grounded rear supports. Font software is not bundled. [Source, reference lock, captures and exact checks](MOUNTAIN-BORDER.md).

@@ -9,10 +9,10 @@ The reviewed build is on canonical `main`, promoted from `feature/connected-expe
 | Tool | Working experience | Evidence limit |
 | --- | --- | --- |
 | Channel3 | Market merchant → up to three results → unsaved Plan draft → explicit goal save | One earlier real desktop search; complete family flow and error contracts tested with fakes. Live phone/save was not repeated. |
-| AG Grid / Studio | One next-area widget, records/receipt/map visit; Studio Agent Framework manages the existing scoped steward | Actual harness/custom runner and fallback checked with fake providers. No extra chat panel; actual live popup/same-order proof remains outstanding. |
+| AG Grid / Studio | One next-area widget, records/receipt/map visit; Studio Agent Framework manages the existing scoped steward | Actual harness/custom runner and fallback checked with fake providers; subsequent same-order live steward verification passed. No extra chat panel. |
 | APIMatic | Eight enabled Codex SDK-context skills used for PayPal fixes and checks | Context use is demonstrated; it is not a runtime payment service or a prize guarantee. New read deadlines and dependency findings are in [TOOLKIT-MAINTENANCE.md](TOOLKIT-MAINTENANCE.md). |
 
-The complete family flow has 26 passing browser checks from [the usability review](FAMILY-FLOW-REVIEW.md). The maintenance follow-up adds 40 focused sponsor/payment contract passes and five post-install compatibility passes with no new provider call. Shared outstanding proof: actual in-app sandbox checkout → one credit/area unlock → same-order `get_order`. The Mac file/server connection is restored and reviewed code `9d7a126` is active on 3010; browser control remains unavailable, so no new order or paid check was attempted. No new account or credential is needed for the code changes.
+The complete family flow has 26 passing browser checks from [the usability review](FAMILY-FLOW-REVIEW.md). The maintenance follow-up adds 40 focused sponsor/payment contract passes and five post-install compatibility passes without provider calls. The subsequent [owner-completed $15 sandbox contribution and actual same-order `get_order`](IN-APP-SANDBOX-VERIFICATION.md) passed: one credit to $75, Manor open and server reconciliation `match`. Do not repeat paid checks or create another order based on this older handoff. The current app/source/recording limits are in RELEASE-READINESS.md. No new key is needed for visual work.
 
 | Commit | What |
 | --- | --- |

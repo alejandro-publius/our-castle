@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+const FAIRY_HOME=Object.freeze({x:-5.2,y:17.8,z:4.3});
 // Original folklore miniatures. All parts use the world's shared geometry/material batches.
 export function createWoodlandLegends({ part, models, colours: C }) {
   const ivory=0xf4e4be,course=0x88978d,plum=0x686084,plumDark=0x453f61,teal=0x397b73,rose=0xb65d76;
@@ -55,7 +56,7 @@ export function createWoodlandLegends({ part, models, colours: C }) {
     for(let i=0;i<2;i++){const spark=new THREE.Group();spell.add(spark);star(spark,0,0,0,i?.23:.33,i?C.gold:models.roles.lamp);}
   }
   function towerFairy(g) {
-    fairy=new THREE.Group();fairy.name='rapunzel-fairy';fairy.userData.live=true;fairy.position.set(-5.2,17.8,4.3);fairy.rotation.y=.66;fairy.scale.setScalar(1.18);g.add(fairy);
+    fairy=new THREE.Group();fairy.name='rapunzel-fairy';fairy.userData.live=true;fairy.position.set(FAIRY_HOME.x,FAIRY_HOME.y,FAIRY_HOME.z);fairy.rotation.y=.66;fairy.scale.setScalar(1.18);g.add(fairy);
     wings=[];
     for(const side of [-1,1]){
       const wing=new THREE.Group();wing.position.set(side*.12,.95,-.17);fairy.add(wing);wings.push({group:wing,side});
@@ -174,7 +175,14 @@ export function createWoodlandLegends({ part, models, colours: C }) {
       spark.position.set(Math.cos(a)*(.57+i*.12),.24+Math.sin(a*1.3)*.36,Math.sin(a)*.43);
       spark.rotation.z=Math.sin(a)*.2;
     });
-    if(fairy){fairy.position.y=17.8+Math.sin(seconds*1.9)*.22;for(const {group,side} of wings)group.rotation.y=side*(.22+Math.sin(seconds*5.8)*.25);}
+    if(fairy){
+      // One short balcony loop, then a long hover: lively without constant darting.
+      const phase=seconds%11,flying=phase<2.6,t=flying?phase/2.6:0;
+      const travel=t*t*(3-2*t),angle=travel*Math.PI*2;
+      fairy.position.set(FAIRY_HOME.x+Math.sin(angle)*1.8,FAIRY_HOME.y+Math.sin(seconds*1.9)*.18+Math.sin(travel*Math.PI)*.55,FAIRY_HOME.z+(1-Math.cos(angle))*1.25);
+      fairy.rotation.y=.66+Math.sin(angle)*.2;fairy.rotation.z=-Math.sin(angle)*.14;
+      for(const {group,side} of wings)group.rotation.y=side*(.22+Math.sin(seconds*(flying?8.5:5.8))*.25);
+    }
   }
   function reset(){mage=null;spell=null;fairy=null;wings=[];}
   const point=g=>({x:g.position.x,y:g.position.y,z:g.position.z});

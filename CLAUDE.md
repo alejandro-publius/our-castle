@@ -1,5 +1,7 @@
 # Claude project instructions
 
+For Rachel's contributor session, start with [START-HERE-RACHEL.md](START-HERE-RACHEL.md). Choose one bounded task and branch/PR; do not replay the full build or old provider checks.
+
 **Current owner Mac:** the active 3010 app uses `~/projects/our-castle-reviewed`; its ignored environment/data links preserve the originals. Keep `~/projects/our-house` at its existing source while the separate 3021 rehearsal is preserved. Source is public. Read [release readiness](docs/RELEASE-READINESS.md#current-mac-app) before local edits; older activation/workstream notes below are historical.
 
 The owner assigned **Claude the visuals** and **Astra the sponsor/integration engineering**, and authorized syncing the working game to GitHub main. Read AGENTS.md and docs/CLAUDE-VISUAL-HANDOFF.md before edits. Astra's scope and integration evidence are in docs/ASTRA-INTEGRATION-HANDOFF.md.
