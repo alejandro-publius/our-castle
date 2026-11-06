@@ -1,5 +1,13 @@
 # Validation
 
+## Ready PRs: amount sources and entry story — November 5 PST / November 6 UTC, 2026
+
+[PR #4](https://github.com/alejandro-publius/our-castle/pull/4) was reviewed against current main. Its new regression reproduced the old defect: a free-text PayPal note of `500.00` allowed an unsupported $500 claim. With the monetary-field rule, **all 16 focused steward/prompt-injection tests passed**; genuine payment/fee figures remain allowed, the four note/subject/custom/name figures are flagged, and same-order verification and the read-only ledger remain intact. The 47-file/palette/renderer/syntax guard and diff check passed. Evidence: ignored `test-results/rachel-ready-prs/{amount-before.log,amount-after.log,source-check.log}`. No full suite or live/paid provider test was repeated.
+
+[PR #3](https://github.com/alejandro-publius/our-castle/pull/3) was reviewed and corrected before merge: the entry follows the current Plan merchant shortcut and confirmation flow, says up to three returned products, describes in-app checkout and same-order recovery precisely, and distinguishes fake-tested webhook handling from unverified live delivery. Broad claims about family habits and an implication of persisted check history were removed. This was a source/evidence and editorial review, not new user research or a test-suite run. Existing runtime proof, missing video insert and unsubmitted status remain explicit.
+
+Both reviewed changes are active from `de11ccf` on the Mac. Consistent SQLite backups preceded restarts after zero-active-order checks: owner 3010 PID **43052**, rehearsal 3021 PID **43061**. Every application-table signature, environment bytes/mode/mtime, runtime mode and progress matched ($60 / $75); served frontend hashes matched and the steward module matched the tested SHA-256. Private evidence: `~/projects/our-house/test-results/ready-pr-activation-20261106T044622Z/report.json`. No new order, payment, refund, AI/merchant call or recording occurred. Rachel's separately assigned saved receipt history is not included in these merges.
+
 ## Product goals from Plan — November 5 PST / November 6 UTC, 2026
 
 Fresh-session inspection found product search reachable only after focusing Market Town. Plan now has a quiet **Find an item** action beside Goal, using the same merchant, unsaved draft and explicit **Save as our goal** flow. The original map entry remains. [Reference/decision lock](INTERFACE-DIRECTION.md).
