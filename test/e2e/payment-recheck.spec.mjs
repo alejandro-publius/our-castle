@@ -54,7 +54,7 @@ test('a completed receipt can pick up a dashboard refund without a webhook or AI
     expect(writes).toEqual([`POST /api/paypal/orders/${orderId}/refresh`]);
 
     // The check leaves one quiet line on the record, and a reload shows the same saved line without checking again.
-    await expect(receipt.locator('.last-check')).toHaveText(/Last checked with PayPal .* · PayPal and the ledger agree\./);
+    await expect(receipt.locator('.last-check')).toHaveText(/^Checked · refunded.*PayPal and the ledger agree\.$/);
     expect(await receipt.locator('.check-history').count()).toBe(0);
     const reads = domain.fake.requests.filter(r => r.method === 'GET' && r.pathname.endsWith(orderId)).length;
     await page.reload();
@@ -62,7 +62,7 @@ test('a completed receipt can pick up a dashboard refund without a webhook or AI
     if (await page.locator('#journey').isHidden()) await page.locator('#journal-toggle').click();
     await page.locator('#tab-ledger').click();
     await page.locator('#ledger-goal').getByText('PayPal sandbox contribution', { exact: false }).first().click();
-    await expect(receipt.locator('.last-check')).toHaveText(/Last checked with PayPal .* · PayPal and the ledger agree\./);
+    await expect(receipt.locator('.last-check')).toHaveText(/^Checked · refunded.*PayPal and the ledger agree\.$/);
     expect(domain.fake.requests.filter(r => r.method === 'GET' && r.pathname.endsWith(orderId)).length).toBe(reads);
     expect(writes).toEqual([`POST /api/paypal/orders/${orderId}/refresh`]);
     expect(domain.db.prepare('SELECT COUNT(*) AS n FROM order_checks').get().n).toBe(1);
