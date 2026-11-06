@@ -1,5 +1,15 @@
 # Validation
 
+## Saved receipt checks — November 5 PST / November 6 UTC, 2026
+
+[PR #5](https://github.com/alejandro-publius/our-castle/pull/5) saves up to ten explicit PayPal order checks through additive migration 4. One latest-result line remains on the selected receipt after reload; earlier results use the existing closed Payment details control. Reconciliation supplies the verdict, and stored fields exclude buyer details, full provider payloads and model prose. No check runs on render/reload, and historical checks are not backfilled.
+
+Review reproduced a stale-result bug: after a failed lookup the database held `unavailable`, while the receipt still displayed its earlier successful check. The failing browser regression is preserved. The fix reads only local state after the provider error and keeps the original error visible; it never retries PayPal. History rows also received plain list styling instead of inheriting receipt-card borders/padding. [Interface lock](INTERFACE-DIRECTION.md).
+
+**80 focused unit cases: 79 passed, one existing skip. Four desktop/390 px touch-phone Chromium cases passed** with reduced motion. Coverage includes history retention, scope/refusal before a provider read, persistence, mismatch/pending/refund/unavailable results, repeated checks without duplicate credit, schema-3 upgrade preserving every existing application row and the completed receipt, immediate failed-result display, closed history after reload and no second provider lookup. Actual desktop/phone captures were inspected with no overflow/page errors. The original 47-file/palette/renderer/syntax guard and diff checks passed; the steward/amount-source module remained byte-identical to the reviewed PR #4 source. This is fake-provider and browser-emulation evidence, not new live payment or physical-device proof.
+
+Ignored evidence: `test-results/receipt-check-review/{before.log,before-browser-artifacts/,unit.log,browser.log,browser-artifacts/,source-check.log,functional.config.mjs}`. No full suite, payment, refund, paid AI/merchant call or video was run.
+
 ## Ready PRs: amount sources and entry story — November 5 PST / November 6 UTC, 2026
 
 [PR #4](https://github.com/alejandro-publius/our-castle/pull/4) was reviewed against current main. Its new regression reproduced the old defect: a free-text PayPal note of `500.00` allowed an unsupported $500 claim. With the monetary-field rule, **all 16 focused steward/prompt-injection tests passed**; genuine payment/fee figures remain allowed, the four note/subject/custom/name figures are flagged, and same-order verification and the read-only ledger remain intact. The 47-file/palette/renderer/syntax guard and diff check passed. Evidence: ignored `test-results/rachel-ready-prs/{amount-before.log,amount-after.log,source-check.log}`. No full suite or live/paid provider test was repeated.

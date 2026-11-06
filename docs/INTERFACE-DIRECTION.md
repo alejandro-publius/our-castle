@@ -19,6 +19,7 @@ Concrete patterns: Refero's [PamPam action sheet](https://refero.design/pages/90
 | Exact-amount approval and source labels on actual records | Existing payment behavior | Keep consent and transaction facts without repeating general notices |
 | Schedule visible; arithmetic and secondary records disclose on request | Existing plan and source-traceability requirements | Preserve useful depth without a wall of text |
 | “Find an item” beside Goal in Plan | Existing Goal field, text actions and Market Town dialog | Let a family choose a product goal without first finding Market Town; reuse the same draft and confirmation flow |
+| One saved check line on the selected receipt; earlier checks under Payment details | Existing receipt and the owner's “less is more” direction | Keep the latest explicit result visible after reload without adding a panel or turning history entries into cards |
 
 Reject: slogans, duplicate headings and progress summaries, always-visible six-card district catalogue, repeated mode warnings, technical model IDs in the main header, nested bordered callouts, decorative icon clutter, and a replacement finance dashboard.
 

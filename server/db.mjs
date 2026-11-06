@@ -140,6 +140,25 @@ const MIGRATIONS = [
     saved_at TEXT NOT NULL
   );
   `,
+  // One row per explicit "Check with PayPal" on a household order: when, what PayPal's validated order said and how the
+  // server reconciled it. Compact references only; no buyer details, provider payloads or model text.
+  `
+  CREATE TABLE IF NOT EXISTS order_checks (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    order_id TEXT NOT NULL REFERENCES payment_orders(id) ON DELETE CASCADE,
+    checked_at TEXT NOT NULL,
+    verdict TEXT NOT NULL,
+    outcome TEXT NOT NULL,
+    note TEXT NOT NULL,
+    paypal_order_status TEXT,
+    capture_id TEXT,
+    capture_status TEXT,
+    amount_cents INTEGER,
+    currency TEXT,
+    refund_ids TEXT NOT NULL DEFAULT ''
+  );
+  CREATE INDEX IF NOT EXISTS order_checks_order ON order_checks (order_id, id);
+  `,
 ];
 
 export function openDatabase(file) {
