@@ -747,6 +747,13 @@ function renderPlan() {
     : plan.source === 'household-edited' ? 'Household plan' : 'Built-in plan';
   $('#plan-headline').textContent = plan.headline;
   $('#plan-summary').textContent = plan.summary;
+  const review = state.planReview;
+  const stale = Boolean(review?.factsChanged);
+  const reviewStatus = $('#plan-review-status');
+  reviewStatus.hidden = !stale;
+  reviewStatus.textContent = !stale ? '' : review.needsRefresh
+    ? 'Progress or goal details changed. Make a new plan before using these weeks.'
+    : 'This plan stays in use. Make a new plan to change the remaining weeks.';
   const shortfall = $('#plan-shortfall');
   const notes = [];
   if (!plan.totals.feasible) notes.push(`This schedule is ${money(plan.totals.shortfallCents)} short of the goal. Raise the weekly amount, move the date, or edit the weeks below.`);
@@ -770,21 +777,34 @@ function renderPlan() {
     $('#plan-total').textContent = money(plan.totals.plannedCents);
   }
   $('#plan-cautions').replaceChildren(...plan.cautions.map((c) => h('li', {}, c)));
-  $('#save-edits').disabled = !ui.scheduleDirty;
+  $('#plan-schedule-help').hidden = stale;
+  for (const input of $$('#plan-schedule .week-amount')) input.readOnly = stale;
+  $('#save-edits').disabled = !ui.scheduleDirty || stale;
   const accepted = state.acceptedPlanId === plan.id;
   const accept = $('#accept-plan');
-  accept.disabled = accepted || ui.scheduleDirty;
+  accept.disabled = accepted || ui.scheduleDirty || Boolean(review?.needsRefresh);
   accept.textContent = accepted ? 'Plan in use ✓' : 'Use this plan';
 }
 
 async function refreshPlanGoal() {
-  const weekly = $('#goal-weekly').value, date = $('#goal-date').value;
   const latest = await api.get('/api/state');
+  const weekly = $('#goal-weekly').value, date = $('#goal-date').value;
   ui.planFormDirty = false;
   applyState(latest);
   $('#goal-weekly').value = weekly;
   $('#goal-date').value = date;
   ui.planFormDirty = true;
+}
+
+async function showPlanError(error) {
+  if (['plan_stale', 'plan_facts_changed', 'plan_superseded'].includes(error.code)) {
+    // Read current local records once; this never regenerates a plan or contacts a model/provider.
+    try { applyState(await api.get('/api/state')); } catch { /* retain the original actionable error */ }
+    setStatus('#plan-status', state.planReview?.factsChanged ? '' : 'error', state.planReview?.factsChanged ? '' : 'Goal or progress changed. Make a new plan using the latest figures.');
+    $('#ask-planner').focus();
+    return;
+  }
+  setStatus('#plan-status', 'error', error.message, { issues: error.issues });
 }
 
 // ---------- Market Town merchant draft: shown in the Plan form, saved only on "Save as our goal" ----------
@@ -953,7 +973,7 @@ async function askPlanner(event) {
       });
     }
   } catch (error) {
-    setStatus('#plan-status', 'error', error.message, { issues: error.issues });
+    await showPlanError(error);
   } finally {
     button.disabled = Boolean(ui.goalDraft);
   }
@@ -965,7 +985,7 @@ async function useRulesPlan(goal, commitments) {
     applyState(res.state);
     setStatus('#plan-status', 'info', 'Showing the example rules plan, clearly labeled. It was not written by AI.');
   } catch (error) {
-    setStatus('#plan-status', 'error', error.message);
+    await showPlanError(error);
   }
 }
 
@@ -986,7 +1006,7 @@ async function saveEdits() {
     applyState(res.state);
     setStatus('#plan-status', 'ok', 'Your edits were checked and saved as a household-edited plan.');
   } catch (error) {
-    setStatus('#plan-status', 'error', error.message, { issues: error.code === 'invalid_edit' ? [] : error.issues });
+    await showPlanError(error);
   }
 }
 
@@ -997,7 +1017,7 @@ async function acceptPlan() {
     setStatus('#plan-status', 'ok', 'Plan in use. Each contribution still needs an adult’s approval.');
     selectTab('give');
   } catch (error) {
-    setStatus('#plan-status', 'error', error.message);
+    await showPlanError(error);
   }
 }
 

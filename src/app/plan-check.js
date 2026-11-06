@@ -62,7 +62,12 @@ export function createPlanCheck({ getState, isBlocked = () => false, refreshGoal
     if (p.outcome === 'reached') text = 'Goal reached. No further contributions are needed.';
     else if (p.outcome === 'no_budget') text = `At ${money(0)} a week, ${money(p.facts.remainingCents)} remains.`;
     else if (p.outcome === 'short') text = `${money(p.totals.shortfallCents)} short by ${date(p.requested.targetDate)} at ${money(p.requested.weeklyBudgetCents)} a week.`;
-    else text = `At ${money(p.requested.weeklyBudgetCents)} a week, finish by ${date(p.reach.date)}.`;
+    else {
+      // The chosen weekly amount is a ceiling. Use the returned schedule's finish, not the earliest possible date
+      // at that ceiling: the built-in schedule may spread smaller contributions over the requested weeks.
+      const finish = p.schedule.findLast(c => c.amountCents > 0)?.date;
+      text = `Up to ${money(p.requested.weeklyBudgetCents)} a week, finishing ${date(finish)}.`;
+    }
     const summary = message(text);
     if (p.outcome === 'short' && p.reach.withinPlanningLimit && p.reach.date) {
       const later = el('button', `Try ${date(p.reach.date)}`, 'link-button');
