@@ -339,7 +339,7 @@ export function createRealmModels({ builder, part: addPart, models, colours: C }
         for(let i=0;i<5;i++){rock(group,x-1.1+i*.55,.8,z,.5,.55,.5,C.leaf);rock(group,x-1.1+i*.55,1.05,z,.2,.2,.2,[C.red,C.gold,F.pink][i%3]);}
       }
       models.banner(group,12,2,-4.9,flag,1,1.5);
-      models.fountain(group,-13,1);
+      // The earned gold fountain occupies this courtyard in the board's shared fountain batch.
     }
     if(d.id==='keep'){
       // Cool stone with crimson caps and long banners.

@@ -7,6 +7,7 @@ import { CREST_FIELDS, ROUTE_LENGTH } from '../core/rules.js';
 import { addEstateGeometry, createEstateModels } from './estate-models.js';
 import { createEstateCourt } from './court.js';
 import { createRealmModels } from './realm-models.js';
+import { createGoldFountains } from './gold-fountain.js';
 import { REALM_SIZE, REALM_BOUNDS, REALM_DISTRICTS, REALM_LEGENDS, REALM_BRIDGES, REALM_ROUTE, homeDistrict, districtById, legendById, viewLocation, journeyLeg, journeyPosition } from '../core/realm.js';
 
 // The playable woodland board. It extends the original art-preview vocabulary (MiniBuilder,
@@ -76,7 +77,7 @@ export function createBoardScene(container, { reducedMotion = false, isOccluded 
   let renderer; let pipeline; let scene; let camera; let builder; let observer; let models; let court;
   const part = (...args) => builder.part(...args);
   const groups = {};
-  let realmModels; let realm = { districts: [], bridges: [], landscape: null };
+  let realmModels; let fountains; let realm = { districts: [], bridges: [], landscape: null };
   const perf = { lastMs: 0, maxMs: 0, totalMs: 0, draws: 0, calls: 0, triangles: 0 };
   let state = { builtTier: 0, position: 0, crest: { field: 'cobalt', charge: 'stag' }, gardens: 0, playMode: 'family', milestoneSpaces: [5, 12, 20], reached: [], estateLevel: 0, previewFeature: null };
   let shownPosition = 0;
@@ -141,6 +142,7 @@ export function createBoardScene(container, { reducedMotion = false, isOccluded 
     disposeGroup(groups.land); grazers.length = 0; rotators.length = 0; flutterers.length = 0;
     flutterGeo?.dispose(); flutterGeo = null;
     realm = realmModels.build(groups.land, state, { tree, deer, butterflies, rotators }, crestColour(state.crest.field));
+    fountains.sync(realm.districts);
   }
 
   // ---------- Route, milestones and gardens (rebuilt from state) ----------
@@ -247,12 +249,16 @@ export function createBoardScene(container, { reducedMotion = false, isOccluded 
   }
 
   // ---------- Animation (demand-driven: frames render only while something moves) ----------
-  function run(duration, frame) {
+  function run(duration, frame, { minimumFrames = 0 } = {}) {
     return new Promise((resolve) => {
       if (reducedMotion || !renderer) { frame(1); draw(); resolve(); return; }
       const start = performance.now();
+      let previous = null, elapsed = 0;
       const step = (now) => {
-        const t = Math.min(1, (now - start) / duration);
+        // A rare reward needs actual visible frames even if scene work delayed its
+        // first callback. Normal bridge/walk timing keeps its existing wall clock.
+        if (minimumFrames) { elapsed += previous === null ? 0 : Math.min(duration / minimumFrames, now - previous); previous = now; }
+        const t = Math.min(1, (minimumFrames ? elapsed : now - start) / duration);
         frame(t); draw();
         if (t < 1) requestAnimationFrame(step); else resolve();
       };
@@ -270,23 +276,21 @@ export function createBoardScene(container, { reducedMotion = false, isOccluded 
     }
     placeToken(to, 0);
   }
-  async function rise() {
-    emit('rise', { tier: state.builtTier });
-    const sparkGeo = new THREE.BoxGeometry(0.16, 0.16, 0.16);
-    const sparkMat = new THREE.MeshStandardMaterial({ color: colours.gold, roughness: 0.5, flatShading: true });
-    const sparks = Array.from({ length: 28 }, (_, i) => {
-      const m = new THREE.Mesh(sparkGeo, sparkMat); const a = (i / 28) * Math.PI * 2;
-      m.userData.v = [Math.cos(a) * (2 + (i % 3)), 3 + (i % 4), Math.sin(a) * (2 + (i % 3))];
-      groups.fx.add(m); return m;
-    });
+  async function celebrateMilestone(district, tierUp) {
+    if (tierUp) emit('rise', { tier: state.builtTier });
+    const spill = fountains.begin(district);
+    if (spill) emit('fountain:start', { district, animated: !reducedMotion });
+    if (!spill && !tierUp) return;
     const size = homeDistrict(state.builtTier).scale;
-    await run(1100, (t) => {
-      const s = Math.max(0.05, easeOutBack(Math.min(1, t * 1.3)));
-      groups.castle.scale.set(size, s*size, size);
-      for (const m of sparks) { const [vx, vy, vz] = m.userData.v; m.position.set(vx * t, 3.2 + vy * t - 3 * t * t, vz * t); m.scale.setScalar(Math.max(0.01, 1 - t)); }
-    });
-    groups.castle.scale.setScalar(size);
-    groups.fx.clear(); sparkGeo.dispose(); sparkMat.dispose();
+    try {
+      await run(spill ? 1600 : 850, (t) => {
+        if (tierUp) { const s = Math.max(.05, easeOutBack(Math.min(1, t * 2))); groups.castle.scale.set(size, s * size, size); }
+        if (spill) fountains.step(t);
+      }, { minimumFrames: spill ? 4 : 0 });
+    } finally {
+      groups.castle.scale.setScalar(size); fountains.end();
+      if (spill) emit('fountain:end', { district });
+    }
   }
 
   function draw() {
@@ -513,6 +517,7 @@ export function createBoardScene(container, { reducedMotion = false, isOccluded 
   addEstateGeometry(builder);
   models = createEstateModels({ part, builder, colours });
   realmModels = createRealmModels({part,builder,models,colours});
+  fountains = createGoldFountains({ builder, colours, reducedMotion }); scene.add(fountains.group);
   pipeline = addCloudSurround(new PixelRenderer(renderer));
   pipeline.setCloudSurround({ enabled: true, bounds: [REALM_SIZE.width / 2, REALM_SIZE.depth / 2], center: [REALM_SIZE.centerX, REALM_SIZE.centerZ] });
   pipeline.configure({ pixelSize: 2, pixelMode: true, outlines: true, dither: true, exposure: 1.05 });
@@ -569,7 +574,7 @@ export function createBoardScene(container, { reducedMotion = false, isOccluded 
           if (openedBridge && viewRevision === cameraRevision) {
             Object.assign(view, { crossing: null, focus: openedBridge.to, zoom: 1, panX: 0, panY: 0 }); updateCamera(); resize();
           }
-          if (tierUp && animate) await rise();
+          if (animate && (tierUp || openedBridge)) await celebrateMilestone(openedBridge?.to, tierUp);
           if (openedBridge) emit('arrival', { district: openedBridge.to, tier: state.builtTier });
         } finally {
           animating = false;
@@ -621,8 +626,8 @@ export function createBoardScene(container, { reducedMotion = false, isOccluded 
       const t = groups.token.position;
       return { spaces, travelers: toScreen(t.x, t.y + 1.5, t.z), canvas: { left: rect.left, top: rect.top, width: rect.width, height: rect.height } };
     },
-    debug: () => ({ region: REALM_SIZE, estateLevel: state.estateLevel, view: { ...view }, previewFeature: state.previewFeature, tier: state.builtTier, position: state.position, shownPosition, gardens: state.gardens, crest: { ...state.crest }, playMode: state.playMode, familyAvatars: householdParty().map((m, i) => ({ memberId: m.id, avatarId: memberAvatar(m, i).id, role: m.role })), animating, frames, ambient: Boolean(ambientTimer), ambientFrames, grazers: grazers.length, butterflies: flutterers.length, court: court.debug(), legends: REALM_LEGENDS.map(({id,x,z})=>({id,x,z})), districts: realm.districts.map(({id,open,status,greyPaint,drawMeshes,hues})=>({id,open,status,greyPaint,drawMeshes,hues})), bridges: realm.bridges.map(({id,open,panels,gate,river})=>({id,open,gate,river,raised:panels.some(p=>Math.abs(p.group.rotation.z)>.01)})), landscape: realm.landscape, tavern: realmModels.tavernDebug(), farm: realmModels.farmDebug(), riverCurrent: realmModels.currentDebug(), surround: pipeline.cloudSurroundDebug(), atmosphere: atmosphereDebug(), render: { ...perf, averageMs: perf.draws ? perf.totalMs / perf.draws : 0, geometries: renderer.info.memory.geometries } }),
-    dispose() { for (const [name,fn,options] of interactions) renderer.domElement.removeEventListener(name,fn,options); clearInterval(ambientTimer); observer?.disconnect(); court?.dispose(); for (const g of Object.values(groups)) disposeGroup(g); flutterGeo?.dispose(); builder?.dispose(); pipeline?.dispose(); renderer?.dispose(); },
+    debug: () => ({ region: REALM_SIZE, estateLevel: state.estateLevel, view: { ...view }, previewFeature: state.previewFeature, tier: state.builtTier, position: state.position, shownPosition, gardens: state.gardens, crest: { ...state.crest }, playMode: state.playMode, familyAvatars: householdParty().map((m, i) => ({ memberId: m.id, avatarId: memberAvatar(m, i).id, role: m.role })), animating, frames, ambient: Boolean(ambientTimer), ambientFrames, grazers: grazers.length, butterflies: flutterers.length, court: court.debug(), legends: REALM_LEGENDS.map(({id,x,z})=>({id,x,z})), districts: realm.districts.map(({id,open,status,greyPaint,drawMeshes,hues})=>({id,open,status,greyPaint,drawMeshes,hues})), bridges: realm.bridges.map(({id,open,panels,gate,river})=>({id,open,gate,river,raised:panels.some(p=>Math.abs(p.group.rotation.z)>.01)})), landscape: realm.landscape, tavern: realmModels.tavernDebug(), farm: realmModels.farmDebug(), riverCurrent: realmModels.currentDebug(), fountains: fountains.debug(), surround: pipeline.cloudSurroundDebug(), atmosphere: atmosphereDebug(), render: { ...perf, averageMs: perf.draws ? perf.totalMs / perf.draws : 0, geometries: renderer.info.memory.geometries } }),
+    dispose() { for (const [name,fn,options] of interactions) renderer.domElement.removeEventListener(name,fn,options); clearInterval(ambientTimer); observer?.disconnect(); fountains?.dispose(); court?.dispose(); for (const g of Object.values(groups)) disposeGroup(g); flutterGeo?.dispose(); builder?.dispose(); pipeline?.dispose(); renderer?.dispose(); },
   };
 
   function districtsOnScreen(){

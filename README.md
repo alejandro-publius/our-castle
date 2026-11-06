@@ -27,7 +27,7 @@ The demo starts a fresh in-memory household on an unused localhost port. It igno
 1. **House:** name the house, choose a crest and set a shared goal.
 2. **Merchant → Plan:** search real products within a budget. **Use as goal** creates a draft; confirm before saving. Claude can propose a weekly schedule that the server independently checks.
 3. **Contribute:** an adult approves the exact amount. In sandbox mode, the server verifies the completed PayPal capture and credits once. In example mode, contributions are explicitly simulated.
-4. **Realm → Treasury:** a milestone opens a bridge and announces a deed. Earlier buildings remain. The Ledger shows the next area, records and a receipt on selection. Its existing read-only steward can check that order.
+4. **Realm → Treasury:** a milestone opens a bridge, briefly spills coins from a small gold-trimmed courtyard fountain and announces a deed. Earlier buildings remain. The Ledger shows the next area, records and a receipt on selection. Its existing read-only steward can check that order.
 
 Searching does not buy an item. This is goal progress, not a bank balance. Reported savings, bills, gifts, simulated contributions and PayPal sandbox receipts retain their sources. Verified utility-bill rewards require a provider connection that is not present.
 

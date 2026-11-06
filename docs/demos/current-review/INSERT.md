@@ -4,9 +4,9 @@ The current **2:42 review cut** reserves **1:08–1:36** for the actual sandbox 
 
 ## Before recording
 
-The original coordinator retains ownership of the **3021** rehearsal. Recheck it and coordinate a single operator before touching checkout. Its last read-only inspection showed **zero orders, one $60 reported starting entry, no plan**; no order, waiter or recording exists. This chat currently lacks supported browser control. A past login statement does not establish the present authenticated buyer state.
+The owner is now the sole manual browser operator, after explicitly requesting the pages opened to do checkout. Recheck the **3021** rehearsal before any action. At its last read it had zero orders, one $60 reported starting entry and no plan. Do not start an automated or duplicate order.
 
-The reviewed owner app is on **3010** in `~/projects/our-castle-reviewed`; preserve its existing records and `.env`. The older rehearsal still serves the original checkout. The operator must reconcile that rehearsal with the reviewed implementation before claiming current-build end-to-end proof, retaining its isolated database and recording the source version. Do not reset or silently replace it, create a duplicate rehearsal, use the owner household, or start a competing browser.
+The owner app on **3010** and isolated rehearsal on **3021** use `~/projects/our-castle-reviewed`. Preserve the owner's records and `.env`. The same rehearsal database was backed up, migrated schema 1→3 and brought to reviewed source with all existing columns/rows and the owner listener/environment preserved. Current rehearsal PID: **37171**. The gold fountain added later is frontend-only; source synchronization does not restart either backend. Check the actual page/version before filming, and refresh only when no checkout is active. Local `approved-sandbox-insert/session.json` and `RESUME.md` hold the current handoff.
 
 The existing approval covers one **$15 USD sandbox** contribution against a **$300 goal** with **$60 explicitly self-reported starting progress**, plus the necessary steward check of that same order. It does not authorize live funds, another search, planner suite, unrelated refund or replacement orders. Existing local server-side keys are configured. No credential needs to be pasted into chat.
 

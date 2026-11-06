@@ -2,6 +2,8 @@
 
 The owner's November 5 request to finish the release includes a new video. This cut replaces neither the older sources nor the missing live evidence. **It is a review cut, not a submitted video.**
 
+The [gold fountain](../../GOLD-FOUNTAIN.md) was added after this recording. Its new animation is not depicted by the older footage; original media and hashes remain unchanged.
+
 - Playback: [our-castle-current-review-cut.mp4](our-castle-current-review-cut.mp4), **2:42**, 1920×1080, 25 fps, offline synthetic Daniel narration.
 - Edit: [timeline.json](timeline.json), [timeline.csv](timeline.csv), [narration.md](narration.md), [captions.srt](captions.srt), [captions.vtt](captions.vtt).
 - Evidence: [source manifest](sources/manifest.json), [public-build recording report](sources/public-demo-capture.json), [render report](render-report.json).

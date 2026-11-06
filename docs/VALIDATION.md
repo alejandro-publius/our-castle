@@ -1,5 +1,11 @@
 # Validation
 
+## Gold fountain — November 5, 2026
+
+Small ivory/gold courtyard fountains now accompany the existing Manor/Market/Keep/Citadel access rules. A 48-instance faceted coin spill replaces the old 28 separate spark meshes, and settled gold remains as an earned ornament. There is no new UI, API, dependency, payment action or reward threshold. Original palette/renderer/assets, all nine districts, existing water fountain, bridges, farm life and weather are preserved. [Design, actual render and exact evidence](GOLD-FOUNTAIN.md).
+
+Four reduced-motion Chromium desktop/touch-phone cases passed. The new normal-motion trajectory and existing post-animation deed/focus/reload cases passed; one final normal-motion rerun after coin-face polish also passed. The source guard verified 47 protected art/runtime files, the 90-colour palette, original renderer and syntax. The initial normal-motion trajectory failure (no intermediate samples on slow rendering) remains preserved. A reward-only bounded progress step fixes the skipped effect without changing bridge/walk timing; reduced motion stays instant. No real PayPal or paid AI/Channel3 call was made. Existing media is unchanged and predates this addition.
+
 ## Public-clone judge rehearsal — November 5, 2026
 
 An anonymous shallow clone of the public repository at `be73dfb674b444c1f8283aff50029b442d9d63c4` installed with `npm ci` and passed the source/art guard. The actual `npm run demo` launcher then ran on its own OS-assigned IPv4 localhost port, fresh in-memory state, no `.env`, keys or saved household. No installed-package or product-source change was needed.
