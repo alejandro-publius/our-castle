@@ -76,7 +76,45 @@ export function loadConfig(env = {}, { root = process.cwd() } = {}) {
   const studio = studioLicence ? { licenseKey: studioLicence } : null;
 
   const dataDir = path.resolve(root, trimmed('OUR_CASTLE_DATA_DIR') || 'data');
-  return { port: Number.isFinite(port) ? port : 3010, host, payments, ai, merchant, studio, dataDir, warnings };
+  const access = accessConfig(trimmed('OUR_CASTLE_ACCESS'), trimmed('OUR_CASTLE_ORIGIN'));
+  return { port: Number.isFinite(port) ? port : 3010, host, payments, ai, merchant, studio, dataDir, access, warnings };
+}
+
+export class ConfigError extends Error {}
+
+// Family access timings. Short ceremonies and invitations; a session lasts a family evening, not forever.
+export const ACCESS_DEFAULTS = Object.freeze({
+  challengeMs: 5 * 60_000,       // one passkey ceremony
+  flowMs: 10 * 60_000,           // the browser binding for a sign-in, family creation or invitation ceremony
+  inviteMs: 48 * 3_600_000,      // an invitation link
+  sessionIdleMs: 30 * 60_000,    // inactivity
+  sessionAbsoluteMs: 12 * 3_600_000,
+  recentAuthMs: 10 * 60_000,     // adding a passkey needs a passkey check this recent
+});
+
+/**
+ * The server's access mode. "example" (default) is the single local example household with no accounts. "family" is
+ * real shared households with passkey accounts; it needs the exact browser origin (and so the WebAuthn relying party).
+ * Only server configuration selects it; no request can. An unusable origin stops the server instead of weakening checks.
+ */
+export function accessConfig(mode, origin) {
+  const chosen = (mode || 'example').toLowerCase();
+  if (chosen === 'example') return { mode: 'example' };
+  if (chosen !== 'family') throw new ConfigError(`OUR_CASTLE_ACCESS must be "example" or "family", not "${mode}".`);
+  let url;
+  try { url = new URL(origin); } catch { throw new ConfigError('Family access needs OUR_CASTLE_ORIGIN, the exact address families open, like http://localhost:3200.'); }
+  const local = url.hostname === 'localhost';
+  if (url.origin !== origin.replace(/\/$/, '') || url.pathname !== '/' || url.search || url.hash || url.username || url.password) {
+    throw new ConfigError('OUR_CASTLE_ORIGIN must be a bare origin such as http://localhost:3200 (no path, query or credentials).');
+  }
+  if (url.protocol !== 'https:' && !(url.protocol === 'http:' && local)) throw new ConfigError('Family access needs https, except on http://localhost.');
+  if (/^[\d.]+$/.test(url.hostname) || url.hostname.includes(':') || url.hostname.startsWith('[')) {
+    throw new ConfigError('Passkeys need a host name for OUR_CASTLE_ORIGIN (localhost or a domain), not an IP address.');
+  }
+  return {
+    mode: 'family', origin: url.origin, host: url.host, rpId: url.hostname, rpName: 'Our Castle', secure: url.protocol === 'https:',
+    ...ACCESS_DEFAULTS,
+  };
 }
 
 /** Public, secret-free description of the active modes, safe to send to the browser. */
@@ -88,6 +126,7 @@ export function publicModes(config) {
     ai: config.ai.mode === 'live'
       ? { mode: 'live', label: 'AI planner', provider: config.ai.provider, model: config.ai.model }
       : { mode: 'example', label: 'Example planner (built-in rules, no AI)' },
+    access: config.access?.mode === 'family' ? 'family' : 'example',
     warnings: config.warnings,
   };
 }

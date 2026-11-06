@@ -40,7 +40,8 @@ test('upgrading an existing database keeps every goal a campsite and changes not
   try {
     // A database exactly as the previous release left it: the earlier migrations, an existing goal and an accepted plan.
     const old = new DatabaseSync(file);
-    MIGRATIONS.slice(0, -1).forEach((sql, i) => { old.exec(sql); old.exec(`PRAGMA user_version = ${i + 1}`); });
+    const before5 = MIGRATIONS.findIndex((sql) => sql.includes('ADD COLUMN project_kind'));
+    MIGRATIONS.slice(0, before5).forEach((sql, i) => { old.exec(sql); old.exec(`PRAGMA user_version = ${i + 1}`); });
     old.exec(`INSERT INTO households (id, name, play_mode, crest_field, crest_charge, is_example, setup_complete, created_at)
       VALUES ('hh_old', 'House of Alder', 'family', 'cobalt', 'stag', 1, 1, '2026-11-01T12:00:00.000Z');
       INSERT INTO goals (id, household_id, name, target_cents, currency, target_date, weekly_budget_cents, created_at)
@@ -48,7 +49,7 @@ test('upgrading an existing database keeps every goal a campsite and changes not
       INSERT INTO plans (id, goal_id, source, inputs_json, basis_json, plan_json, status, created_at)
       VALUES ('plan_old', 'goal_old', 'rules', '{}', '{}', '{}', 'accepted', '2026-11-01T12:00:00.000Z');`);
     const before = old.prepare('SELECT * FROM goals').get();
-    assert.equal(old.prepare('PRAGMA user_version').get().user_version, MIGRATIONS.length - 1);
+    assert.equal(old.prepare('PRAGMA user_version').get().user_version, before5);
     old.close();
 
     const db = openDatabase(file);

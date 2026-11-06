@@ -22,6 +22,8 @@ npm run demo
 
 The demo starts a fresh in-memory household on an unused localhost port. It ignores `.env`, configured keys and saved records. Progress survives refresh while the demo runs; closing it ends that session. Payments are simulated and the planner uses built-in rules, with their existing labels. For persistent local records and configured sandbox/AI integrations, use `npm start` and [the runbook](docs/RUNBOOK.md). [Short review route](docs/JUDGE-HANDOFF.md#2-a-short-review-route)
 
+Several people in one family, each with their own passkey? `npm run family -- --port 3200` runs the opt-in shared-family mode (invitations, adult/child permissions, simulated payments, its own database). See [shared families](docs/FAMILY-ACCESS.md).
+
 Contributing with Rachel? [Start here](START-HERE-RACHEL.md) for one small task, a clean demo and the branch/PR workflow.
 
 ## A connected family journey

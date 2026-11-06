@@ -1,0 +1,38 @@
+{
+  "date": "2026-11-06",
+  "source": "test/e2e/family-access.spec.mjs (committed), Chromium 1.64.1 headless with SwiftShader, reduced motion",
+  "mode": "family access on in-process servers bound to 127.0.0.1 with in-memory databases, empty provider keys, simulated payments; each person a separate browser context with its own Chromium virtual authenticator (CDP WebAuthn)",
+  "limits": "Test captures of synthetic people and households, not real family use. The virtual authenticator is not a real device, Touch ID, Face ID or security key. Images showing invitation links were deliberately not committed.",
+  "images": {
+    "docs/screenshots/family-access-phone-sign-in.png": {
+      "sha256": "99c334bd5a10dc63acfba2fa95ca8686e9e9f30b166968a38652e7abae6cd3dc",
+      "capture": "phone case, 390x844 touch phone (DPR 2), before any sign-in",
+      "shows": "the sign-in card; nothing of any household behind it"
+    },
+    "docs/screenshots/family-access-invitation.png": {
+      "sha256": "4f58cb24219de03469e5af1139ce05b9c5ffdcffd8caf002efb2ed3fb6154d61",
+      "capture": "journey case, desktop 1440x1000, the child's browser opening the invitation link",
+      "shows": "Join House of Alder as Wren \u00b7 Child, single use until its expiry"
+    },
+    "docs/screenshots/family-access-owner.png": {
+      "sha256": "eaf57b3e9a1a82ec7698190171c22730beb6f7914e11e41f1d8b848f3c8dda46",
+      "capture": "journey case, desktop, the owner after both invitations were used and the child's access was removed",
+      "shows": "invite form, Ash \u00b7 Adult with Remove access, Wren \u00b7 Child \u00b7 no access; no link on screen"
+    },
+    "docs/screenshots/family-access-child-plan.png": {
+      "sha256": "37311681b75ce065beff372a41853bf2ebede0adb2d5d7533bb2facc01228e00",
+      "capture": "journey case, desktop, the child's Plan",
+      "shows": "read-only plan for a child; the schedule check stays available"
+    },
+    "docs/screenshots/family-access-revoked.png": {
+      "sha256": "f790eb4b216346ad8e8a0c53890cb954aaf501582626a21c59bc4f5327b20cb0",
+      "capture": "journey case, desktop, the child after the owner removed access",
+      "shows": "the session ended and the passkey no longer signs in"
+    },
+    "docs/screenshots/family-access-phone-house.png": {
+      "sha256": "6f2615423726ce86e6f0817ef51fbdad5670d044d08ef89586b5c1b0a548fa83",
+      "capture": "phone case, 390 px, the owner after withdrawing an invitation",
+      "shows": "family section on a phone; the withdrawn invitation and no link"
+    }
+  }
+}

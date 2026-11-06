@@ -1,5 +1,36 @@
 # Validation
 
+## Shared families: passkeys, invitations and permissions — November 6, 2026
+
+Claude branch `claude/shared-family-access`, stacked on `claude/goal-projects`; not merged or activated. See [FAMILY-ACCESS.md](FAMILY-ACCESS.md).
+
+- **Mode and data.** This is an opt-in family access mode (`npm run family`, or `OUR_CASTLE_ACCESS=family` plus an exact `OUR_CASTLE_ORIGIN`). It uses its own database file. Migration 6 adds new tables only.
+- **Library.** WebAuthn uses `@simplewebauthn/server` 14.0.3 and `@simplewebauthn/browser` 14.0.0, pinned exactly.
+- **Unchanged.** Example mode and the example household are unchanged.
+
+**Unit: 268 cases, 267 passed, 1 pre-existing skip.**
+- New: 10 family-access cases over real HTTP. A test-only software authenticator produces genuinely signed responses, so the pinned library's real verification runs. Coverage is listed in FAMILY-ACCESS.md.
+- Changed: three older migration fixtures now pin version 6, and the goal-project upgrade test starts from the schema before `project_kind`.
+
+**Browser, `family-access.spec.mjs`: 4 cases.** Chromium's virtual authenticator, one per person, in independent contexts:
+- an owner, an adult, a child and a separate family, the whole journey on desktop;
+- session expiry and invitation link states;
+- a real restart of the runner process;
+- a 390 px phone fit.
+
+Related suites rerun together with it: `family-journey`, `plan-check`, `goal-projects`, `channel3-merchant` (fake Channel3 transport) and `paypal-callbacks` (fake PayPal sandbox transport), on desktop and phone.
+- Result: **59 passed, 11 deliberate viewport skips, 0 failed** (10.7 min).
+- `family-access` was then rerun on the final code: 4 passed.
+- `npm run check` passed.
+
+Captures: `docs/screenshots/family-access-*.png` with [provenance](screenshots/family-access-sources.json). Images showing invitation links were deliberately not committed.
+
+**Limits.**
+- The virtual and software authenticators are not real phones, Touch ID, Face ID or security keys.
+- Rate limits are in memory.
+- The family runner uses simulated payments and the built-in planner. PayPal sandbox in family mode was not exercised; only the fake-transport regression ran.
+- No public hosting, security certification or real family use is claimed. Rachel's playtests remain open.
+
 ## What the family builds: campsite, garden or schoolhouse — November 6, 2026
 
 Claude branch `claude/goal-projects` (from `e7afafc`; not merged or activated). Plan → **Build** chooses what the goal builds in the west meadow; see [FAMILY-PROJECT.md](FAMILY-PROJECT.md#what-the-family-builds). The choice is saved only with the goal's normal save, stored in the additive `goals.project_kind` (migration 5, default `campsite`) and changes only the picture.
