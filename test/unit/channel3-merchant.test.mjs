@@ -393,7 +393,7 @@ test('the goal_items migration is additive: an existing version-two household ke
   db.close();
   db = openDatabase(file);
   try {
-    assert.equal(db.prepare('PRAGMA user_version').get().user_version, 5); // saved-check migration, then the goal's project kind
+    assert.equal(db.prepare('PRAGMA user_version').get().user_version, 6); // saved checks, the goal's project kind, then family access tables
     assert.deepEqual(snapshot(db), before);
     assert.equal(db.prepare('SELECT COUNT(*) AS n FROM goal_items').get().n, 0);
     assert.equal(db.prepare('SELECT COUNT(*) AS n FROM order_checks').get().n, 0);

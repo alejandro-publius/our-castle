@@ -11,7 +11,7 @@ import { createAnthropicPlanner } from './planner/anthropic-provider.mjs';
 const root = fileURLToPath(new URL('../', import.meta.url));
 const { env, envFileLoaded } = readEnvironment({ root });
 const config = loadConfig(env, { root });
-const dbFile = databaseFile(config.dataDir, config.payments.mode);
+const dbFile = databaseFile(config.dataDir, config.payments.mode, config.access.mode);
 const db = openDatabase(dbFile);
 
 const sandbox = config.payments.mode === 'sandbox';

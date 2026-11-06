@@ -587,3 +587,42 @@ details.steward:not([open]) > summary { color: var(--ink-muted); font-weight: 50
   .next-area { flex-wrap: wrap; gap: 0 12px; }
   .next-area-visit { min-height: 40px; }
 }
+
+/* Nobody signed in to a shared family: the page shows only the sign-in dialog, never a household behind it. */
+body[data-signed-in='false'] .shell { visibility:hidden; }
+/* Family access (shared families with passkeys): one sign-in card in the deed style, the signed-in name in the top bar,
+   and a compact family section in House. No dashboard or permanent notice. */
+.access-dialog { padding:0; border:0; background:transparent; width:min(420px, calc(100vw - 20px)); max-width:none; max-height:calc(100dvh - 20px); overflow:auto; overscroll-behavior:contain; color:var(--ink); }
+.access-dialog::backdrop { background:rgb(8 18 22 / .86); }
+.access-paper { padding:14px 16px 16px; }
+.access-head { margin:4px 4px 12px; }
+.access-banner { display:block; width:100%; height:58px; object-fit:cover; object-position:center 40%; image-rendering:pixelated; border:3px solid var(--ink); background:var(--board); }
+.access-head h2 { margin:10px 2px 0; font-size:25px; line-height:1.1; color:var(--ink); }
+.access-head h2:focus { outline:none; }
+.access-body { margin:0 4px; font-size:16px; }
+.access-body p { margin:0 0 10px; }
+.access-body .actions { margin-top:12px; }
+.access-body button.primary, .access-body button:not(.link-button) { min-height:44px; padding:9px 16px; border-radius:3px; border:1px solid #8a6f45; background:var(--paper-3); color:var(--ink); font-weight:500; cursor:pointer; }
+.access-body button.primary { background:var(--brass); border-color:var(--brass-dark); font-weight:700; }
+.access-body button:disabled { opacity:.55; cursor:not-allowed; }
+.access-body .link-button { min-height:44px; }
+.access-body .field input { width:100%; min-height:44px; border:1px solid var(--ink-line); border-radius:2px; background:var(--paper-3); color:var(--ink); padding:8px 10px; }
+.access-body .field input[aria-invalid='true'] { border-color:var(--warn); box-shadow:0 0 0 1px var(--warn); }
+.access-status { margin:10px 4px 0; min-height:1.3em; font-size:15px; }
+.access-status[data-kind='error'] { color:var(--warn); }
+.access-card :focus-visible { outline:3px solid #7a4f12; outline-offset:2px; }
+.signed-in { display:inline-flex; align-items:center; min-height:44px; padding:0 4px; color:var(--ivory); font-size:15px; border-bottom:1px solid var(--rule); white-space:nowrap; max-width:200px; overflow:hidden; text-overflow:ellipsis; }
+.family-access { margin:4px 0 14px; }
+.family-access h4 { margin:12px 0 6px; font-size:16px; }
+.invite-form { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:0 10px; align-items:end; }
+.invite-form .actions { grid-column:1 / -1; margin-top:0; }
+.invite-form select { min-height:44px; padding:8px 10px; border:1px solid var(--ink-line); border-radius:3px; background:var(--paper-3); color:var(--ink); }
+.invite-result { margin:4px 0 10px; }
+.invite-result p { margin:0 0 6px; font-size:15px; }
+.invite-result input { width:100%; min-height:44px; padding:8px 10px; border:1px solid var(--ink-line); border-radius:2px; background:var(--paper-2); color:var(--ink); font-size:14px; }
+.access-list { list-style:none; margin:6px 0; padding:0; }
+.access-list li { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:4px 12px; padding:2px 0; border-bottom:1px solid var(--ink-line); font-size:15px; }
+.access-list li[data-status='expired'], .access-list li[data-status='revoked'], .access-list li[data-access='revoked'] { color:var(--ink-muted); }
+.access-list .link-button, .family-access .actions .link-button { min-height:44px; }
+.access-me { margin:10px 0 0; font-size:15px; color:var(--ink-muted); }
+@media(max-width:400px) { .signed-in { max-width:110px; font-size:13px; } .invite-form { grid-template-columns:1fr; } }

@@ -184,6 +184,19 @@ export function updateCrest(db, householdId, { name, crest }) {
   return getHousehold(db, householdId);
 }
 
+/**
+ * Found a shared family's house: its name and crest. Unlike the example setup, members are never replaced or invented;
+ * they are the people who enrolled their own passkeys.
+ */
+export function setupFamilyHouse(db, householdId, { name, crest }) {
+  const cleanName = validateHouseholdName(name);
+  const cleanCrest = validateCrest(crest);
+  const changes = db.prepare('UPDATE households SET name = ?, crest_field = ?, crest_charge = ?, setup_complete = 1 WHERE id = ? AND is_example = 0')
+    .run(cleanName, cleanCrest.field, cleanCrest.charge, householdId).changes;
+  if (changes !== 1) throw new DomainError(404, 'not_found', 'Household not found.');
+  return getHousehold(db, householdId);
+}
+
 export function setStartingProgress(db, goal, cents, at, label = 'Starting progress (user-reported)') {
   const ref = `starting:${goal.id}`;
   db.prepare(`INSERT INTO ledger_entries (household_id, goal_id, kind, effect, amount_cents, currency, source, source_ref, label, created_at)

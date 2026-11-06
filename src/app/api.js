@@ -9,13 +9,21 @@ export class ApiError extends Error {
   }
 }
 
+// Family access: the signed-in session's CSRF token (kept in memory only, never in storage) and what to do when the
+// server says the session ended. Example mode sets neither.
+let csrfToken = null;
+let onSessionLost = null;
+export function setSession({ csrf = null, lost = null } = {}) { csrfToken = csrf; onSessionLost = lost; }
+
 async function request(method, url, body, { signal } = {}) {
   let response;
+  const headers = body === undefined ? { Accept: 'application/json' } : { 'Content-Type': 'application/json', Accept: 'application/json' };
+  if (csrfToken && method !== 'GET') headers['X-CSRF-Token'] = csrfToken;
   try {
     response = await fetch(url, {
       method,
       credentials: 'same-origin',
-      headers: body === undefined ? { Accept: 'application/json' } : { 'Content-Type': 'application/json', Accept: 'application/json' },
+      headers,
       body: body === undefined ? undefined : JSON.stringify(body),
       signal,
     });
@@ -24,7 +32,11 @@ async function request(method, url, body, { signal } = {}) {
     throw new ApiError(0, { code: 'network', message: 'Could not reach the Our Castle server. Is it still running?' });
   }
   const data = await response.json().catch(() => ({}));
-  if (!response.ok) throw new ApiError(response.status, data.error);
+  if (!response.ok) {
+    const error = new ApiError(response.status, data.error);
+    if (response.status === 401 && ['session_required', 'session_expired'].includes(error.code)) onSessionLost?.(error);
+    throw error;
+  }
   return data;
 }
 
