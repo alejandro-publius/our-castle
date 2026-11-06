@@ -1,5 +1,19 @@
 # Accessibility and device review: connected realm
 
+## Current follow-up: phone Journal name — November 5 PST / November 6 UTC, 2026
+
+An isolated review of implementation `3226ac6` reproduced a missing accessible name on the phone Journal toggle: responsive CSS hides its text span, and the book SVG is correctly hidden from assistive technology, leaving the button unnamed. axe-core's `button-name` rule reported it in House, Plan, Contribute and Ledger at 390×844; the native accessibility snapshot also showed only `button [expanded]`. The modal merchant makes background controls inert, so this background button was outside that scan.
+
+The fix adds the existing visible name **Journal** as an explicit `aria-label`. Its appearance, size, expanded state, control target and behavior are unchanged. The existing journal browser test now finds this button by its accessible role/name before checking draft retention, keyboard close/reopen, focus return, saved preference, reload and the skip link. **Desktop and phone cases both passed.**
+
+axe-core **4.14.0** was downloaded from npm for this audit only and its tarball SHA-512 matched npm's reported integrity. It is kept under ignored `test-results/accessibility-current/`; no product dependency or lockfile changed. After the fix, ten scans (House, Plan, Contribute, Ledger and disconnected Merchant at 1440×1000 and 390×844) reported zero violations for the configured WCAG 2 A/AA, WCAG 2.1 A/AA and best-practice tags. Both fresh, keyless in-memory contexts retained identical full household state, with zero writes, outside requests, page errors or horizontal overflow. Original 47-file/palette/renderer/syntax and diff checks passed.
+
+This is automated Chromium/semantic inspection with reduced motion, not a physical-phone, screen-reader or conformance pass. axe also returned incomplete items for contrast, prohibited/valid ARIA attributes and visible-label/name matching; those require further human review and are not counted as passes. The November 4 review below is historical. Human playtest observations remain separately pending.
+
+Evidence: ignored `test-results/accessibility-current/{before.log,before/report.json,before/*.aria.txt,keyboard.log,after.log,after/report.json,after/*.aria.txt,source-check.log,functional.config.mjs}`. No payment, paid provider call, owner data change or video was needed.
+
+## Historical review — November 4, 2026
+
 November 4, 2026. A focused review of one judge path in the current connected-realm UI:
 
 - keyboard use of the realm view controls;

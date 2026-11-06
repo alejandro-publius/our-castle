@@ -1,5 +1,11 @@
 # Validation
 
+## Phone Journal accessible name — November 5 PST / November 6 UTC, 2026
+
+Automated/semantic inspection reproduced the unnamed phone Journal toggle after its visible text was hidden by responsive CSS. An explicit **Journal** label fixes it without changing layout or behavior. The existing journal test now locates the control by accessible role/name: **two desktop/phone cases passed** for keyboard navigation, draft retention, focus return, preference/reload and skip-link access.
+
+Ten fresh keyless Chromium scans with audit-only axe-core 4.14.0 reported zero configured violations after the fix, with unchanged full household state and no writes, external browser requests, page errors or overflow. Manual/incomplete axe items remain unverified; this does not establish actual screen-reader, physical-device or WCAG conformance. The 47-file/palette/renderer/syntax guard and diff checks passed. No new dependency, full unit/browser suite, provider/payment check or recording was needed. [Detailed method, rule scope, limitations and evidence](ACCESSIBILITY-DEVICE-REVIEW.md#current-follow-up-phone-journal-name--november-5-pst--november-6-utc-2026).
+
 ## Saved receipt checks — November 5 PST / November 6 UTC, 2026
 
 [PR #5](https://github.com/alejandro-publius/our-castle/pull/5) saves up to ten explicit PayPal order checks through additive migration 4. One latest-result line remains on the selected receipt after reload; earlier results use the existing closed Payment details control. Reconciliation supplies the verdict, and stored fields exclude buyer details, full provider payloads and model prose. No check runs on render/reload, and historical checks are not backfilled.

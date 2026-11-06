@@ -37,13 +37,16 @@ test('one general notice and closed utilities leave the world and four actions r
 test('closing and reopening the journal keeps the contribution draft and returns focus; the preference survives refresh', async ({ page }) => {
   const seen = observe(page);
   await ready(page);
+  // Phone styling hides the visible text beside the icon; the trigger must still have a usable accessible name.
+  const journal = page.getByRole('button', { name: 'Journal', exact: true });
+  await expect(journal).toBeVisible();
   await page.getByRole('tab', { name: 'Contribute', exact: true }).click();
   await page.locator('#give-amount').fill('7.25');
   await page.keyboard.press('Escape');
   await expect(page.locator('#journey')).toBeHidden();
-  await expect(page.locator('#journal-toggle')).toBeFocused();
-  await expect(page.locator('#journal-toggle')).toHaveAttribute('aria-expanded', 'false');
-  await page.locator('#journal-toggle').click();
+  await expect(journal).toBeFocused();
+  await expect(journal).toHaveAttribute('aria-expanded', 'false');
+  await journal.click();
   await expect(page.locator('#tab-give')).toBeFocused();
   await expect(page.locator('#give-amount')).toHaveValue('7.25');
   await page.locator('#close-journal').click();
