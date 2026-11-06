@@ -8,7 +8,6 @@ import { openDatabase } from '../../server/db.mjs';
 import { createClock } from '../../server/household.mjs';
 import { createMerchant } from '../../server/merchant/channel3.mjs';
 import { createFakeChannel3, fakeProduct, fakeSearchResponse } from '../helpers/fake-channel3.mjs';
-import { chooseDistrict } from './support/game-controls.mjs';
 
 // The connected family journey on one fresh example household: Market Town merchant (FAKE Channel3 transport) ->
 // explicit goal at the item's actual price -> an adult-approved SIMULATED example contribution -> the ordinary world
@@ -63,9 +62,9 @@ test('fresh family -> merchant goal -> reviewed plan -> example contribution -> 
   await page.getByRole('button', { name: 'Raise our banner' }).click();
   await expect(page.locator('#house-status')).toContainText('is founded');
   await expect(page.locator('#tab-plan')).toHaveAttribute('aria-selected', 'true');
-  // 1. Market Town merchant (keyboard to open), explicit search, a draft that changes nothing.
-  await chooseDistrict(page, 'market');
-  await page.locator('#open-merchant').focus();
+  // 1. Find an item directly from Plan (keyboard to open), explicit search, a draft that changes nothing.
+  await expect(page.locator('#open-merchant')).toBeHidden();
+  await page.locator('#find-goal-item').focus();
   await page.keyboard.press('Enter');
   await page.locator('#merchant-query').fill('four person tent');
   await page.locator('#merchant-budget').fill('200');
@@ -154,6 +153,37 @@ test('fresh family -> merchant goal -> reviewed plan -> example contribution -> 
 
   expect(s.fake.calls).toHaveLength(1); // one fake Channel3 search, on request
   expect(s.writes).toEqual(['/api/setup', '/api/merchant/search', '/api/merchant/goal', '/api/plans', `/api/plans/${planned.plan.id}/accept`, '/api/example/contributions']);
+  expect(s.issues).toEqual([]);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+});
+
+test('opening and dismissing the merchant from Plan preserves unsaved fields without a search or write', async ({ page }) => {
+  await start(page);
+  await openJournal(page);
+  await page.locator('#tab-plan').click();
+  await page.getByRole('textbox', { name: 'Goal', exact: true }).fill('Tent for our next trip');
+  await page.locator('#goal-target').fill('240.00');
+  await page.locator('#goal-weekly').fill('25.00');
+  const before = await state(page);
+  const opener = page.getByRole('button', { name: 'Find an item', exact: true });
+  const box = await opener.boundingBox();
+  expect(box.height).toBeGreaterThanOrEqual(44);
+  await opener.focus();
+  await page.keyboard.press('Enter');
+  await expect(page.locator('#merchant-dialog')).toBeVisible();
+  await expect(page.locator('#merchant-query')).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(page.locator('#merchant-dialog')).toBeHidden();
+  await expect(opener).toBeFocused();
+  await opener.click();
+  await page.locator('#merchant-close').click();
+  await expect(opener).toBeFocused();
+  await expect(page.locator('#goal-name-input')).toHaveValue('Tent for our next trip');
+  await expect(page.locator('#goal-target')).toHaveValue('240.00');
+  await expect(page.locator('#goal-weekly')).toHaveValue('25.00');
+  expect(await state(page)).toEqual(before);
+  expect(s.fake.calls).toEqual([]);
+  expect(s.writes).toEqual([]);
   expect(s.issues).toEqual([]);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });

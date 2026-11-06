@@ -1,5 +1,15 @@
 # Validation
 
+## Product goals from Plan — November 5 PST / November 6 UTC, 2026
+
+Fresh-session inspection found product search reachable only after focusing Market Town. Plan now has a quiet **Find an item** action beside Goal, using the same merchant, unsaved draft and explicit **Save as our goal** flow. The original map entry remains. [Reference/decision lock](INTERFACE-DIRECTION.md).
+
+**Six focused desktop/390 px touch-phone Chromium cases passed** with reduced motion: the original map search/three-result/confirmation path, the full House → Plan merchant → confirmed goal → reviewed built-in plan → simulated contribution → world → Treasury → reload journey, and opening/cancelling from Plan while preserving unsaved fields, making no search/write and returning keyboard focus. The new action has a 44 px target; both layouts have no horizontal overflow. Tests use fake Channel3 and isolated example data, not live providers or human usability research. Command: `npx playwright test --config test-results/plan-merchant-entry/functional.config.mjs test/e2e/connected-journey.spec.mjs test/e2e/channel3-merchant.spec.mjs --grep 'fresh family|opening and dismissing|Market Town merchant: explicit'`.
+
+Two additional fresh, keyless desktop/phone inspections passed: the Plan entry opens the honest disconnected state, Escape restores focus, full household state stays equal, and no write, external request, overflow or page error occurs. Actual Plan captures were inspected at both sizes. Ignored evidence and configuration: `test-results/plan-merchant-entry/`.
+
+The original 47-file/palette/renderer/syntax guard and changed-file diff checks passed. No full suite, new payment, paid AI/merchant call or video was needed. The three-person [playtest](PLAYTEST.md) remains unrun.
+
 ## Rachel's PR review — November 5 PST / November 6 UTC, 2026
 
 [PR #1](https://github.com/alejandro-publius/our-castle/pull/1) adds prompt/data separation and five scripted-model injection tests. Its checked changes merged into current main with the latest vines, lanterns and fairy retained. This tests the server's behavior when a model follows hostile text, not a live model's resistance; the existing free-text limitations remain documented in [PROMPT-INJECTION.md](PROMPT-INJECTION.md).

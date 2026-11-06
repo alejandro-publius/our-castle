@@ -190,6 +190,9 @@ button { font: inherit; }
 .panel button.danger { border-color: var(--warn); color: var(--warn); }
 .panel button:disabled { opacity: .55; cursor: not-allowed; }
 .link-button { background: none; border: 0; padding: 6px 0; color: #6e4610; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; min-height: 36px; }
+.goal-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.goal-heading label { font-weight: 500; font-size: 15px; }
+.goal-heading .link-button { min-height: 44px; padding: 4px 0; white-space: nowrap; }
 .actions { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-top: 8px; }
 
 .form-status { margin: 10px 0 0; font-size: 15px; }

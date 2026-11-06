@@ -1429,7 +1429,7 @@ function bindEvents() {
     if (id) openDeedFromMap(id, e.currentTarget);
   });
   merchant = createMerchantDialog({ getState: () => state, onUse: useMerchantItem });
-  $('#open-merchant').addEventListener('click', (e) => merchant.open(e.currentTarget));
+  for (const opener of [$('#open-merchant'), $('#find-goal-item')]) opener.addEventListener('click', (e) => merchant.open(e.currentTarget));
   $('#goal-draft-save').addEventListener('click', saveGoalDraft);
   $('#goal-draft-discard').addEventListener('click', discardGoalDraft);
   $('#tabs').addEventListener('click', (e) => { const b = e.target.closest('[role="tab"]'); if (b) selectTab(b.id.slice(4), { focus: false }); });

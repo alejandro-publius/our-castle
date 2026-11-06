@@ -161,7 +161,10 @@
             <div class="actions"><button type="button" class="primary" id="goal-draft-save">Save as our goal</button><button type="button" id="goal-draft-discard">Discard draft</button></div>
           </section>
           <form id="plan-form" class="grid-form" novalidate>
-            <label class="field span-2"><span>Goal</span><input id="goal-name-input" type="text" maxlength="60" required></label>
+            <div class="field span-2">
+              <div class="goal-heading"><label for="goal-name-input">Goal</label><button type="button" class="link-button" id="find-goal-item" aria-haspopup="dialog" aria-controls="merchant-dialog">Find an item</button></div>
+              <input id="goal-name-input" type="text" maxlength="60" required>
+            </div>
             <p class="goal-item span-2" id="goal-item" hidden></p>
             <label class="field"><span>Goal amount</span><span class="money"><input id="goal-target" inputmode="decimal" autocomplete="off" required></span></label>
             <label class="field"><span>Already set aside <small>(you report this)</small></span><span class="money"><input id="goal-starting" inputmode="decimal" autocomplete="off" required></span></label>
