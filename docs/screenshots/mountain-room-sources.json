@@ -1,0 +1,33 @@
+{
+  "date": "2026-11-06",
+  "base": "e7afafce92a2a547408dfc07df694767f2dad348",
+  "method": "Actual Chromium renders; desktop 1440x1000 and emulated touch phone 390x844 at 2x, reduced motion, software WebGL. Journal closed before final captures. PNG bytes copied unchanged; no compositing.",
+  "data": "Isolated keyless example database, $60 reported starting progress toward $300. No owner records or provider calls.",
+  "images": [
+    {
+      "path": "docs/screenshots/mountain-room-day.png",
+      "source_capture": "test-results/mountain-room/evidence/desktop-day.png",
+      "sha256": "69952ee4cdea553fa6a85f0c129db4ea59d6ff9b9fd82691137570d3aed78741"
+    },
+    {
+      "path": "docs/screenshots/mountain-room-turned.png",
+      "source_capture": "test-results/mountain-room/evidence/desktop-turned.png",
+      "sha256": "4e1ab0a83eefc625b8b1a98f830b618842b899b323f70704cd55b91372f30325"
+    },
+    {
+      "path": "docs/screenshots/mountain-room-phone.png",
+      "source_capture": "test-results/mountain-room/evidence/phone-day.png",
+      "sha256": "8d396f7e381f2910e751cb1415ad39ccc337e4b1654d9fc2eadf6b1288382a29"
+    }
+  ],
+  "source_sha256": {
+    "src/core/realm.js": "51369413db18eb02c643adc4d2396d27f5882f569ebdd5b25a7d7af82ecb66b5",
+    "src/core/realm-terrain.js": "4a9f6a64369eb75c77c8edf702e6018c0d7ab3ee9ea54d496a91cf893a88d5a6",
+    "src/world/realm-models.js": "7fd581e386fae84ae464949dbe53dcf5f54a6d61104d0d4e2a7541dae12a5d7e",
+    "src/world/board-scene.js": "5bf4b56150c62bb07c534f0ecf569f657830b4af9d7a0249acb98832d1f2ca87",
+    "test/e2e/mountain-room.spec.mjs": "57a268bd44cf53116b975e4065fbb6d488f750ab7e2e5a4267e02aa32adaea65",
+    "test/e2e/realm.spec.mjs": "5167a64aa64cf3f746462506bcb02eaa86909bf257e92840265348a46c39dabe",
+    "test/unit/realm-terrain.test.mjs": "f1cbb7bbc7d8725d1b11edf996e26c13089634007d7b5e815a221337e59a75d0",
+    "test/unit/realm.test.mjs": "61cca2ff63b7e588595c83560f20a7ed3057c8fea4fbdc436b6bd83c56ea73c3"
+  }
+}

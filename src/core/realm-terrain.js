@@ -9,11 +9,11 @@ export const FRONTIER_CLEARINGS = Object.freeze([
 ].map((p,i)=>Object.freeze({...p,id:`frontier-${i}`,width:24,depth:24})));
 
 export const MOUNTAIN_PEAKS = Object.freeze([
-  ...[-99,-66,-32,3,38,73,108,143,168].map((x,i)=>({x,z:-94,rx:23,rz:14,height:18+(i*7)%11})),
-  ...[-99,-66,-32,3,38,73,108,143,168].map((x,i)=>({x,z:94,rx:22,rz:13,height:7+(i*3)%6})),
-  ...[-81,-48,-15,18,51,84].map((z,i)=>({x:-110,z,rx:13,rz:24,height:17+(i*5)%10})),
-  ...[-81,-48,-15,18,51,84].map((z,i)=>({x:174,z,rx:13,rz:23,height:8+(i*3)%7})),
-  {x:-31,z:-95,rx:34,rz:15,height:26},
+  ...[-99,-66,-32,3,38,73,108,143,168].map((x,i)=>({x,z:-94,rx:23,rz:24,height:18+(i*7)%11})),
+  ...[-99,-66,-32,3,38,73,108,143,168].map((x,i)=>({x,z:94,rx:22,rz:23,height:7+(i*3)%6})),
+  ...[-81,-48,-15,18,51,84].map((z,i)=>({x:-110,z,rx:24,rz:24,height:17+(i*5)%10})),
+  ...[-81,-48,-15,18,51,84].map((z,i)=>({x:174,z,rx:24,rz:23,height:8+(i*3)%7})),
+  {x:-31,z:-95,rx:34,rz:23,height:26},
 ].map(Object.freeze));
 export const PAYPAL_HILLSIDE = Object.freeze({x:-31,z:-82,width:44});
 const smooth=t=>{const v=Math.max(0,Math.min(1,t));return v*v*(3-2*v);};

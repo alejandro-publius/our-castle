@@ -8,7 +8,7 @@ The owner assigned Claude the visuals while Astra handles sponsor/integration en
 
 Read `AGENTS.md` and `CLAUDE.md`. For Rachel's small task, use START-HERE-RACHEL.md and read only the chosen feature's source/doc/current screenshot beyond these instructions. Broader visual work can consult ART-DIRECTION.md, INTERFACE-DIRECTION.md, DEFINED-CLOUDS.md and WOODLAND-LEGENDS.md as needed. Current PNGs include:
 
-- `docs/screenshots/mountain-border-day.png`, `mountain-border-turned.png`, `mountain-border-phone.png`.
+- `docs/screenshots/mountain-room-day.png`, `mountain-room-turned.png`, `mountain-room-phone.png` show the latest wider border; the earlier `mountain-border-*.png` are historical.
 - `docs/screenshots/wizard-staff.png`, `rapunzel-fairy.png`, `rapunzel-fairy-night.png`.
 - `docs/screenshots/cloud-overlap-day.png`, `cloud-overlap-night-rain.png`.
 - `docs/screenshots/rosewind-palace.png`, `citadel-stag-detail.png`.
@@ -27,7 +27,7 @@ Farm life: retain the two royal stables/four horses, village henhouse/three hens
 
 Family avatars: Journal → House now saves one of eight original portraits per existing member, with matching map travelers. Read docs/FAMILY-AVATARS.md and inspect docs/screenshots/family-avatars.png. Keep those choices and the additive avatar column; avatars do not change roles or the twenty-person reward court.
 
-Nine districts on a 292×196 forest with one unbuilt 32-unit outer row around the original 228×132 interior: Hearth Village, Manor Gardens, Market Town, Woodland Garden, Stone Keep, Starfall Observatory, Royal Citadel, Rosewind Palace and Rapunzel's Tower. Keep the mountain rim, empty meadows and official-outline PayPal hillside sign, every earlier building, nine bridges, six winding rivers, the ivory stag, golden braid, staff-carrying wizard, balcony fairy, telescope and sword grove. The sword's glint is mouse/touch/keyboard accessible and camera-only. Empty outer clearings add no financial rewards.
+Nine districts on a 356×260 forest with a 64-unit unbuilt border around the original 228×132 interior: Hearth Village, Manor Gardens, Market Town, Woodland Garden, Stone Keep, Starfall Observatory, Royal Citadel, Rosewind Palace and Rapunzel's Tower. Keep the mountain rim, empty meadows and official-outline PayPal hillside sign, every earlier building, nine bridges, six winding rivers, the ivory stag, golden braid, staff-carrying wizard, balcony fairy, telescope and sword grove. The sword's glint is mouse/touch/keyboard accessible and camera-only. Empty outer clearings add no financial rewards.
 
 Keep continuous overlapping white cumulus banks, varied shapes, translucent tails and restrained forest-edge haze. There must be no flat grey gaps between the banks; read docs/DEFINED-CLOUDS.md for the latest correction. Keep ivory plaques, bundled Uncial/Alegreya fonts, the four-step collapsible journal and one general footer notice. Cards contain only name, pixel art/crest, one milestone line and actions. No catalogue, slogans, repeated disclaimers or “preview” product headings. The phone Areas menu must scroll within the actual map height; keep overview plaque collision handling.
 

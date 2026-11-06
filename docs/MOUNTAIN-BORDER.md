@@ -1,5 +1,22 @@
 # Mountain border and PayPal hillside sign
 
+## Extra mountain room — November 6
+
+The owner's follow-up asks for another square on all four sides because the mountains look cut off. The build target is the existing [day](screenshots/mountain-border-day.png) and [turned](screenshots/mountain-border-turned.png) world, using the same original palette, faceted rock/green slopes, woodland and overlapping cloud surround. Refero's existing world-first direction remains the reference; no new visual system is introduced.
+
+| Decision | Source and purpose |
+| --- | --- |
+| Add another 32-unit row on every side: 356×260, same centre | Owner's one-square request; the original 228×132 interior and first frontier row stay fixed |
+| Broaden existing mountain feet without raising their summits | Existing captures show the board cutting through slopes; full mountain supports now fit inside the larger rim |
+| Continue all six rivers through the added land | Preserve the connected forest and avoid abrupt inland river endings |
+| Preserve the home close-up and fit the larger land in Whole realm | Existing camera target and owner request for readable building detail |
+
+The original 292×196 expansion and its activation evidence below are historical. This follow-up has separate captures and validation.
+
+The realm/terrain unit checks and six distinct desktop/phone browser cases passed. Two final capture cases were rechecked with the journal closed. Actual renders were inspected: [day overview](screenshots/mountain-room-day.png), [turned view](screenshots/mountain-room-turned.png), [phone overview](screenshots/mountain-room-phone.png). The close-up home and night/rain renders remain in ignored `test-results/mountain-room/evidence/`. [Exact capture/source hashes](screenshots/mountain-room-sources.json). This uses only isolated example data; existing videos and historical captures are unchanged.
+
+## Original expansion
+
 Owner direction, November 5: a Hollywood-style PayPal sign using PayPal's own lettering, plus one unbuilt square of land on each side and mountainous terrain beyond the existing properties. Direct build in the current forest world; no new financial district or reward threshold.
 
 Reference lock: preserve existing houses, clearings, rivers, bridges, the fairy/wizard, pixel renderer and clouds. Add a 32-world-unit outer row on every side (292×196 total, same centre). Leave new grassy clearings unbuilt. Use irregular stone-and-green ridges, taller at the rear and lower in front so the houses remain visible. The original interior coordinates do not move.
