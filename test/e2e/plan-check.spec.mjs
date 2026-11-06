@@ -256,11 +256,43 @@ test('selecting a market draft immediately removes the previous goal calculation
   await expect(page.locator('#ask-planner')).toBeDisabled();
   expect(rows(s.env.db)).toBe(before);
   expect(s.fake.calls).toHaveLength(1);
+  await page.locator('#goal-weekly').press('Enter');
+  await expect(output(page)).toHaveText('Save or discard the market draft first.');
+  await expect(page.locator('#goal-draft-title')).toBeFocused();
+  await expect(check(page)).toBeDisabled();
+  expect(rows(s.env.db)).toBe(before);
   await page.locator('#goal-draft-discard').click();
   await expect(check(page)).toBeEnabled();
   await expect(output(page)).toBeHidden();
   expect(rows(s.env.db)).toBe(before);
   expect(s.writes.map(r => r.path)).toEqual(['/api/plans/preview', '/api/merchant/search']);
+  await clean(page);
+});
+
+for (const trial of [false, true]) test(`loading newer saved settings refreshes untouched fields${trial ? ' while retaining a chosen weekly trial' : ' before a deliberate new plan'}`, async ({ page }) => {
+  await start(page, { accepted: true });
+  if (trial) await page.locator('#goal-weekly').fill('20.00');
+  updateGoal(s.env.db, s.env.goalId, { ...s.app.state().goal, startingCents: 6000, weeklyBudgetCents: 4000, targetDate: '2027-01-05' }, s.env.clock);
+  const before = rows(s.env.db);
+  await check(page).click();
+  await expect(output(page)).toContainText('Your goal or contributions changed.');
+  await output(page).getByRole('button', { name: 'Load latest goal' }).click();
+  await expect(output(page)).toContainText('Latest goal loaded.');
+  await expect(page.locator('#goal-weekly')).toHaveValue(trial ? '20.00' : '40.00');
+  await expect(page.locator('#goal-date')).toHaveValue('2027-01-05');
+  expect(rows(s.env.db)).toBe(before);
+  expect(s.writes.map(r => r.path)).toEqual(['/api/plans/preview']);
+  await check(page).click();
+  await expect(output(page)).toContainText(trial ? '$60.00 short by Jan 5, 2027' : 'finishing Jan 5, 2027');
+  expect(rows(s.env.db)).toBe(before);
+  await page.locator('#ask-planner').click();
+  await expect(page.locator('#plan-status')).toContainText('Plan ready.');
+  const saved = await state(page);
+  expect(saved.goal.weeklyBudgetCents).toBe(trial ? 2000 : 4000);
+  expect(saved.goal.targetDate).toBe('2027-01-05');
+  expect(s.writes.at(-1).body.goal.weeklyBudgetCents).toBe(trial ? 2000 : 4000);
+  expect(saved.progress.progressCents).toBe(6000);
+  expect(saved.contributions).toHaveLength(0);
   await clean(page);
 });
 

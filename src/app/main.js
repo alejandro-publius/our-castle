@@ -797,7 +797,8 @@ function renderPlan() {
 }
 
 async function refreshPlanGoal() {
-  const fields = ['goal-name-input', 'goal-target', 'goal-starting'];
+  const goalValues = (s) => ({ 'goal-name-input': s.goal.name, 'goal-target': centsToInput(s.goal.targetCents), 'goal-starting': centsToInput(s.progress.startingCents), 'goal-weekly': centsToInput(s.goal.weeklyBudgetCents), 'goal-date': s.goal.targetDate });
+  const saved = goalValues(state), fields = Object.keys(saved);
   const before = Object.fromEntries(fields.map(id => [id, $(`#${id}`).value]));
   const latest = await api.get('/api/state');
   // Keep current trial inputs and optional bill rows, including edits made while this local read was pending.
@@ -805,8 +806,8 @@ async function refreshPlanGoal() {
   ui.planFormDirty = true;
   applyState(latest);
   if (ui.goalDraft) return false;
-  const values = { 'goal-name-input': latest.goal.name, 'goal-target': centsToInput(latest.goal.targetCents), 'goal-starting': centsToInput(latest.progress.startingCents) };
-  for (const id of fields) if ($(`#${id}`).value === before[id]) $(`#${id}`).value = values[id];
+  const values = goalValues(latest);
+  for (const id of fields) if (before[id] === saved[id] && $(`#${id}`).value === before[id]) $(`#${id}`).value = values[id];
   ui.planGoalId = latest.goal.id;
   ui.planGoalRevision = latest.merchantGoalRevision;
   return true;

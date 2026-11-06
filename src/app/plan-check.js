@@ -14,7 +14,7 @@ function el(tag, text, className) {
 
 export function createPlanCheck({ getState, isBlocked = () => false, refreshGoal }) {
   const button = $('check-schedule'), result = $('plan-check-result');
-  let sequence = 0, controller = null, stateKey = null;
+  let sequence = 0, controller = null, stateKey = null, blockedKey = isBlocked();
   const inputs = () => Object.fromEntries(fields.map(id => [id, $(id).value]));
   const facts = () => {
     const s = getState();
@@ -104,7 +104,10 @@ export function createPlanCheck({ getState, isBlocked = () => false, refreshGoal
 
   async function check() {
     clear();
-    if (isBlocked()) return;
+    if (isBlocked()) {
+      message('Save or discard the market draft first.', { error: true });
+      $('goal-draft-title').focus(); return;
+    }
     const s = getState(), values = inputs();
     if (values['goal-name-input'].trim() !== s.goal.name
       || parseAmountToCents(values['goal-target']) !== s.goal.targetCents
@@ -156,10 +159,10 @@ export function createPlanCheck({ getState, isBlocked = () => false, refreshGoal
   return {
     clear,
     update() {
-      const next = facts();
-      if (stateKey !== next || isBlocked()) clear();
-      stateKey = next;
-      if (!controller) button.disabled = isBlocked();
+      const next = facts(), blocked = isBlocked();
+      if (stateKey !== next || blockedKey !== blocked || blocked) clear();
+      stateKey = next; blockedKey = blocked;
+      if (!controller) button.disabled = blocked;
     },
   };
 }
