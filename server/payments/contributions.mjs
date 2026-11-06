@@ -4,8 +4,11 @@ import {
 } from '../household.mjs';
 import { decimalStringToCents, formatCents } from '../../src/core/rules.js';
 import { PayPalError } from './paypal-client.mjs';
+import { reconcileOrder } from '../steward/index.mjs';
 
 export const MIN_CONTRIBUTION_CENTS = 100;
+/** Explicit checks remembered per order. Older ones are dropped. */
+const CHECK_HISTORY = 10;
 export const MAX_CONTRIBUTION_CENTS = 50_000;
 const REQUEST_ID = /^[A-Za-z0-9_-]{8,64}$/;
 const SETTLED = new Set(['completed', 'refunded', 'partially_refunded']);
@@ -65,6 +68,7 @@ export function createContributionService({ db, clock, mode, paypal = null, webh
         refundId: r.refund_id, amountCents: r.amount_cents, currency: r.currency, status: r.status, credited: Boolean(r.credited), createdAt: r.created_at,
       })),
     }));
+    const checks = checksFor(row.id);
     return {
       id: row.id,
       provider: row.provider,
@@ -80,7 +84,42 @@ export function createContributionService({ db, clock, mode, paypal = null, webh
       createdAt: row.created_at,
       updatedAt: row.updated_at,
       captures,
+      checks,
+      lastCheck: checks[0] ?? null,
     };
+  }
+
+  const checkView = (c) => ({
+    checkedAt: c.checked_at, verdict: c.verdict, outcome: c.outcome, note: c.note, paypalOrderStatus: c.paypal_order_status,
+    captureId: c.capture_id, captureStatus: c.capture_status, amountCents: c.amount_cents, currency: c.currency,
+    refundIds: c.refund_ids ? c.refund_ids.split(',') : [],
+  });
+  /** Explicit "Check with PayPal" results for one order, newest first. */
+  function checksFor(orderId) {
+    return db.prepare('SELECT * FROM order_checks WHERE order_id = ? ORDER BY id DESC').all(orderId).map(checkView);
+  }
+
+  /**
+   * Remember what an explicit check found. The verdict comes from the validated PayPal order and the server's own
+   * reconciliation against the (already updated) ledger record, never from a model answer or the browser. When PayPal
+   * did not answer, the check is remembered as unavailable. Only references and amounts are stored.
+   */
+  function recordCheck(row, { order = null, outcome, failure = null }) {
+    const current = view(row.id);
+    const reconciliation = order ? reconcileOrder(order, current)
+      : { verdict: 'unavailable', note: failure ?? 'PayPal did not return this order.', paypalOrderStatus: null, paypalCaptureId: null, paypalCaptureStatus: null, paypalAmountCents: null };
+    const unit = order ? (order.purchase_units ?? []).find((u) => u.reference_id === row.id) : null;
+    const capture = unit?.payments?.captures?.[0];
+    const refundIds = (unit?.payments?.refunds ?? []).map((r) => r.id).filter((id) => typeof id === 'string' && !id.includes(','));
+    transaction(db, () => {
+      db.prepare(`INSERT INTO order_checks (order_id, checked_at, verdict, outcome, note, paypal_order_status, capture_id, capture_status, amount_cents, currency, refund_ids)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+        .run(row.id, clock.iso(), reconciliation.verdict, outcome, reconciliation.note, reconciliation.paypalOrderStatus, reconciliation.paypalCaptureId,
+          reconciliation.paypalCaptureStatus, reconciliation.paypalAmountCents, capture?.amount?.currency_code ?? null, refundIds.join(','));
+      db.prepare('DELETE FROM order_checks WHERE order_id = ? AND id NOT IN (SELECT id FROM order_checks WHERE order_id = ? ORDER BY id DESC LIMIT ?)')
+        .run(row.id, row.id, CHECK_HISTORY);
+    });
+    return checksFor(row.id)[0];
   }
 
   function result(row, outcome, extra = {}) {
@@ -395,10 +434,15 @@ export function createContributionService({ db, clock, mode, paypal = null, webh
       const row = ownedOrder(providerOrderId, householdId, goalId);
       let order;
       try { ({ data: order } = await paypal.getOrder(providerOrderId)); } catch (error) {
-        if (error instanceof PayPalError) throw new DomainError(502, 'paypal_error', 'Could not check this order with PayPal sandbox.', { debugId: error.debugId });
+        if (error instanceof PayPalError) {
+          recordCheck(row, { outcome: 'unavailable', failure: 'PayPal did not answer this check. Nothing was changed.' });
+          throw new DomainError(502, 'paypal_error', 'Could not check this order with PayPal sandbox.', { debugId: error.debugId });
+        }
         throw error;
       }
-      return applyOrder(row, order);
+      const applied = applyOrder(row, order);
+      const check = recordCheck(row, { order, outcome: applied.outcome });
+      return { ...applied, contribution: view(row.id), check };
     },
 
     /** The buyer closed PayPal. Harmless to trust: it can only mark an uncaptured order canceled. */

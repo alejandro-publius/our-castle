@@ -1256,8 +1256,12 @@ function renderLedgerRecord() {
       h('div', { class: 'row' }, h('span', { class: 'amount' }, row.recordEntry?.effect < 0 ? row.amountText : money(c.amountCents)), h('span', {}, STATUS_LABEL[c.status] ?? c.status,
         h('span', { class: `tag ${c.simulated ? 'simulated' : 'sandbox'}` }, c.simulated ? 'simulated' : 'PayPal sandbox'))),
       recordImpact(row),
+      // The server's record of the last explicit "Check with PayPal": its own reconciliation of PayPal's order, kept across reloads.
+      c.lastCheck ? h('p', { class: 'fine last-check' }, `Last checked with PayPal ${timeLabel(c.lastCheck.checkedAt)} · ${c.lastCheck.note}`) : null,
       h('details', { class: 'record-ids' }, h('summary', {}, 'Payment details'),
-        h('div', { class: 'ids' }, `${timeLabel(c.createdAt)} · order ${c.providerOrderId ?? '—'}${capture ? ` · capture ${capture.captureId}` : ''}${refundId ? ` · refund ${refundId}` : ''}`)),
+        h('div', { class: 'ids' }, `${timeLabel(c.createdAt)} · order ${c.providerOrderId ?? '—'}${capture ? ` · capture ${capture.captureId}` : ''}${refundId ? ` · refund ${refundId}` : ''}`),
+        c.checks?.length > 1 ? h('ul', { class: 'ids check-history', 'aria-label': 'Earlier checks with PayPal' },
+          ...c.checks.slice(1).map((k) => h('li', {}, `${timeLabel(k.checkedAt)} · ${k.note}`))) : null),
       c.statusDetail && !['completed'].includes(c.status) ? h('div', { class: 'ids' }, c.statusDetail) : null,
       actions.length ? h('div', { class: 'actions' }, actions) : null);
 
