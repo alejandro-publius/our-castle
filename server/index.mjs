@@ -43,6 +43,7 @@ server.listen(config.port, config.host, () => {
 });
 
 const shutdown = () => {
+  app.live?.close(); // end family live-update streams so open pages reconnect to the next server
   server.close(() => { db.close(); process.exit(0); });
   setTimeout(() => process.exit(0), 2000).unref();
 };

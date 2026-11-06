@@ -12,6 +12,7 @@
 export const ROUTE_POLICIES = Object.freeze([
   ['GET', '/api/status', 'public'],
   ['GET', '/api/session', 'public'],
+  ['GET', '/api/events', 'member'],
   ['POST', '/api/auth/family/options', 'public'],
   ['POST', '/api/auth/family/verify', 'public'],
   ['POST', '/api/auth/signin/options', 'public'],

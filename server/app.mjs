@@ -8,6 +8,7 @@ import {
 } from './household.mjs';
 import { createAccess } from './access/index.mjs';
 import { policyFor } from './access/policy.mjs';
+import { STREAMING, createLive } from './live.mjs';
 import { PlanInputError } from './planner/basis.mjs';
 import { createPlanner } from './planner/index.mjs';
 import { createContributionService } from './payments/contributions.mjs';
@@ -110,13 +111,22 @@ function checkHostAndOrigin(req, { write }) {
 }
 
 const str = (v) => (typeof v === 'string' ? v : undefined);
+// Write-method routes that change no household record: calculations, provider look-ups, questions and ceremony steps.
+const UNCHANGING_WRITES = new Set(['/api/plans/preview', '/api/merchant/search', '/api/merchant/refresh', '/api/merchant/alternatives', '/api/steward', '/api/paypal/client-token', '/api/auth/passkeys/options', '/api/auth/signout']);
 
-export function createApp({ config, db, clock, paypal = null, aiProvider = null, stewardAi = null, paypalTools = null, stewardFetch, merchant = null, root }) {
+export function createApp({ config, db, clock, paypal = null, aiProvider = null, stewardAi = null, paypalTools = null, stewardFetch, merchant = null, root, live: liveLimits = {} }) {
   // Example mode is the single local example household. Family mode serves only households whose members enrolled their
   // own passkeys; it never creates, shows or falls back to the example household.
   const family = config.access?.mode === 'family';
   if (!family) ensureDemoHousehold(db, clock);
-  const access = family ? createAccess({ db, clock, config: config.access }) : null;
+  // Family mode: live updates tell a household's open pages to re-read their state after any committed change.
+  let access = null;
+  const live = family ? createLive({ checkSession: (sessionId) => access.sessionEndReason(sessionId), limits: liveLimits }) : null;
+  access = family ? createAccess({ db, clock, config: config.access, events: {
+    sessionEnded: (sessionId, reason) => live.endSession(sessionId, reason === 'signed_out' ? 'signed_out' : reason === 'access_revoked' ? 'access_revoked' : reason === 'rotated' ? 'rotated' : 'expired'),
+    memberRevoked: (memberId) => live.endMember(memberId, 'access_revoked'),
+    householdChanged: (householdId) => live.notify(householdId),
+  } }) : null;
   const planner = createPlanner({ db, clock, provider: aiProvider });
   const contributions = createContributionService({ db, clock, mode: config.payments.mode, paypal, webhookId: config.payments.webhookId });
   // The steward reads one household's records. In family mode every request gets one bound to its own scope.
@@ -142,7 +152,7 @@ export function createApp({ config, db, clock, paypal = null, aiProvider = null,
     s.goalItem = goalItemFor(db, s.goal);
     s.merchantGoalRevision = merchantGoalRevision(s.goal, s.progress.startingCents);
     s.treasury = treasuryFor(s, clock.iso(), planner.accepted(s.goal.id));
-    if (family) s.access = access.viewer(scope);
+    if (family) { s.access = access.viewer(scope); s.revision = live.revisionOf(scope.householdId); }
     return s;
   };
   // Example mode's scope is the example household; family mode's comes only from a validated session (see handler).
@@ -153,6 +163,11 @@ export function createApp({ config, db, clock, paypal = null, aiProvider = null,
   const routes = [
     ['GET', '/api/status', () => ({ ...publicModes(config), merchant: shop.status() })],
     ['GET', '/api/session', ({ session }) => (family ? { mode: 'family', ...access.sessionInfo(session) } : { mode: 'example' })],
+    // Family mode: one live-update stream per open page; only change notices travel on it, never records.
+    ['GET', '/api/events', ({ req, res, scope }) => {
+      if (!family) throw new HttpError(404, 'not_found', 'Unknown API route.');
+      try { return live.subscribe(req, res, scope); } catch (error) { throw new HttpError(error.status ?? 503, error.code ?? 'live_unavailable', error.message); }
+    }],
     ['GET', '/api/state', ({ scope }) => state(scope)],
     ['POST', '/api/setup', ({ body, scope }) => {
       if (family) setupFamilyHouse(db, scope.householdId, { name: body.name, crest: body.crest });
@@ -267,7 +282,13 @@ export function createApp({ config, db, clock, paypal = null, aiProvider = null,
       const result = await contributions.refundPayPalCapture({ captureId: params[0], householdId: owner(body, scope).householdId, approverId: actingMember(body.approverId, scope), approvalConfirmed: body.approvalConfirmed });
       return { ...result, state: state(scope) };
     }],
-    ['POST', '/api/paypal/webhook', async ({ req, rawBody }) => contributions.handleWebhook({ headers: req.headers, rawBody })],
+    ['POST', '/api/paypal/webhook', async ({ req, rawBody }) => {
+      // PayPal's signed events name orders, not households: compare each household's payment records before and after,
+      // so only the households whose records changed are told to re-read them.
+      const before = family ? paymentFingerprints() : null;
+      try { return await contributions.handleWebhook({ headers: req.headers, rawBody }); }
+      finally { if (family) for (const [householdId, print] of paymentFingerprints()) if (before.get(householdId) !== print) live.notify(householdId); }
+    }],
 
     // ---- Example mode (explicitly simulated) ----
     ['POST', '/api/example/contributions', ({ body, scope }) => {
@@ -405,7 +426,9 @@ export function createApp({ config, db, clock, paypal = null, aiProvider = null,
     if (!rule) throw new HttpError(403, 'route_not_permitted', 'This action is not available.');
     if (rule.access === 'deny') throw new HttpError(403, 'not_available', 'This is not available for shared families.');
     if (rule.access === 'machine') return { session: null, scope: null };
-    const { session, reason } = access.readSession(req);
+    // A live-update stream and the page's background re-reads are not activity: they never keep an idle session alive.
+    const background = url.pathname === '/api/events' || req.headers['x-our-castle-refresh'] === 'background';
+    const { session, reason } = access.readSession(req, { activity: !background });
     if (rule.access === 'public') return { session, scope: null };
     if (!session) {
       if (reason !== 'none') access.clearSessionCookie(res);
@@ -460,7 +483,15 @@ export function createApp({ config, db, clock, paypal = null, aiProvider = null,
           if (body === null || typeof body !== 'object' || Array.isArray(body)) throw new HttpError(400, 'invalid_json', 'Request body must be a JSON object.');
         }
       }
-      const result = await route[2]({ req, res, body, rawBody, params: match ? match.slice(1) : [], session, scope });
+      // Any authorized write (even one that ends in an error after recording a status) may change this household: its
+      // revision moves before the write runs and again after it, when its open pages are told to re-read their state.
+      // Reads, calculations and provider look-ups change nothing and move nothing.
+      const changes = family && write && scope && !UNCHANGING_WRITES.has(url.pathname);
+      if (changes) live.touch(scope.householdId);
+      let result;
+      try { result = await route[2]({ req, res, body, rawBody, params: match ? match.slice(1) : [], session, scope }); }
+      finally { if (changes) live.notify(scope.householdId); }
+      if (result === STREAMING) return;
       sendJson(res, 200, result);
     } catch (error) {
       if (error instanceof DomainError || error instanceof HttpError || error instanceof PlanInputError) {
@@ -479,5 +510,13 @@ export function createApp({ config, db, clock, paypal = null, aiProvider = null,
     if (!policyFor(method, sample)) console.warn(`[our-castle] family access: ${method} ${sample} has no access rule and is refused`);
   }
 
-  return { handler, planner, contributions, steward, merchant: shop, state, routes: routes.map(([method, pattern]) => ({ method, pattern })) };
+  // Each household's latest ledger entry and payment-order change: enough to tell which households a webhook touched.
+  function paymentFingerprints() {
+    return new Map(db.prepare(`SELECT h.id AS id,
+      (SELECT COALESCE(MAX(l.id), 0) FROM ledger_entries l WHERE l.household_id = h.id) || ':' ||
+      (SELECT COALESCE(MAX(o.updated_at), '') || COUNT(*) FROM payment_orders o WHERE o.household_id = h.id) AS print
+      FROM households h`).all().map((r) => [r.id, r.print]));
+  }
+
+  return { handler, planner, contributions, steward, merchant: shop, state, live, routes: routes.map(([method, pattern]) => ({ method, pattern })) };
 }
