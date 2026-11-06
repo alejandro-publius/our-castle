@@ -728,6 +728,7 @@ function renderPlan() {
   const { goal, progress, modes, plan } = state;
   $('#planner-lede').textContent = '';
   $('#planner-lede').hidden = true;
+  $('#plan-project-stage').textContent = projectLabel(projectStage(progress.progressCents, goal.targetCents));
   $('#ask-planner').textContent = modes.ai.mode === 'live' ? 'Ask the AI planner' : 'Make an example plan';
   renderGoalDraft();
   if (!ui.planFormDirty) {
@@ -1255,6 +1256,12 @@ function visitDistrict(id, e) {
   const marker = $(`#realm-markers [data-district="${CSS.escape(id)}"]`);
   marker?.focus({ preventScroll: true }); revealRealm(marker, { instant: e?.detail === 0 });
 }
+// The same journey as "Visit <district>", to the campsite: close the journal, focus the meadow, land on its marker.
+function visitCampsite(e) {
+  setJournalOpen(false); scene?.focusLegend(FAMILY_PROJECT_SITE.id); $('.realm-map').dataset.focused = 'true';
+  const marker = $('#project-marker');
+  marker?.focus({ preventScroll: true }); revealRealm(marker, { instant: e?.detail === 0 });
+}
 function recordImpact(row) {
   if (row.afterCents === null) return null;
   const open = new Set(state.rewards.realm.districts.filter((d) => d.open).map((d) => d.id));
@@ -1527,6 +1534,7 @@ function bindEvents() {
   });
   merchant = createMerchantDialog({ getState: () => state, onUse: useMerchantItem });
   for (const opener of [$('#open-merchant'), $('#find-goal-item')]) opener.addEventListener('click', (e) => merchant.open(e.currentTarget));
+  $('#visit-campsite').addEventListener('click', visitCampsite);
   $('#goal-draft-save').addEventListener('click', saveGoalDraft);
   $('#goal-draft-review').addEventListener('click', reviewGoalDraft);
   $('#goal-draft-search').addEventListener('click', () => {

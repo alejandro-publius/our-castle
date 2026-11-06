@@ -193,6 +193,9 @@ button { font: inherit; }
 .goal-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .goal-heading label { font-weight: 500; font-size: 15px; }
 .goal-heading .link-button { min-height: 44px; padding: 4px 0; white-space: nowrap; }
+/* The campsite line at the top of Plan: its stage on the left, one quiet link to it on the right. */
+.plan-project { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 0 0 10px; font-size: 15px; color: var(--ink-muted); }
+.plan-project .link-button { min-height: 44px; padding: 4px 0; white-space: nowrap; }
 .actions { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-top: 8px; }
 
 .form-status { margin: 10px 0 0; font-size: 15px; }

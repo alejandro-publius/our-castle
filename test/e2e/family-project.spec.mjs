@@ -158,3 +158,42 @@ test.describe('normal motion', () => {
     expect(state.contributions).toHaveLength(4);
   });
 });
+
+test('"Visit campsite" in Plan reaches the campsite by touch and keyboard, names its stage, and writes nothing', async ({ page, request }, info) => {
+  const errors = [], writes = [];
+  page.on('pageerror', (e) => errors.push(e.message)); page.on('request', (r) => { if (r.method() !== 'GET') writes.push(`${r.method()} ${new URL(r.url()).pathname}`); });
+  const openPlan = async () => {
+    if (await page.locator('#journey').isHidden()) await page.getByRole('button', { name: 'Journal', exact: true }).click();
+    await page.locator('#tab-plan').click();
+    await expect(page.locator('#panel-plan')).toBeVisible();
+  };
+  await load(page);
+  await openPlan();
+  await expect(page.locator('#plan-project')).toContainText('Family Campsite · Survey stakes');
+  await page.locator('#panel-plan').screenshot({ path: `${evidence}${info.project.name}-plan-visit.png` });
+  const visit = page.getByRole('button', { name: 'Visit campsite', exact: true });
+  await expect(visit).toBeVisible();
+  if (info.project.name === 'phone') await visit.tap(); else { await visit.focus(); await page.keyboard.press('Enter'); }
+  await expect(page.locator('#journey')).toBeHidden();
+  expect((await scene(page)).view.focus).toBe('family-project');
+  const marker = page.getByRole('button', { name: 'Visit the family campsite' });
+  await expect(marker).toBeVisible();
+  await expect(marker).toHaveAttribute('aria-pressed', 'true');
+  await expect(marker).toBeFocused();
+  await expect(page.locator('#realm-focus-status')).toHaveText('Family Campsite · Survey stakes');
+  await expect(page.locator('#view-deed')).toBeHidden();
+  await page.screenshot({ path: `${evidence}${info.project.name}-after-visit.png` });
+  expect(writes).toEqual([]);
+
+  // The line follows the stage, and the journal remembers nothing about the visit.
+  await pay(request, 1500);
+  await load(page); await openPlan();
+  await expect(page.locator('#plan-project')).toContainText('Family Campsite · Under construction');
+  await page.locator('#panel-plan').screenshot({ path: `${evidence}${info.project.name}-plan-visit-construction.png` });
+  const state = await api(request, 'GET', '/api/state');
+  expect(state.progress.progressCents).toBe(7500);
+  expect(state.contributions).toHaveLength(1);
+  expect(writes).toEqual([]);
+  expect(errors).toEqual([]);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+});
