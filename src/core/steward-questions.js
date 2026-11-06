@@ -1,3 +1,5 @@
+import { isReadOnlyQuestion } from './steward-policy.js';
+
 export const CONFIRMATION_HISTORY_QUESTION = 'When was our last contribution confirmed?';
 export const NEEDS_CHECK_QUESTION = 'Any contributions that need a PayPal check?';
 
@@ -23,5 +25,5 @@ export function isNeedsCheckQuestion(question) {
   return typeof question === 'string' && NEEDS_CHECK_QUESTIONS.has(normalize(question));
 }
 
-/** Questions the server answers from saved household records, with no model or provider call. */
-export const isLocalQuestion = (question) => isConfirmationHistoryQuestion(question) || isNeedsCheckQuestion(question);
+/** Saved-record and permissions questions answered locally, with no model or provider call. */
+export const isLocalQuestion = (question) => isConfirmationHistoryQuestion(question) || isNeedsCheckQuestion(question) || isReadOnlyQuestion(question);

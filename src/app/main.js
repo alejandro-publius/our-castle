@@ -20,7 +20,8 @@ import { createMerchantDialog, resultFacts } from './merchant.js';
 import { createTreasury } from './treasury.js';
 import { FAMILY_PROJECT_SITE, projectLabel, projectStage } from '../core/family-project.js';
 import { CONFIRMATION_HISTORY_QUESTION, NEEDS_CHECK_QUESTION, isLocalQuestion, isNeedsCheckQuestion } from '../core/steward-questions.js';
-import { checkStatus } from '../core/check-status.js';
+import { checkStatus, savedCheckSummary } from '../core/check-status.js';
+import { READ_ONLY_QUESTION, isReadOnlyQuestion } from '../core/steward-policy.js';
 import { createPlanCheck } from './plan-check.js';
 
 // ---------- small helpers ----------
@@ -1256,11 +1257,14 @@ function ledgerRows() {
     const record = c ? (signed < 0 ? 'Refund' : 'Contribution') : category === 'goal' ? 'Goal progress' : category === 'bill' ? 'Bill paid (habit)' : 'Gift sent';
     // A PayPal record's source line carries its compact saved-check status, so the grid shows it without another column.
     const check = c ? checkStatus(c) : null;
-    return { ...row, recordEntry: e, whenIso, when: timeLabel(whenIso), record, entry, source: check?.short ? `${sourceText} · ${check.short}` : sourceText, check,
+    const saved = savedCheckSummary(c);
+    const lastChecked = saved ? { ...saved, text: `Last checked with PayPal: ${saved.label} · ${new Date(saved.checkedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}` } : null;
+    return { ...row, recordEntry: e, whenIso, when: timeLabel(whenIso), record, entry,
+      source: !saved && check?.short ? `${sourceText} · ${check.short}` : sourceText, check, lastChecked,
       signedCents: category === 'goal' ? signed : amount,
       amountText: category === 'goal' && e ? `${signed < 0 ? '−' : '+'}${money(amount)}` : money(amount),
       counts: category !== 'goal' ? 'No — not savings' : !e ? 'No — not counted' : signed < 0 ? 'Yes (subtracts)' : 'Yes',
-      searchText: [record, entry, sourceText, check?.label, check?.short, timeLabel(whenIso), money(amount), c?.providerOrderId, ...(c?.captures.map((cap) => cap.captureId) ?? [])].filter(Boolean).join(' '),
+      searchText: [record, entry, sourceText, check?.label, check?.short, lastChecked?.text, timeLabel(whenIso), money(amount), c?.providerOrderId, ...(c?.captures.map((cap) => cap.captureId) ?? [])].filter(Boolean).join(' '),
     };
   });
 }
@@ -1273,12 +1277,13 @@ function ensureLedgerSelection(rows) {
 function renderLedgerGrid() {
   if (ui.tab !== 'ledger') return ui.ledgerLayout;
   const rows = ledgerRows(); ensureLedgerSelection(rows);
-  if (!ledgerGrid) ledgerGrid = createLedgerGrid($('#ledger-goal'), { formatMoney: money, onSelect: (row) => {
+  if (!ledgerGrid) ledgerGrid = createLedgerGrid($('#ledger-goal'), { formatMoney: money, onSelect: (row, { userInitiated = false } = {}) => {
     // Programmatic selection already rendered the receipt. AG Grid may report it asynchronously; rebuilding the
     // same receipt then would remove its focused element after an "Open receipt" link moved keyboard focus there.
-    if (ui.ledgerRecord === row.id) return;
+    if (ui.ledgerRecord === row.id && !userInitiated) return;
     ui.ledgerRecord = row.id; ui.refundArm = null; renderLedgerRecord();
     if (ui.stewardFocus && row.contribution?.providerOrderId !== ui.stewardFocus) $('#steward-answer').hidden = true;
+    if (userInitiated) $('#ledger-contributions li')?.focus();
   } });
   ui.ledgerLayout = ledgerGrid.update(rows, state.progress.progressCents).then(() => {
     ledgerGrid.setFilter(ui.ledgerFilter); ledgerGrid.setSearch(ui.ledgerSearch); ledgerGrid.selectRecord(ui.ledgerRecord);
@@ -1328,7 +1333,7 @@ function renderTreasury() {
   treasury ??= createTreasury($('#treasury-next'), { formatMoney: money, onVisit: visitDistrict,
     requestSteward: (payload, options) => api.post('/api/steward', payload, options),
     getStewardScope: () => JSON.stringify([state.household.id, state.household.name, state.goal, state.progress, state.plan?.id, state.acceptedPlanId,
-      state.contributions.map((c) => [c.id, c.status, c.updatedAt]), persona()?.id, ui.ledgerRecord]),
+      state.contributions.map((c) => [c.id, c.status, c.updatedAt, c.lastCheck]), persona()?.id, ui.ledgerRecord]),
     getLicence: () => api.get('/api/treasury/studio').then((r) => r.licenseKey ?? null) });
   treasury.update(state);
 }
@@ -1401,6 +1406,7 @@ function renderSteward() {
     suggestions.append(h('button', { type: 'button', 'data-question': STEWARD_SUGGESTIONS[0], 'aria-label': STEWARD_SUGGESTIONS[0] }, h('span', {}, 'Check last payment')));
     suggestions.append(h('button', { type: 'button', 'data-question': CONFIRMATION_HISTORY_QUESTION }, 'Last confirmation'));
     suggestions.append(h('button', { type: 'button', 'data-question': NEEDS_CHECK_QUESTION }, 'Needs a check?'));
+    suggestions.append(h('button', { type: 'button', 'data-question': READ_ONLY_QUESTION }, 'Can you pay or refund?'));
   }
   const disabled = !steward.available || ui.stewardBusy;
   for (const el of [$('#steward-form input'), $('#steward-ask')]) el.disabled = disabled;
@@ -1447,18 +1453,20 @@ function renderStewardAnswer(res) {
   const proof = res.checks.find((c) => c.tool === 'get_order' && (!focus || c.orderId === focus) && c.reconciliation);
   const matched = proof?.reconciliation?.verdict === 'match' && (!focus || res.verification?.status === 'verified');
   const local = res.source === 'local-records';
+  const policy = res.source === 'local-policy';
   box.hidden = false;
   box.replaceChildren(
     h('strong', { class: `verification-title ${matched ? 'verified' : ''}` },
-      local ? (res.kind === 'needs-check' ? 'PayPal checks' : 'Saved confirmation') : matched ? 'PayPal and ledger match' : focus ? 'Payment not yet verified' : 'House steward'),
+      policy ? 'Steward permissions' : local ? (res.kind === 'needs-check' ? 'PayPal checks' : 'Saved confirmation') : matched ? 'PayPal and ledger match' : focus ? 'Payment not yet verified' : 'House steward'),
     h('p', { class: 'steward-text' }, res.answer),
+    ...(policy ? [h('small', { class: 'policy-tools' }, `PayPal allow-list: ${res.policy.paypalReadTools.join(', ')} only. No payment tools.`)] : []),
     // Receipts the local answer names: opening one only selects that record. The check itself stays a separate button.
-    res.receipts?.length ? h('div', { class: 'actions receipt-links' }, ...res.receipts.map((r) =>
-      h('button', { type: 'button', class: 'link-button', 'data-open-receipt': r.contributionId, onclick: () => openReceipt(r.contributionId) }, `Open receipt · ${r.amount} · ${r.status}`))) : null,
+    ...(res.receipts?.length ? [h('div', { class: 'actions receipt-links' }, ...res.receipts.map((r) =>
+      h('button', { type: 'button', class: 'link-button', 'data-open-receipt': r.contributionId, onclick: () => openReceipt(r.contributionId) }, `Open receipt · ${r.amount} · ${r.status}`)))] : []),
     ...(res.warnings.length ? [h('div', { class: 'callout warn' }, res.warnings.join(' '))] : []),
-    h('details', { class: 'verification-details' }, h('summary', {}, 'What was checked'),
-      h('small', {}, local ? 'Saved household record · read-only' : `${res.model} · read-only${res.paypalTools ? ' · PayPal Agent Toolkit' : ''}`),
-      h('ul', { class: 'checks' }, ...(res.checks.length ? res.checks.map((c) => h('li', {},
+    h('details', { class: 'verification-details' }, h('summary', {}, policy ? 'About this answer' : 'What was checked'),
+      h('small', {}, policy ? 'Server policy · no model or PayPal call' : local ? 'Saved household record · read-only' : `${res.model} · read-only${res.paypalTools ? ' · PayPal Agent Toolkit' : ''}`),
+      policy ? null : h('ul', { class: 'checks' }, ...(res.checks.length ? res.checks.map((c) => h('li', {},
         h('span', { class: `tag ${c.source.startsWith('PayPal') ? 'sandbox' : 'reported'}` }, c.source), ' ', c.summary,
         c.reconciliation ? h('span', { class: `verdict ${VERDICT_CLASS[c.reconciliation.verdict] ?? 'warn'}` }, c.reconciliation.note) : null,
         c.reconciliation?.verdict === 'action' ? h('button', { type: 'button', onclick: () => refreshOrder(c.orderId) }, 'Check with PayPal') : null))
@@ -1561,13 +1569,24 @@ function renderTabs() {
     button.classList.toggle('next', next);
   }
 }
+function fitNotice() {
+  const size = `${Math.ceil($('.footer').getBoundingClientRect().height)}px`;
+  if (document.documentElement.style.getPropertyValue('--notice-height') !== size)
+    document.documentElement.style.setProperty('--notice-height', size);
+}
 function renderFooter() {
   const { modes } = state;
   const mode = modes.payments.mode === 'sandbox' ? 'PayPal sandbox · test money only.' : 'Demo mode · simulated payments.';
-  $('#honesty').textContent = `${mode} Demo profiles, not sign-in. Reported savings and bills are unverified; progress is not a bank balance.`;
+  $('#honesty').textContent = `${mode} Adults approve every contribution. The steward only reads; it never spends. Demo profiles, not sign-in. Reported savings and bills are unverified; progress is not a bank balance.`;
+  fitNotice();
 }
 
 function bindEvents() {
+  // Reserve the real notice height, including a wrapped phone layout or a late font load. It stays one footer and
+  // never covers the last journal action. Measuring a fixed element does not depend on the space reserved for it.
+  if (typeof ResizeObserver !== 'undefined') new ResizeObserver(fitNotice).observe($('.footer'));
+  window.addEventListener('resize', fitNotice);
+  document.fonts?.ready.then(fitNotice);
   $('#journal-toggle').addEventListener('click', () => setJournalOpen($('#journey').hidden, { focus: true }));
   $('#close-journal').addEventListener('click', () => setJournalOpen(false, { focus: true }));
   $('#journey').addEventListener('keydown', (e) => { if (e.key === 'Escape' && !e.defaultPrevented) { e.preventDefault(); setJournalOpen(false, { focus: true }); } });
@@ -1697,7 +1716,7 @@ function bindEvents() {
   $('#steward-suggestions').addEventListener('click', (e) => {
     const b = e.target.closest('[data-question]');
     // The "needs a check" question covers every record of this goal, so it is never focused on one order.
-    if (b) askSteward(b.dataset.question, isNeedsCheckQuestion(b.dataset.question) ? null : state.contributions.find((c) => !c.simulated && c.providerOrderId)?.providerOrderId ?? null);
+    if (b) askSteward(b.dataset.question, isNeedsCheckQuestion(b.dataset.question) || isReadOnlyQuestion(b.dataset.question) ? null : state.contributions.find((c) => !c.simulated && c.providerOrderId)?.providerOrderId ?? null);
   });
   $('#steward-form').addEventListener('submit', (e) => {
     e.preventDefault();

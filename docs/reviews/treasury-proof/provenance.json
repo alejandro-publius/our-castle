@@ -1,0 +1,46 @@
+{
+  "branch": "feature/treasury-proof",
+  "base_commit": "e7afafce92a2a547408dfc07df694767f2dad348",
+  "capture_script": "test/e2e/treasury-proof.spec.mjs",
+  "fixture": "Separate in-memory household with $60 reported progress and a $15 stateful fake PayPal capture; no actual payment",
+  "label": "ISOLATED FIXTURE \u00b7 fake PayPal \u00b7 no real payment",
+  "owner_records_used": false,
+  "actual_provider_or_model_calls": 0,
+  "software_webgl": true,
+  "reduced_motion": true,
+  "screenshots": [
+    {
+      "file": "desktop-status.png",
+      "sha256": "53abc7d7026e0e5629c31f0274d9fc37c63b3de0df7e59d4d680b93e0260db89",
+      "bytes": 231908,
+      "width": 1440,
+      "height": 1000,
+      "capture_file_written_at_utc": "2026-11-06T20:10:30.342037+00:00"
+    },
+    {
+      "file": "desktop-refusal.png",
+      "sha256": "d05891cc256f133d111deec22cc6b55887e15a49567c8744c4eb313a2bdfb08e",
+      "bytes": 227547,
+      "width": 1440,
+      "height": 1000,
+      "capture_file_written_at_utc": "2026-11-06T20:18:31.680804+00:00"
+    },
+    {
+      "file": "phone-status.png",
+      "sha256": "f532e6e7df1ae879ae3444f76bbf46136cd392b0228e71c7c1998ccb9a346de0",
+      "bytes": 144008,
+      "width": 780,
+      "height": 1688,
+      "capture_file_written_at_utc": "2026-11-06T20:13:02.868384+00:00"
+    },
+    {
+      "file": "phone-refusal.png",
+      "sha256": "ed2cad0ededf4e0e81f15cb8b3ee0179835bb19013f2fab5977c2e15495ad19c",
+      "bytes": 139351,
+      "width": 780,
+      "height": 1688,
+      "capture_file_written_at_utc": "2026-11-06T20:18:47.624631+00:00"
+    }
+  ],
+  "manifest_created_at_utc": "2026-11-06T20:19:06.522035+00:00"
+}

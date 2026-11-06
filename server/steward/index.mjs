@@ -6,6 +6,8 @@ import { dollarFigures } from '../planner/validate.mjs';
 import { isConfirmationHistoryQuestion, isNeedsCheckQuestion } from '../../src/core/steward-questions.js';
 import { confirmationHistoryAnswer } from './confirmation-history.mjs';
 import { needsCheckAnswer } from './needs-check.mjs';
+import { isReadOnlyQuestion } from '../../src/core/steward-policy.js';
+import { readOnlyAnswer } from './policy-answer.mjs';
 
 // The house steward answers a family's questions about their goal and payments. It is read-only:
 // it can read the household ledger and, in sandbox mode, look things up through PayPal's Agent
@@ -181,6 +183,7 @@ export function createSteward({ db, contributions, householdId, ai = null, paypa
       if (focusOrderId !== null && !knownOrderIds.includes(focusOrderId))
         throw new DomainError(404, 'order_not_found', 'That order is not a PayPal contribution for this household and goal.');
       const focus = focusOrderId;
+      if (isReadOnlyQuestion(text)) return readOnlyAnswer();
       if (isNeedsCheckQuestion(text)) return needsCheckAnswer(list);
       if (isConfirmationHistoryQuestion(text)) return confirmationHistoryAnswer(list, focus);
       if (!client) throw new DomainError(409, 'steward_unavailable', 'The house steward needs an AI key (AI_API_KEY) in the server’s .env file.');

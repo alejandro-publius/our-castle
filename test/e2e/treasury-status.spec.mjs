@@ -61,11 +61,11 @@ test('records and receipts show their saved-check status; the local question nam
     await page.waitForFunction(() => document.body.dataset.ready === 'true');
     if (await page.locator('#journey').isHidden()) await page.locator('#journal-toggle').click();
     await page.locator('#tab-ledger').click();
-    await expect(grid).toContainText('PayPal sandbox · checked, matches');
+    await expect(grid).toContainText('Last checked with PayPal: Match');
   }
   async function selectFailed() {
     await page.locator('#ledger-search').fill('check failed');
-    await grid.getByText('check failed', { exact: false }).first().click();
+    await grid.locator('.record-check[data-check="failed"]').first().click();
     await expect(receipt.locator('[data-check="failed"]')).toBeVisible();
   }
   mkdirSync(evidence, { recursive: true });
@@ -75,7 +75,7 @@ test('records and receipts show their saved-check status; the local question nam
     await openLedger();
 
     // 1. Every PayPal record carries its compact status in the grid; a pending match never reads as completed.
-    for (const text of ['PayPal sandbox · checked, matches', 'PayPal sandbox · pending, not checked', 'PayPal sandbox · check failed', 'PayPal sandbox · no saved check']) {
+    for (const text of ['Last checked with PayPal: Match', 'PayPal sandbox · pending, not checked', 'Last checked with PayPal: Needs check', 'PayPal sandbox · no saved check']) {
       await expect(grid).toContainText(text);
     }
     await selectFailed();
@@ -122,7 +122,7 @@ test('records and receipts show their saved-check status; the local question nam
     // Reload: the saved statuses are read back from the server record, with no PayPal call.
     await page.reload();
     await openLedger();
-    await expect(grid).toContainText('PayPal sandbox · check failed');
+    await expect(grid).toContainText('Last checked with PayPal: Needs check');
     await selectFailed();
     expect(writes).toEqual(['POST /api/steward']);
     expect(orderReads()).toBe(readsAtStart);
@@ -173,7 +173,7 @@ test('a failed saved check on an unpaid order exposes one read-only recovery act
     await page.waitForFunction(() => document.body.dataset.ready === 'true');
     if (await page.locator('#journey').isHidden()) await page.locator('#journal-toggle').click();
     await page.locator('#tab-ledger').click();
-    await page.locator('#ledger-goal').getByText('check failed', { exact: false }).first().click();
+    await page.locator('#ledger-goal .record-check[data-check="failed"]').first().click();
     const receipt = page.locator('#ledger-contributions');
     const button = receipt.getByRole('button', { name: 'Check with PayPal', exact: true });
     await expect(receipt.locator('[data-check="failed"]')).toBeVisible();

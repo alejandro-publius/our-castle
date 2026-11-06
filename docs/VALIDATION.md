@@ -1,5 +1,11 @@
 # Validation
 
+## Treasury visibility — unmerged review branch, November 6 PST, 2026
+
+The existing Entry cell now carries a saved check's status/date, and row click/Enter opens the full receipt without checking it. The existing steward panel has one local server-policy refusal action tied to the runtime PayPal allow-list; the one general footer remains visible during scrolling. No new column, payment endpoint, schema change or money-moving tool. [Exact implementation, scope, screenshots and provenance](TREASURY-PROOF.md).
+
+**21 named unit passes and 16 targeted desktop/390 px phone browser passes** (12 Treasury, four existing shell/draft/navigation checks), with inspected actual renders and the 47-file/palette/renderer/syntax guard passing. Initial browser checks exposed stale custom grid cells, and a separate reproduction exposed an older steward answer surviving a newer failed saved check; both are fixed. Synthetic data demonstrates one fake $15 receipt, saved-match persistence, explicit lookup and missed-refund recovery without a second credit/reversal. The refusal is deterministic server policy, not a newly tested model response. All model/provider transports are fake; no owner records, real sandbox orders/reads/refunds, paid calls, recording or activation. This branch is intentionally **not merged**; owner 3010 and rehearsal 3021 stay on their prior source/data.
+
 ## Winner research and checkout readiness — November 6 PST, 2026
 
 [Primary-source comparison and applied decisions](WINNER-RESEARCH.md) covers eight distinct winners across Dev Days 2025, the 2024 Portal PYUSD hackathon and the 2025 Google Cloud bounty. It distinguishes published product descriptions from independent evidence and current rules. The concrete change defers PayPal initialization until an adult chooses Contribute, provides an explicit pre-order load retry with a 20-second script deadline, and binds one active approval attempt to its original order/household scope. It also prevents late callbacks from canceling or enabling a later checkout. Server payment logic, SDK pins, saved checks and art are unchanged.
