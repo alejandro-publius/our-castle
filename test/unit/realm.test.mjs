@@ -4,7 +4,7 @@ import { REALM_SIZE, REALM_BOUNDS, REALM_DISTRICTS, REALM_LEGENDS, REALM_BRIDGES
 import { courtResidents, courtWorldPose, courtDistrict } from '../../src/core/court.js';
 
 test('nine separate districts remain on the world map while only earned destinations and bridges open',()=>{
-  assert.deepEqual(REALM_SIZE,{width:292,depth:196,centerX:32,centerZ:0});
+  assert.deepEqual(REALM_SIZE,{width:356,depth:260,centerX:32,centerZ:0});
   const start=realmAccess({builtTier:0,estateLevel:1});
   assert.equal(start.length,9);assert.deepEqual(start.filter(d=>d.open).map(d=>d.id),['cottage']);
   assert.ok(bridgeAccess({builtTier:0,estateLevel:1}).every(b=>!b.open));

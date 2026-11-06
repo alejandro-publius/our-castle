@@ -1,5 +1,13 @@
 # Validation
 
+## Complete mountain slopes and wider terrain — November 6, 2026
+
+The board adds another 32 world units on every side, from 292×196 to **356×260**, keeping its centre and the original property coordinates. Existing mountain footprints are broader and fully contained, so slopes descend before the board edge. All six river channels continue through the new row to the rim. Homes, nine district/bridge access rules, the PayPal sign and original renderer/palette retain their existing roles. [Reference lock and geography](MOUNTAIN-BORDER.md#extra-mountain-room--november-6).
+
+The realm and terrain unit files passed, including complete mountain-foot containment, level edges, river outlets, dry existing plots, flat frontier clearings and unchanged routes/access. **Six distinct Chromium checks passed** across desktop (1440×1000) and emulated touch-phone (390×844): the new overview/rotation/home/night-rain case, locked exploration without writes, and the simulated Manor unlock retaining the village. The scenery case checks unchanged application state, no external requests, no writes/page errors and no horizontal overflow. The original 47-file/90-colour/renderer/syntax guard passed. No full suite, live provider, payment, paid AI or video was run. Initial unit expectations were updated from the previous board dimensions; the final unit run passed.
+
+Ignored evidence: `test-results/mountain-room/{unit.log,browser.log,check.log}` and browser artifacts. Actual captures and the local activation result are recorded with the mountain follow-up; historical images remain intact.
+
 ## Winner research and checkout readiness — November 6 PST, 2026
 
 [Primary-source comparison and applied decisions](WINNER-RESEARCH.md) covers eight distinct winners across Dev Days 2025, the 2024 Portal PYUSD hackathon and the 2025 Google Cloud bounty. It distinguishes published product descriptions from independent evidence and current rules. The concrete change defers PayPal initialization until an adult chooses Contribute, provides an explicit pre-order load retry with a 20-second script deadline, and binds one active approval attempt to its original order/household scope. It also prevents late callbacks from canceling or enabling a later checkout. Server payment logic, SDK pins, saved checks and art are unchanged.
