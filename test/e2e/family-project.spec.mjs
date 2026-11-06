@@ -141,6 +141,10 @@ test.describe('normal motion', () => {
     expect(later.project.flameScaleY).not.toBe(first.flameScaleY);
     expect(later.project.puffs).not.toEqual(first.puffs);
     expect(later.project.puffs.every((y) => y > 1 && y < 5.2)).toBe(true);
+    for (const smoke of later.project.smokePositions) {
+      expect(Math.abs(smoke[0] - later.project.firePosition[0])).toBeLessThan(1.35);
+      expect(Math.abs(smoke[2] - later.project.firePosition[2])).toBeLessThan(1.35);
+    }
     expect(later.atmosphere).toMatchObject({ period: 'night' });
     expect(later.atmosphere.glassGlow).toBeGreaterThan(0);
     // A redraw into the same-size canvas does not reach this headless compositor's capture until the canvas is resized

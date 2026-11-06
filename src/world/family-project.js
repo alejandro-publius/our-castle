@@ -156,10 +156,10 @@ export function createFamilyProject({ part, models, colours: C }) {
       }
       puffs.forEach((p, i) => {
         const t = (elapsed * .3 + i / 3) % 1;
-        p.position.set(.35 * Math.sin(t * 6 + i), G + 1.4 + t * 3.0, .25 * Math.cos(t * 5 + i));
+        p.position.set(flame.position.x + .35 * Math.sin(t * 6 + i), G + 1.4 + t * 3.0, flame.position.z + .25 * Math.cos(t * 5 + i));
         p.scale.setScalar((.22 + t * .5) * (t > .85 ? (1 - t) / .15 : 1));
       });
     },
-    debug: () => ({ site: { id: SITE.id, x: SITE.x, z: SITE.z }, stage: built && { ...built }, lit: Boolean(flame), flameScaleY: flame ? Number(flame.scale.y.toFixed(4)) : null, puffs: puffs.map((p) => Number(p.position.y.toFixed(4))), ticks, seconds: Number(elapsed.toFixed(4)) }),
+    debug: () => ({ site: { id: SITE.id, x: SITE.x, z: SITE.z }, stage: built && { ...built }, lit: Boolean(flame), flameScaleY: flame ? Number(flame.scale.y.toFixed(4)) : null, firePosition: flame?.position.toArray() ?? null, smokePositions: puffs.map(p => p.position.toArray()), puffs: puffs.map((p) => Number(p.position.y.toFixed(4))), ticks, seconds: Number(elapsed.toFixed(4)) }),
   };
 }
