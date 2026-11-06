@@ -74,7 +74,10 @@ export function createLedgerGrid(container, { formatMoney, onSelect = () => {} }
       cellRenderer: (p) => (p.node.rowPinned ? twoLine(p.data.entry, '') : twoLine(p.data.entry, p.data.when)),
     },
     {
-      colId: 'amount', field: 'signedCents', headerName: 'Amount', minWidth: 84, flex: 0.8, type: 'rightAligned',
+      colId: 'amount', headerName: 'Amount', minWidth: 84, flex: 0.8, type: 'rightAligned', cellDataType: 'number',
+      // Sort the amount shown, including uncredited attempts. Their goal effect remains zero;
+      // real ledger entries (including refunds) and the pinned total keep their signed values.
+      valueGetter: ({ data }) => data?.contribution && !data.recordEntry ? data.contribution.amountCents : data?.signedCents,
       valueFormatter: (p) => (p.data ? p.data.amountText : ''),
     },
     { colId: 'counts', field: 'counts', headerName: 'Counts toward goal', minWidth: 92, flex: 0.9, wrapText: true, autoHeight: true, wrapHeaderText: true, autoHeaderHeight: true },

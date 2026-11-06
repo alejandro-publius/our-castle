@@ -170,6 +170,48 @@ test('a completed contribution opens the Manor once; the Treasury moves on, surv
   expect(await page.evaluate(() => window.__ourCastle.state.rewards.realm.districts.find((d) => d.id === 'manor').open)).toBe(true);
 });
 
+test('Amount sorts displayed pending and declined amounts alongside signed entries without counting them', async ({ page }) => {
+  await open(page);
+  const state = await page.evaluate(() => window.__ourCastle.state);
+  const input = { householdId: state.household.id, goalId: state.goal.id, approverId: 'm_rowan', approvalConfirmed: true };
+  const completed = await s.post('/api/example/contributions', { ...input, amountCents: 500, requestId: 'treasury-sort-completed-0001', outcome: 'completed' });
+  expect(completed.outcome).toBe('completed');
+  for (const [outcome, amountCents, expected] of [['pending', 1500, 'pending'], ['failed', 4000, 'declined']]) {
+    const result = await s.post('/api/example/contributions', { ...input, amountCents, requestId: `treasury-sort-${outcome}-0001`, outcome });
+    expect(result.outcome).toBe(expected);
+  }
+  const refund = await s.post(`/api/example/captures/${completed.contribution.captures[0].captureId}/refund`, input);
+  expect(refund.outcome).toBe('refunded');
+  await page.reload();
+  await page.waitForFunction(() => window.__ourCastle?.state && window.__ourCastle.scene());
+  await openLedger(page);
+  const before = await page.evaluate(() => window.__ourCastle.state);
+  const grid = page.locator('#ledger-goal');
+  const rows = grid.locator('.ag-row:not(.ag-row-pinned)');
+  await expect(rows).toHaveCount(5);
+  const amounts = () => rows.evaluateAll((nodes) => [...nodes]
+    .sort((a, b) => Number(a.getAttribute('row-index')) - Number(b.getAttribute('row-index')))
+    .map((row) => row.querySelector('[col-id="amount"]').textContent.trim()));
+  const header = grid.locator('.ag-header-cell[col-id="amount"]');
+  await header.click();
+  await expect(header).toHaveAttribute('aria-sort', 'ascending');
+  await expect.poll(amounts).toEqual(['−$5.00', '+$5.00', '$15.00', '$40.00', '+$60.00']);
+  await header.click();
+  await expect(header).toHaveAttribute('aria-sort', 'descending');
+  await expect.poll(amounts).toEqual(['+$60.00', '$40.00', '$15.00', '+$5.00', '−$5.00']);
+
+  for (const [amount, status] of [['$15.00', 'Pending — not counted yet'], ['$40.00', 'Declined — not counted']]) {
+    const row = rows.filter({ has: page.locator('[col-id="amount"]').filter({ hasText: amount }) });
+    await expect(row.locator('[col-id="counts"]')).toHaveText('No — not counted');
+    await row.locator('[col-id="amount"]').click();
+    await expect(page.locator('#ledger-contributions')).toContainText(status);
+  }
+  await expect(grid.locator('.ag-row[row-id="total"] [col-id="amount"]')).toHaveText('$60.00');
+  await expect(milestone(page).locator('.next-area-meta')).toHaveText('$60.00 of $75.00 · $15.00 to go');
+  expect(await page.evaluate(() => window.__ourCastle.state)).toEqual(before);
+  expect(writes.get(page)).toEqual([]);
+});
+
 test('Studio live transactions and grid updates preserve sorting, filters, selection and instance', async ({ page }) => {
   await open(page); await openLedger(page);
   await page.locator('#ledger-filter').getByRole('button', { name: 'Goal progress', exact: true }).click();

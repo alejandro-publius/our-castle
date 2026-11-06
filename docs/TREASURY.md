@@ -105,3 +105,19 @@ The next-area strip reuses `assets/area-cards/` with the existing parchment pale
 The original licence validation above is historical 3.0 evidence. The 3.1 browser checks use the unlicensed trial build and fake/example data; the owner’s key was not retrieved or revalidated.
 
 The grid applies stable-ID row transactions, and Studio 3.1 applies live transactions to the existing `areas` and `week` tables. Neither is recreated for ordinary updates. Selection, search and sorting remain in place. If the live-data engine fails, the same local milestone stays visible and the disposed Studio agent is replaced by the existing direct steward runner on the next explicit request; there is no automatic model or provider retry. See [the current validation section](VALIDATION.md) for this pass's checks and screenshots; earlier counts above describe the initial Treasury implementation.
+
+## Column and capability review — November 6
+
+The supplied January 2025 Next.js tutorial introduces application-defined columns; its example athlete/age fields are not a fixed menu of AG Grid financial columns. Our application remains vanilla JavaScript. This review compared the actual four-column configuration with the current [column reference](https://www.ag-grid.com/javascript-data-grid/column-properties/), [feature guide](https://www.ag-grid.com/javascript-data-grid/key-features/), [column state](https://www.ag-grid.com/javascript-data-grid/column-state/), [cell data types](https://www.ag-grid.com/javascript-data-grid/cell-data-types/) and Studio [data modelling](https://www.ag-grid.com/studio/javascript/data-modelling/) / [drill-through](https://www.ag-grid.com/studio/javascript/drill-through/) documentation. It is a product-fit review, not a claim that every option or enterprise feature was implemented or tested.
+
+| Surface | Implemented on this branch | Useful next step, not yet implemented |
+| --- | --- | --- |
+| Record / Entry | Source and saved-check summary; date sort; search; receipt selection | Date and payment-status filters inside the existing Ledger |
+| Amount | Numeric sort of the displayed amount, including uncredited attempts and negative refunds | Numeric range filter; retain the server's pinned progress total |
+| Counts toward goal | Explicit counted / uncounted / non-savings value | Keep this distinct from payment status and the amount shown |
+| Grid state | Transactions preserve selection, search and sorting during updates | Remember the view across reloads, scoped to the authorized household/member/goal after family-access integration |
+| Studio | Two typed sources, a threshold expression, live transactions, original-art milestone, weekly comparison and receipt links, custom steward runner | Evaluate native drill-through only if it improves the existing weekly-record navigation; scope and restore filters explicitly |
+
+The Amount getter uses the displayed pending/declined amount for sorting only. It does not change the zero contribution to progress. Refund entries sort by their signed amount; the pinned total stays canonical. Explicit numeric typing is needed because a value getter disables automatic type inference.
+
+Keep four visible columns and the receipt for detail. Inline financial editing, pivot/report-building controls and more dashboard panels do not serve the current family flow. Pagination or a virtualized fixed-height ledger becomes useful when actual history size warrants it. Studio's weekly bars are application DOM inside a custom widget, not native AG Charts. There are no native cross-source relationships, persisted grid state or per-column filters yet; existing category/search filters and direct receipt links should not be described as those features.

@@ -1,5 +1,13 @@
 # Validation
 
+## Treasury column review and amount sorting — November 6, 2026
+
+Reviewing the current column configuration against AG Grid's column/state/type references exposed an Amount sort error: an uncredited $15 or $40 attempt displayed its actual amount but sorted as zero. The new browser case reproduced that error before correction. The column now uses a numeric value getter for the displayed amount; signed refunds, each row's counted status and canonical goal progress retain their existing values. [Capability inventory and remaining gaps](TREASURY.md#column-and-capability-review--november-6).
+
+**Four focused Chromium cases passed:** the new sorting case and the existing stable-update case on desktop (1440×1000) and emulated touch phone (390×844). Isolated example fixtures include a $5 contribution and refund, pending $15, declined $40 and $60 reported starting progress. Both sort directions are correct, pending/declined receipts remain uncounted, progress remains $60/$300, and filtering/selection/sorting survive ordinary updates. Sorting and receipt selection make no writes or external requests and leave application state unchanged. The original 47-file/palette/renderer/syntax guard and diff check passed. The first harness attempt used an obsolete grid-container selector; it was corrected for the installed 36.3 DOM before reproducing the product bug.
+
+Ignored evidence: `test-results/treasury-columns/{before.log,reproduced.log,after.log,check.log}` and their artifact directories. Existing screenshots and capture-source hashes predate this sorting-only follow-up and were not regenerated. No full suite, paid/provider call, payment, owner-data change, local Mac activation or recording was performed.
+
 ## Channel3 staff availability guidance — November 6, 2026
 
 The existing Merchant source note now distinguishes a Channel3 catalog read from retailer stock verification. A failed CDN image falls back to the existing neutral thumbnail. [Staff guidance and scope](CHANNEL3-MERCHANT.md#staff-availability-guidance-applied--november-6).
