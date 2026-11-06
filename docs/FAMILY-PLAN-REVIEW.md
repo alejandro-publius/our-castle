@@ -4,9 +4,9 @@ Integrated work, November 6, 2026:
 
 | Owner | Work | Finish line |
 | --- | --- | --- |
-| Rachel, PR #8 | Living campsite, its Plan entry and phone access | A family can find the project and see its stages follow existing progress; current Treasury stays working |
+| Rachel, merged [PR #8](https://github.com/alejandro-publius/our-castle/pull/8) | Living campsite, its Plan entry and phone access | A family can find the project and see its stages follow existing progress; current Treasury stays working |
 | Existing owner Claude, merged [PR #9](https://github.com/alejandro-publius/our-castle/pull/9) | Stale-proposal protection and affordable remaining-plan arithmetic | Fresh server facts, read-only calculation, explicit review, scoped fake-provider regressions and a pushed PR |
-| Codex, `feature/family-plan-review` | Compact planning controls and integration review | Try an amount/date before saving, inspect the result, deliberately choose a later date, and recover stale records without losing those choices |
+| Codex, merged [PR #10](https://github.com/alejandro-publius/our-castle/pull/10) | Compact planning controls and integration review | Try an amount/date before saving, inspect the result, deliberately choose a later date, and recover stale records without losing those choices |
 
 The product journey is one shared goal: choose an item if useful, review an affordable plan, approve each contribution, see the project develop, and find its receipt. Each piece must work together in the existing journal. None of the work authorizes another payment, paid model/search call, recording, deployment or submission. Preserve the owner household and completed 3021 rehearsal.
 
@@ -53,3 +53,7 @@ Campsite review reproduced smoke drifting around the meadow origin although the 
 ## Focused integration results
 
 32 unit cases passed; four date-sensitive backend cases also passed under America/Los_Angeles. Desktop/phone runs passed 22 Plan UI cases, two full connected-family journeys, four campsite stage/visit cases and two native-Three positional cases. The separate Mac normal-motion desktop case passed once. The 47-file/palette/renderer/syntax guard and diff checks passed. No full suite or paid/live provider operation was rerun. [Exact runs, initial failures and limits](VALIDATION.md#family-planning-integration-review--november-6-utc-2026).
+
+## Local activation
+
+Reviewed merge `fd7e620` runs from `~/projects/our-castle-reviewed` at http://localhost:3010. The separate 3021 rehearsal is preserved. Both schema-4 databases, every existing application row, core household state, original checkout, environment and runtime modes matched before/after the backed-up restart. Served frontend hashes match reviewed files. Source/activation evidence is linked from [release readiness](RELEASE-READINESS.md#current-mac-app). No new order, provider/model/search call or recording was made. Claude's implementation and two bounded reviews are complete; the submitted campsite head was merged without rewriting Rachel's branch.

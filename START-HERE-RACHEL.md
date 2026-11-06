@@ -1,6 +1,6 @@
 # Rachel: start here
 
-**rachelselbrede already has write access.** The reviewed Treasury work and family campsite are integrated with the owner's affordable-plan checks. Continue any active branch/session first; preserve its uncommitted work. The next non-overlapping task is actual family playtesting, followed by one demonstrated blocker fix if needed. Use your own clone; no fork or runtime API keys are needed. [Current review/evidence guide](docs/JUDGE-HANDOFF.md).
+**rachelselbrede already has write access.** Your campsite PR #8 and its Plan integration PR #10 are merged, alongside the reviewed Treasury work. Continue any active branch/session first; preserve its uncommitted work. The next non-overlapping task is actual family playtesting, followed by one demonstrated blocker fix if needed. Use your own clone; no fork or runtime API keys are needed. [Current review/evidence guide](docs/JUDGE-HANDOFF.md).
 
 ## Run
 
