@@ -1227,7 +1227,7 @@ function receiptStatus(c) {
 
 // ---------- 4. Ledger ----------
 const STATUS_LABEL = {
-  creating: 'Creating', created: 'Awaiting approval', approval_canceled: 'Canceled — nothing charged', pending: 'Pending — not counted yet',
+  creating: 'Creating', created: 'Awaiting approval', approval_canceled: 'Checkout closed', pending: 'Pending — not counted yet',
   completed: 'Completed — counted', declined: 'Declined — not counted', failed: 'Failed — not counted', rejected: 'Rejected (mismatch) — not counted',
   refunded: 'Refunded — progress reversed', partially_refunded: 'Partly refunded',
 };
