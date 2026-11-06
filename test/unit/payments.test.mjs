@@ -107,6 +107,29 @@ for (const adapter of ['rest', 'sdk']) {
     assert.equal(progressFor(env.db, DEMO_GOAL_ID).progressCents, 7500, 'still credited exactly once');
   });
 
+  test(`[${adapter}] a verified capture event for a different PayPal order never credits this contribution, even with its custom id`, async () => {
+    const env = setupDomain({ adapter, mode: 'sandbox' });
+    const orderId = await approvedOrder(env);
+    const row = env.db.prepare('SELECT id FROM payment_orders WHERE provider_order_id = ?').get(orderId);
+    const capture = { id: 'CAPTUREOTHERORDER1', status: 'COMPLETED', amount: { currency_code: 'USD', value: '15.00' }, custom_id: row.id };
+    // Right amount, right currency, our own contribution id, but the capture belongs to an order this server did not create.
+    const foreign = { id: 'WH-EVT-OTHER-ORDER', event_type: 'PAYMENT.CAPTURE.COMPLETED', resource: { ...capture, supplementary_data: { related_ids: { order_id: 'ORDER99999999OTHR' } } } };
+    const ignored = await env.service.handleWebhook({ headers: webhookHeaders, rawBody: JSON.stringify(foreign) });
+    assert.equal(ignored.outcome, 'ignored_unknown_order');
+    assert.equal(progressFor(env.db, DEMO_GOAL_ID).progressCents, 6000);
+    assert.equal(env.db.prepare('SELECT COUNT(*) AS n FROM payment_captures').get().n, 0);
+    assert.equal(env.db.prepare('SELECT status FROM payment_orders WHERE id = ?').get(row.id).status, 'created', 'the contribution is untouched');
+
+    // The same capture reported without any order reference still binds through our contribution id (PayPal may omit
+    // supplementary_data), and reported with the right order it is credited exactly once.
+    const unreferenced = { id: 'WH-EVT-NO-ORDER', event_type: 'PAYMENT.CAPTURE.PENDING', resource: { ...capture, status: 'PENDING' } };
+    assert.equal((await env.service.handleWebhook({ headers: webhookHeaders, rawBody: JSON.stringify(unreferenced) })).outcome, 'pending');
+    assert.equal(progressFor(env.db, DEMO_GOAL_ID).progressCents, 6000);
+    const ours = { id: 'WH-EVT-OUR-ORDER', event_type: 'PAYMENT.CAPTURE.COMPLETED', resource: { ...capture, supplementary_data: { related_ids: { order_id: orderId } } } };
+    assert.equal((await env.service.handleWebhook({ headers: webhookHeaders, rawBody: JSON.stringify(ours) })).outcome, 'completed');
+    assert.equal(progressFor(env.db, DEMO_GOAL_ID).progressCents, 7500);
+  });
+
   test(`[${adapter}] declined instruments and canceled approvals leave progress unchanged`, async () => {
     const declined = setupDomain({ adapter, mode: 'sandbox', paypalOptions: { captureError: { status: 422, issue: 'INSTRUMENT_DECLINED' } } });
     const orderId = await approvedOrder(declined);

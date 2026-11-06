@@ -496,11 +496,14 @@ export function createContributionService({ db, clock, mode, paypal = null, webh
       const resource = event.resource ?? {};
       let outcome = 'ignored';
       if (['PAYMENT.CAPTURE.COMPLETED', 'PAYMENT.CAPTURE.PENDING', 'PAYMENT.CAPTURE.DENIED', 'PAYMENT.CAPTURE.DECLINED'].includes(event.event_type)) {
+        // The order mapping is server-owned. An event that names a PayPal order must name the one this server created for
+        // the contribution; a capture of some other order is never credited here, even if it carries our custom_id. Only
+        // an event that names no order at all falls back to our own contribution id in custom_id.
         const orderId = resource.supplementary_data?.related_ids?.order_id;
-        const row = (orderId && orderByProviderId(orderId)) || (resource.custom_id && orderById(resource.custom_id)) || null;
+        const row = typeof orderId === 'string' ? orderByProviderId(orderId) : resource.custom_id ? orderById(resource.custom_id) : null;
         if (!row || row.provider !== 'paypal-sandbox') outcome = 'ignored_unknown_order';
-        // A verified event that names our own order id may omit custom_id; the order mapping is server-owned.
-        else outcome = applyCapture(row, resource, orderId && row.provider_order_id === orderId ? row.id : null).outcome;
+        // A verified event that names our own order id may omit custom_id.
+        else outcome = applyCapture(row, resource, orderId ? row.id : null).outcome;
       } else if (['PAYMENT.CAPTURE.REFUNDED', 'PAYMENT.CAPTURE.REVERSED'].includes(event.event_type)) {
         const up = (resource.links ?? []).find((l) => l.rel === 'up')?.href ?? '';
         const captureId = /\/captures\/([^/?#]+)/.exec(up)?.[1];
