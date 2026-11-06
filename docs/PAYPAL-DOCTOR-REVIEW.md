@@ -79,3 +79,7 @@ The present owner deployment is localhost-only and has no configured webhook sub
 The [prepared form answer](SUBMISSION-DRAFT.md#prepared-apimatic-plugin-use-answer) cites the actual [installed skills and use map](APIMATIC-CODEX.md). It is still a draft: the authenticated Devpost form is not available through this chat's browser tools, so no field or submission has been saved. The public sponsor brief was rechecked; exact private form wording remains uninspected.
 
 Renaming sandbox accounts can wait until a future owner-run recording. Recording remains paused. No account settings, PayPal transaction, plugin permission, public deployment or hackathon submission changed in this review.
+
+## Local activation
+
+Reviewed source `439ead4` runs at http://localhost:3010 and the preserved http://localhost:3021 rehearsal. The restart followed consistent backups and zero-active-order checks. All existing application rows, schema, household state and environment matched; served frontend and server-source hashes match. Private activation evidence is linked in [release readiness](RELEASE-READINESS.md#current-mac-app). No new provider request, payment, model/search call or recording was made. The source-guided review and code fix are complete; entering the prepared answer in the private Devpost form remains pending.
