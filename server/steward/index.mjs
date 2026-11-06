@@ -3,8 +3,9 @@ import { decimalStringToCents, formatCents, milestoneTargets, nextMilestone } fr
 import { DomainError, getActiveGoal, getHousehold, getMember, progressFor } from '../household.mjs';
 import { PlannerProviderError, mapAnthropicError } from '../planner/anthropic-provider.mjs';
 import { dollarFigures } from '../planner/validate.mjs';
-import { isConfirmationHistoryQuestion } from '../../src/core/steward-questions.js';
+import { isConfirmationHistoryQuestion, isNeedsCheckQuestion } from '../../src/core/steward-questions.js';
 import { confirmationHistoryAnswer } from './confirmation-history.mjs';
+import { needsCheckAnswer } from './needs-check.mjs';
 
 // The house steward answers a family's questions about their goal and payments. It is read-only:
 // it can read the household ledger and, in sandbox mode, look things up through PayPal's Agent
@@ -180,6 +181,7 @@ export function createSteward({ db, contributions, householdId, ai = null, paypa
       if (focusOrderId !== null && !knownOrderIds.includes(focusOrderId))
         throw new DomainError(404, 'order_not_found', 'That order is not a PayPal contribution for this household and goal.');
       const focus = focusOrderId;
+      if (isNeedsCheckQuestion(text)) return needsCheckAnswer(list);
       if (isConfirmationHistoryQuestion(text)) return confirmationHistoryAnswer(list, focus);
       if (!client) throw new DomainError(409, 'steward_unavailable', 'The house steward needs an AI key (AI_API_KEY) in the server’s .env file.');
       if (focus && !paypalTools) throw new DomainError(409, 'paypal_tools_unavailable', 'PayPal verification is not available on this server.');

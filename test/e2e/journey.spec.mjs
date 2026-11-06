@@ -55,6 +55,8 @@ test.beforeEach(async ({ request }) => {
 });
 
 test('full journey: house and crest, example plan, adult approval, receipt, board move and Manor, persists after reload', async ({ page }) => {
+  // This journey verifies the actual unlock card; other journeys may dismiss it automatically.
+  await page.removeLocatorHandler(page.locator('#deed-dialog[open]'));
   const errors = trackErrors(page);
   await ready(page);
   await expect(page.locator('#honesty')).toContainText('Demo mode · simulated payments.');
@@ -87,6 +89,11 @@ test('full journey: house and crest, example plan, adult approval, receipt, boar
 
   const before = await page.locator('#world canvas').screenshot();
   await contribute(page);
+  await expect(page.locator('#deed-dialog')).toHaveAttribute('open', '');
+  await expect(page.locator('#deed-name')).toHaveText('Manor Gardens');
+  await expect(page.locator('#deed-earned')).toHaveText('Unlocked · 25% milestone');
+  await expect(page.locator('#celebration')).toBeHidden(); // one unlock card, no duplicate banner
+  await page.locator('#deed-close').click();
   await expect(page.locator('#give-status')).toContainText('Confirmed by the server');
   const receipt = page.locator('#receipt');
   await expect(receipt).toContainText('Simulated · example mode · no PayPal transaction');
@@ -97,8 +104,8 @@ test('full journey: house and crest, example plan, adult approval, receipt, boar
   await expect(page.locator('#board-title')).toHaveText('Your connected realm');
   await settled(page);
   expect(await scene(page)).toMatchObject({ position: 5, tier: 1, crest: { field: 'violet', charge: 'tower' }, playMode: 'family' });
-  await expect(page.locator('#celebration')).toContainText('The Manor rises!');
-  await expect(receipt).toBeVisible(); // the celebration never hides the receipt
+  await expect(receipt).toBeVisible();
+  await expect(receipt).toBeFocused(); // closing the deed returns to the contribution receipt
   const after = await page.locator('#world canvas').screenshot();
   expect(Buffer.compare(before, after)).not.toBe(0);
   await expect(page.locator('#board-status')).toContainText('space 5 of 20 · Manor Gate');
