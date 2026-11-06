@@ -22,7 +22,7 @@ Primary sources:
 3. [PayPal: Portal PYUSD winners](https://developer.paypal.com/community/blog/winning-solutions-pyusd-portal-hackathon-solana/), December 11, 2024. The March 2025 recap describes the same competition, not another set of wins.
 4. [PayPal: Google Cloud bounty winners](https://developer.paypal.com/community/blog/paypal-google-cloud-bounty-challenge-winners/), July 18, 2025.
 5. [Firsthand Postman account of CrawlerPal](https://community.postman.com/t/postman-paypal-community-winning/79892), May 12, 2025. It describes Vault and subsequent-payment integration; saying CrawlerPal only listed PayPal as a method would be inaccurate.
-6. [CrawlerPal public source](https://github.com/positiveblue/CrawlerPal), inspected in this research for its Orders API request. Current source is not proof of the exact award-day implementation.
+6. [CrawlerPal public source at `2a5655f`](https://github.com/positiveblue/CrawlerPal/tree/2a5655f231128ecc339094a621177fffc5a38222), whose current master commit is dated April 30, 2025; inspected for its Orders API request. Source alone does not establish hosted runtime behavior or every judging decision.
 7. [Current judging criteria](https://paypalaihackathon.devpost.com/): implementation, coherent design, demonstrated impact, innovation and an understandable working demonstration.
 
 ## Decisions across the current judging criteria
@@ -72,3 +72,5 @@ Commands: `npx playwright test test/e2e/checkout-readiness.spec.mjs test/e2e/pay
 Ignored evidence: `test-results/checkout-readiness-{before,after,final}.log` and the final `test-results/artifacts/checkout-readiness-world-*/{world-before-checkout,checkout-retry}.png` captures. Tests used in-memory households, a scripted SDK and stateful fake PayPal transport, blocking unrelated network traffic. No actual PayPal script, popup, payment, paid model/search, owner record or recording was used. Prior real sandbox evidence remains historical; this revised browser wrapper has not been replayed against a real popup. Server money logic and dependencies are unchanged.
 
 Real family accounts, observed playtesting and the unfinished video/form are not marked complete by a checkout improvement. The remaining build priorities are secure shared family participation and goal-specific world projects, alongside Rachel's actual playtest observations. Their value must be demonstrated before making comparative claims about previous winners.
+
+The merged frontend `db5e767` is served on both owner 3010 and preserved rehearsal 3021. Listeners/backend were not restarted, and both databases, environment and original checkout matched before/after. Exact private activation evidence is recorded in release readiness; no owner data was copied into this report.
