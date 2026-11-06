@@ -23,3 +23,9 @@ Refero's already-reviewed MekaVerse/Wayfinder references contribute only world-f
 Final one-off Chromium desktop (1600×1000) and touch-phone (390×844) review contexts passed: day and rotated whole-world views, old-property close view, night/rain, no horizontal overflow, page errors, outside requests or writes, and unchanged example progress/contributions. This is browser emulation, not physical-device or hardware-performance evidence. The original 47-file art/palette/renderer/syntax guard passed. Initial high-sign and pale-rock trials remain in ignored `test-results/mountain-border/`; final evidence is in `final/`.
 
 Actual captured renders: [day](screenshots/mountain-border-day.png), [turned view](screenshots/mountain-border-turned.png), [phone overview](screenshots/mountain-border-phone.png). [Exact source/image hashes](screenshots/mountain-border-capture.json). The existing video predates this expansion and remains unchanged.
+
+## Local activation
+
+Implementation `bca8d1c` is installed in the reviewed Mac worktree and served on both 3010 and 3021. Because the geography is also included in API reward state, both servers were restarted after checking that no checkout was active and making consistent backups. Every application/household/financial row hashes identically before and after; environment bytes, mode and modification time match. SQLite's internal sequence counters may advance during startup and are not presented as unchanged database bytes.
+
+Owner 3010 keeps its original $60 state; the verified 3021 rehearsal keeps $75/$300, its one completed order/capture and contribution credit. Fourteen served source hashes match the actual captured source. No provider, payment or AI call occurred. Private evidence/backups: `~/projects/our-house/test-results/mountain-border-activation-20261106T032915Z/`. Current PIDs are in the ignored rehearsal `session.json`; refresh the browser to load the expanded scenery.

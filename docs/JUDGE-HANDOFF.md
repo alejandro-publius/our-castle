@@ -50,7 +50,7 @@ New unlock cards briefly welcome the household's selected pixel characters besid
 
 ## 4. What remains, by who has to act
 
-**Current Mac apps:** the owner household stays at **http://localhost:3010** and the isolated rehearsal at **http://localhost:3021**, both from `~/projects/our-castle-reviewed`. The original checkout stays clean at `791e8ae`; private keys and both existing databases remain. The rehearsal's current listener is **39365**, with steward compatibility fix `3f72609` active. Owner 3010 was not restarted and retains its original separate $60 state. [Current activation/handoff](RELEASE-READINESS.md#current-sandbox-result-and-remaining-handoff).
+**Current Mac apps:** the owner household stays at **http://localhost:3010** and the isolated rehearsal at **http://localhost:3021**, both from `~/projects/our-castle-reviewed`. The original checkout stays clean at `791e8ae`; private keys and both existing databases remain. The current listeners are 3010 **40477** and 3021 **40484**, after the backed-up mountain-border activation. Application rows and environment are preserved, including 3010's separate original $60 state. The steward fix remains active. [Current activation/handoff](RELEASE-READINESS.md#current-sandbox-result-and-remaining-handoff).
 
 **Completed manual checkout:** the owner was the sole browser operator and completed the approved $15 contribution. This worker inspected the saved capture/credit, fixed the provider's forced-tool incompatibility, and made one necessary same-order steward retry through the local API. It genuinely called `get_order`; the server returned `match`, selected-order `verified`, and no warnings. Do not create another payment or repeat paid suites.
 
