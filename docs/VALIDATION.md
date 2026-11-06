@@ -1,5 +1,13 @@
 # Validation
 
+## Winner research and checkout readiness — November 6 PST, 2026
+
+[Primary-source comparison and applied decisions](WINNER-RESEARCH.md) covers eight distinct winners across Dev Days 2025, the 2024 Portal PYUSD hackathon and the 2025 Google Cloud bounty. It distinguishes published product descriptions from independent evidence and current rules. The concrete change defers PayPal initialization until an adult chooses Contribute, provides an explicit pre-order load retry with a 20-second script deadline, and binds one active approval attempt to its original order/household scope. It also prevents late callbacks from canceling or enabling a later checkout. Server payment logic, SDK pins, saved checks and art are unchanged.
+
+**Before:** three new desktop cases failed with actual hidden initialization, a permanently rejected loader and two fake orders for distinct-id rapid clicks. **After: 22 targeted browser passes** (eight new readiness/race scenarios plus three existing callback regressions, each desktop/390 px touch-phone), with inspected complete-app renders and unchanged application-table fingerprints for load/retry. The initial full-motion software-WebGL run had two scene-interaction timeouts; the final run uses the existing Plan tests' reduced-motion policy. Source guard verified all 47 copied art/runtime files, original 90-colour palette, renderer wiring and syntax; diff checks passed. No full suite was repeated.
+
+Evidence: ignored `test-results/checkout-readiness-{before,after,final}.log` and `test-results/artifacts/checkout-readiness-world-*/*.png`. These are real browser/HTTP tests with scripted SDK/stateful fake PayPal, not real popup or new provider evidence. There was no actual sandbox order, refund, paid model/search call, recording or owner-data test. The historical approved $15 result is retained; this revised browser lifecycle has not been exercised against another real popup.
+
 ## PayPal Doctor checklist and callback recovery — November 6 PST, 2026
 
 Codex applied PayPal's pinned upstream Doctor/best-practices checklist as a source-guided review, not a registered slash command or live probe. It reproduced late SDK cancel/error reporting that contradicted the canonical payment record. The cancel endpoint now reports completed/refunded/pending/unchanged status without changing rows or calling PayPal; the wrapper preserves that response and avoids unsupported “nothing charged/no progress” claims. The existing check row now follows the selected receipt's amount directly, with its timestamp and recovery action together. The local **Needs a check?** query was already present. [Method, exact source, findings and known webhook deployment warning](PAYPAL-DOCTOR-REVIEW.md).

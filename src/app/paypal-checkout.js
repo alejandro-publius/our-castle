@@ -8,15 +8,26 @@ import { api } from './api.js';
 
 let sdkPromise = null;
 function loadSdk(src) {
+  if (!/^https:\/\/www\.sandbox\.paypal\.com\//.test(src)) return Promise.reject(new Error('Only the PayPal sandbox SDK may be loaded.'));
+  if (window.paypal?.createInstance) return Promise.resolve(window.paypal);
   if (!sdkPromise) {
     sdkPromise = new Promise((resolve, reject) => {
-      if (!/^https:\/\/www\.sandbox\.paypal\.com\//.test(src)) { reject(new Error('Only the PayPal sandbox SDK may be loaded.')); return; }
       const script = document.createElement('script');
+      const fail = (message) => {
+        clearTimeout(timer); script.onload = script.onerror = null; script.remove(); reject(new Error(message));
+      };
+      const timer = setTimeout(() => fail('PayPal sandbox checkout took too long to load.'), 20_000);
       script.src = src;
       script.async = true;
-      script.onload = () => (window.paypal ? resolve(window.paypal) : reject(new Error('PayPal SDK loaded without window.paypal')));
-      script.onerror = () => reject(new Error('The PayPal sandbox SDK could not be loaded.'));
+      script.onload = () => {
+        if (!window.paypal?.createInstance) { fail('PayPal SDK loaded without window.paypal'); return; }
+        clearTimeout(timer); script.onload = script.onerror = null; resolve(window.paypal);
+      };
+      script.onerror = () => fail('The PayPal sandbox SDK could not be loaded.');
       document.head.append(script);
+    }).catch((error) => {
+      sdkPromise = null; // only an explicit initialization retry loads again; never retry a payment here
+      throw error;
     });
   }
   return sdkPromise;
@@ -58,58 +69,83 @@ export async function mountPayPalButton(container, { getOrderInput, getOwnership
   const { instance, methods } = await initialize(paypal, config);
   if (!methods.isEligible('paypal')) throw new Error('PayPal is not eligible for this sandbox account or browser.');
 
-  let currentOrderId = null;
-  const session = instance.createPayPalOneTimePaymentSession({
-    async onApprove(data) {
-      const orderId = data?.orderId ?? currentOrderId;
-      onStatus({ kind: 'working', message: 'Approved in PayPal. The server is capturing and checking it…' });
-      try {
-        const result = await api.post(`/api/paypal/orders/${encodeURIComponent(orderId)}/capture`, getOwnership());
-        onResult(result);
-      } catch (error) {
-        onStatus({ kind: 'error', message: error.message, debugId: error.debugId });
-      }
-    },
-    async onCancel() {
-      if (currentOrderId) {
-        try {
-          onResult(await api.post(`/api/paypal/orders/${encodeURIComponent(currentOrderId)}/cancel`, getOwnership()));
-          return; // the server's current receipt, including completed/pending, owns the resulting message
-        } catch { /* the window closing cannot establish a financial result when the local read fails */ }
-      }
-      onStatus({ kind: 'info', message: 'PayPal window closed. Check the contribution record before trying again.' });
-    },
-    onError(error) {
-      console.error('[paypal] checkout error', error);
-      onStatus({ kind: 'error', message: 'PayPal sandbox reported an error. Check the contribution record before trying again.' });
-    },
-  });
-
+  let enabled = false, active = null, latest = null;
   const button = document.createElement('paypal-button');
   button.setAttribute('type', 'pay');
   button.id = 'paypal-button';
+  const syncButton = () => {
+    button.toggleAttribute('disabled', !enabled || Boolean(active));
+    button.setAttribute('aria-disabled', String(!enabled || Boolean(active)));
+    button.setAttribute('aria-busy', String(Boolean(active)));
+  };
+  const finish = (attempt) => { if (active === attempt) { active = null; syncButton(); } };
+  const status = (attempt, value) => { if (latest === attempt) onStatus(value); };
+  syncButton();
   container.replaceChildren(button);
   button.addEventListener('click', async () => {
+    if (!enabled || active) return;
     const input = getOrderInput();
     if (!input) return;
-    currentOrderId = null;
-    onStatus({ kind: 'working', message: 'Creating a sandbox order on the server…' });
-    // Docs: createOrder must resolve to { orderId }. The server sets the amount, not the browser.
-    const orderPromise = api.post('/api/paypal/orders', input).then((created) => {
-      currentOrderId = created.orderId;
-      onStatus({ kind: 'working', message: 'Waiting for approval in the PayPal sandbox window…' });
-      return { orderId: created.orderId };
-    });
-    orderPromise.catch((error) => onStatus({ kind: 'error', message: error.message }));
+    // One user-approved attempt owns its session, order and household scope. Late callbacks from a previous window
+    // cannot cancel the next order or unlock its button. Returning from start() is not a financial outcome.
+    const attempt = { orderId: null, order: null, ownership: { ...getOwnership() }, approving: false };
+    active = latest = attempt; syncButton();
     try {
-      await session.start({ presentationMode: 'auto' }, orderPromise);
+      const session = instance.createPayPalOneTimePaymentSession({
+        async onApprove(data) {
+          attempt.approving = true;
+          status(attempt, { kind: 'working', message: 'Approved in PayPal. The server is capturing and checking it…' });
+          try {
+            await attempt.order;
+            if (!attempt.orderId || (data?.orderId && data.orderId !== attempt.orderId)) throw new Error('The PayPal approval did not match this checkout. Check the contribution record.');
+            onResult(await api.post(`/api/paypal/orders/${encodeURIComponent(attempt.orderId)}/capture`, attempt.ownership));
+          } catch (error) {
+            status(attempt, { kind: 'error', message: error.message, debugId: error.debugId });
+          } finally { attempt.approving = false; finish(attempt); }
+        },
+        async onCancel() {
+          if (attempt.approving || latest !== attempt) return;
+          try {
+            await attempt.order;
+            if (attempt.approving) return; // approval may have arrived while creation was still resolving
+            if (attempt.orderId) {
+              onResult(await api.post(`/api/paypal/orders/${encodeURIComponent(attempt.orderId)}/cancel`, attempt.ownership));
+              return; // the server's canonical receipt owns the result, including completed/pending
+            }
+          } catch { /* closing a window cannot establish a financial result when the local read fails */ }
+          finally { if (!attempt.approving) finish(attempt); }
+          status(attempt, { kind: 'info', message: 'PayPal window closed. Check the contribution record before trying again.' });
+        },
+        async onError(error) {
+          if (latest !== attempt) return;
+          console.error('[paypal] checkout error', error);
+          status(attempt, { kind: 'error', message: 'PayPal sandbox reported an error. Check the contribution record before trying again.' });
+          // Creation/capture may still be in flight. Do not release the button while either callback owns it.
+          await attempt.order?.catch(() => {});
+          if (!attempt.approving) finish(attempt);
+        },
+      });
+      status(attempt, { kind: 'working', message: 'Creating a sandbox order on the server…' });
+      // Docs: createOrder resolves to { orderId }; the server sets the amount. A click creates one request id.
+      attempt.order = api.post('/api/paypal/orders', input).then((created) => {
+        attempt.orderId = created.orderId;
+        status(attempt, { kind: 'working', message: 'Waiting for approval in the PayPal sandbox window…' });
+        return { orderId: created.orderId };
+      });
+      attempt.order.catch((error) => {
+        status(attempt, { kind: 'error', message: error.message });
+        if (!attempt.approving) finish(attempt);
+      });
+      await session.start({ presentationMode: 'auto' }, attempt.order);
     } catch (error) {
       console.error('[paypal] session.start failed', error);
-      onStatus({ kind: 'error', message: error?.message || 'Could not open PayPal sandbox checkout.' });
+      await attempt.order?.catch(() => {});
+      status(attempt, { kind: 'error', message: error?.message || 'Could not open PayPal sandbox checkout. Check the contribution record before trying again.' });
+      if (!attempt.approving) finish(attempt);
     }
   });
   return {
-    setEnabled(enabled) { button.toggleAttribute('disabled', !enabled); button.setAttribute('aria-disabled', String(!enabled)); },
+    setEnabled(value) { enabled = Boolean(value); syncButton(); },
     refresh: (orderId) => api.post(`/api/paypal/orders/${encodeURIComponent(orderId)}/refresh`, getOwnership()),
   };
 }
