@@ -1,5 +1,9 @@
 # Art direction — preserve this visual family
 
+## The family campsite (November 5, 2026)
+
+The unbuilt west meadow beside Hearth Village now holds the family's project: survey stakes, then a construction site, a furnished campsite and finally a gathering place with a pavilion in the crest colour. Its stage is read from the server's current progress through the existing 0/25/60/100 % home milestones, with the 10/40/80 % estate milestones adding detail inside a stage; a refund or a larger goal sets it back. Geometry uses the shared batches, cottage, roof, lantern, shield and bunting models and the original palette; only the campfire flame and smoke move, on the ambient clock. One small tent marker on the map focuses it and names the stage, and Journal → Plan carries the stage on one line with a quiet "Visit campsite" link. No panel, card, reward or payment rule. [Reference lock and checks](FAMILY-PROJECT.md) · [Gathering place](screenshots/family-project-gathering.png) · [Night](screenshots/family-project-gathering-night.png).
+
 ## A couple of candle lanterns (November 5, 2026)
 
 Kit in Hearth Village and Oswin at the Manor carry small brass-framed candle lanterns. At night, a tiny warm flame, restrained flicker and soft nearby ground light follow each guest's hand. Day and afternoon leave the lanterns unlit. The existing night buildings and articulated court are the reference: no extra controls, glowing crowd or large halos. These two familiar guests stay the only carriers as the court grows to twenty. The existing ambient clock drives the effect; reduced motion and modal pause preserve a still illuminated scene.

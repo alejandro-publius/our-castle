@@ -18,6 +18,7 @@ import { REALM_DISTRICTS, REALM_LEGENDS, realmAccess, districtById, homeDistrict
 import { ledgerTrail } from '../core/ledger.js';
 import { createMerchantDialog, resultFacts } from './merchant.js';
 import { createTreasury } from './treasury.js';
+import { FAMILY_PROJECT_SITE, projectLabel, projectStage } from '../core/family-project.js';
 import { CONFIRMATION_HISTORY_QUESTION, NEEDS_CHECK_QUESTION, isLocalQuestion, isNeedsCheckQuestion } from '../core/steward-questions.js';
 import { checkStatus } from '../core/check-status.js';
 import { createPlanCheck } from './plan-check.js';
@@ -462,6 +463,8 @@ function renderBoard({ animate, result, added = [], hasNewDistrict = false }) {
     playMode: household.playMode,
     members: state.members,
     milestoneSpaces: board.milestoneSpaces.map((m) => m.space),
+    // The campsite's stage is read from the server's progress and goal through the existing milestone rules.
+    project: (({ index, key, detail }) => ({ index, key, detail }))(projectStage(state.progress.progressCents, state.goal.targetCents)),
   }, { animate }).then(() => {
     if (!hasNewDistrict && (result?.awarded?.length || added.length)) celebrate(result?.awarded ?? [], added);
   });
@@ -492,6 +495,9 @@ function renderRealmNavigation() {
   $('#realm-markers').replaceChildren(...regions.map((d) => h('button', { type: 'button', class: 'realm-marker', 'data-district': d.id, 'data-status': d.status, 'aria-label': `Inspect ${d.name} on the map`, hidden: true },
     !d.open && h('span', { class: 'realm-lock', 'aria-hidden': 'true', html: lock }), h('strong', {}, d.name))));
   $('#realm-markers').append(h('button', {type:'button',id:'sword-glint',class:'realm-legend','data-legend':'sword-stone','aria-label':'Investigate the glint in the trees','aria-pressed':'false',hidden:true},h('span',{'aria-hidden':'true'},'✦')));
+  // The family campsite: a small tent marker in the west meadow. Selecting it only moves the camera and names its stage.
+  const tent = '<svg viewBox="0 0 28 28" width="28" height="28" fill="none" aria-hidden="true"><path d="M14 4 2.5 24h23L14 4Z" fill="currentColor" stroke="#3b2a12" stroke-width="1.6" stroke-linejoin="round"/><path d="M14 11.5 9 24h10l-5-12.5Z" fill="#3b2a12"/><path d="M14 1v3" stroke="#3b2a12" stroke-width="1.6" stroke-linecap="round"/></svg>';
+  $('#realm-markers').append(h('button', {type:'button',id:'project-marker',class:'realm-legend realm-project','data-legend':FAMILY_PROJECT_SITE.id,'aria-label':`Visit the ${FAMILY_PROJECT_SITE.name.toLowerCase()}`,'aria-pressed':'false',hidden:true},h('span',{'aria-hidden':'true',html:tent})));
   $('#realm-focus-status').textContent = 'Select a district.';
 }
 function syncRealmMarkers({focus,points}){
@@ -505,9 +511,11 @@ function syncRealmMarkers({focus,points}){
   const occupied=[];
   const priority=(p)=>document.activeElement?.dataset?.district===p.id?3:p.id===home?2:0;
   for(const point of [...points].sort((a,b)=>priority(b)-priority(a))){
-    const legend = point.id === 'sword-stone';
-    const el=legend ? $('#sword-glint') : $(`#realm-markers [data-district="${point.id}"]`);if(!el)continue;
-    const visible = (!focus || point.id === focus || legend && ['garden','keep'].includes(focus)) && (!compactOverview || legend || point.id === home || el === document.activeElement) && point.x > 0 && point.x < point.width && point.y > 0 && point.y < point.height;
+    const legend = point.id === 'sword-stone' || point.id === FAMILY_PROJECT_SITE.id;
+    const el=legend ? $(`#realm-markers [data-legend="${point.id}"]`) : $(`#realm-markers [data-district="${point.id}"]`);if(!el)continue;
+    // A small marker also shows while a neighbouring district is in view: the grove beside the garden and keep, the campsite beside the village.
+    const nearby = point.id === 'sword-stone' ? ['garden','keep'] : point.id === FAMILY_PROJECT_SITE.id ? ['cottage'] : [];
+    const visible = (!focus || point.id === focus || legend && nearby.includes(focus)) && (!compactOverview || legend || point.id === home || el === document.activeElement) && point.x > 0 && point.x < point.width && point.y > 0 && point.y < point.height;
     el.hidden = !visible;
     if (visible) {
       const px=Math.max(el.offsetWidth/2+8,Math.min(point.width-el.offsetWidth/2-8,point.x));
@@ -535,7 +543,7 @@ function syncRealmMarkers({focus,points}){
     deedButton.setAttribute('aria-label', `View deed for ${d.name}`);
   } else delete deedButton.dataset.district;
   const secret = REALM_LEGENDS.find(d=>d.id===focus);
-  const message=secret ? secret.name : d && !d.open ? `${d.name} · ${districtCondition(d)}` : '';
+  const message=focus===FAMILY_PROJECT_SITE.id ? projectLabel(projectStage(state.progress.progressCents, state.goal.targetCents)) : secret ? secret.name : d && !d.open ? `${d.name} · ${districtCondition(d)}` : '';
   if($('#realm-focus-status').textContent!==message)$('#realm-focus-status').textContent=message;
 }
 
@@ -722,6 +730,7 @@ function renderPlan() {
   const { goal, progress, modes, plan } = state;
   $('#planner-lede').textContent = '';
   $('#planner-lede').hidden = true;
+  $('#plan-project-stage').textContent = projectLabel(projectStage(progress.progressCents, goal.targetCents));
   $('#ask-planner').textContent = modes.ai.mode === 'live' ? 'Ask the AI planner' : 'Make an example plan';
   renderGoalDraft();
   if (!ui.planFormDirty) {
@@ -1281,6 +1290,12 @@ function visitDistrict(id, e) {
   const marker = $(`#realm-markers [data-district="${CSS.escape(id)}"]`);
   marker?.focus({ preventScroll: true }); revealRealm(marker, { instant: e?.detail === 0 });
 }
+// The same journey as "Visit <district>", to the campsite: close the journal, focus the meadow, land on its marker.
+function visitCampsite(e) {
+  setJournalOpen(false); scene?.focusLegend(FAMILY_PROJECT_SITE.id); $('.realm-map').dataset.focused = 'true';
+  const marker = $('#project-marker');
+  marker?.focus({ preventScroll: true }); revealRealm(marker, { instant: e?.detail === 0 });
+}
 function recordImpact(row) {
   if (row.afterCents === null) return null;
   const open = new Set(state.rewards.realm.districts.filter((d) => d.open).map((d) => d.id));
@@ -1553,6 +1568,7 @@ function bindEvents() {
   });
   merchant = createMerchantDialog({ getState: () => state, onUse: useMerchantItem });
   for (const opener of [$('#open-merchant'), $('#find-goal-item')]) opener.addEventListener('click', (e) => merchant.open(e.currentTarget));
+  $('#visit-campsite').addEventListener('click', visitCampsite);
   $('#goal-draft-save').addEventListener('click', saveGoalDraft);
   $('#goal-draft-review').addEventListener('click', reviewGoalDraft);
   $('#goal-draft-search').addEventListener('click', () => {
