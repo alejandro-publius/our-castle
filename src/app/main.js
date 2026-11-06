@@ -19,7 +19,8 @@ import { ledgerTrail } from '../core/ledger.js';
 import { createMerchantDialog, resultFacts } from './merchant.js';
 import { createTreasury } from './treasury.js';
 import { FAMILY_PROJECT_SITE, projectLabel, projectStage } from '../core/family-project.js';
-import { CONFIRMATION_HISTORY_QUESTION, isConfirmationHistoryQuestion } from '../core/steward-questions.js';
+import { CONFIRMATION_HISTORY_QUESTION, NEEDS_CHECK_QUESTION, isLocalQuestion, isNeedsCheckQuestion } from '../core/steward-questions.js';
+import { checkStatus } from '../core/check-status.js';
 
 // ---------- small helpers ----------
 const $ = (selector, root = document) => root.querySelector(selector);
@@ -1199,11 +1200,13 @@ function ledgerRows() {
     const whenIso = e?.createdAt ?? c.createdAt;
     const amount = e?.amountCents ?? c.amountCents;
     const record = c ? (signed < 0 ? 'Refund' : 'Contribution') : category === 'goal' ? 'Goal progress' : category === 'bill' ? 'Bill paid (habit)' : 'Gift sent';
-    return { ...row, recordEntry: e, whenIso, when: timeLabel(whenIso), record, entry, source: sourceText,
+    // A PayPal record's source line carries its compact saved-check status, so the grid shows it without another column.
+    const check = c ? checkStatus(c) : null;
+    return { ...row, recordEntry: e, whenIso, when: timeLabel(whenIso), record, entry, source: check?.short ? `${sourceText} · ${check.short}` : sourceText, check,
       signedCents: category === 'goal' ? signed : amount,
       amountText: category === 'goal' && e ? `${signed < 0 ? '−' : '+'}${money(amount)}` : money(amount),
       counts: category !== 'goal' ? 'No — not savings' : !e ? 'No — not counted' : signed < 0 ? 'Yes (subtracts)' : 'Yes',
-      searchText: [record, entry, sourceText, timeLabel(whenIso), money(amount), c?.providerOrderId, ...(c?.captures.map((cap) => cap.captureId) ?? [])].filter(Boolean).join(' '),
+      searchText: [record, entry, sourceText, check?.label, check?.short, timeLabel(whenIso), money(amount), c?.providerOrderId, ...(c?.captures.map((cap) => cap.captureId) ?? [])].filter(Boolean).join(' '),
     };
   });
 }
@@ -1217,6 +1220,9 @@ function renderLedgerGrid() {
   if (ui.tab !== 'ledger') return ui.ledgerLayout;
   const rows = ledgerRows(); ensureLedgerSelection(rows);
   if (!ledgerGrid) ledgerGrid = createLedgerGrid($('#ledger-goal'), { formatMoney: money, onSelect: (row) => {
+    // Programmatic selection already rendered the receipt. AG Grid may report it asynchronously; rebuilding the
+    // same receipt then would remove its focused element after an "Open receipt" link moved keyboard focus there.
+    if (ui.ledgerRecord === row.id) return;
     ui.ledgerRecord = row.id; ui.refundArm = null; renderLedgerRecord();
     if (ui.stewardFocus && row.contribution?.providerOrderId !== ui.stewardFocus) $('#steward-answer').hidden = true;
   } });
@@ -1288,7 +1294,11 @@ function renderLedgerRecord() {
     const refundId = row.recordEntry?.effect < 0 ? row.recordEntry.sourceRef?.split(':').at(-1) : null;
     const actions = [];
     if (c.status === 'pending' && c.simulated) actions.push(h('button', { type: 'button', onclick: () => completePending(c.id) }, 'Simulate PayPal completing it'));
-    if (!c.simulated && c.providerOrderId && ['pending', 'completed', 'partially_refunded'].includes(c.status)) actions.push(h('button', { type: 'button', onclick: () => refreshOrder(c.providerOrderId) }, 'Check with PayPal'));
+    // The existing explicit check. It runs only from this button: never on open, search, reload or a local question.
+    const check = checkStatus(c);
+    const checkButton = !c.simulated && c.providerOrderId && (check.needsCheck || ['pending', 'completed', 'partially_refunded'].includes(c.status))
+      ? h('button', { type: 'button', onclick: () => refreshOrder(c.providerOrderId) }, 'Check with PayPal') : null;
+    if (checkButton && !check.needsCheck) actions.push(checkButton);
     if (!c.simulated && c.providerOrderId && state.steward.paypalTools) {
       actions.push(h('button', { type: 'button', onclick: () => askSteward(`Did PayPal confirm the ${money(c.amountCents)} contribution?`, c.providerOrderId) }, 'Ask the steward to verify'));
     }
@@ -1303,7 +1313,12 @@ function renderLedgerRecord() {
         h('span', { class: `tag ${c.simulated ? 'simulated' : 'sandbox'}` }, c.simulated ? 'simulated' : 'PayPal sandbox'))),
       recordImpact(row),
       // The server's record of the last explicit "Check with PayPal": its own reconciliation of PayPal's order, kept across reloads.
-      c.lastCheck ? h('p', { class: 'fine last-check' }, `Last checked with PayPal ${timeLabel(c.lastCheck.checkedAt)} · ${c.lastCheck.note}`) : null,
+      // A record that needs a check carries that action right here; a completed capture with no check says so.
+      check.key !== 'none' ? h('p', { class: 'fine last-check', 'data-check': check.key },
+        h('span', { class: `verdict ${check.tone}` }, check.label),
+        c.lastCheck ? h('span', {}, timeLabel(c.lastCheck.checkedAt)) : null,
+        c.lastCheck ? h('span', { class: 'check-note' }, c.lastCheck.note) : null,
+        check.needsCheck ? checkButton : null) : null,
       h('details', { class: 'record-ids' }, h('summary', {}, 'Payment details'),
         h('div', { class: 'ids' }, `${timeLabel(c.createdAt)} · order ${c.providerOrderId ?? '—'}${capture ? ` · capture ${capture.captureId}` : ''}${refundId ? ` · refund ${refundId}` : ''}`),
         c.checks?.length > 1 ? h('ul', { class: 'ids check-history', 'aria-label': 'Earlier checks with PayPal' },
@@ -1325,19 +1340,20 @@ function renderSteward() {
   if (!suggestions.childElementCount) {
     suggestions.append(h('button', { type: 'button', 'data-question': STEWARD_SUGGESTIONS[0], 'aria-label': STEWARD_SUGGESTIONS[0] }, h('span', {}, 'Check last payment')));
     suggestions.append(h('button', { type: 'button', 'data-question': CONFIRMATION_HISTORY_QUESTION }, 'Last confirmation'));
+    suggestions.append(h('button', { type: 'button', 'data-question': NEEDS_CHECK_QUESTION }, 'Needs a check?'));
   }
   const disabled = !steward.available || ui.stewardBusy;
   for (const el of [$('#steward-form input'), $('#steward-ask')]) el.disabled = disabled;
   $('#steward-form').hidden = !steward.available;
   for (const button of $$('#steward-suggestions button')) {
-    const local = isConfirmationHistoryQuestion(button.dataset.question);
+    const local = isLocalQuestion(button.dataset.question);
     button.hidden = local ? !steward.localHistory : !steward.available;
     button.disabled = ui.stewardBusy || !(local ? steward.localHistory : steward.available);
   }
 }
 
 async function askSteward(question, focusOrderId = null) {
-  const local = state.steward.localHistory && isConfirmationHistoryQuestion(question);
+  const local = state.steward.localHistory && isLocalQuestion(question);
   if ((!state.steward.available && !local) || ui.stewardBusy) return;
   if (focusOrderId) ui.ledgerRecord = ledgerRows().find((r) => r.contribution?.providerOrderId === focusOrderId)?.id ?? ui.ledgerRecord;
   if (ui.tab !== 'ledger') selectTab('ledger', { focus: false });
@@ -1346,7 +1362,7 @@ async function askSteward(question, focusOrderId = null) {
   ui.stewardFocus = focusOrderId;
   ui.stewardBusy = true;
   renderSteward();
-  setStatus('#steward-status', 'working', local ? 'Reading saved confirmations…' : state.steward.paypalTools ? 'The steward is reading the ledger and checking with PayPal…' : 'The steward is reading the ledger…');
+  setStatus('#steward-status', 'working', local ? 'Reading saved records…' : state.steward.paypalTools ? 'The steward is reading the ledger and checking with PayPal…' : 'The steward is reading the ledger…');
   $('#steward-answer').hidden = true;
   try {
     const res = await treasury.askSteward({ question, memberId: persona()?.id, focusOrderId });
@@ -1374,8 +1390,11 @@ function renderStewardAnswer(res) {
   box.hidden = false;
   box.replaceChildren(
     h('strong', { class: `verification-title ${matched ? 'verified' : ''}` },
-      local ? 'Saved confirmation' : matched ? 'PayPal and ledger match' : focus ? 'Payment not yet verified' : 'House steward'),
+      local ? (res.kind === 'needs-check' ? 'PayPal checks' : 'Saved confirmation') : matched ? 'PayPal and ledger match' : focus ? 'Payment not yet verified' : 'House steward'),
     h('p', { class: 'steward-text' }, res.answer),
+    // Receipts the local answer names: opening one only selects that record. The check itself stays a separate button.
+    res.receipts?.length ? h('div', { class: 'actions receipt-links' }, ...res.receipts.map((r) =>
+      h('button', { type: 'button', class: 'link-button', 'data-open-receipt': r.contributionId, onclick: () => openReceipt(r.contributionId) }, `Open receipt · ${r.amount} · ${r.status}`))) : null,
     ...(res.warnings.length ? [h('div', { class: 'callout warn' }, res.warnings.join(' '))] : []),
     h('details', { class: 'verification-details' }, h('summary', {}, 'What was checked'),
       h('small', {}, local ? 'Saved household record · read-only' : `${res.model} · read-only${res.paypalTools ? ' · PayPal Agent Toolkit' : ''}`),
@@ -1385,6 +1404,17 @@ function renderStewardAnswer(res) {
         c.reconciliation?.verdict === 'action' ? h('button', { type: 'button', onclick: () => refreshOrder(c.orderId) }, 'Check with PayPal') : null))
         : [h('li', {}, 'Nothing was checked.')]))),
   );
+}
+
+/** Select one contribution's receipt in the ledger and move focus to it. It reads nothing from the server. */
+function openReceipt(contributionId) {
+  const rows = ledgerRows();
+  const row = rows.find((r) => r.contribution?.id === contributionId && !(r.recordEntry?.effect < 0)) ?? rows.find((r) => r.contribution?.id === contributionId);
+  if (!row) return;
+  ui.ledgerRecord = row.id; ui.refundArm = null;
+  ledgerGrid?.selectRecord(row.id);
+  renderLedgerRecord();
+  $('#ledger-contributions li')?.focus();
 }
 
 async function completePending(id) {
@@ -1604,7 +1634,8 @@ function bindEvents() {
   });
   $('#steward-suggestions').addEventListener('click', (e) => {
     const b = e.target.closest('[data-question]');
-    if (b) askSteward(b.dataset.question, state.contributions.find((c) => !c.simulated && c.providerOrderId)?.providerOrderId ?? null);
+    // The "needs a check" question covers every record of this goal, so it is never focused on one order.
+    if (b) askSteward(b.dataset.question, isNeedsCheckQuestion(b.dataset.question) ? null : state.contributions.find((c) => !c.simulated && c.providerOrderId)?.providerOrderId ?? null);
   });
   $('#steward-form').addEventListener('submit', (e) => {
     e.preventDefault();

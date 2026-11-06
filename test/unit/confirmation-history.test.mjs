@@ -80,7 +80,8 @@ test('an older confirmation stays historical when the newest check failed', asyn
   const orderId = await captured(env);
   await env.service.refreshPayPalOrder({ providerOrderId: orderId, ...owner(env) });
   const confirmedAt = env.clock.iso();
-  env.clock.now = () => new Date('2026-11-03T12:05:00Z');
+  const later = Date.parse(env.clock.iso()) + 5 * 60_000;
+  env.clock.now = () => new Date(later);
   env.paypal.getOrder = async () => { throw new PayPalError('Offline fixture', { status: 500 }); };
   await assert.rejects(env.service.refreshPayPalOrder({ providerOrderId: orderId, ...owner(env) }), { code: 'paypal_error' });
   const before = rows(env.db), { steward, calls } = localSteward(env, { configured: true });
@@ -118,7 +119,8 @@ test('newest-order selection, foreign-order/member refusal and simulated records
   const env = setupDomain({ mode: 'sandbox' });
   const first = await captured(env);
   await env.service.refreshPayPalOrder({ providerOrderId: first, ...owner(env) });
-  env.clock.now = () => new Date('2026-11-03T12:10:00Z');
+  const later = Date.parse(env.clock.iso()) + 10 * 60_000;
+  env.clock.now = () => new Date(later);
   const { orderId: next } = await env.service.createPayPalOrder(contribution());
   const { steward, calls } = localSteward(env);
   const res = await steward.ask({ question, memberId: 'm_rowan' });
