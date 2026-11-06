@@ -7,21 +7,29 @@ import { api } from './api.js';
 // kept as a fallback because some v6 reference pages still describe token-based initialization.
 
 let sdkPromise = null;
+const hasV6 = () => typeof window.paypal?.createInstance === 'function';
 function loadSdk(src) {
   if (!/^https:\/\/www\.sandbox\.paypal\.com\//.test(src)) return Promise.reject(new Error('Only the PayPal sandbox SDK may be loaded.'));
-  if (window.paypal?.createInstance) return Promise.resolve(window.paypal);
+  if (hasV6()) return Promise.resolve(window.paypal);
   if (!sdkPromise) {
     sdkPromise = new Promise((resolve, reject) => {
       const script = document.createElement('script');
       const fail = (message) => {
         clearTimeout(timer); script.onload = script.onerror = null; script.remove(); reject(new Error(message));
       };
-      const timer = setTimeout(() => fail('PayPal sandbox checkout took too long to load.'), 20_000);
+      const loaded = () => {
+        clearTimeout(timer); script.onload = script.onerror = null; resolve(window.paypal);
+      };
+      // Match PayPal's v6 loader resilience: allow slow downloads, and accept an available v6
+      // namespace if the element's load event was missed. A v5 namespace is insufficient.
+      const timer = setTimeout(() => {
+        if (hasV6()) loaded(); else fail('PayPal sandbox checkout took too long to load.');
+      }, 60_000);
       script.src = src;
       script.async = true;
       script.onload = () => {
-        if (!window.paypal?.createInstance) { fail('PayPal SDK loaded without window.paypal'); return; }
-        clearTimeout(timer); script.onload = script.onerror = null; resolve(window.paypal);
+        if (!hasV6()) { fail('PayPal SDK loaded without window.paypal'); return; }
+        loaded();
       };
       script.onerror = () => fail('The PayPal sandbox SDK could not be loaded.');
       document.head.append(script);
