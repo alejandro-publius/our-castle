@@ -1,5 +1,9 @@
 # Validation
 
+## Steward capability note — November 6 PST, 2026
+
+The existing note inside House steward now states that it reads records and cannot make payments, with PayPal/household scope kept accurate. The change is one copy line in `renderSteward`; no new notice, panel, tool or action. Four isolated Chromium inspections (desktop/390 px touch phone, with/without injected PayPal read tools) showed the correct note without page overflow, errors, external browser requests, writes, model/provider calls or application-table changes. Representative actual captures were inspected. The AI client and tools were inactive fakes; this checks copy/layout, not a new model refusal or live PayPal result. Changed-source syntax and diff checks passed; no suite was rerun for the copy edit. Ignored evidence: `test-results/steward-note/{review.log,review.json,desktop-*.png,phone-*.png}`. The existing receipt saved-status/timestamp/recovery behavior was confirmed in source; it was not rebuilt or backfilled. Recording remains paused.
+
 ## Family planning integration review — November 6 UTC, 2026
 
 Reviewed Claude PR #9's server contract alongside Rachel PR #8's campsite, then connected both in the existing Plan journal. **Check schedule** tries a weekly amount/date without saving or invoking AI; **Try [date]** only fills the form. The accepted schedule stays marked **in use**. Changed facts prevent an old proposal being accepted/edited; a local refresh retains unsaved bill rows and trial fields. Market drafts clear old calculations immediately. Enter in a trial amount/date remains read-only; an explicit Make-plan action still saves deliberately. Refused schedule edits show one error. [Reference lock and independent review](FAMILY-PLAN-REVIEW.md) · [backend contract](PLANNING-REVISION.md).
