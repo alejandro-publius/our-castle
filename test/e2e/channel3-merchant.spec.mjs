@@ -113,7 +113,7 @@ test('Market Town merchant: explicit search, at most three honest rows, a draft 
   await tent.locator('summary').click();
   await expect(tent.getByRole('button', { name: /Visit example-outfitter\.com/ })).toBeVisible();
   await expect(tent.locator('a[href]')).toHaveCount(0);
-  await expect(page.locator('#merchant-source')).toContainText('tax and shipping not included. We may earn a commission when you buy through links on this page.');
+  await expect(page.locator('#merchant-source')).toContainText('retailer price and stock may differ. Tax/shipping extra. We may earn a commission from these links.');
   await expect(page.locator('#merchant-status')).toContainText('Budget $200.00');
   expect(await dialog.evaluate((d) => d.getBoundingClientRect().right <= innerWidth && d.scrollWidth <= d.clientWidth + 1)).toBe(true);
   mkdirSync(evidence, { recursive: true });
@@ -332,6 +332,29 @@ test('retailer visit refreshes the short-lived link and asks for review when the
   expect(visited).toEqual(['https://buy.trychannel3.com/fake/current-link']);
   expect(s.fake.calls.filter((c) => c.method === 'GET')).toHaveLength(2);
   expect(await stateOf(page)).toEqual(before);
+});
+
+test('a deleted catalog item closes the waiting tab and never opens its old retailer link', async ({ page }) => {
+  await open(page, { respondWith: (url) => url.includes('/products/')
+    ? new Response('{"detail":"Product not found"}', { status: 404 }) : fakeSearchResponse([fakeProduct()]) });
+  // A missing CDN image keeps a neutral thumbnail rather than a broken image or a provider retry.
+  await page.route('https://cdn.trychannel3.com/**', (route) => route.fulfill({ status: 404, body: 'Fixture image missing' }));
+  const visited = [];
+  await page.context().route('https://buy.trychannel3.com/**', (route) => { visited.push(route.request().url()); return route.abort(); });
+  const before = await stateOf(page);
+  await page.locator('#open-merchant').click(); await page.locator('#merchant-query').fill('tent'); await page.locator('#merchant-search').click();
+  const item = page.locator('#merchant-results > li').first();
+  await expect(item.locator('.merchant-item-image.empty')).toHaveCount(1);
+  await item.locator('summary').click();
+  await item.getByRole('button', { name: /Visit example-outfitter/ }).click();
+  await expect(page.locator('#merchant-status')).toHaveText('This item is no longer in the catalog. Search for another item.');
+  await expect(page.locator('#merchant-results > li')).toHaveCount(0);
+  await expect(page.locator('#merchant-source')).toBeHidden();
+  await expect.poll(() => page.context().pages().length).toBe(1);
+  expect(visited).toEqual([]);
+  expect(s.fake.calls.map((c) => c.method)).toEqual(['POST', 'GET']);
+  expect(await stateOf(page)).toEqual(before);
+  await expect(page.locator('#merchant-query')).toHaveValue('tent');
 });
 
 test('a changed family goal keeps the chosen product for explicit review and confirmation', async ({ page }, info) => {

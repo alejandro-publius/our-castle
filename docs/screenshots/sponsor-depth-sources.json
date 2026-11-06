@@ -13,7 +13,7 @@
     {
       "path": "docs/screenshots/sponsor-merchant-desktop.png",
       "source_capture": "test-results/channel3-merchant/evidence/desktop-cheaper-options.png",
-      "sha256": "573e98392903b318da96a546bf6bf8174c7a8d8613f36048c62352786a6beeb9"
+      "sha256": "33c694700ea5464b00542f5e61eff0ed9ea84288997f4f0794825bdac924c0ae"
     },
     {
       "path": "docs/screenshots/sponsor-merchant-phone.png",
@@ -32,7 +32,7 @@
     }
   ],
   "source_sha256": {
-    "src/app/merchant.js": "eb50da20b5bdd8b9ef5517309768d46ff40045d05dceaf4dbab4051285924017",
+    "src/app/merchant.js": "5fd8b3c99ba53eb568404943a16cab9a5d144bde98164cf7b7f1dcc8b3fddecc",
     "src/app/treasury.js": "38e7c388e614b896e5ac930fe8afc54a5032c43bf03c4244141a47df5eea467f",
     "src/app/ledger-grid.js": "44076dbd80216d34a70c9c30ab5424ff0560226b0269098eac7ae67ebf0320db",
     "src/app/main.js": "156d3d3358e72fedc103d48abf49bf09d69b0ac783ac83bae94d99358a14dabf",
@@ -45,9 +45,10 @@
     "server/payments/paypal-sdk-client.mjs": "4abca244f446d5943965cc85a199b569017dc2977ac7a98fa72425e2b424247b",
     "app.css": "eebf4bd26633c1f865fa0d42566d4f03eab2f4ec1068ba716720a5e2eb91badc",
     "package-lock.json": "9c53f40b951dbd30b78300dbff536a71a214ca6f5999c85e0e7dc0852511b1bc",
-    "test/e2e/channel3-merchant.spec.mjs": "94d4df0aa25d44a69b219d13e10aa33c19ae6d3229dccc4d53903a0451b110de",
+    "test/e2e/channel3-merchant.spec.mjs": "dc8c3f7e13c77465501c48eac5732cd7affc8359391f2e6eaec3b6d1979bc0db",
     "test/e2e/treasury.spec.mjs": "5462e03e638818eea1bfe1e749afca59364a95ba2efd612c5b494efc4c0e3bc1",
     "test/e2e/studio-agent.spec.mjs": "b3d3d82f49b0706bcc93912f839722d853315d846917f35d6c7db204217e871b",
     "test/unit/paypal-sdk-transport.test.mjs": "e7f4f2e066383601015612439ee1833ec420693e39bf3db442a4fb11bf31e4c4"
-  }
+  },
+  "merchant_followup": "November 6: existing single catalog note clarifies retailer price/stock limits; refreshed captures follow six passing focused browser checks, including deleted-product and broken-CDN cases. No live provider call."
 }

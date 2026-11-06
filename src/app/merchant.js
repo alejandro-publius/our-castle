@@ -20,6 +20,7 @@ function h(tag, attrs = {}, ...children) {
 const AVAILABILITY = { InStock: 'In stock', OutOfStock: 'Out of stock' };
 const clock = (iso) => new Date(iso).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
 const price = (r) => (r.priceCents === null ? 'No price returned' : `${formatCents(r.priceCents, r.currency)} ${r.currency}`);
+const sourceNote = (checkedAt) => `Channel3 catalog checked ${clock(checkedAt)}; retailer price and stock may differ. Tax/shipping extra. We may earn a commission from these links.`;
 
 /** Facts that stay next to a result wherever it is shown: price and currency, merchant, returned availability. */
 export function resultFacts(r) {
@@ -77,9 +78,10 @@ export function createMerchantDialog({ getState, onUse }) {
 
   function row(r, context) {
     const name = h('h3', { class: 'merchant-item-name', id: `merchant-item-${r.productId}` }, r.title);
+    const placeholder = () => h('span', { class: 'merchant-item-image empty', 'aria-hidden': 'true' });
     const picture = r.image
-      ? h('img', { class: 'merchant-item-image', src: r.image.url, alt: r.image.alt, width: 64, height: 64, loading: 'lazy', decoding: 'async', referrerpolicy: 'no-referrer' })
-      : h('span', { class: 'merchant-item-image empty', 'aria-hidden': 'true' });
+      ? h('img', { class: 'merchant-item-image', src: r.image.url, alt: r.image.alt, width: 64, height: 64, loading: 'lazy', decoding: 'async', referrerpolicy: 'no-referrer', onerror: (e) => e.currentTarget.replaceWith(placeholder()) })
+      : placeholder();
     const facts = resultFacts(r);
     const meta = h('p', { class: 'merchant-item-meta' }, h('strong', {}, facts[0]), ...facts.slice(1).map((f) => ` · ${f}`));
     const notes = [r.overBudget && 'Over your budget', !r.usable && r.priceCents !== null && r.unusableReason].filter(Boolean); // a missing price is already said once
@@ -101,7 +103,7 @@ export function createMerchantDialog({ getState, onUse }) {
 
   function showResults(res, context) {
     list.replaceChildren(...res.results.map(r => row(r, { ...context, goalId: res.goalId, goalRevision: res.goalRevision })));
-    source.textContent = `Channel3 prices and stock, checked ${clock(res.checkedAt)}; tax and shipping not included. We may earn a commission when you buy through links on this page.`;
+    source.textContent = sourceNote(res.checkedAt);
     source.hidden = !res.results.length;
   }
 
@@ -129,7 +131,7 @@ export function createMerchantDialog({ getState, onUse }) {
       } else {
         const item = res.results[0];
         const changed = Number.isSafeInteger(item.previousPriceCents) && item.previousPriceCents !== item.priceCents;
-        say('ok', !item.usable ? (item.unusableReason ?? 'Review this item.') : changed ? `Price changed: ${formatCents(item.previousPriceCents)} → ${price(item)}. Your goal is unchanged.` : 'Price & stock checked.');
+        say('ok', !item.usable ? (item.unusableReason ?? 'Review this item.') : changed ? `Price changed: ${formatCents(item.previousPriceCents)} → ${price(item)}. Your goal is unchanged.` : 'Channel3 listing checked.');
         if (visit && retailerWindow) {
           if (item.usable && item.url && item.priceCents === visit.priceCents && item.currency === visit.currency && item.availability === visit.availability) {
             retailerWindow.location.replace(item.url);
@@ -180,7 +182,7 @@ export function createMerchantDialog({ getState, onUse }) {
       } else {
         say('ok', `${res.results.length} ${res.results.length === 1 ? 'result' : 'results'} for “${res.query}”${res.budgetCents ? ` · Budget ${formatCents(res.budgetCents)}` : ''}.`);
         // Channel3's required link disclosure sits with the links; the price facts stay with the results.
-        source.textContent = `Channel3 prices and stock, checked ${clock(res.checkedAt)}; tax and shipping not included. We may earn a commission when you buy through links on this page.`;
+        source.textContent = sourceNote(res.checkedAt);
         source.hidden = false;
       }
     } catch (error) {

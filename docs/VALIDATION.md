@@ -1,5 +1,11 @@
 # Validation
 
+## Channel3 staff availability guidance — November 6, 2026
+
+The existing Merchant source note now distinguishes a Channel3 catalog read from retailer stock verification. A failed CDN image falls back to the existing neutral thumbnail. [Staff guidance and scope](CHANNEL3-MERCHANT.md#staff-availability-guidance-applied--november-6).
+
+**Six focused Chromium checks passed** across desktop and 390 px touch-phone: the existing search/draft/save journey, saved-item refresh/three alternatives/explicit confirmation, and a new deleted-product case at each size. The new case also checks the broken-image fallback. A catalog 404 closes the reserved retailer tab, removes the stale result, retains the query, never opens the old offer link, makes no automatic retry, and leaves all application state unchanged. Merchant captures below were refreshed from these actual fixture renders. No paid search, live catalog call, payment, owner data or full-suite rerun was involved.
+
 ## Sponsor freshness, live Treasury data and SDK contracts — November 6 UTC, 2026
 
 `feature/sponsor-depth`, based on `e7afafc`, adds explicit saved-item refresh and cheaper alternatives to the existing Merchant; Studio 3.1 live transactions, original area artwork and a compact weekly comparison to Treasury; and six tests of the real PayPal SDK 2.5.0 transport contracts. The world, payment rules and approved 3021 evidence are preserved. [Merchant contract/source notes](CHANNEL3-MERCHANT.md#freshness-and-cheaper-alternatives--november-6) · [Treasury behavior](TREASURY.md#sponsor-depth-behavior-november-6) · [APIMatic method](APIMATIC-CODEX.md#actual-sdk-transport-contracts--november-6).

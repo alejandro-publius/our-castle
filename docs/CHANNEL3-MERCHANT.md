@@ -43,7 +43,7 @@ From each product the adapter picks one offer: the goal currency first, then wit
 - one image, either `cleaned_url` or `url`, and only from `*.trychannel3.com`, the page's only extra `img-src`;
 - the offer's `url` (https only), `domain`, `price.price` and `price.currency`, `availability` and `condition`.
 
-A missing price stays "No price returned". A non-USD price is shown in its own currency and cannot become the USD goal; prices are never converted. The panel carries one line near the links: "Channel3 prices and stock, checked HH:MM; tax and shipping not included. We may earn a commission when you buy through links on this page." The second sentence is the disclosure Channel3's commissions page requires wherever its links appear.
+A missing price stays "No price returned". A non-USD price is shown in its own currency and cannot become the USD goal; prices are never converted. The panel carries one note near the links: "Channel3 catalog checked HH:MM; retailer price and stock may differ. Tax/shipping extra. We may earn a commission from these links." This distinguishes a catalog read from retailer verification and keeps the affiliate disclosure with the links.
 
 Server bounds:
 - query 2–80 characters, and a link is refused rather than sent;
@@ -126,8 +126,8 @@ Fixture stills (drawn stand-in image, invented products): [results](screenshots/
 ## Remaining
 
 - US/USD search only, because the goal currency is USD.
-- No price refresh. Channel3's free `GET /v1/products/{id}` could recheck a saved item but is not wired.
-- Saved offer links may expire.
+- Explicit catalog refresh and cheaper alternatives are implemented in the November 6 extension below; those endpoints still lack live-provider evidence.
+- Saved offer links may expire. A visit reads the catalog again and uses the returned link; retailer availability can still differ.
 - The owner's 3010 app was updated and restarted November 5; the additive `goal_items` table is empty and all prior application records are preserved.
 - Claude's direct Devpost fetch returned 403. Codex subsequently read the public [brief](https://paypalaihackathon.devpost.com/details/channel3): meaningful API/MCP use is required, and one real search is recorded above. The advertised 20,000-search promotion was not applied or tested.
 - None of this is PayPal, checkout or verified-savings evidence.
@@ -145,3 +145,9 @@ Contracts for this extension were read from the [official Channel3 skills reposi
 - Option labels and condition are additive provenance, not private account data. The same goal-revision guard still protects saving after another tab edits the goal.
 
 Tests use only invented products and an injected Channel3 transport. The earlier November 5 live search remains the live evidence; product refresh and similar endpoints have **not** been called with the owner's key in this pass. Automatic price subscriptions and checkout services are not added.
+
+### Staff availability guidance applied — November 6
+
+The supplied feature-request thread adds a material limitation. George's August 10–12 replies distinguish incorrect stock extraction from stale links; a deleted product can redirect an older offer link to a merchant home page while `GET /products/{id}` returns 404. His September 11 update reports availability **signal coverage**, not verified-stock accuracy. Re-reading Channel3's product endpoint therefore does not establish a fresh scrape or independently confirm retailer stock. `checkedAt` is Our Castle's catalog-read time, not the retailer's update time. The existing single source note and success feedback now reflect that distinction.
+
+The visit flow already re-reads the product and refuses a 404 before opening any retailer URL. The added browser case verifies that it closes the reserved tab, removes stale results, retains the search, leaves all goal/financial records unchanged and makes no automatic retry. Failed CDN images use the existing neutral thumbnail instead of a broken-image icon. Cleaned images remain preferred where supplied; the October 6 transparent-background discussion describes a proof of concept, so no released background-removal capability is assumed. Website/category filtering requests are not treated as implemented API contracts.
