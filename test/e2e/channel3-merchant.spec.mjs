@@ -40,7 +40,7 @@ async function startServer({ withKey = true } = {}) {
   const app = createApp({ config: loadConfig({}, { root }), db, clock, merchant, root });
   const server = http.createServer(app.handler);
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
-  return { base: `http://localhost:${server.address().port}`, fake, db, close: () => new Promise((r) => { server.close(r); db.close(); }) };
+  return { base: `http://localhost:${server.address().port}`, fake, db, clock, close: () => new Promise((r) => { server.close(r); db.close(); }) };
 }
 
 let s;
@@ -112,6 +112,7 @@ test('Market Town merchant: explicit search, at most three honest rows, a draft 
   await expect(link).toHaveAttribute('href', 'https://buy.trychannel3.com/fake/tent-a');
   await expect(link).toHaveAttribute('rel', 'noopener noreferrer nofollow');
   await expect(page.locator('#merchant-source')).toContainText('tax and shipping not included. We may earn a commission when you buy through links on this page.');
+  await expect(page.locator('#merchant-status')).toContainText('Budget $200.00');
   expect(await dialog.evaluate((d) => d.getBoundingClientRect().right <= innerWidth && d.scrollWidth <= d.clientWidth + 1)).toBe(true);
   mkdirSync(evidence, { recursive: true });
   await page.screenshot({ path: `${evidence}${info.project.name}-results.png` });
@@ -194,6 +195,16 @@ test('stale answers are dropped; empty, error, discard, Escape and focus return 
   await expect(page.locator('#merchant-results')).not.toContainText('Slow lantern');
   await expect(page.locator('#merchant-results > li')).toHaveCount(3);
 
+  // Existing results cannot be selected while a replacement search is still waiting.
+  await query.fill('slow replacement');
+  await query.press('Enter');
+  await expect(page.locator('#merchant-results > li')).toHaveCount(0);
+  await query.fill('x');
+  await query.press('Enter');
+  await expect(page.locator('#merchant-status')).toContainText('Describe what you are looking for');
+  await page.waitForTimeout(1800);
+  await expect(page.locator('#merchant-results > li')).toHaveCount(0);
+  await expect(page.locator('#merchant-status')).toContainText('Describe what you are looking for');
   await query.fill('nothing');
   await query.press('Enter');
   await expect(page.locator('#merchant-status')).toHaveText('No matches for “nothing”. Try other words.');
@@ -240,4 +251,89 @@ test('without a Channel3 key the merchant says so plainly and searches nothing',
   await expect(page.locator('#open-merchant')).toBeFocused();
   expect(searches.get(page)).toEqual([]);
   expect(s.fake.calls).toEqual([]);
+});
+
+test('a changed family goal keeps the chosen product for explicit review and confirmation', async ({ page }, info) => {
+  await open(page);
+  const initial = await stateOf(page);
+  // This tab still shows the earlier Plan fields. Another family tab edits the same goal BEFORE the search.
+  const changedResponse = await page.request.put(`${s.base}/api/goal`, { data: {
+    name: 'Summer holiday', targetCents: 65000, startingCents: 7000, weeklyBudgetCents: 4200, targetDate: initial.goal.targetDate,
+  } });
+  expect(changedResponse.status()).toBe(200);
+  const changed = (await changedResponse.json()).state;
+  await page.locator('#open-merchant').click();
+  await page.locator('#merchant-query').fill('tent');
+  await page.locator('#merchant-budget').fill('200');
+  await page.locator('#merchant-search').click();
+  await page.locator('#merchant-results > li').first().getByRole('button', { name: 'Use as goal' }).click();
+  await page.locator('#goal-name-input').fill('Our family tent');
+  await page.locator('#goal-target').fill('210.00');
+  await page.locator('#goal-draft-save').click();
+  await expect(page.locator('#plan-status')).toContainText('household goal changed');
+  await expect(page.locator('#goal-draft')).toBeVisible();
+  await expect(page.locator('#goal-draft-save')).toBeDisabled();
+  await expect(page.locator('#ask-planner')).toBeDisabled();
+  expect(await stateOf(page)).toEqual(changed);
+
+  await page.getByRole('button', { name: 'Review latest goal' }).click();
+  await expect(page.locator('#goal-name-input')).toHaveValue('Our family tent');
+  await expect(page.locator('#goal-target')).toHaveValue('210.00');
+  await expect(page.locator('#goal-starting')).toHaveValue('70.00');
+  await expect(page.locator('#goal-weekly')).toHaveValue('42.00');
+  await expect(page.locator('#goal-draft-effect')).toContainText('Summer holiday');
+  await expect(page.locator('#goal-draft-save')).toBeEnabled();
+  expect(await stateOf(page)).toEqual(changed);
+  expect(s.fake.calls.length).toBe(1);
+  await page.locator('#goal-draft').scrollIntoViewIfNeeded();
+  await page.screenshot({ path: info.outputPath('merchant-reviewed-goal.png') });
+  await page.locator('#goal-draft-save').click();
+  await expect(page.locator('#plan-status')).toContainText('Goal saved: Our family tent, $210.00.');
+  const saved = await stateOf(page);
+  expect(saved.goal.weeklyBudgetCents).toBe(4200);
+  expect(saved.progress.startingCents).toBe(7000);
+  expect(saved.goalItem.priceCents).toBe(18950);
+  expect(saved.contributions).toEqual(changed.contributions);
+  expect(searches.get(page)).toEqual(['POST /api/merchant/search', 'POST /api/merchant/goal', 'POST /api/merchant/goal']);
+  expect(s.fake.calls.length).toBe(1);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+});
+
+test('an expired price keeps the draft and returns to its search without a silent provider retry', async ({ page }, info) => {
+  await open(page);
+  await page.locator('#open-merchant').click();
+  await page.locator('#merchant-query').fill('tent');
+  await page.locator('#merchant-budget').fill('200');
+  await page.locator('#merchant-search').click();
+  await page.locator('#merchant-results > li').first().getByRole('button', { name: 'Use as goal' }).click();
+  const before = await stateOf(page);
+  const later = new Date(Date.parse(s.clock.iso()) + 31 * 60_000).toISOString();
+  s.clock.now = () => new Date(later);
+  await page.locator('#goal-draft-save').click();
+  await expect(page.locator('#plan-status')).toContainText('result has expired');
+  await expect(page.locator('#goal-draft')).toBeVisible();
+  await expect(page.locator('#goal-draft-save')).toBeDisabled();
+  await expect(page.locator('#ask-planner')).toBeDisabled();
+  expect(s.fake.calls.length).toBe(1);
+  await page.getByRole('button', { name: 'Search again', exact: true }).click();
+  await expect(page.locator('#merchant-query')).toHaveValue('tent');
+  await expect(page.locator('#merchant-budget')).toHaveValue('200.00');
+  await expect(page.locator('#merchant-results > li')).toHaveCount(0);
+  expect(s.fake.calls.length).toBe(1, 'opening recovery never searches');
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('button', { name: 'Search again', exact: true })).toBeFocused();
+  await page.screenshot({ path: info.outputPath('merchant-expired-draft.png') });
+  // A fresh provider search happens only on this explicit Search click (a fake transport here).
+  await page.getByRole('button', { name: 'Search again', exact: true }).click();
+  await page.locator('#merchant-search').click();
+  await page.locator('#merchant-results > li').first().getByRole('button', { name: 'Use as goal' }).click();
+  await expect(page.locator('#goal-draft-save')).toBeEnabled();
+  await expect(page.locator('#goal-draft-search')).toBeHidden();
+  expect(s.fake.calls.length).toBe(2);
+  const after = await stateOf(page);
+  expect(after.goal).toEqual(before.goal);
+  expect(after.ledger).toEqual(before.ledger);
+  expect(after.contributions).toEqual(before.contributions);
+  expect(after.goalItem).toBeNull();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });

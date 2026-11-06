@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import {
   DEMO_HOUSEHOLD_ID, DomainError, addSelfReportedEntry, ensureDemoHousehold, getActiveGoal, getGoal, resetHousehold,
-  setupHousehold, updateCrest, updateGoal, updateMemberAvatar,
+  progressFor, setupHousehold, updateCrest, updateGoal, updateMemberAvatar,
 } from './household.mjs';
 import { PlanInputError } from './planner/basis.mjs';
 import { createPlanner } from './planner/index.mjs';
@@ -13,7 +13,7 @@ import { createSteward } from './steward/index.mjs';
 import { buildState } from './view.mjs';
 import { publicModes } from './config.mjs';
 import { createMerchant } from './merchant/channel3.mjs';
-import { goalItemFor, saveGoalFromItem } from './merchant/goal-item.mjs';
+import { goalItemFor, merchantGoalRevision, saveGoalFromItem } from './merchant/goal-item.mjs';
 import { treasuryFor } from './treasury.mjs';
 
 const MIME = {
@@ -127,6 +127,7 @@ export function createApp({ config, db, clock, paypal = null, aiProvider = null,
     const s = buildState({ db, householdId, planner, contributions, config, steward: stewardInfo });
     s.modes.merchant = shop.status();
     s.goalItem = goalItemFor(db, s.goal);
+    s.merchantGoalRevision = merchantGoalRevision(s.goal, s.progress.startingCents);
     s.treasury = treasuryFor(s);
     return s;
   };
@@ -171,10 +172,17 @@ export function createApp({ config, db, clock, paypal = null, aiProvider = null,
       return { status: 'ok', plan, state: state() };
     }],
     // ---- Market Town merchant: explicit product search, and an explicitly confirmed goal draft ----
-    ['POST', '/api/merchant/search', ({ body }) => shop.search({ query: body.query, budgetCents: body.budgetCents ?? null })],
+    ['POST', '/api/merchant/search', async ({ body }) => {
+      // Bind the draft to the goal BEFORE the asynchronous search. A cached product response still gets this
+      // request's own basis; family edits while Channel3 is answering cannot silently become consent to overwrite them.
+      const goal = getActiveGoal(db, householdId);
+      const goalRevision = merchantGoalRevision(goal, progressFor(db, goal.id).startingCents);
+      const found = await shop.search({ query: body.query, budgetCents: body.budgetCents ?? null });
+      return { ...found, goalId: goal.id, goalRevision };
+    }],
     ['POST', '/api/merchant/goal', ({ body }) => {
       const item = shop.draft(str(body.draftId));
-      saveGoalFromItem(db, { householdId, goalId: goalId(), expectedGoalId: str(body.goalId), item, goal: body.goal }, clock);
+      saveGoalFromItem(db, { householdId, goalId: goalId(), expectedGoalId: str(body.goalId), expectedGoalRevision: str(body.expectedGoalRevision), item, goal: body.goal }, clock);
       return { status: 'ok', state: state() };
     }],
     // ---- Treasury: read-only. The AG Studio licence (if configured) is the only setting the page may read here. ----

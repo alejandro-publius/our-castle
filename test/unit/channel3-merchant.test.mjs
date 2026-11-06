@@ -181,6 +181,96 @@ const goalFrom = (state, overrides = {}) => ({
 const counts = (db) => db.prepare(`SELECT (SELECT COUNT(*) FROM ledger_entries) AS ledger, (SELECT COUNT(*) FROM payment_orders) AS orders,
   (SELECT COUNT(*) FROM achievements) AS achievements`).get();
 
+test('a merchant draft cannot overwrite a newer edit to the same household goal', async () => {
+  const s = await startServer();
+  try {
+    const original = (await s.call('GET', '/api/state')).json;
+    const found = (await s.call('POST', '/api/merchant/search', { query: 'tent', budgetCents: 20000 })).json;
+    const draft = found.results[0];
+    const changed = (await s.call('PUT', '/api/goal', goalFrom(original, { name: 'Family holiday', targetCents: 65000, weeklyBudgetCents: 4000 }))).json.state;
+    const before = counts(s.db);
+    const rejected = await s.call('POST', '/api/merchant/goal', {
+      draftId: draft.draftId, goalId: original.goal.id, expectedGoalRevision: found.goalRevision,
+      goal: goalFrom(original, { name: 'Dome tent', targetCents: 18950 }),
+    });
+    assert.equal(rejected.status, 409, 'the same goal ID must not let an older draft overwrite the newer fields');
+    assert.equal(rejected.json.error.code, 'goal_changed');
+    assert.deepEqual((await s.call('GET', '/api/state')).json, changed);
+    assert.deepEqual(counts(s.db), before);
+    assert.match(found.goalRevision, /^[a-f0-9]{64}$/);
+
+    // Explicit review uses only a local state read. The same still-valid item can then be deliberately confirmed.
+    const saved = await s.call('POST', '/api/merchant/goal', {
+      draftId: draft.draftId, goalId: changed.goal.id, expectedGoalRevision: changed.merchantGoalRevision,
+      goal: goalFrom(changed, { name: 'Dome tent', targetCents: 18950 }),
+    });
+    assert.equal(saved.status, 200, saved.text);
+    assert.equal(saved.json.state.goal.weeklyBudgetCents, 4000);
+    assert.equal(saved.json.state.goalItem.productId, draft.productId);
+    assert.equal(s.fake.calls.length, 1, 'reviewing a changed goal never searches Channel3 again');
+    assert.equal(counts(s.db).orders, 0);
+  } finally { await s.close(); }
+});
+
+test('a changed starting-progress report also invalidates the merchant draft', async () => {
+  const s = await startServer();
+  try {
+    const original = (await s.call('GET', '/api/state')).json;
+    const found = (await s.call('POST', '/api/merchant/search', { query: 'tent' })).json;
+    const changed = (await s.call('PUT', '/api/goal', goalFrom(original, { startingCents: 7000 }))).json.state;
+    const result = await s.call('POST', '/api/merchant/goal', {
+      draftId: found.results[0].draftId, goalId: original.goal.id, expectedGoalRevision: found.goalRevision,
+      goal: goalFrom(original, { name: 'Tent', targetCents: 18950 }),
+    });
+    assert.equal(result.status, 409);
+    assert.deepEqual((await s.call('GET', '/api/state')).json, changed);
+  } finally { await s.close(); }
+});
+
+test('goal context is captured before a slow search and refreshed independently of cached products', async () => {
+  let release, entered;
+  const waiting = new Promise(resolve => { entered = resolve; });
+  const gate = new Promise(resolve => { release = resolve; });
+  const s = await startServer({ respond: async () => { entered(); await gate; return fakeSearchResponse([fakeProduct()]); } });
+  try {
+    const original = (await s.call('GET', '/api/state')).json;
+    const searching = s.call('POST', '/api/merchant/search', { query: 'tent' });
+    await waiting;
+    const changed = (await s.call('PUT', '/api/goal', goalFrom(original, { weeklyBudgetCents: 4200 }))).json.state;
+    release();
+    const found = (await searching).json;
+    assert.equal(found.goalRevision, original.merchantGoalRevision);
+    const stale = await s.call('POST', '/api/merchant/goal', { draftId: found.results[0].draftId, goalId: found.goalId,
+      expectedGoalRevision: found.goalRevision, goal: goalFrom(original, { name: 'Tent', targetCents: 18950 }) });
+    assert.equal(stale.status, 409);
+    const cached = (await s.call('POST', '/api/merchant/search', { query: 'tent' })).json;
+    assert.equal(cached.cached, true);
+    assert.equal(cached.goalRevision, changed.merchantGoalRevision);
+    assert.equal(cached.results[0].draftId, found.results[0].draftId);
+    assert.equal(s.fake.calls.length, 1);
+    assert.deepEqual((await s.call('GET', '/api/state')).json, changed);
+  } finally { release(); await s.close(); }
+});
+
+test('missing review context is refused; a contribution alone does not invalidate the goal draft', async () => {
+  const s = await startServer();
+  try {
+    const original = (await s.call('POST', '/api/setup', { playMode: 'family', name: 'House of Alder', crest: { field: 'cobalt', charge: 'stag' } })).json.state;
+    const found = (await s.call('POST', '/api/merchant/search', { query: 'tent' })).json;
+    const payload = { draftId: found.results[0].draftId, goalId: found.goalId, goal: goalFrom(original, { name: 'Tent', targetCents: 18950 }) };
+    assert.equal((await s.call('POST', '/api/merchant/goal', payload)).status, 409);
+    assert.deepEqual((await s.call('GET', '/api/state')).json, original);
+    const paid = (await s.call('POST', '/api/example/contributions', { ...contribution(), outcome: 'completed' })).json.state;
+    assert.equal(paid.progress.progressCents, 7500);
+    assert.equal(paid.merchantGoalRevision, found.goalRevision);
+    const saved = await s.call('POST', '/api/merchant/goal', { ...payload, expectedGoalRevision: found.goalRevision });
+    assert.equal(saved.status, 200, saved.text);
+    assert.deepEqual(saved.json.state.contributions, paid.contributions);
+    assert.equal(saved.json.state.progress.progressCents, 7500);
+    assert.equal(s.fake.calls.length, 1);
+  } finally { await s.close(); }
+});
+
 test('searching changes nothing; only an explicitly confirmed draft changes the goal, with provenance and no money', async () => {
   const s = await startServer();
   try {
@@ -207,7 +297,7 @@ test('searching changes nothing; only an explicitly confirmed draft changes the 
     // Confirmed save at the item's actual price: exactly the ordinary goal edit. With $60 already reported, $189.50
     // puts the household past 25%, so the Manor opens from progress already tracked, as the Plan editor would do for
     // the same edit. No money moves: ledger entries and payment orders are unchanged.
-    const saved = await s.call('POST', '/api/merchant/goal', { draftId: tent.draftId, goalId: state.goal.id, goal: goalFrom(state, { name: 'Family dome tent', targetCents: 18950 }) });
+    const saved = await s.call('POST', '/api/merchant/goal', { draftId: tent.draftId, goalId: state.goal.id, expectedGoalRevision: state.merchantGoalRevision, goal: goalFrom(state, { name: 'Family dome tent', targetCents: 18950 }) });
     assert.equal(saved.status, 200, saved.text);
     const after = saved.json.state;
     assert.deepEqual([after.goal.name, after.goal.targetCents], ['Family dome tent', 18950]);
@@ -247,22 +337,22 @@ test('failed saves change nothing; a fully funded low-cost item is saved like an
       assert.deepEqual([now.goal.name, now.goal.targetCents, now.goalItem], [state.goal.name, state.goal.targetCents, null]);
       assert.deepEqual(counts(s.db), before);
     };
-    let res = await s.call('POST', '/api/merchant/goal', { draftId: item.draftId, goalId: state.goal.id, goal: goalFrom(state, { name: 'Lantern', targetCents: 3999 }) });
+    let res = await s.call('POST', '/api/merchant/goal', { draftId: item.draftId, goalId: state.goal.id, expectedGoalRevision: state.merchantGoalRevision, goal: goalFrom(state, { name: 'Lantern', targetCents: 3999 }) });
     assert.deepEqual([res.status, res.json.error.code], [400, 'merchant_goal_below_price']);
     res = await s.call('POST', '/api/merchant/goal', { draftId: item.draftId, goalId: 'goal_other', goal: goalFrom(state, { name: 'Lantern', targetCents: 4000 }) });
     assert.deepEqual([res.status, res.json.error.code], [409, 'goal_changed']);
-    res = await s.call('POST', '/api/merchant/goal', { draftId: 'c3d_000000000000000000000000', goalId: state.goal.id, goal: goalFrom(state, { name: 'Lantern', targetCents: 4000 }) });
+    res = await s.call('POST', '/api/merchant/goal', { draftId: 'c3d_000000000000000000000000', goalId: state.goal.id, expectedGoalRevision: state.merchantGoalRevision, goal: goalFrom(state, { name: 'Lantern', targetCents: 4000 }) });
     assert.deepEqual([res.status, res.json.error.code], [410, 'merchant_draft_expired']);
     // Existing goal validation still applies (here: the name, and starting progress above the goal amount).
-    res = await s.call('POST', '/api/merchant/goal', { draftId: item.draftId, goalId: state.goal.id, goal: goalFrom(state, { name: 'L', targetCents: 4000 }) });
+    res = await s.call('POST', '/api/merchant/goal', { draftId: item.draftId, goalId: state.goal.id, expectedGoalRevision: state.merchantGoalRevision, goal: goalFrom(state, { name: 'L', targetCents: 4000 }) });
     assert.deepEqual([res.status, res.json.error.code], [400, 'invalid_goal']);
-    res = await s.call('POST', '/api/merchant/goal', { draftId: item.draftId, goalId: state.goal.id, goal: goalFrom(state, { name: 'Lantern', targetCents: 4000 }) });
+    res = await s.call('POST', '/api/merchant/goal', { draftId: item.draftId, goalId: state.goal.id, expectedGoalRevision: state.merchantGoalRevision, goal: goalFrom(state, { name: 'Lantern', targetCents: 4000 }) });
     assert.deepEqual([res.status, res.json.error.code], [400, 'invalid_goal'], 'the $60 reported starting amount cannot exceed a $40 goal');
     await unchanged();
 
     // With the reported amount lowered to fit, a $40 goal is fully funded by what is already tracked: the ordinary
     // goal edit records every milestone, as the Plan editor would. Still no ledger entry or payment order.
-    res = await s.call('POST', '/api/merchant/goal', { draftId: item.draftId, goalId: state.goal.id, goal: goalFrom(state, { name: 'Lantern', targetCents: 4000, startingCents: 4000 }) });
+    res = await s.call('POST', '/api/merchant/goal', { draftId: item.draftId, goalId: state.goal.id, expectedGoalRevision: state.merchantGoalRevision, goal: goalFrom(state, { name: 'Lantern', targetCents: 4000, startingCents: 4000 }) });
     assert.equal(res.status, 200, res.text);
     const funded = res.json.state;
     assert.deepEqual([funded.goal.targetCents, funded.progress.progressCents, funded.treasury.nextArea], [4000, 4000, null]);
@@ -297,13 +387,14 @@ test('the goal_items migration is additive: an existing version-two household ke
   let db = s.db;
   const snapshot = (d) => ['households', 'members', 'goals', 'ledger_entries', 'payment_orders', 'payment_captures', 'achievements', 'plans']
     .map((t) => [t, d.prepare(`SELECT * FROM ${t} ORDER BY rowid`).all()]);
-  db.exec('DROP TABLE goal_items; PRAGMA user_version = 2;');
+  db.exec('DROP TABLE order_checks; DROP TABLE goal_items; PRAGMA user_version = 2;');
   const before = snapshot(db);
   db.close();
   db = openDatabase(file);
   try {
-    assert.equal(db.prepare('PRAGMA user_version').get().user_version, 3);
+    assert.equal(db.prepare('PRAGMA user_version').get().user_version, 4); // saved-check migration already on main
     assert.deepEqual(snapshot(db), before);
     assert.equal(db.prepare('SELECT COUNT(*) AS n FROM goal_items').get().n, 0);
+    assert.equal(db.prepare('SELECT COUNT(*) AS n FROM order_checks').get().n, 0);
   } finally { db.close(); }
 });
