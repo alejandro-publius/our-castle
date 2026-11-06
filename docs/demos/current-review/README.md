@@ -1,12 +1,12 @@
 # Current build review cut
 
-The owner's November 5 request to finish the release includes a new video. This cut replaces neither the older sources nor the missing live footage. **It is a review cut, not a submitted video.**
+This is the preserved November 5 review cut. It replaces neither older sources nor missing live footage. **It is a review cut, not a submitted video.** Recording/editing remains paused under the owner's instruction; the current handoff update changes documentation only.
 
-The [actual in-app sandbox contribution and same-order steward check](../../IN-APP-SANDBOX-VERIFICATION.md) subsequently passed. That runtime proof has not been added to this video; continuous popup/bridge/steward UI recording remains unconfirmed. All original media and hashes below are unchanged. No replacement transaction is needed.
+The [actual in-app sandbox contribution and same-order steward check](../../IN-APP-SANDBOX-VERIFICATION.md) subsequently passed. That runtime proof has not been added to this video; continuous popup/bridge/steward UI recording remains unconfirmed. All original media and hashes below are unchanged. Existing receipts and historical evidence can support a clearly labelled completed-state segment. A new approval → unlock sequence would require a separately authorized sandbox checkout; the completed order cannot replay it. See the [revised insert plan](INSERT.md).
 
 The [gold fountain](../../GOLD-FOUNTAIN.md) was added after this recording. Its new animation is not depicted by the older footage; original media and hashes remain unchanged.
 
-The subsequent tower fairy/wizard details and [mountain border with PayPal hillside lettering](../../MOUNTAIN-BORDER.md) also postdate this footage. This video has not been relabelled as a recording of those newer visuals.
+The subsequent tower fairy/wizard details and [mountain border with PayPal hillside lettering](../../MOUNTAIN-BORDER.md) also postdate this footage, as do the Plan merchant shortcut and saved receipt checks. This video has not been relabelled as a recording of those newer features.
 
 - Playback: [our-castle-current-review-cut.mp4](our-castle-current-review-cut.mp4), **2:42**, 1920×1080, 25 fps, offline synthetic Daniel narration.
 - Edit: [timeline.json](timeline.json), [timeline.csv](timeline.csv), [narration.md](narration.md), [captions.srt](captions.srt), [captions.vtt](captions.vtt).

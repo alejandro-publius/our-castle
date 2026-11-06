@@ -1,6 +1,6 @@
 # Rachel: start here
 
-**rachelselbrede already has write access.** Use your own clone and one branch per task; no fork or runtime API keys are needed.
+**rachelselbrede already has write access.** PRs #1–#5 are merged. The current task is real family playtesting on `rachel/family-playtest`, followed by one demonstrated blocker fix if needed. Use your own clone; no fork or runtime API keys are needed. [Current review/evidence guide](docs/JUDGE-HANDOFF.md).
 
 ## Run
 
@@ -10,33 +10,32 @@ Node 22.16+:
 git clone https://github.com/alejandro-publius/our-castle.git
 cd our-castle
 npm ci
-git switch -c rachel/tavern-detail
+git switch -c rachel/family-playtest
 npm run demo
 ```
 
-Open the printed localhost URL. This separate example game ignores credentials and saved households. Keep its terminal running; use another for Git. On an existing clean clone, switch to `main` and `git pull --ff-only` first. Repeat `npm ci` only when the lockfile changes.
+Those commands are for a new clone. In the existing playtest clone/session, keep its branch and running demo; inspect `git status` before switching or pulling, and preserve uncommitted observations. Open the URL printed on **Rachel's Mac** in that Mac's browser; a localhost link points to the machine where it was started. This separate example game ignores credentials and saved households. Keep its terminal running; use another for Git. Repeat `npm ci` only when the lockfile changes. Start a fresh demo for the next person only after the observer has collected the current person's notes.
 
-## Choose one task
+## Current task
 
-| Suggested task | Read/edit boundary | Finish line |
+| Work | Read/edit boundary | Finish line |
 | --- | --- | --- |
-| **First choice: tavern detail** | `src/world/tavern.js`, `docs/TAVERN.md` and its screenshot | One restrained detail, such as carved mug-sign trim; preserve the house, table and three guests |
-| Phone playtest | `docs/PLAYTEST.md`; manually run the game | Actual observations and one reproducible issue, or no issue found |
-| Submission story | `docs/SUBMISSION-DRAFT.md`, `docs/IN-APP-SANDBOX-VERIFICATION.md` | Clear family problem; preserve the factual integration/recording limits |
+| Observe the family journey | `docs/PLAYTEST.md`; manually run the game | Actual anonymous task completion, hesitation/help and quotes, including what the tester thought the payment did |
+| Fix one demonstrated blocker, if found | Scope the reproduced issue before editing shared files | One focused correction, relevant verification and a PR; or a truthful report that no blocker was observed |
 
-Tell Alex your choice. Codex is currently handling fairy/terrain, payment, sponsor and shared app/core work; coordinate before editing those. Start a **single-task Claude session**, not a full-project rebuild.
+Keep the current Claude session. Codex is maintaining review/release handoffs while Rachel gathers observations; coordinate before changing shared app/server files. The earlier tavern-detail suggestion is superseded. The product is in a feature freeze for this pass; a playtest completion message alone is not an observation or proof of success.
 
 ## Paste into Claude
 
-> Read AGENTS.md, CLAUDE.md and START-HERE-RACHEL.md. Use branch rachel/tavern-detail. Inspect src/world/tavern.js, docs/TAVERN.md and its screenshot. Make one small tavern improvement, preserving the renderer, palette, building and guests. Limit changes to two task files plus one screenshot; coordinate before touching shared files. Use no new dependency or runtime provider call. Run syntax and one relevant existing smoke check, show the actual result, then commit/push this branch and open a PR. Don't scan every document, rerun the whole suite, merge main, deploy or submit.
+> Read AGENTS.md and START-HERE-RACHEL.md. Continue the existing rachel/family-playtest branch and running demo. Use the three tasks in docs/PLAYTEST.md without coaching the tester. Ask Rachel for actual observations, record them anonymously and leave missing results pending. If nobody is available or no notes have been supplied, keep the demo ready and wait; do not substitute an automated run or invent a result. Once observations exist, reproduce and fix only the most consequential blocker, if any, preserving the current art and payment rules. Run only verification relevant to that fix; documentation-only results need no product suite. Push this branch and open a focused PR with real evidence. Do not merge, deploy, submit, start another Claude session, add features or run paid services.
 
 ## Share
 
 ```sh
 git diff --stat
-git add src/world/tavern.js
-git commit -m "Refine tavern mug-sign trim"
-git push -u origin rachel/tavern-detail
+git add docs/PLAYTEST.md
+git commit -m "Record observed family playtest findings"
+git push -u origin rachel/family-playtest
 ```
 
-GitHub: **Compare & pull request → base: main**. Include one screenshot and checks actually run. Merge after review. Keep `.env`, household data and recordings out; never force-push shared branches.
+Run the share commands only after actual observations exist. Stage any reproduced fix files explicitly as well. GitHub: **Compare & pull request → base: main**. Include anonymous findings, the specific correction if needed and checks actually run; leave untested participants pending. Merge after review. Keep `.env`, household data and recordings out; never force-push shared branches.

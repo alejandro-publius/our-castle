@@ -6,7 +6,7 @@ A living pixel woodland turns shared progress into new places to explore. Keep t
 
 ![The connected woodland realm and mountain border](docs/screenshots/mountain-border-day.png)
 
-The reviewed source is **public on GitHub main**. The owner's updated Mac app runs at http://localhost:3010 with its existing records preserved. [Release status and remaining payment/video steps](docs/RELEASE-READINESS.md).
+The reviewed source is **public on GitHub main**. The owner's updated Mac app runs at http://localhost:3010 with its existing records preserved. [Release status and remaining video/submission steps](docs/RELEASE-READINESS.md). For an independent code review, use the [source map and evidence guide](docs/JUDGE-HANDOFF.md#6-for-source-reviewers).
 
 ## Try it locally
 
@@ -27,7 +27,7 @@ Contributing with Rachel? [Start here](START-HERE-RACHEL.md) for one small task,
 ## A connected family journey
 
 1. **House:** name the house, choose a crest and set a shared goal.
-2. **Merchant → Plan:** search real products within a budget. **Use as goal** creates a draft; confirm before saving. Claude can propose a weekly schedule that the server independently checks.
+2. **Merchant → Plan:** choose **Find an item** beside Goal in Plan, or visit Market Town. Search real products within a budget. **Use as goal** creates a draft; confirm before saving. Claude can propose a weekly schedule that the server independently checks.
 3. **Contribute:** an adult approves the exact amount. In sandbox mode, the server verifies the completed PayPal capture and credits once. In example mode, contributions are explicitly simulated.
 4. **Realm → Treasury:** a milestone opens a bridge, briefly spills coins from a small gold-trimmed courtyard fountain and announces a deed. Earlier buildings remain. The Ledger shows the next area, records and a receipt on selection. Its existing read-only steward can check that order.
 
@@ -51,7 +51,7 @@ PayPal JavaScript SDK v6 handles the browser session; Server SDK Orders v2/Payme
 - **Fresh public clone:** anonymous clone/install/source guard and ten current-build journey/phone checks passed using the actual isolated `npm run demo` command. [Recording and scope](docs/demos/current-review/sources/public-demo-capture.json)
 - **Current in-app sandbox result:** owner-completed $15 contribution, one credit from $60 reported to $75, village/Manor open, and actual same-order `get_order` with server reconciliation `match`. A model compatibility fix passed 10 focused tests. [Evidence and recording limits](docs/IN-APP-SANDBOX-VERIFICATION.md)
 
-No hackathon entry has been submitted. The new [2:42 current-build review cut](docs/demos/current-review/our-castle-current-review-cut.mp4) has narration, measured captions, editable sources and an explicit unfilmed checkout insert. It is not the final submitted video. [Release readiness](docs/RELEASE-READINESS.md) · [Entry copy](docs/SUBMISSION-DRAFT.md) · [Shot list](docs/SUBMISSION-SHOTLIST.md).
+No hackathon entry has been submitted. The existing [2:42 review cut](docs/demos/current-review/our-castle-current-review-cut.mp4) has narration, measured captions, editable sources and an explicit unfilmed checkout insert. It predates subsequent visual/interface changes and is not the final submitted video. [Release readiness](docs/RELEASE-READINESS.md) · [Entry copy](docs/SUBMISSION-DRAFT.md) · [Shot list](docs/SUBMISSION-SHOTLIST.md).
 
 ## Real PayPal sandbox and AI
 

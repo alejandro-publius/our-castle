@@ -1,6 +1,6 @@
-# Family journey and browser review
+# Historical family journey and browser review
 
-November 5, 2026. Continue from private main; a clean checkout uses the existing README instructions. No additional sponsor account is needed for these changes. The owner's app uses http://localhost:3010, but the Desktop Commander connection went offline during this review, preventing local source sync. Its last inspected checkout was clean `main` at `791e8ae`. Pull the reviewed private main after reconnecting; no local app/rehearsal process was restarted here.
+Historical pass from earlier November 5, 2026, before source publication and the completed in-app payment. At that time the Mac connection was offline and the last inspected owner checkout was `791e8ae`; this report did not activate a local app. The source is now public, Studio's Agent Framework is implemented, and the in-app contribution/exact-order check has passed. [Release readiness](RELEASE-READINESS.md), the top of [VALIDATION.md](VALIDATION.md) and the [current judge handoff](JUDGE-HANDOFF.md) supersede the runtime/workstream statements below. Preserve this report as evidence of its recorded tests.
 
 ## What changed
 
@@ -19,13 +19,13 @@ These are isolated example-mode tests, not live payment or runtime-AI proof. Mer
 
 Actual outcomes: **24 functional checks plus two normal-motion castle-navigation checks passed**; details and limits are in [VALIDATION.md](VALIDATION.md). Ignored cloud evidence/configurations: `test-results/family-finish/`; stills: `test-results/connected/`. The functional configuration extends standard Playwright with reduced motion; its WebKit variant switches engine and removes Chromium-only launch arguments. The separate normal-motion check uses the standard configuration, with a bounded 60-second settling wait for the complete route on software renderers. No animation was shortened.
 
-## Sponsor and release position
+## Sponsor and release position at that earlier pass
 
 The official [Channel3](https://paypalaihackathon.devpost.com/details/channel3), [AG Grid](https://paypalaihackathon.devpost.com/details/aggrid), [APIMatic](https://paypalaihackathon.devpost.com/details/apimatic) briefs and [entry rules](https://paypalaihackathon.devpost.com/rules) were rechecked:
 
 - Channel3 has meaningful merchant search, including the earlier recorded real call. No new credit was spent.
-- AG Studio supplies the themed next-area widget; its Agent Framework remains absent. No full prize-coverage claim is made.
+- At this earlier pass AG Studio supplied the themed next-area widget and its Agent Framework was absent. The subsequent implementation is documented in [TREASURY.md](TREASURY.md); no full prize-coverage claim is made here.
 - Eight installed, discovery-verified APIMatic/PayPal skills support Codex directly. See [APIMATIC-CODEX.md](APIMATIC-CODEX.md).
-- Public source/licensing, public video and submission remain owner decisions. Development stays private; video work is paused.
+- At this pass development was private and publication was an owner decision. Source was subsequently published; final public video and submission remain outstanding. See RELEASE-READINESS.md for current scope.
 
-The approved 3021 sandbox rehearsal is preserved. This chat still needs supported access to the existing signed-in browser before checkout can run. No replacement order, paid steward call or new payment test was made. The exact-order `get_order` proof remains outstanding; no new key or renewed payment approval is required. Utility-provider verification remains unconnected.
+At this pass the approved 3021 rehearsal was preserved but browser access and exact-order `get_order` proof were still outstanding. No payment or paid check was run by this review. The subsequent [owner-completed contribution and actual same-order verification](IN-APP-SANDBOX-VERIFICATION.md) closed that runtime gap. Utility-provider verification remains unconnected.

@@ -1,6 +1,6 @@
 # Astra: sponsor integration handoff
 
-**Current Codex/release follow-up:** the owner asked Codex to finish this directly. Studio's Agent Framework is now implemented behind the existing steward; [RELEASE-READINESS.md](RELEASE-READINESS.md) and the top of [VALIDATION.md](VALIDATION.md) supersede older private-only and installed-on-Mac statements below. The Mac is reconnected: reviewed implementation `9d7a126` is active on 3010 from `~/projects/our-castle-reviewed`, with all owner/rehearsal records preserved. Source is now public; browser approval remains outstanding. The historical workstream allocation below does not require starting another Claude session.
+**Current Codex/release follow-up:** all three sponsor integrations, Studio's Agent Framework and reviewed PRs #1–#5 are on public main. The owner completed the in-app sandbox contribution and actual same-order `get_order` returned server `match`/`verified`; browser approval is no longer outstanding. The Mac uses `~/projects/our-castle-reviewed` with owner/rehearsal records preserved and additive schema-4 receipt history. [RELEASE-READINESS.md](RELEASE-READINESS.md), the top of [VALIDATION.md](VALIDATION.md) and [JUDGE-HANDOFF.md](JUDGE-HANDOFF.md) hold current evidence and remaining recording/submission gaps. Rachel is collecting real playtest observations on her own branch; the historical allocation below does not call for another Claude session or feature build.
 
 The owner assigned Claude visual ownership and Astra sponsor/integration engineering. Start from the current `main`; the complete nine-district game is present. Keep `docs/CLAUDE-VISUAL-HANDOFF.md` as the other workstream's boundary.
 
@@ -21,7 +21,7 @@ The earlier Claude installation was rejected by automatic review. The owner then
 | Channel3 | Real product search and explicit Plan draft/confirmation | One live desktop search; phone/save covered with fakes; no automatic purchase |
 | APIMatic | Eight installed Codex repository skills match the exact SDK; earlier capture-timeout/stale-read fixes remain | Discovery verified; seven earlier fake-provider checks remain valid; no global marketplace registration claim |
 | Postman | Guarded example walkthrough, explicit sandbox opt-in and duplicate-credit checks | The pasted prize list does not identify a separate Postman award |
-| Render | Example-only Blueprint, automatic deployment off | Not deployed; a private GitHub push is not deployment permission |
+| Render | Example-only Blueprint, automatic deployment off | Not deployed; publishing source does not deploy a hosted app |
 
 Source paths: `server/payments/paypal-sdk-client.mjs`, `server/payments/contributions.mjs`, `server/steward/index.mjs`, `server/steward/paypal-tools.mjs`, `src/core/ledger.js`, `src/app/ledger-grid.js`, `postman/`, `render.yaml`. Dependency versions are pinned in package-lock.json.
 

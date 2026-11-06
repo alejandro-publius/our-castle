@@ -25,11 +25,11 @@ The complete family flow has 26 passing browser checks from [the usability revie
 
 ## The family journey and where to find it
 
-1. **Market Town → Merchant.** Areas → Market Town → **Merchant**. Search what the family is saving for, with an optional budget. Up to three rows show image, name, price and currency, merchant and returned availability; details and the retailer link are secondary.
+1. **Plan → Find an item**, or **Market Town → Merchant**. Search what the family is saving for, with an optional budget. Up to three rows show image, name, price and currency, merchant and returned availability; details and the retailer link are secondary.
 2. **Plan.** **Use as goal** fills the Plan form as an unsaved draft. **Save as our goal** is the ordinary goal edit at the actual price (or a deliberately higher amount). Already-tracked progress may then open an area with its usual deed. No money moves. See [CHANNEL3-MERCHANT.md](CHANNEL3-MERCHANT.md).
 3. **Contribute.** Unchanged: exact-amount adult approval, then sandbox checkout (or a labelled simulation in example mode). The server verifies the capture and credits once. See [APIMATIC-USAGE.md](APIMATIC-USAGE.md) for the uncertain-capture fix.
 4. **World.** Areas open only through canonical progress against the current goal, with the existing deed.
-5. **Ledger → Treasury.** One next-area milestone ("View on map"), the existing record grid (search and filters change only the list), and a receipt on tap that leads back to the area it opened. The existing steward stays closed at the end. Studio's Agent Framework manages explicit checks without adding another chat panel. See [TREASURY.md](TREASURY.md).
+5. **Ledger → Treasury.** One next-area milestone ("View on map"), the existing record grid (search and filters change only the list), and a receipt on tap that leads back to the area it opened. Explicit **Check with PayPal** results now persist on the receipt; earlier checks stay in closed Payment details. The existing steward stays closed at the end. Studio's Agent Framework manages explicit steward questions without adding another chat panel. See [TREASURY.md](TREASURY.md).
 6. **Return.** Reload keeps the confirmed goal and item, records and earned world. It works with the keyboard and on phones.
 
 Searching is not checkout. A contribution does not buy the Channel3 item or pay any outside bill.
