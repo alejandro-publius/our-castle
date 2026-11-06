@@ -163,6 +163,12 @@ export function createApp({ config, db, clock, paypal = null, aiProvider = null,
       const result = planner.proposeRules({ householdId, goalId: goalId(), commitments: body.commitments, afterAiFailure: body.afterAiFailure === true });
       return { ...result, state: state() };
     }],
+    // Read-only: revising what remains for a weekly amount and/or date the family is considering. Saves nothing. To use
+    // the values, the family saves the goal (PUT /api/goal or the plan routes above) and reviews the fresh plan.
+    ['POST', '/api/plans/preview', ({ body }) => {
+      const preview = planner.previewRemaining({ householdId, goalId: goalId(), weeklyBudgetCents: body.weeklyBudgetCents ?? null, targetDate: body.targetDate ?? null });
+      return { status: 'ok', preview };
+    }],
     ['PUT', /^\/api\/plans\/([\w-]+)$/, ({ body, params }) => {
       const plan = planner.edit({ householdId, goalId: goalId(), planId: params[0], amounts: body.amounts });
       return { status: 'ok', plan, state: state() };

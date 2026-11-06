@@ -3,6 +3,11 @@ import { DomainError, getGoal, newId, progressFor } from '../household.mjs';
 import { buildPlanText, cleanCommitments, computeBasis, rulesAmounts } from './basis.mjs';
 import { finalizePlan, validateAiPlan, validateEditedAmounts } from './validate.mjs';
 import { PlannerProviderError } from './anthropic-provider.mjs';
+import { describeFactChanges, factsFromBasis, factsRevision, planFacts } from './facts.mjs';
+import { previewRemainingPlan } from './remaining.mjs';
+
+const STALE_MESSAGE = 'This plan was made from earlier figures, so it can’t be used or edited as it is. Make a fresh plan from the latest progress and goal.';
+const CHANGED_IN_FLIGHT_MESSAGE = 'The goal or its progress changed while this plan was being prepared, so it was not saved. Ask for a new plan with the latest figures.';
 
 const SOURCE_LABELS = {
   ai: 'AI plan',
@@ -27,10 +32,29 @@ export function createPlanner({ db, clock, provider = null }) {
     return goal;
   }
 
+  /** Facts the stored plan used versus the facts now, for one verified goal. */
+  function reviewRow(goal, row) {
+    const was = factsFromBasis(JSON.parse(row.basis_json), goal);
+    const now = factsNow(goal.id) ?? { ...was, goalId: null };
+    const changes = describeFactChanges(was, now);
+    return { factsChanged: changes.length > 0, changes, planFactsRevision: factsRevision(was), factsRevision: factsRevision(now) };
+  }
+
+  function factsNow(goalId) {
+    const goal = getGoal(db, goalId);
+    return goal ? planFacts({ goal, progress: progressFor(db, goal.id), today: clock.today() }) : null;
+  }
+
   function store({ goal, source, provider: providerName = null, model = null, parentId = null, inputs, basis, plan }) {
     const id = newId('plan');
     const at = clock.iso();
     transaction(db, () => {
+      // Store only if the facts the basis used still hold now. An AI answer can arrive after a contribution, refund, goal
+      // edit or midnight; it is then dropped instead of becoming a proposal the household might accept.
+      const was = factsFromBasis(basis, goal);
+      const now = factsNow(goal.id);
+      const changes = now && now.householdId === goal.householdId ? describeFactChanges(was, now) : [{ code: 'goal', message: 'Goal not found.' }];
+      if (changes.length) throw new DomainError(409, 'plan_facts_changed', CHANGED_IN_FLIGHT_MESSAGE, { issues: changes });
       db.prepare("UPDATE plans SET status = 'superseded' WHERE goal_id = ? AND status = 'proposed'").run(goal.id);
       db.prepare(`INSERT INTO plans (id, goal_id, source, provider, model, parent_id, inputs_json, basis_json, plan_json, status, created_at)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'proposed', ?)`)
@@ -97,6 +121,9 @@ export function createPlanner({ db, clock, provider = null }) {
       const row = db.prepare('SELECT * FROM plans WHERE id = ? AND goal_id = ?').get(planId, goal.id);
       if (!row) throw new DomainError(404, 'not_found', 'Plan not found.');
       if (row.status === 'superseded') throw new DomainError(409, 'plan_superseded', 'This plan was replaced. Review the newest plan.');
+      // An edit becomes a new proposal from this plan's basis, so that basis must still match the server's facts.
+      const review = reviewRow(goal, row);
+      if (review.factsChanged) throw new DomainError(409, 'plan_stale', STALE_MESSAGE, { issues: review.changes });
       const basis = JSON.parse(row.basis_json);
       const check = validateEditedAmounts(amounts, basis);
       if (!check.ok) throw new DomainError(422, 'invalid_edit', check.issues.map((i) => i.message).join(' '), { issues: check.issues });
@@ -112,14 +139,39 @@ export function createPlanner({ db, clock, provider = null }) {
 
     accept({ householdId, goalId, planId }) {
       const goal = goalFor(householdId, goalId);
-      const plan = getPlan(goal.id, planId);
-      if (!plan) throw new DomainError(404, 'not_found', 'Plan not found.');
-      if (plan.status === 'superseded') throw new DomainError(409, 'plan_superseded', 'This plan was replaced. Review the newest plan.');
-      transaction(db, () => {
+      return transaction(db, () => {
+        const row = db.prepare('SELECT * FROM plans WHERE id = ? AND goal_id = ?').get(planId, goal.id);
+        if (!row) throw new DomainError(404, 'not_found', 'Plan not found.');
+        if (row.status === 'superseded') throw new DomainError(409, 'plan_superseded', 'This plan was replaced. Review the newest plan.');
+        // Accepting again is a no-op. An accepted schedule is history: later contributions are tracked against it
+        // (state.nextStep) and never make it "stale", and a newer proposal is left for the household to review.
+        if (row.status === 'accepted') return rowToPlan(row);
+        const review = reviewRow(goal, row);
+        if (review.factsChanged) throw new DomainError(409, 'plan_stale', STALE_MESSAGE, { issues: review.changes });
         db.prepare("UPDATE plans SET status = 'superseded' WHERE goal_id = ? AND id != ?").run(goal.id, planId);
-        db.prepare("UPDATE plans SET status = 'accepted' WHERE id = ?").run(planId);
+        db.prepare("UPDATE plans SET status = 'accepted' WHERE id = ? AND goal_id = ?").run(planId, goal.id);
+        return getPlan(goal.id, planId);
       });
-      return getPlan(goal.id, planId);
+    },
+
+    /**
+     * Whether the household's current plan still matches the server's facts. For a proposal, factsChanged means it must
+     * be refreshed before it can be accepted or edited. An accepted plan stays in use either way; factsChanged then only
+     * means an edit would need a fresh plan first.
+     */
+    review(goalId) {
+      const goal = getGoal(db, goalId);
+      const row = goal && db.prepare("SELECT * FROM plans WHERE goal_id = ? AND status != 'superseded' ORDER BY created_at DESC, rowid DESC LIMIT 1").get(goal.id);
+      if (!row) return null;
+      const review = reviewRow(goal, row);
+      return { planId: row.id, status: row.status, needsRefresh: row.status === 'proposed' && review.factsChanged, ...review };
+    },
+
+    /** Read-only preview of revising what remains for a chosen weekly amount and/or date. Writes nothing. */
+    previewRemaining({ householdId, goalId, weeklyBudgetCents, targetDate }) {
+      const goal = goalFor(householdId, goalId);
+      const inUse = db.prepare("SELECT id FROM plans WHERE goal_id = ? AND status = 'accepted' ORDER BY created_at DESC, rowid DESC LIMIT 1").get(goal.id);
+      return previewRemainingPlan({ goal, progress: progressFor(db, goal.id), today: clock.today(), weeklyBudgetCents, targetDate, planInUseId: inUse?.id ?? null });
     },
 
     current(goalId) {
