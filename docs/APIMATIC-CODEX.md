@@ -26,6 +26,17 @@ Codex read the installed entry point, client initialization, authentication and 
 
 These checks required no further runtime-code changes. The earlier capture-timeout/reconciliation improvements and their seven fake-provider cases remain documented in [APIMATIC-USAGE.md](APIMATIC-USAGE.md); they are not claimed as newly written by this installation.
 
+## Specific context used in the submission
+
+| Integration detail | Context and actual use |
+| --- | --- |
+| SDK initialization, OAuth and sandbox | `typescript-getting-started`, `typescript-client-initialization`, `typescript-authentication`; checked the installed 2.5.0 constructor, credential names and Sandbox origin. |
+| Capture parameters and response/error shape | `typescript-calling-endpoints`, `typescript-models`, `typescript-error-handling`; confirmed controller argument fields, raw REST payloads and `ApiError` mapping against installed source. |
+| Retry/timeout policy and uncertain outcomes | `typescript-configuration-resilience`, `typescript-testing`, plus the earlier published `typescript-integrate-paypal` review in [APIMATIC-USAGE.md](APIMATIC-USAGE.md); retained deterministic request IDs and zero automatic write retries, and fixed same-order recovery after uncertain captures. Existing idempotency was reviewed, not claimed as newly generated. |
+| Webhook signature details | PayPal AI Toolkit's separate webhook guidance and PayPal's verification API. The bounded REST transport also applies the resilience guidance. Webhooks v1 is **not** a generated Server SDK 2.5.0 endpoint. |
+
+The November 6 [Doctor checklist review](PAYPAL-DOCTOR-REVIEW.md) uses the separate PayPal AI Toolkit source; it is not another APIMatic plugin installation or a native `/paypal:doctor` invocation. The prepared Devpost answer remains unsubmitted.
+
 ## Boundaries and evidence
 
 The subsequent [Toolkit maintenance review](TOOLKIT-MAINTENANCE.md) applied the resilience/testing context to the installed Toolkit's actual read transport: bounded waits, no automatic retry, exact sandbox origins and no late verification after a timeout. It preserves Server SDK 2.5.0. Forty fake-transport contract cases and five post-clean-install Toolkit cases passed; no live payment or paid AI call was repeated.

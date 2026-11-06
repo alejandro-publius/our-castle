@@ -74,7 +74,9 @@ Finish the final public video using genuine source footage and submit the entry.
 
 ### Prepared APIMatic plugin-use answer
 
-Yes. We used PayPal's APIMatic Context Plugin TypeScript/Node guidance in Codex while developing Our Castle's PayPal integration. Eight SDK-specific skills are installed and discovery-verified at repository scope. We used them to check the exact PayPal Server SDK 2.5.0 initialization, sandbox environment, OAuth fields, timeouts and retry behavior. The guidance informed recovery for uncertain captures and bounded read checks, with focused fake-provider tests and documented findings. Installation, provenance and actual use: https://github.com/alejandro-publius/our-castle/blob/main/docs/APIMATIC-CODEX.md . This is a repository-scoped context installation, not a claim of global marketplace registration.
+Yes. We used APIMatic Context Plugin guidance for PayPal while building Our Castle. Eight SDK-specific TypeScript/Node skills are installed and discovery-verified in Codex at repository scope. Getting-started, initialization and authentication guidance helped us verify the official Server SDK 2.5.0 and its sandbox credentials. Endpoint/model, error-handling, resilience and testing guidance supported the request-ID review, bounded waits and recovery of uncertain captures by reading the same order rather than blindly repeating a write. The focused tests use fake transports; actual sandbox evidence is documented separately.
+
+Skill names, exact provenance, use map and tested fixes: https://github.com/alejandro-publius/our-castle/blob/main/docs/APIMATIC-CODEX.md . Webhook signature details use PayPal's separate guidance and REST API; we do not claim the generated Server SDK implements Webhooks v1. This is repository-scoped context use, not global marketplace registration.
 
 ### Submission timing
 

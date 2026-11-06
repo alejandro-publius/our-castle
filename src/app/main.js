@@ -1154,7 +1154,8 @@ const OUTCOME_TEXT = {
   already_completed: ['info', 'Already recorded. It was not counted twice.'],
   already_processed: ['info', 'Already recorded. It was not counted twice.'],
   pending: ['info', 'Pending: the payment is not complete yet, so progress has not changed.'],
-  canceled: ['info', 'Canceled before approval. Nothing was charged and progress is unchanged.'],
+  canceled: ['info', 'Checkout window closed. Check the contribution record before trying again.'],
+  record_unchanged: ['info', 'The payment record is unchanged. Review its status in the Ledger.'],
   declined: ['error', 'Declined. No progress was recorded.'],
   not_approved: ['error', 'PayPal has not recorded an approval yet. No progress was recorded.'],
   not_captured: ['info', 'Approved but not captured yet. No progress was recorded.'],
@@ -1361,7 +1362,6 @@ function renderLedgerRecord() {
     return h('li', { 'data-contribution': c.id, tabindex: -1 },
       h('div', { class: 'row' }, h('span', { class: 'amount' }, row.recordEntry?.effect < 0 ? row.amountText : money(c.amountCents)), h('span', {}, STATUS_LABEL[c.status] ?? c.status,
         h('span', { class: `tag ${c.simulated ? 'simulated' : 'sandbox'}` }, c.simulated ? 'simulated' : 'PayPal sandbox'))),
-      recordImpact(row),
       // The server's record of the last explicit "Check with PayPal": its own reconciliation of PayPal's order, kept across reloads.
       // A record that needs a check carries that action right here; a completed capture with no check says so.
       check.key !== 'none' ? h('p', { class: 'fine last-check', 'data-check': check.key },
@@ -1369,6 +1369,7 @@ function renderLedgerRecord() {
         c.lastCheck ? h('span', {}, timeLabel(c.lastCheck.checkedAt)) : null,
         c.lastCheck ? h('span', { class: 'check-note' }, c.lastCheck.note) : null,
         check.needsCheck ? checkButton : null) : null,
+      recordImpact(row),
       h('details', { class: 'record-ids' }, h('summary', {}, 'Payment details'),
         h('div', { class: 'ids' }, `${timeLabel(c.createdAt)} · order ${c.providerOrderId ?? '—'}${capture ? ` · capture ${capture.captureId}` : ''}${refundId ? ` · refund ${refundId}` : ''}`),
         c.checks?.length > 1 ? h('ul', { class: 'ids check-history', 'aria-label': 'Earlier checks with PayPal' },
