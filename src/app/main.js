@@ -79,6 +79,8 @@ const ui = {
   houseDraft: null,
   houseDirty: false,
   planFormDirty: false,
+  planGoalId: null,
+  planGoalRevision: null,
   scheduleDirty: false,
   schedulePlanId: null,
   commitments: [{ label: 'Internet bill', amount: '60.00', cadence: 'monthly' }],
@@ -97,6 +99,7 @@ const ui = {
   ledgerLayout: Promise.resolve(),
   deeds: { queue: [], index: 0, mode: 'new', origin: null, visiting: false },
   goalDraft: null, // a Market Town merchant result shown in the Plan form, not saved until the family confirms
+  goalDraftBusy: false,
 };
 const persona = () => state?.members.find((m) => m.id === ui.personaId) ?? null;
 const isSandbox = () => state?.modes.payments.mode === 'sandbox';
@@ -719,6 +722,8 @@ function renderPlan() {
   $('#ask-planner').textContent = modes.ai.mode === 'live' ? 'Ask the AI planner' : 'Make an example plan';
   renderGoalDraft();
   if (!ui.planFormDirty) {
+    ui.planGoalId = goal.id;
+    ui.planGoalRevision = state.merchantGoalRevision;
     $('#goal-name-input').value = goal.name;
     $('#goal-target').value = centsToInput(goal.targetCents);
     $('#goal-starting').value = centsToInput(progress.startingCents);
@@ -777,6 +782,11 @@ const goalNameFor = (title) => {
 function renderGoalDraft() {
   const draft = ui.goalDraft, box = $('#goal-draft');
   box.hidden = !draft;
+  $('#goal-draft-review').hidden = !draft?.needsReview;
+  $('#goal-draft-search').hidden = !draft?.expired;
+  $('#goal-draft-save').disabled = ui.goalDraftBusy || Boolean(draft?.needsReview || draft?.expired);
+  $('#goal-draft-review').disabled = ui.goalDraftBusy;
+  $('#goal-draft-discard').disabled = ui.goalDraftBusy;
   $('#ask-planner').disabled = Boolean(draft); // one explicit decision at a time: save or discard the draft first
   const item = state.goalItem;
   const line = $('#goal-item');
@@ -799,7 +809,9 @@ function renderGoalDraft() {
   $('#goal-draft-effect').textContent = effects.join('');
 }
 function useMerchantItem(item) {
-  ui.goalDraft = item;
+  // Bind to the Plan fields the family actually saw. A search may start after another tab changed the goal;
+  // its newer revision must not give these older starting/date/budget fields permission to replace that edit.
+  ui.goalDraft = { ...item, goalId: ui.planGoalId, goalRevision: ui.planGoalRevision };
   ui.planFormDirty = true;
   $('#goal-name-input').value = goalNameFor(item.title);
   $('#goal-target').value = centsToInput(item.priceCents);
@@ -818,25 +830,50 @@ function discardGoalDraft() {
 }
 async function saveGoalDraft() {
   const draft = ui.goalDraft;
-  if (!draft) return;
+  if (!draft || ui.goalDraftBusy || draft.needsReview || draft.expired) return;
   const { goal, errors } = readGoalFields();
   if (errors.length) { setStatus('#plan-status', 'error', 'Please fix these first:', { issues: errors }); return; }
-  const button = $('#goal-draft-save');
-  button.disabled = true;
+  ui.goalDraftBusy = true;
+  renderGoalDraft();
   setStatus('#plan-status', 'working', 'Saving the goal…');
   try {
-    const res = await api.post('/api/merchant/goal', { draftId: draft.draftId, goalId: state.goal.id, goal });
+    const res = await api.post('/api/merchant/goal', { draftId: draft.draftId, goalId: draft.goalId, expectedGoalRevision: draft.goalRevision, goal });
+    if (ui.goalDraft !== draft) { applyState(res.state); return; }
     ui.goalDraft = null;
     ui.planFormDirty = false;
     applyState(res.state);
     setStatus('#plan-status', 'ok', `Goal saved: ${res.state.goal.name}, ${money(res.state.goal.targetCents)}. Make a plan when you are ready.`);
     $('#goal-name-input').focus();
   } catch (error) {
+    if (ui.goalDraft !== draft) return;
     setStatus('#plan-status', 'error', error.message); // a refused save changes nothing; the draft stays for review
-    if (error.code === 'merchant_draft_expired' || error.code === 'goal_changed') { ui.goalDraft = null; renderGoalDraft(); }
+    if (error.code === 'merchant_draft_expired') draft.expired = true;
+    if (error.code === 'goal_changed') draft.needsReview = true;
   } finally {
-    button.disabled = false;
+    ui.goalDraftBusy = false;
+    renderGoalDraft();
   }
+}
+
+async function reviewGoalDraft() {
+  const draft = ui.goalDraft;
+  if (!draft || ui.goalDraftBusy) return;
+  // Keep the selected item and its edited name/target; reload the household's latest starting amount, date and budget.
+  const name = $('#goal-name-input').value, target = $('#goal-target').value;
+  ui.goalDraftBusy = true; renderGoalDraft();
+  try {
+    const current = await api.get('/api/state');
+    if (ui.goalDraft !== draft) return;
+    ui.planFormDirty = false;
+    applyState(current);
+    ui.goalDraft = { ...draft, goalId: current.goal.id, goalRevision: current.merchantGoalRevision, needsReview: false };
+    ui.planFormDirty = true;
+    $('#goal-name-input').value = name; $('#goal-target').value = target;
+    setStatus('#plan-status', 'info', 'Latest household goal loaded. Review the fields, then save when ready.');
+    $('#goal-name-input').focus();
+  } catch (error) {
+    if (ui.goalDraft === draft) setStatus('#plan-status', 'error', error.message);
+  } finally { ui.goalDraftBusy = false; renderGoalDraft(); }
 }
 
 function renderCommitments() {
@@ -1453,6 +1490,10 @@ function bindEvents() {
   merchant = createMerchantDialog({ getState: () => state, onUse: useMerchantItem });
   for (const opener of [$('#open-merchant'), $('#find-goal-item')]) opener.addEventListener('click', (e) => merchant.open(e.currentTarget));
   $('#goal-draft-save').addEventListener('click', saveGoalDraft);
+  $('#goal-draft-review').addEventListener('click', reviewGoalDraft);
+  $('#goal-draft-search').addEventListener('click', () => {
+    if (ui.goalDraft) merchant.open($('#goal-draft-search'), { query: ui.goalDraft.searchQuery ?? ui.goalDraft.title, budgetCents: ui.goalDraft.searchBudgetCents });
+  });
   $('#goal-draft-discard').addEventListener('click', discardGoalDraft);
   $('#tabs').addEventListener('click', (e) => { const b = e.target.closest('[role="tab"]'); if (b) selectTab(b.id.slice(4), { focus: false }); });
   $('#tabs').addEventListener('keydown', (e) => {

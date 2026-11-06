@@ -8,6 +8,8 @@ Areas → Market Town (or the Market Town plaque) → **Merchant**, at the foot 
 
 **Use as goal** closes the merchant, opens Journal → Plan and fills the Goal name and amount. A short draft note shows the item, its price, merchant, returned availability and when Channel3 checked it. **Save as our goal** is the only step that writes. **Discard draft** restores the saved goal. While a draft is pending, the planner button waits.
 
+If another tab changes the goal, the draft stays available with **Review latest goal**. This loads the current starting amount, date and weekly budget while keeping the chosen item and its edited name/target; saving still needs a separate click. An expired result instead offers **Search again**, with the previous query and budget filled in. Opening that recovery step makes no provider request.
+
 ## Setup
 
 Put the key in the server's local `.env`. It stays server-side and is never sent to the browser.
@@ -51,7 +53,7 @@ Server bounds:
 - at most 6 provider searches a minute;
 - provider errors become short states: key rejected, no credits, rate limited, unavailable, unreadable response, timeout or unreachable.
 
-In the browser, only the newest search may update the list; an older answer is aborted or dropped. Provider text is added only as text.
+In the browser, only the newest search may update the list; an older answer is aborted or dropped, including when the replacement query is invalid. Starting another search clears the old selectable results. The results summary retains the budget used for that search; an over-budget offer still carries its own warning. Provider text is added only as text.
 
 ## The goal boundary
 
@@ -69,6 +71,7 @@ The household has a single active goal, and goal edits already set earlier plans
   - the draft expired;
   - the ordinary goal validation fails.
 - A refused save leaves the goal, item and records unchanged.
+- Goal edits are checked against a revision of the fields being replaced, including the separately stored starting-progress report. The browser binds it to the Plan fields actually shown, even if another tab edited that same goal before the product search began. Search responses also supply request-specific goal context, independent of cached product results. Missing/stale context is refused; contributions alone do not invalidate a draft. This is optimistic concurrency, not household authentication.
 - Correction (November 5): an earlier version refused any amount that would open an area from already-tracked progress and offered an inflated minimum ($240.01 for the $189.50 tent). That merchant-only rule was a misreading of "browsing must not unlock anything" and has been removed.
 - Provenance is kept in the additive `goal_items` table (migration 3): product id, title, merchant, link, item price, currency, availability and the time Channel3 checked. It is not search history. The Plan form shows it while the goal keeps that name. Channel3 says offer links are short-lived, so the saved link is labelled as of its checked time.
 - Role rules are unchanged: anyone who may edit the goal may confirm a draft. Contributions still need an adult's amount-specific approval, and nothing here touches payment code.
@@ -76,7 +79,7 @@ The household has a single active goal, and goal edits already set earlier plans
 ## Evidence
 
 **Fakes** (`test/helpers/fake-channel3.mjs`, documented response shape with invented products). These are not live Channel3 answers.
-- Eleven unit cases in `test/unit/channel3-merchant.test.mjs`:
+- Fifteen unit cases in `test/unit/channel3-merchant.test.mjs`:
   - the exact request and headers, with no household data;
   - valid, missing-price, non-USD, out-of-range and malformed answers;
   - unsafe links and merchant-hosted images dropped;
@@ -86,8 +89,10 @@ The household has a single active goal, and goal edits already set earlier plans
   - draft expiry;
   - the routes: search and draft change nothing; explicit confirmation saves provenance through ordinary goal-edit rules, without a new ledger entry or order; existing progress can qualify milestones against the confirmed amount;
   - the refusals;
+  - same-goal edits, changed starting progress, edits during a delayed search, per-request context on cached answers, and explicit review without another provider search;
+  - missing review context rejected, while a contribution alone preserves draft validity;
   - the additive migration on a version-two household.
-- Six browser cases in `test/e2e/channel3-merchant.spec.mjs`, desktop 1440 and touch phone 390. Each runs the real app on its own port with a fresh in-memory example database. They cover:
+- Ten browser cases in `test/e2e/channel3-merchant.spec.mjs`, desktop 1440 and touch phone 390. Each runs the real app on its own port with a fresh in-memory example database. They cover:
   - explicit search only;
   - three honest rows with image, price, merchant and availability;
   - the secondary safe link and disclosure;
@@ -96,6 +101,8 @@ The household has a single active goal, and goal edits already set earlier plans
   - empty, error and link-refused states;
   - Escape and focus return;
   - discard;
+  - stale Plan fields from another tab's goal edit, preserved product draft, explicit review and save;
+  - expired prices, prefilled search recovery and no automatic provider retry;
   - the not-connected state;
   - no checkout, AI or other writes, no external requests and no horizontal overflow.
 

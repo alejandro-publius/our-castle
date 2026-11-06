@@ -54,9 +54,15 @@ export function createMerchantDialog({ getState, onUse }) {
     } else if (status.dataset.kind === 'off') say('', '');
   }
 
-  function open(from) {
+  function open(from, { query = null, budgetCents = null } = {}) {
     origin = from ?? document.activeElement;
     leaving = false;
+    if (query !== null) {
+      $('#merchant-query').value = query;
+      $('#merchant-budget').value = Number.isSafeInteger(budgetCents) ? (budgetCents / 100).toFixed(2) : '';
+      list.replaceChildren(); source.hidden = true;
+      say('', 'Search again for a current price.');
+    }
     renderConnection();
     if (!dialog.open) dialog.showModal();
     (connected() ? $('#merchant-query') : $('#merchant-title')).focus();
@@ -64,7 +70,7 @@ export function createMerchantDialog({ getState, onUse }) {
 
   function close() { if (dialog.open) dialog.close(); }
 
-  function row(r) {
+  function row(r, context) {
     const name = h('h3', { class: 'merchant-item-name', id: `merchant-item-${r.productId}` }, r.title);
     const picture = r.image
       ? h('img', { class: 'merchant-item-image', src: r.image.url, alt: r.image.alt, width: 64, height: 64, loading: 'lazy', decoding: 'async', referrerpolicy: 'no-referrer' })
@@ -76,7 +82,7 @@ export function createMerchantDialog({ getState, onUse }) {
       h('p', {}, [r.brand, r.otherOffers ? `${r.otherOffers} other ${r.otherOffers === 1 ? 'retailer' : 'retailers'}` : null, `Channel3 product ${r.productId}`].filter(Boolean).join(' · ')),
       r.url && h('a', { href: r.url, target: '_blank', rel: 'noopener noreferrer nofollow' }, `View at ${r.merchant}`, h('span', { class: 'sr-only' }, ' (opens a retailer site in a new tab)')));
     const use = h('button', { type: 'button', class: 'merchant-use', disabled: !r.usable, 'aria-describedby': name.id }, 'Use as goal');
-    if (r.usable) use.addEventListener('click', () => { leaving = true; close(); onUse(r); });
+    if (r.usable) use.addEventListener('click', () => { leaving = true; close(); onUse({ ...r, ...context }); });
     return h('li', { class: 'merchant-item', 'data-product': r.productId },
       picture,
       h('div', { class: 'merchant-item-text' }, name, meta, notes.length ? h('p', { class: 'merchant-item-note' }, notes.join(' · ')) : null, more),
@@ -86,26 +92,29 @@ export function createMerchantDialog({ getState, onUse }) {
   async function search(event) {
     event?.preventDefault();
     if (!connected()) { renderConnection(); return; }
+    const mine = ++seq;
+    controller?.abort(); controller = null;
+    list.replaceChildren(); source.hidden = true;
+    list.removeAttribute('aria-busy');
     const query = $('#merchant-query').value.trim().replace(/\s+/g, ' ');
     const budgetText = $('#merchant-budget').value.trim();
     const budgetCents = budgetText ? parseAmountToCents(budgetText) : null;
     $('#merchant-budget').toggleAttribute('aria-invalid', Boolean(budgetText) && budgetCents === null);
     if (query.length < 2) { say('error', 'Describe what you are looking for in a few words.'); $('#merchant-query').focus(); return; }
     if (budgetText && budgetCents === null) { say('error', 'Enter the budget in dollars, like 200.00, or leave it empty.'); $('#merchant-budget').focus(); return; }
-    const mine = ++seq;
-    controller?.abort();
     controller = new AbortController();
     list.setAttribute('aria-busy', 'true');
     say('working', 'Asking Channel3…');
     try {
       const res = await api.post('/api/merchant/search', { query, budgetCents }, { signal: controller.signal });
       if (mine !== seq) return;
-      list.replaceChildren(...res.results.map(row));
+      const context = { goalId: res.goalId, goalRevision: res.goalRevision, searchQuery: res.query, searchBudgetCents: res.budgetCents };
+      list.replaceChildren(...res.results.map(r => row(r, context)));
       if (!res.results.length) {
         say('empty', `No matches for “${res.query}”${res.budgetCents ? ` under ${formatCents(res.budgetCents)}` : ''}. Try other words${res.budgetCents ? ' or a higher budget' : ''}.`);
         source.hidden = true;
       } else {
-        say('ok', `${res.results.length} ${res.results.length === 1 ? 'result' : 'results'} for “${res.query}”.`);
+        say('ok', `${res.results.length} ${res.results.length === 1 ? 'result' : 'results'} for “${res.query}”${res.budgetCents ? ` · Budget ${formatCents(res.budgetCents)}` : ''}.`);
         // Channel3's required link disclosure sits with the links; the price facts stay with the results.
         source.textContent = `Channel3 prices and stock, checked ${clock(res.checkedAt)}; tax and shipping not included. We may earn a commission when you buy through links on this page.`;
         source.hidden = false;

@@ -5,15 +5,26 @@
 // the goal currency, the goal amount is not below that price, and the goal has not changed since the draft was made.
 // It keeps the item's provenance. It never credits, captures or pays out money and never buys the item.
 
-import { DomainError, getGoal, updateGoal } from '../household.mjs';
+import { createHash } from 'node:crypto';
+import { DomainError, getGoal, progressFor, updateGoal } from '../household.mjs';
 import { transaction } from '../db.mjs';
 import { formatCents } from '../../src/core/rules.js';
 
+// Revision of the fields a merchant draft can replace. It is an optimistic-concurrency check, not an auth token.
+// Include the separately stored starting report; exclude payments, so a new contribution cannot block a goal edit.
+export function merchantGoalRevision(goal, startingCents) {
+  return createHash('sha256').update(JSON.stringify([
+    goal.id, goal.householdId, goal.name, goal.targetCents, goal.currency, goal.targetDate, goal.weeklyBudgetCents, startingCents,
+  ])).digest('hex');
+}
+
 /** Save the confirmed draft: the goal through updateGoal, then the item provenance, in one transaction. */
-export function saveGoalFromItem(db, { householdId, goalId, expectedGoalId, item, goal: input }, clock) {
+export function saveGoalFromItem(db, { householdId, goalId, expectedGoalId, expectedGoalRevision, item, goal: input }, clock) {
   const goal = getGoal(db, goalId);
   if (!goal || goal.householdId !== householdId) throw new DomainError(404, 'not_found', 'Goal not found.');
   if (expectedGoalId !== goal.id) throw new DomainError(409, 'goal_changed', 'The household goal changed since this draft was made. Review it again before saving.');
+  if (expectedGoalRevision !== merchantGoalRevision(goal, progressFor(db, goal.id).startingCents))
+    throw new DomainError(409, 'goal_changed', 'The household goal changed. Review the latest goal before saving this item.');
   if (!input || typeof input !== 'object') throw new DomainError(400, 'invalid_goal', 'Review the goal before saving.');
   if (!item?.usable || item.currency !== goal.currency || !Number.isSafeInteger(item.priceCents)) {
     throw new DomainError(400, 'merchant_price_unusable', 'This result has no price in the goal currency, so it cannot set the goal amount.');
