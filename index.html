@@ -150,6 +150,8 @@
         <section class="panel parchment" id="panel-plan" role="tabpanel" aria-labelledby="tab-plan" hidden>
           <h3 id="plan-heading" tabindex="-1">Plan the journey</h3>
           <p class="lede" id="planner-lede"></p>
+          <!-- The family campsite's current stage and the one way to it from the journal. Camera only; it writes nothing. -->
+          <p class="plan-project" id="plan-project"><span id="plan-project-stage"></span><button type="button" class="link-button" id="visit-campsite">Visit campsite</button></p>
           <!-- A Market Town merchant result waiting for the family's confirmation. Nothing is saved until "Save as our goal". -->
           <section class="goal-draft" id="goal-draft" hidden aria-labelledby="goal-draft-title">
             <h4 id="goal-draft-title" tabindex="-1">Draft from the market</h4>
@@ -177,7 +179,9 @@
             </fieldset>
             <div class="actions span-2">
               <button type="submit" class="primary" id="ask-planner">Ask the planner</button>
+              <button type="button" class="link-button" id="check-schedule" aria-controls="plan-check-result">Check schedule</button>
             </div>
+            <div id="plan-check-result" class="plan-check span-2" role="status" aria-live="polite" hidden></div>
           </form>
           <div class="form-status" id="plan-status" role="status" aria-live="polite"></div>
           <article class="plan" id="plan-result" hidden aria-labelledby="plan-headline">
@@ -186,8 +190,9 @@
               <h4 id="plan-headline" tabindex="-1"></h4>
             </header>
             <p id="plan-summary"></p>
+            <p id="plan-review-status" class="fine" hidden></p>
             <div class="callout warn" id="plan-shortfall" hidden></div>
-            <h5>Weekly schedule <small>— change any week, then save</small></h5>
+            <h5>Weekly schedule <small id="plan-schedule-help">— change any week, then save</small></h5>
             <div class="table-wrap">
               <table class="schedule">
                 <thead><tr><th scope="col">Week</th><th scope="col">Date</th><th scope="col">Amount</th></tr></thead>

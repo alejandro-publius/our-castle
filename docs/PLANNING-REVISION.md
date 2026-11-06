@@ -124,27 +124,13 @@ node scripts/plan-revision-example.mjs --json   # every request and full respons
   6. a table-by-table proof that steps 3–5 wrote nothing;
   7. a fresh $225 plan accepted.
 
-## Frontend integration (for Codex, after Rachel's PR #8 merges)
+## Frontend integration
 
-No UI was changed. Current-main line references:
+The combined family-planning pass wires this contract into the existing Plan journal. **Check schedule** reads the current weekly/date fields and calls only the read-only endpoint; **Try [date]** changes only the form. The accepted schedule remains visibly **in use** until an explicit new-plan action replaces it. No model or provider call runs on typing, Enter in those two fields, calculation or reload.
 
-1. **`renderPlan`** (`src/app/main.js:719`; the accept button is at :770–773). When `state.planReview?.needsRefresh`:
-   - disable `#accept-plan` and the schedule edit save;
-   - show `planReview.changes[].message` in `#plan-shortfall` or `#plan-status`;
-   - point to the existing `#ask-planner` ("make a fresh plan").
-2. **`acceptPlan`** (:979) and **`saveEdits`** (:966). On `error.code === 'plan_stale'`:
-   - show `error.issues` (`setStatus` already renders `issues`);
-   - re-fetch `GET /api/state` (as at :866) so `planReview` updates.
-3. **`askPlanner`** (:915) and **`useRulesPlan`** (:948). On `plan_facts_changed` (HTTP 409):
-   - show the message and issues;
-   - re-fetch state;
-   - do **not** offer the "example rules plan instead" fallback for this error: the provider answered, but the figures moved.
-4. **Preview.** The Plan form already has `#goal-weekly` and `#goal-date` (`index.html:171–172`). After the family edits either:
-   - `POST /api/plans/preview` with the parsed cents/date, and render `schedule`, `totals`, `milestones`, `reach` and `notes` read-only;
-   - on 400, show `error.issues`;
-   - to use the values, keep the existing explicit path: save the goal or ask the planner (`POST /api/plans` with `goal`), which sets the plan in use aside, then review and accept the fresh plan;
-   - optionally compare `preview.facts.factsRevision` with `state.planReview.factsRevision` to say "figures changed since this preview".
-5. **`nextAction`** (`src/core/journey.js:98`, the `review-plan` step). When `state.planReview?.needsRefresh`, prefer a "Refresh your plan" step over quoting the stale headline.
+A stale proposal cannot be accepted or edited. A refused accept/edit or an answer prepared against changed facts reads local state once and points to the existing Make-plan action, without retrying the model. A schedule check against newer server facts offers **Load latest goal**, retaining unsaved amounts, dates and bill rows. Merchant drafts immediately clear the old calculation and require their existing save/discard decision.
+
+Implementation: `src/app/plan-check.js`, `renderPlan`, `refreshPlanGoal` and `showPlanError` in `src/app/main.js`. [Interface lock, independent review and focused integration evidence](FAMILY-PLAN-REVIEW.md). The table below records the original backend PR's checks, separately from those subsequent UI checks.
 
 ## Checks run (all local, fake or simulated transports)
 

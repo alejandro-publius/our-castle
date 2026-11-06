@@ -193,6 +193,9 @@ button { font: inherit; }
 .goal-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .goal-heading label { font-weight: 500; font-size: 15px; }
 .goal-heading .link-button { min-height: 44px; padding: 4px 0; white-space: nowrap; }
+/* The campsite line at the top of Plan: its stage on the left, one quiet link to it on the right. */
+.plan-project { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 0 0 10px; font-size: 15px; color: var(--ink-muted); }
+.plan-project .link-button { min-height: 44px; padding: 4px 0; white-space: nowrap; }
 .actions { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-top: 8px; }
 
 .form-status { margin: 10px 0 0; font-size: 15px; }
@@ -206,6 +209,10 @@ button { font: inherit; }
 .msg .debug { display: block; font-size: 12px; margin-top: 4px; color: var(--ink-muted); }
 
 /* Plan */
+.plan-check { border-top:1px solid var(--ink-line); padding-top:10px; }
+.plan-check p { margin:0 0 4px; }
+.plan-check[data-kind='error'] > p:first-child { color:var(--warn); }
+#check-schedule,.plan-check .link-button { min-height:44px; }
 .plan { margin-top: 14px; border-top: 1px solid #c9ab6e; padding-top: 14px; }
 .plan-head { display: grid; gap: 6px; }
 .plan-head h4 { font-size: 20px; font-weight: 700; line-height: 1.25; }
@@ -547,6 +554,10 @@ button { font: inherit; }
 .realm-legend span { display:block; font:24px/44px Georgia,serif; }
 .realm-legend:hover span,.realm-legend[aria-pressed='true'] span { color:#fff3bc; transform:scale(1.16); }
 .realm-legend:focus-visible { outline:2px solid var(--brass); outline-offset:1px; background:#142c34bb; }
+/* The family campsite marker: the same quiet gold glint treatment, drawn as a small tent. */
+.realm-project span { display:flex; align-items:center; justify-content:center; height:44px; }
+.realm-project svg { display:block; filter:drop-shadow(0 1px 2px #142c34) drop-shadow(0 0 6px #f4d17e80); transition:transform .15s; }
+.realm-project:hover svg, .realm-project[aria-pressed='true'] svg { transform:scale(1.16); }
 
 /* Treasury (see docs/TREASURY.md): one next-area milestone above the records. Inside the AG Studio widget or the plain
    fallback the same markup is drawn; Studio's own canvas is made transparent so the parchment shows through. */

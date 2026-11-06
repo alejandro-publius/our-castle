@@ -8,6 +8,8 @@ import { addEstateGeometry, createEstateModels } from './estate-models.js';
 import { createEstateCourt } from './court.js';
 import { createRealmModels } from './realm-models.js';
 import { createGoldFountains } from './gold-fountain.js';
+import { createFamilyProject } from './family-project.js';
+import { FAMILY_PROJECT_SITE } from '../core/family-project.js';
 import { REALM_SIZE, REALM_BOUNDS, REALM_DISTRICTS, REALM_LEGENDS, REALM_BRIDGES, REALM_ROUTE, homeDistrict, districtById, legendById, viewLocation, journeyLeg, journeyPosition } from '../core/realm.js';
 import { MOUNTAIN_PEAKS } from '../core/realm-terrain.js';
 
@@ -71,6 +73,8 @@ const disposeGroup = (group) => {
   group.traverse((o) => { if (o.userData.ownedGeometry) o.geometry.dispose(); if (o.userData.ownedMaterial) o.material.dispose(); if (o.isInstancedMesh) o.dispose?.(); });
   group.clear();
 };
+// Camera targets: districts, discoveries and the family campsite (a meadow, not a district).
+const locationOf = (id) => viewLocation(id) ?? (id === FAMILY_PROJECT_SITE.id ? FAMILY_PROJECT_SITE : undefined);
 const easeInOut = (t) => (t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2);
 const easeOutBack = (t) => 1 + 2.2 * (t - 1) ** 3 + 1.2 * (t - 1) ** 2;
 
@@ -78,7 +82,7 @@ export function createBoardScene(container, { reducedMotion = false, isOccluded 
   let renderer; let pipeline; let scene; let camera; let builder; let observer; let models; let court;
   const part = (...args) => builder.part(...args);
   const groups = {};
-  let realmModels; let fountains; let realm = { districts: [], bridges: [], landscape: null };
+  let realmModels; let fountains; let project; let realm = { districts: [], bridges: [], landscape: null };
   const perf = { lastMs: 0, maxMs: 0, totalMs: 0, draws: 0, calls: 0, triangles: 0 };
   let state = { builtTier: 0, position: 0, crest: { field: 'cobalt', charge: 'stag' }, gardens: 0, playMode: 'family', milestoneSpaces: [5, 12, 20], reached: [], estateLevel: 0, previewFeature: null };
   let shownPosition = 0;
@@ -192,6 +196,14 @@ export function createBoardScene(container, { reducedMotion = false, isOccluded 
       }
     }
     builder.flush();
+  }
+
+  // ---------- The family project: one campsite whose stage is the server's current progress ----------
+  // Only this group is rebuilt when the stage or crest changes; the landscape, districts and bridges stay as they are.
+  function buildProject() {
+    disposeGroup(groups.project); project.reset();
+    if (state.project) project.build(groups.project, state.project, crestColour(state.crest.field));
+    builder.flush(); realmModels.finish(groups.project);
   }
 
   // ---------- Home tiers (cottage → manor → keep → castle) ----------
@@ -309,6 +321,7 @@ export function createBoardScene(container, { reducedMotion = false, isOccluded 
     realmModels.stepFarm(seconds);
     realmModels.stepTavern(seconds);
     realmModels.stepLegends(seconds);
+    project.tick(seconds);
     pipeline.stepCloudSurround(seconds);
     court.tick(seconds);
     for (const r of rotators) r.group.rotation[r.axis] = seconds * r.speed;
@@ -439,7 +452,7 @@ export function createBoardScene(container, { reducedMotion = false, isOccluded 
     const aspect = width / height; const narrow = width < 640;
     camera.updateMatrixWorld();
     let minX = Infinity; let maxX = -Infinity; let minY = Infinity; let maxY = -Infinity;
-    const focused = viewLocation(view.focus), bridge = REALM_BRIDGES.find((b) => b.id === view.crossing);
+    const focused = locationOf(view.focus), bridge = REALM_BRIDGES.find((b) => b.id === view.crossing);
     const framed = bridge ? [districtById(bridge.from), districtById(bridge.to)] : focused ? [focused] : [];
     const frame = framed.length ? framed.flatMap((d) => [-1,1].flatMap(x=>[-1,1].flatMap(z=>[-2,d.height].map(y=>new THREE.Vector3(d.x+x*(d.width/2+2),y,d.z+z*(d.depth/2+2)))))) : FRAME_POINTS;
     for (const point of frame) {
@@ -461,7 +474,7 @@ export function createBoardScene(container, { reducedMotion = false, isOccluded 
     renderer.setSize(width, height, false); pipeline.setSize(width, height); draw();
   }
   function updateCamera() {
-    const focus = viewLocation(view.focus), bridge = REALM_BRIDGES.find((b) => b.id === view.crossing);
+    const focus = locationOf(view.focus), bridge = REALM_BRIDGES.find((b) => b.id === view.crossing);
     const from = bridge && districtById(bridge.from), to = bridge && districtById(bridge.to);
     const x = bridge ? (from.x + to.x) / 2 : focus?.x ?? REALM_SIZE.centerX, z = bridge ? (from.z + to.z) / 2 : focus?.z ?? REALM_SIZE.centerZ;
     camera.position.set(x+Math.sin(view.angle)*180,150,z+Math.cos(view.angle)*180);
@@ -522,16 +535,17 @@ export function createBoardScene(container, { reducedMotion = false, isOccluded 
   models = createEstateModels({ part, builder, colours });
   realmModels = createRealmModels({part,builder,models,colours});
   fountains = createGoldFountains({ builder, colours, reducedMotion }); scene.add(fountains.group);
+  project = createFamilyProject({ part, models, colours });
   pipeline = addCloudSurround(new PixelRenderer(renderer));
   pipeline.setCloudSurround({ enabled: true, bounds: [REALM_SIZE.width / 2, REALM_SIZE.depth / 2], center: [REALM_SIZE.centerX, REALM_SIZE.centerZ] });
   pipeline.configure({ pixelSize: 2, pixelMode: true, outlines: true, dither: true, exposure: 1.05 });
-  for (const name of ['woodland', 'land', 'route', 'gardens', 'token', 'fx', 'estate', 'court', 'atmosphere']) { groups[name] = new THREE.Group(); scene.add(groups[name]); }
+  for (const name of ['woodland', 'land', 'project', 'route', 'gardens', 'token', 'fx', 'estate', 'court', 'atmosphere']) { groups[name] = new THREE.Group(); scene.add(groups[name]); }
   court = createEstateCourt(groups.court, builder, colours);
   groups.castle = new THREE.Group(); scene.add(groups.castle);
   const scenery=realmModels.woodland(groups.woodland),hillSign=scenery.frontier.hillsideSign;
   FRAME_POINTS.push(new THREE.Vector3(hillSign.x,hillSign.top,hillSign.z));
   buildAtmosphere();
-  buildLandscape();buildRoute(); buildGardens(); buildCastle(); buildEstate(); buildToken(); buildCourt();
+  buildLandscape();buildRoute(); buildGardens(); buildCastle(); buildEstate(); buildToken(); buildCourt(); buildProject();
   observer = new ResizeObserver(resize); observer.observe(container); resize();
   startAmbient();
   bindView();
@@ -545,6 +559,8 @@ export function createBoardScene(container, { reducedMotion = false, isOccluded 
         const crestChanged = prev.crest.field !== state.crest.field || prev.crest.charge !== state.crest.charge;
         if (crestChanged || prev.playMode !== state.playMode || JSON.stringify(prev.members) !== JSON.stringify(state.members)) buildToken();
         if (prev.gardens !== state.gardens) buildGardens();
+        // The campsite follows the stage the app derived from server progress; new parts take the current light and wetness.
+        if (crestChanged || JSON.stringify(prev.project ?? null) !== JSON.stringify(state.project ?? null)) { buildProject(); applyAtmosphere(); }
         const tierUp = state.builtTier > prev.builtTier;
         const cameraRevision = viewRevision;
         let openedBridge = null;
@@ -609,7 +625,7 @@ export function createBoardScene(container, { reducedMotion = false, isOccluded 
       viewRevision++; Object.assign(view,{focus:id,crossing:null,zoom:1,panX:0,panY:0});updateCamera();resize();
     },
     focusLegend(id) {
-      if(!legendById(id))return;
+      if(!legendById(id)&&id!==FAMILY_PROJECT_SITE.id)return;
       viewRevision++; Object.assign(view,{focus:id,crossing:null,zoom:1,panX:0,panY:0});updateCamera();resize();
     },
     setPixelMode(on) { pipeline.configure({ pixelMode: on }); draw(); },
@@ -631,13 +647,13 @@ export function createBoardScene(container, { reducedMotion = false, isOccluded 
       const t = groups.token.position;
       return { spaces, travelers: toScreen(t.x, t.y + 1.5, t.z), canvas: { left: rect.left, top: rect.top, width: rect.width, height: rect.height } };
     },
-    debug: () => ({ region: REALM_SIZE, estateLevel: state.estateLevel, view: { ...view }, previewFeature: state.previewFeature, tier: state.builtTier, position: state.position, shownPosition, gardens: state.gardens, crest: { ...state.crest }, playMode: state.playMode, familyAvatars: householdParty().map((m, i) => ({ memberId: m.id, avatarId: memberAvatar(m, i).id, role: m.role })), animating, frames, ambient: Boolean(ambientTimer), ambientFrames, grazers: grazers.length, butterflies: flutterers.length, court: court.debug(), legends: REALM_LEGENDS.map(({id,x,z})=>({id,x,z})), districts: realm.districts.map(({id,open,status,greyPaint,drawMeshes,hues})=>({id,open,status,greyPaint,drawMeshes,hues})), bridges: realm.bridges.map(({id,open,panels,gate,river})=>({id,open,gate,river,raised:panels.some(p=>Math.abs(p.group.rotation.z)>.01)})), landscape: realm.landscape, tavern: realmModels.tavernDebug(), farm: realmModels.farmDebug(), folklore: realmModels.legendsDebug(), riverCurrent: realmModels.currentDebug(), fountains: fountains.debug(), surround: pipeline.cloudSurroundDebug(), atmosphere: atmosphereDebug(), render: { ...perf, averageMs: perf.draws ? perf.totalMs / perf.draws : 0, geometries: renderer.info.memory.geometries } }),
+    debug: () => ({ region: REALM_SIZE, estateLevel: state.estateLevel, view: { ...view }, previewFeature: state.previewFeature, tier: state.builtTier, position: state.position, shownPosition, gardens: state.gardens, crest: { ...state.crest }, playMode: state.playMode, familyAvatars: householdParty().map((m, i) => ({ memberId: m.id, avatarId: memberAvatar(m, i).id, role: m.role })), animating, frames, ambient: Boolean(ambientTimer), ambientFrames, grazers: grazers.length, butterflies: flutterers.length, court: court.debug(), legends: REALM_LEGENDS.map(({id,x,z})=>({id,x,z})), districts: realm.districts.map(({id,open,status,greyPaint,drawMeshes,hues})=>({id,open,status,greyPaint,drawMeshes,hues})), bridges: realm.bridges.map(({id,open,panels,gate,river})=>({id,open,gate,river,raised:panels.some(p=>Math.abs(p.group.rotation.z)>.01)})), landscape: realm.landscape, tavern: realmModels.tavernDebug(), farm: realmModels.farmDebug(), folklore: realmModels.legendsDebug(), project: project.debug(), riverCurrent: realmModels.currentDebug(), fountains: fountains.debug(), surround: pipeline.cloudSurroundDebug(), atmosphere: atmosphereDebug(), render: { ...perf, averageMs: perf.draws ? perf.totalMs / perf.draws : 0, geometries: renderer.info.memory.geometries } }),
     dispose() { for (const [name,fn,options] of interactions) renderer.domElement.removeEventListener(name,fn,options); clearInterval(ambientTimer); observer?.disconnect(); fountains?.dispose(); court?.dispose(); for (const g of Object.values(groups)) disposeGroup(g); flutterGeo?.dispose(); builder?.dispose(); pipeline?.dispose(); renderer?.dispose(); },
   };
 
   function districtsOnScreen(){
     const rect=container.getBoundingClientRect();
-    return {focus:view.focus,points:[...REALM_DISTRICTS,...REALM_LEGENDS].map(d=>{
+    return {focus:view.focus,points:[...REALM_DISTRICTS,...REALM_LEGENDS,FAMILY_PROJECT_SITE].map(d=>{
       const point=new THREE.Vector3(d.x,d.height+1,d.z).project(camera);
       return {id:d.id,x:(point.x+1)/2*rect.width,y:(1-point.y)/2*rect.height,width:rect.width,height:rect.height};
     })};

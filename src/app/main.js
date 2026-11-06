@@ -18,8 +18,10 @@ import { REALM_DISTRICTS, REALM_LEGENDS, realmAccess, districtById, homeDistrict
 import { ledgerTrail } from '../core/ledger.js';
 import { createMerchantDialog, resultFacts } from './merchant.js';
 import { createTreasury } from './treasury.js';
+import { FAMILY_PROJECT_SITE, projectLabel, projectStage } from '../core/family-project.js';
 import { CONFIRMATION_HISTORY_QUESTION, NEEDS_CHECK_QUESTION, isLocalQuestion, isNeedsCheckQuestion } from '../core/steward-questions.js';
 import { checkStatus } from '../core/check-status.js';
+import { createPlanCheck } from './plan-check.js';
 
 // ---------- small helpers ----------
 const $ = (selector, root = document) => root.querySelector(selector);
@@ -74,6 +76,7 @@ let ledgerGrid = null;
 let familyAvatars = null;
 let merchant = null;
 let treasury = null;
+let planCheck = null;
 const ui = {
   tab: 'house',
   personaId: pref.get('persona'),
@@ -460,6 +463,8 @@ function renderBoard({ animate, result, added = [], hasNewDistrict = false }) {
     playMode: household.playMode,
     members: state.members,
     milestoneSpaces: board.milestoneSpaces.map((m) => m.space),
+    // The campsite's stage is read from the server's progress and goal through the existing milestone rules.
+    project: (({ index, key, detail }) => ({ index, key, detail }))(projectStage(state.progress.progressCents, state.goal.targetCents)),
   }, { animate }).then(() => {
     if (!hasNewDistrict && (result?.awarded?.length || added.length)) celebrate(result?.awarded ?? [], added);
   });
@@ -490,6 +495,9 @@ function renderRealmNavigation() {
   $('#realm-markers').replaceChildren(...regions.map((d) => h('button', { type: 'button', class: 'realm-marker', 'data-district': d.id, 'data-status': d.status, 'aria-label': `Inspect ${d.name} on the map`, hidden: true },
     !d.open && h('span', { class: 'realm-lock', 'aria-hidden': 'true', html: lock }), h('strong', {}, d.name))));
   $('#realm-markers').append(h('button', {type:'button',id:'sword-glint',class:'realm-legend','data-legend':'sword-stone','aria-label':'Investigate the glint in the trees','aria-pressed':'false',hidden:true},h('span',{'aria-hidden':'true'},'✦')));
+  // The family campsite: a small tent marker in the west meadow. Selecting it only moves the camera and names its stage.
+  const tent = '<svg viewBox="0 0 28 28" width="28" height="28" fill="none" aria-hidden="true"><path d="M14 4 2.5 24h23L14 4Z" fill="currentColor" stroke="#3b2a12" stroke-width="1.6" stroke-linejoin="round"/><path d="M14 11.5 9 24h10l-5-12.5Z" fill="#3b2a12"/><path d="M14 1v3" stroke="#3b2a12" stroke-width="1.6" stroke-linecap="round"/></svg>';
+  $('#realm-markers').append(h('button', {type:'button',id:'project-marker',class:'realm-legend realm-project','data-legend':FAMILY_PROJECT_SITE.id,'aria-label':`Visit the ${FAMILY_PROJECT_SITE.name.toLowerCase()}`,'aria-pressed':'false',hidden:true},h('span',{'aria-hidden':'true',html:tent})));
   $('#realm-focus-status').textContent = 'Select a district.';
 }
 function syncRealmMarkers({focus,points}){
@@ -503,9 +511,11 @@ function syncRealmMarkers({focus,points}){
   const occupied=[];
   const priority=(p)=>document.activeElement?.dataset?.district===p.id?3:p.id===home?2:0;
   for(const point of [...points].sort((a,b)=>priority(b)-priority(a))){
-    const legend = point.id === 'sword-stone';
-    const el=legend ? $('#sword-glint') : $(`#realm-markers [data-district="${point.id}"]`);if(!el)continue;
-    const visible = (!focus || point.id === focus || legend && ['garden','keep'].includes(focus)) && (!compactOverview || legend || point.id === home || el === document.activeElement) && point.x > 0 && point.x < point.width && point.y > 0 && point.y < point.height;
+    const legend = point.id === 'sword-stone' || point.id === FAMILY_PROJECT_SITE.id;
+    const el=legend ? $(`#realm-markers [data-legend="${point.id}"]`) : $(`#realm-markers [data-district="${point.id}"]`);if(!el)continue;
+    // A small marker also shows while a neighbouring district is in view: the grove beside the garden and keep, the campsite beside the village.
+    const nearby = point.id === 'sword-stone' ? ['garden','keep'] : point.id === FAMILY_PROJECT_SITE.id ? ['cottage'] : [];
+    const visible = (!focus || point.id === focus || legend && nearby.includes(focus)) && (!compactOverview || legend || point.id === home || el === document.activeElement) && point.x > 0 && point.x < point.width && point.y > 0 && point.y < point.height;
     el.hidden = !visible;
     if (visible) {
       const px=Math.max(el.offsetWidth/2+8,Math.min(point.width-el.offsetWidth/2-8,point.x));
@@ -533,7 +543,7 @@ function syncRealmMarkers({focus,points}){
     deedButton.setAttribute('aria-label', `View deed for ${d.name}`);
   } else delete deedButton.dataset.district;
   const secret = REALM_LEGENDS.find(d=>d.id===focus);
-  const message=secret ? secret.name : d && !d.open ? `${d.name} · ${districtCondition(d)}` : '';
+  const message=focus===FAMILY_PROJECT_SITE.id ? projectLabel(projectStage(state.progress.progressCents, state.goal.targetCents)) : secret ? secret.name : d && !d.open ? `${d.name} · ${districtCondition(d)}` : '';
   if($('#realm-focus-status').textContent!==message)$('#realm-focus-status').textContent=message;
 }
 
@@ -720,6 +730,7 @@ function renderPlan() {
   const { goal, progress, modes, plan } = state;
   $('#planner-lede').textContent = '';
   $('#planner-lede').hidden = true;
+  $('#plan-project-stage').textContent = projectLabel(projectStage(progress.progressCents, goal.targetCents));
   $('#ask-planner').textContent = modes.ai.mode === 'live' ? 'Ask the AI planner' : 'Make an example plan';
   renderGoalDraft();
   if (!ui.planFormDirty) {
@@ -733,6 +744,8 @@ function renderPlan() {
     if (plan?.inputs?.commitments) ui.commitments = plan.inputs.commitments.map((c) => ({ label: c.label, amount: centsToInput(c.amountCents), cadence: c.cadence }));
     renderCommitments();
   }
+  planCheck ??= createPlanCheck({ getState: () => state, isBlocked: () => Boolean(ui.goalDraft), refreshGoal: refreshPlanGoal });
+  planCheck.update();
   const result = $('#plan-result');
   if (!plan) { result.hidden = true; return; }
   result.hidden = false;
@@ -741,8 +754,16 @@ function renderPlan() {
   badge.textContent = plan.source === 'ai'
     ? 'AI plan'
     : plan.source === 'household-edited' ? 'Household plan' : 'Built-in plan';
+  if (state.acceptedPlanId === plan.id) badge.append(' · in use');
   $('#plan-headline').textContent = plan.headline;
   $('#plan-summary').textContent = plan.summary;
+  const review = state.planReview;
+  const stale = Boolean(review?.factsChanged);
+  const reviewStatus = $('#plan-review-status');
+  reviewStatus.hidden = !stale;
+  reviewStatus.textContent = !stale ? '' : review.needsRefresh
+    ? 'Progress or goal details changed. Make a new plan before using these weeks.'
+    : 'This plan stays in use. Make a new plan to change the remaining weeks.';
   const shortfall = $('#plan-shortfall');
   const notes = [];
   if (!plan.totals.feasible) notes.push(`This schedule is ${money(plan.totals.shortfallCents)} short of the goal. Raise the weekly amount, move the date, or edit the weeks below.`);
@@ -766,11 +787,41 @@ function renderPlan() {
     $('#plan-total').textContent = money(plan.totals.plannedCents);
   }
   $('#plan-cautions').replaceChildren(...plan.cautions.map((c) => h('li', {}, c)));
-  $('#save-edits').disabled = !ui.scheduleDirty;
+  $('#plan-schedule-help').hidden = stale;
+  for (const input of $$('#plan-schedule .week-amount')) input.readOnly = stale;
+  $('#save-edits').disabled = !ui.scheduleDirty || stale;
   const accepted = state.acceptedPlanId === plan.id;
   const accept = $('#accept-plan');
-  accept.disabled = accepted || ui.scheduleDirty;
+  accept.disabled = accepted || ui.scheduleDirty || Boolean(review?.needsRefresh);
   accept.textContent = accepted ? 'Plan in use ✓' : 'Use this plan';
+}
+
+async function refreshPlanGoal() {
+  const goalValues = (s) => ({ 'goal-name-input': s.goal.name, 'goal-target': centsToInput(s.goal.targetCents), 'goal-starting': centsToInput(s.progress.startingCents), 'goal-weekly': centsToInput(s.goal.weeklyBudgetCents), 'goal-date': s.goal.targetDate });
+  const saved = goalValues(state), fields = Object.keys(saved);
+  const before = Object.fromEntries(fields.map(id => [id, $(`#${id}`).value]));
+  const latest = await api.get('/api/state');
+  // Keep current trial inputs and optional bill rows, including edits made while this local read was pending.
+  // Refresh only goal facts the family has not meanwhile edited; a newly selected market draft keeps its own scope.
+  ui.planFormDirty = true;
+  applyState(latest);
+  if (ui.goalDraft) return false;
+  const values = goalValues(latest);
+  for (const id of fields) if (before[id] === saved[id] && $(`#${id}`).value === before[id]) $(`#${id}`).value = values[id];
+  ui.planGoalId = latest.goal.id;
+  ui.planGoalRevision = latest.merchantGoalRevision;
+  return true;
+}
+
+async function showPlanError(error) {
+  if (['plan_stale', 'plan_facts_changed', 'plan_superseded'].includes(error.code)) {
+    // Read current local records once; this never regenerates a plan or contacts a model/provider.
+    try { applyState(await api.get('/api/state')); } catch { /* retain the original actionable error */ }
+    setStatus('#plan-status', state.planReview?.factsChanged ? '' : 'error', state.planReview?.factsChanged ? '' : 'Goal or progress changed. Make a new plan using the latest figures.');
+    $('#ask-planner').focus();
+    return;
+  }
+  setStatus('#plan-status', 'error', error.message, { issues: error.code === 'invalid_edit' ? [] : error.issues });
 }
 
 // ---------- Market Town merchant draft: shown in the Plan form, saved only on "Save as our goal" ----------
@@ -789,6 +840,7 @@ function renderGoalDraft() {
   $('#goal-draft-review').disabled = ui.goalDraftBusy;
   $('#goal-draft-discard').disabled = ui.goalDraftBusy;
   $('#ask-planner').disabled = Boolean(draft); // one explicit decision at a time: save or discard the draft first
+  planCheck?.update(); // programmatic market selections must clear calculations for the previous goal immediately
   const item = state.goalItem;
   const line = $('#goal-item');
   line.hidden = Boolean(draft) || !item;
@@ -939,7 +991,7 @@ async function askPlanner(event) {
       });
     }
   } catch (error) {
-    setStatus('#plan-status', 'error', error.message, { issues: error.issues });
+    await showPlanError(error);
   } finally {
     button.disabled = Boolean(ui.goalDraft);
   }
@@ -951,7 +1003,7 @@ async function useRulesPlan(goal, commitments) {
     applyState(res.state);
     setStatus('#plan-status', 'info', 'Showing the example rules plan, clearly labeled. It was not written by AI.');
   } catch (error) {
-    setStatus('#plan-status', 'error', error.message);
+    await showPlanError(error);
   }
 }
 
@@ -972,7 +1024,7 @@ async function saveEdits() {
     applyState(res.state);
     setStatus('#plan-status', 'ok', 'Your edits were checked and saved as a household-edited plan.');
   } catch (error) {
-    setStatus('#plan-status', 'error', error.message, { issues: error.code === 'invalid_edit' ? [] : error.issues });
+    await showPlanError(error);
   }
 }
 
@@ -983,7 +1035,7 @@ async function acceptPlan() {
     setStatus('#plan-status', 'ok', 'Plan in use. Each contribution still needs an adult’s approval.');
     selectTab('give');
   } catch (error) {
-    setStatus('#plan-status', 'error', error.message);
+    await showPlanError(error);
   }
 }
 
@@ -1245,6 +1297,12 @@ function renderLedger() {
 function visitDistrict(id, e) {
   setJournalOpen(false); scene?.focusDistrict(id); $('.realm-map').dataset.focused = 'true';
   const marker = $(`#realm-markers [data-district="${CSS.escape(id)}"]`);
+  marker?.focus({ preventScroll: true }); revealRealm(marker, { instant: e?.detail === 0 });
+}
+// The same journey as "Visit <district>", to the campsite: close the journal, focus the meadow, land on its marker.
+function visitCampsite(e) {
+  setJournalOpen(false); scene?.focusLegend(FAMILY_PROJECT_SITE.id); $('.realm-map').dataset.focused = 'true';
+  const marker = $('#project-marker');
   marker?.focus({ preventScroll: true }); revealRealm(marker, { instant: e?.detail === 0 });
 }
 function recordImpact(row) {
@@ -1519,6 +1577,7 @@ function bindEvents() {
   });
   merchant = createMerchantDialog({ getState: () => state, onUse: useMerchantItem });
   for (const opener of [$('#open-merchant'), $('#find-goal-item')]) opener.addEventListener('click', (e) => merchant.open(e.currentTarget));
+  $('#visit-campsite').addEventListener('click', visitCampsite);
   $('#goal-draft-save').addEventListener('click', saveGoalDraft);
   $('#goal-draft-review').addEventListener('click', reviewGoalDraft);
   $('#goal-draft-search').addEventListener('click', () => {
