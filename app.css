@@ -206,6 +206,10 @@ button { font: inherit; }
 .msg .debug { display: block; font-size: 12px; margin-top: 4px; color: var(--ink-muted); }
 
 /* Plan */
+.plan-check { border-top:1px solid var(--ink-line); padding-top:10px; }
+.plan-check p { margin:0 0 4px; }
+.plan-check[data-kind='error'] > p:first-child { color:var(--warn); }
+#check-schedule,.plan-check .link-button { min-height:44px; }
 .plan { margin-top: 14px; border-top: 1px solid #c9ab6e; padding-top: 14px; }
 .plan-head { display: grid; gap: 6px; }
 .plan-head h4 { font-size: 20px; font-weight: 700; line-height: 1.25; }

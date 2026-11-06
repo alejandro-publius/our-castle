@@ -20,6 +20,7 @@ import { createMerchantDialog, resultFacts } from './merchant.js';
 import { createTreasury } from './treasury.js';
 import { CONFIRMATION_HISTORY_QUESTION, NEEDS_CHECK_QUESTION, isLocalQuestion, isNeedsCheckQuestion } from '../core/steward-questions.js';
 import { checkStatus } from '../core/check-status.js';
+import { createPlanCheck } from './plan-check.js';
 
 // ---------- small helpers ----------
 const $ = (selector, root = document) => root.querySelector(selector);
@@ -74,6 +75,7 @@ let ledgerGrid = null;
 let familyAvatars = null;
 let merchant = null;
 let treasury = null;
+let planCheck = null;
 const ui = {
   tab: 'house',
   personaId: pref.get('persona'),
@@ -733,6 +735,8 @@ function renderPlan() {
     if (plan?.inputs?.commitments) ui.commitments = plan.inputs.commitments.map((c) => ({ label: c.label, amount: centsToInput(c.amountCents), cadence: c.cadence }));
     renderCommitments();
   }
+  planCheck ??= createPlanCheck({ getState: () => state, isBlocked: () => Boolean(ui.goalDraft), refreshGoal: refreshPlanGoal });
+  planCheck.update();
   const result = $('#plan-result');
   if (!plan) { result.hidden = true; return; }
   result.hidden = false;
@@ -771,6 +775,16 @@ function renderPlan() {
   const accept = $('#accept-plan');
   accept.disabled = accepted || ui.scheduleDirty;
   accept.textContent = accepted ? 'Plan in use ✓' : 'Use this plan';
+}
+
+async function refreshPlanGoal() {
+  const weekly = $('#goal-weekly').value, date = $('#goal-date').value;
+  const latest = await api.get('/api/state');
+  ui.planFormDirty = false;
+  applyState(latest);
+  $('#goal-weekly').value = weekly;
+  $('#goal-date').value = date;
+  ui.planFormDirty = true;
 }
 
 // ---------- Market Town merchant draft: shown in the Plan form, saved only on "Save as our goal" ----------

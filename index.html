@@ -177,7 +177,9 @@
             </fieldset>
             <div class="actions span-2">
               <button type="submit" class="primary" id="ask-planner">Ask the planner</button>
+              <button type="button" class="link-button" id="check-schedule" aria-controls="plan-check-result">Check schedule</button>
             </div>
+            <div id="plan-check-result" class="plan-check span-2" role="status" aria-live="polite" hidden></div>
           </form>
           <div class="form-status" id="plan-status" role="status" aria-live="polite"></div>
           <article class="plan" id="plan-result" hidden aria-labelledby="plan-headline">
