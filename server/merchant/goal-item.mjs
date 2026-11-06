@@ -37,12 +37,12 @@ export function saveGoalFromItem(db, { householdId, goalId, expectedGoalId, expe
     // The ordinary goal edit: existing validation; earlier plans set aside; milestones that progress already tracked
     // reaches under the new amount are recorded exactly as the Plan editor would. No ledger entry is written.
     const saved = updateGoal(db, goal.id, input, clock);
-    db.prepare(`INSERT INTO goal_items (goal_id, provider, product_id, title, merchant, url, price_cents, currency, availability, checked_at, goal_name, saved_at)
-      VALUES (?, 'channel3', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    db.prepare(`INSERT INTO goal_items (goal_id, provider, product_id, title, merchant, url, price_cents, currency, availability, checked_at, goal_name, saved_at, selection_json, condition)
+      VALUES (?, 'channel3', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(goal_id) DO UPDATE SET product_id = excluded.product_id, title = excluded.title, merchant = excluded.merchant, url = excluded.url,
         price_cents = excluded.price_cents, currency = excluded.currency, availability = excluded.availability, checked_at = excluded.checked_at,
-        goal_name = excluded.goal_name, saved_at = excluded.saved_at`)
-      .run(goal.id, item.productId, item.title, item.merchant, item.url, item.priceCents, item.currency, item.availability, item.checkedAt, saved.name, clock.iso());
+        goal_name = excluded.goal_name, saved_at = excluded.saved_at, selection_json = excluded.selection_json, condition = excluded.condition`)
+      .run(goal.id, item.productId, item.title, item.merchant, item.url, item.priceCents, item.currency, item.availability, item.checkedAt, saved.name, clock.iso(), JSON.stringify(item.selection ?? []), item.condition ?? null);
     return saved;
   });
 }
@@ -62,5 +62,7 @@ export function goalItemFor(db, goal) {
     availability: row.availability,
     checkedAt: row.checked_at,
     savedAt: row.saved_at,
+    selection: JSON.parse(row.selection_json),
+    condition: row.condition,
   };
 }

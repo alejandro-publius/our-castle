@@ -8,15 +8,16 @@ import { openDatabase } from '../../server/db.mjs';
 import { createClock } from '../../server/household.mjs';
 import { contribution, setupDomain } from '../helpers/setup.mjs';
 
-// Actual AG Studio 3.0 harness/custom server runner. Anthropic is a scripted fake transport;
+// Actual AG Studio 3.1 harness/custom server runner. Anthropic is a scripted fake transport;
 // example data only, no real AI/PayPal/Channel3 requests. There is still one existing steward UI.
 const root = fileURLToPath(new URL('../../', import.meta.url));
 const evidence = fileURLToPath(new URL('../../test-results/studio-agent/', import.meta.url));
 let s;
+test.use({ reducedMotion: 'reduce' });
 test.afterEach(async () => { await s?.close(); s = null; });
 
 const message = (content, stop_reason = 'end_turn') => ({ id: 'msg_fake_studio', type: 'message', role: 'assistant', model: 'claude-opus-5-5', stop_reason, content, usage: { input_tokens: 5, output_tokens: 5 } });
-async function start(page, { studio = true, hold = false, sandbox = false } = {}) {
+async function start(page, { studio = true, hold = false, sandbox = false, failUpdate = false } = {}) {
   const domain = sandbox ? setupDomain({ mode: 'sandbox' }) : null;
   const db = domain?.db ?? openDatabase(':memory:');
   let orderId = null;
@@ -53,12 +54,28 @@ async function start(page, { studio = true, hold = false, sandbox = false } = {}
   await post('/api/setup', { playMode: 'family', name: 'House of Alder', crest: { field: 'cobalt', charge: 'stag' } });
   await post('/api/entries', { kind: 'gift_sent', label: 'Test fixture gift', amountCents: 500, memberId: 'm_rowan' });
   page.on('pageerror', (e) => issues.push(e.message));
-  await page.route('**/*', (route) => {
+  await page.route('**/*', async (route) => {
     const r = route.request(), url = new URL(r.url());
     // This case seeds a fake server order. It does not exercise or claim buyer approval.
     if (domain && url.hostname === 'www.sandbox.paypal.com' && url.pathname === '/web-sdk/v6/core') return route.fulfill({ status: 503, body: 'Test fixture: checkout disabled' });
     if (url.origin !== base) { issues.push(`${r.method()} ${r.url()}`); return route.abort(); }
     if (!studio && url.pathname === '/vendor/ag-studio/ag-studio.min.js') return route.fulfill({ status: 503, body: 'unavailable' });
+    if (failUpdate && url.pathname === '/vendor/ag-studio/ag-studio.min.js') {
+      const response = await route.fetch();
+      // Keep the real framework/widget, but make its live-data update fail once mounted.
+      const inject = `;(() => { const original = window.agStudio; window.agStudio = { ...original, createStudio: (...args) => {
+        window.__testUpdateFailure = { mounted: true, attempts: 0 };
+        const api = original.createStudio(...args);
+        return new Proxy(api, { get(target, key) {
+          if (key === 'getDataEngine') return () => new Proxy(target.getDataEngine(), { get(engine, method) {
+            if (method === 'applyTransaction') return async () => { window.__testUpdateFailure.attempts++; throw new Error('Fixture: live data unavailable'); };
+            const value = engine[method]; return typeof value === 'function' ? value.bind(engine) : value;
+          } });
+          const value = target[key]; return typeof value === 'function' ? value.bind(target) : value;
+        } });
+      } }; })();`;
+      return route.fulfill({ response, body: await response.text() + inject });
+    }
     if (r.method() !== 'GET') writes.push(`${r.method()} ${url.pathname}`);
     return route.continue();
   });
@@ -131,6 +148,33 @@ test('if Studio cannot load, the original steward still works and does not claim
   await expect(page.locator('#steward-answer')).toContainText('The Manor needs $15.00 more.');
   expect(await agent(page)).toMatchObject({ source: 'fallback', state: 'idle', completed: 1 });
   expect(s.writes).toEqual(['POST /api/steward']);
+  expect(s.issues).toEqual([]);
+});
+
+test('a failed Studio live update keeps the milestone and next explicit steward request usable', async ({ page }) => {
+  await start(page, { failUpdate: true });
+  expect(await page.evaluate(() => window.__testUpdateFailure)).toEqual({ mounted: true, attempts: 0 });
+  await ask(page);
+  await expect.poll(() => agent(page)).toMatchObject({ source: 'ag-studio-agent-framework', completed: 1 });
+  const initial = await page.evaluate(() => window.__ourCastle.state);
+  const edited = await page.request.put(`${s.base}/api/goal`, { data: {
+    name: initial.goal.name, targetCents: 40000, startingCents: 6000,
+    weeklyBudgetCents: initial.goal.weeklyBudgetCents, targetDate: initial.goal.targetDate,
+  } });
+  expect(edited.ok()).toBe(true);
+  await page.locator('#bill-form [name="label"]').fill('Fixture water bill');
+  await page.locator('#bill-form [name="amount"]').fill('25'); await page.locator('#bill-form button').click();
+  await expect(page.locator('#deed-dialog')).toBeVisible();
+  await page.locator('#deed-close').click();
+  await expect.poll(() => page.evaluate(() => window.__ourCastle.treasury().source)).toBe('fallback');
+  expect(await page.evaluate(() => window.__testUpdateFailure.attempts)).toBe(1);
+  await expect(page.locator('#treasury-next')).toContainText('$60.00 of $100.00');
+  expect(s.aiRequests).toHaveLength(2, 'failed update never starts a model request');
+  const before = s.finance();
+  await ask(page);
+  await expect.poll(() => agent(page)).toMatchObject({ source: 'fallback', state: 'idle', completed: 1 });
+  expect(s.aiRequests).toHaveLength(4);
+  expect(s.finance()).toBe(before);
   expect(s.issues).toEqual([]);
 });
 

@@ -159,6 +159,9 @@ const MIGRATIONS = [
   );
   CREATE INDEX IF NOT EXISTS order_checks_order ON order_checks (order_id, id);
   `,
+  // Selected product options survive reloads so an explicit refresh cannot silently switch size/colour or condition.
+  `ALTER TABLE goal_items ADD COLUMN selection_json TEXT NOT NULL DEFAULT '[]';
+   ALTER TABLE goal_items ADD COLUMN condition TEXT;`,
 ];
 
 export function openDatabase(file) {

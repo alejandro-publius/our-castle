@@ -38,7 +38,7 @@ Searching is not checkout. A contribution does not buy the Channel3 item or pay 
 
 Codex has eight SDK-specific APIMatic/PayPal repository skills installed and discovery-verified; see [APIMATIC-CODEX.md](APIMATIC-CODEX.md).
 
-- **Install.** `npm ci` is needed: `ag-studio@3.0.0` is a new pinned dependency. Without it the Treasury shows its plain fallback.
+- **Install.** Run `npm ci` for the pinned dependencies (Studio 3.1.0 and Grid Community 36.3.0 on the sponsor extension branch). Without Studio the Treasury shows its plain fallback. The original 3.0 licence check remains historical; see [Treasury](TREASURY.md).
 - **`.env` (server-side only).**
   - `CHANNEL3_API_KEY` enables the merchant.
   - `AG_STUDIO_LICENSE_KEY` holds the AG Studio evaluation licence: one application, no production use, expiring December 2026.

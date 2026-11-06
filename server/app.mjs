@@ -128,7 +128,7 @@ export function createApp({ config, db, clock, paypal = null, aiProvider = null,
     s.modes.merchant = shop.status();
     s.goalItem = goalItemFor(db, s.goal);
     s.merchantGoalRevision = merchantGoalRevision(s.goal, s.progress.startingCents);
-    s.treasury = treasuryFor(s);
+    s.treasury = treasuryFor(s, clock.iso(), planner.accepted(s.goal.id));
     return s;
   };
   const goalId = () => getActiveGoal(db, householdId).id;
@@ -191,6 +191,16 @@ export function createApp({ config, db, clock, paypal = null, aiProvider = null,
       saveGoalFromItem(db, { householdId, goalId: goalId(), expectedGoalId: str(body.goalId), expectedGoalRevision: str(body.expectedGoalRevision), item, goal: body.goal }, clock);
       return { status: 'ok', state: state() };
     }],
+    ...['refresh', 'alternatives'].map((action) => ['POST', `/api/merchant/${action}`, async ({ body }) => {
+      const goal = getActiveGoal(db, householdId);
+      const goalRevision = merchantGoalRevision(goal, progressFor(db, goal.id).startingCents);
+      // References come from this server's saved goal or a short-lived shown result, never a caller's product/URL/price.
+      if (body.goalId !== goal.id) throw new DomainError(409, 'goal_changed', 'The goal changed. Open the merchant again.');
+      const item = body.saved === true ? goalItemFor(db, goal) : shop.draft(str(body.referenceId));
+      if (!item) throw new DomainError(404, 'merchant_item_missing', 'There is no saved item for this goal.');
+      const found = action === 'refresh' ? await shop.refresh(item) : await shop.alternatives(item, body.budgetCents ?? null);
+      return { ...found, goalId: goal.id, goalRevision };
+    }]),
     // ---- Treasury: read-only. The AG Studio licence (if configured) is the only setting the page may read here. ----
     ['GET', '/api/treasury/studio', () => ({ licenseKey: config.studio?.licenseKey ?? null })],
     ['POST', '/api/steward', async ({ body }) => steward.ask({ question: body.question, memberId: str(body.memberId), focusOrderId: str(body.focusOrderId) })],

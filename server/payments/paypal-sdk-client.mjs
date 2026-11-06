@@ -53,7 +53,7 @@ function toPayPalError(error) {
   return error;
 }
 
-export function createPayPalSdkClient({ clientId, clientSecret, controllers = null, restFetch, timeoutMs = 30_000 }) {
+export function createPayPalSdkClient({ clientId, clientSecret, controllers = null, restFetch, timeoutMs = 30_000, httpAdapter }) {
   if (!clientId || !clientSecret) throw new Error('PayPal sandbox credentials are required');
   let orders;
   let payments;
@@ -63,6 +63,9 @@ export function createPayPalSdkClient({ clientId, clientSecret, controllers = nu
       clientCredentialsAuthCredentials: { oAuthClientId: clientId, oAuthClientSecret: clientSecret },
       environment: Environment.Sandbox,
       timeout: timeoutMs,
+      // Internal test seam: runs the real generated auth/controllers/serializers without any provider traffic.
+      // Never populated from HTTP input or environment; pinned SDK 2.5.0 exposes this axios adapter override.
+      ...(httpAdapter ? { unstable_httpClientOptions: { adapter: httpAdapter } } : {}),
     });
     orders = new OrdersController(client);
     payments = new PaymentsController(client);

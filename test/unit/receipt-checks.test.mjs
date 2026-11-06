@@ -33,10 +33,10 @@ test('upgrading an existing schema-3 household preserves every application row a
     .map(({ name }) => [name, database.prepare(`SELECT * FROM "${name}" ORDER BY rowid`).all()]));
   const before = rows(db);
   // Migrations 1–3 are unchanged. Remove the new empty table to prepare the actual previous schema with saved data.
-  db.exec('DROP TABLE order_checks; PRAGMA user_version = 3;');
+  db.exec('DROP TABLE order_checks; ALTER TABLE goal_items DROP COLUMN selection_json; ALTER TABLE goal_items DROP COLUMN condition; PRAGMA user_version = 3;');
   db.close();
   db = openDatabase(file);
-  assert.equal(db.prepare('PRAGMA user_version').get().user_version, 4);
+  assert.equal(db.prepare('PRAGMA user_version').get().user_version, 5);
   assert.deepEqual(rows(db), before);
   assert.deepEqual(checkRows(db), []);
   const service = createContributionService({ db, clock: env.clock, mode: 'sandbox', paypal: null });
@@ -81,7 +81,7 @@ test('the record survives closing and reopening the database, and reopening make
   env.db.close();
 
   const db = openDatabase(file);
-  assert.equal(db.prepare('PRAGMA user_version').get().user_version, 4);
+  assert.equal(db.prepare('PRAGMA user_version').get().user_version, 5);
   const reopened = createContributionService({ db, clock: createClock(FIXED_NOW), mode: 'sandbox', paypal: null, webhookId: 'WH-TEST' });
   const after = reopened.contributions(DEMO_GOAL_ID)[0];
   assert.deepEqual(after.lastCheck, before.lastCheck);

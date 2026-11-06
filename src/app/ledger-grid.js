@@ -1,6 +1,7 @@
 // The house ledger as one AG Grid Community (MIT) grid, themed with the parchment tokens.
 // AG Grid is loaded only when the ledger is first shown. If it cannot load, a plain HTML table
 // with the same rows is rendered instead, so the ledger never disappears.
+import { rowChanges, hasChanges } from '../core/row-updates.js';
 
 let loading = null;
 function loadAgGrid() {
@@ -50,6 +51,7 @@ export function createLedgerGrid(container, { formatMoney, onSelect = () => {} }
   let selected = null;
   let rows = [];
   let total = null;
+  let appliedRows = [];
 
   // Two-line cells keep four readable columns inside the parchment panel. Labels can be typed by the
   // household, so cells are built as DOM text, never HTML strings.
@@ -141,6 +143,7 @@ export function createLedgerGrid(container, { formatMoney, onSelect = () => {} }
         localeText: { noRowsToShow: 'No records yet.' },
       });
       container.dataset.grid = 'ag-grid';
+      appliedRows = rows;
     } catch (error) {
       console.warn('[ledger] AG Grid unavailable, showing a plain table', error);
       failed = true;
@@ -150,21 +153,25 @@ export function createLedgerGrid(container, { formatMoney, onSelect = () => {} }
   }
 
   return {
-    /** Replace all rows. `progressCents` feeds the pinned "current tracked progress" total row. */
+    /** Stable-id transactions preserve selection, sorting and filters while the server's records change. */
     async update(nextRows, progressCents) {
       rows = nextRows;
       total = { id: 'total', whenIso: '', when: '', record: 'Total', entry: 'Current tracked progress', source: '', signedCents: progressCents, amountText: formatMoney(progressCents), counts: '' };
       const grid = await ensure();
       if (grid) {
-        grid.setGridOption('rowData', rows);
+        const delta = rowChanges(appliedRows, rows);
+        if (hasChanges(delta)) grid.applyTransaction({ ...delta, remove: delta.remove.map((id) => ({ id })) });
+        appliedRows = rows;
         grid.setGridOption('pinnedBottomRowData', [total]);
       } else fallback();
     },
     setFilter(next) {
+      if (filter === next) return;
       filter = next;
       if (api) api.onFilterChanged(); else if (failed) fallback();
     },
     setSearch(next) {
+      if (search === String(next).trim()) return;
       search = String(next).trim();
       if (api) api.setGridOption('quickFilterText', search); else if (failed) fallback();
     },

@@ -1,7 +1,8 @@
 # Treasury (Ledger)
 
-The owner asked for "a treasury that doesn't explain what opened the bridge… more simple the better". Journal → Ledger now opens with the Treasury, which has three parts:
+The owner asked for "a treasury that doesn't explain what opened the bridge… more simple the better". Journal → Ledger now opens with the Treasury, with:
 - **one next-area milestone**: the district or districts that open next, progress toward that threshold, the amount to go, and "View on map";
+- **This week**, a compact planned/recorded comparison with expandable record links;
 - **the existing record grid**, searchable and filterable;
 - **a receipt on tap.**
 
@@ -26,15 +27,15 @@ Bridges and districts open in the world itself, with the existing deed card. The
 - **AG Studio widget** (`src/app/treasury.js`). The Ledger loads the AG Studio UMD bundle on first open, from `vendor/ag-studio/ag-studio.min.js`, an exact-path map to `node_modules`. It creates one view-mode Studio page with:
   - no panels and a parchment theme, without Google fonts;
   - one custom widget, `nextArea`, built with `createWidgets` and the `init/getGui/refresh/destroy` component contract;
-  - a single synchronous data source, `areas`, holding the server rows.
+  - two synchronous data sources, `areas` and `week`, holding the server rows. Both declare `transactions: "all"` and a stable primary key.
 
-  The widget asks Studio's own data engine for the next group with one filtered aggregate query (`areas.next isTrue`; first id/label, max threshold/progress/remaining, count). It passes a `queryId` so a superseded answer is dropped. When the server state changes, the page calls `setProperty('data', …)`, and Studio refreshes the widget. The widget fits its height to its content, because names wrap on phones.
+  The widget asks Studio's own data engine for the next group with one filtered aggregate query (`areas.next isTrue`; first id/label, max threshold/progress/remaining, count). It passes a `queryId` so a superseded answer is dropped. When server state changes, a serialized queue sends stable-id add/update/remove deltas to `getDataEngine().applyTransaction`. Studio keeps the same widget and data engine. The Community grid likewise uses row transactions to preserve selection, sorting and filters. The latest state wins if another update arrives during an in-flight transaction. The widget fits its height to its content, because names wrap on phones.
 - **Fallback.** If Studio cannot load, the same markup is drawn from the same `state.treasury`, so the Ledger never loses the milestone.
 - **No requests on load, filter or selection.** No provider, model or write request is made. The page reads the Studio bundle and `GET /api/treasury/studio` once.
 
 ### Agent Framework: the existing steward, scoped to current records
 
-`src/app/treasury-agent.js` uses the installed Studio 3.0.0 `createAiHarness` API and a custom `house-steward` runner. The Studio `ai` configuration installs this harness while view panels remain empty. This is real framework use, not an added model label or an unused dependency.
+`src/app/treasury-agent.js` uses the installed Studio 3.1.0 `createAiHarness` API and a custom `house-steward` runner. The Studio `ai` configuration installs this harness while view panels remain empty. This is real framework use, not an added model label or an unused dependency.
 
 - One explicit ask creates one temporary framework thread and sends one `/api/steward` request. The server keeps the Anthropic conversation and PayPal read-only tools. It returns the same structured answer and checks used by the existing receipt UI.
 - The runner emits AG-UI run, tool-result and answer events from that server response. These are returned server checks, not additional browser-executed PayPal tools. It does not delegate to Studio's built-in dashboard agents.
@@ -44,8 +45,8 @@ Bridges and districts open in the world itself, with the existing deed card. The
 
 ## AG Studio package and licence
 
-- **Package.** `ag-studio@3.0.0`, pinned exactly. It depends on `ag-grid-enterprise ~36.2.0`, `ag-charts-enterprise ~14.2.0` and `ag-stack ~36.2.0`, and dedupes with the app's existing `ag-grid-community@36.2.0`.
-  - 3.0.0 was chosen over 3.1.0 (published 2026-11-04) because 3.1 needs Grid 36.3.
+- **Package.** `ag-studio@3.1.0` and `ag-grid-community@36.3.0`, pinned together on November 6. Studio uses the compatible Enterprise Grid/Charts/Stack dependencies in the lockfile.
+  - 3.1 live transactions replace whole-source resets. API signatures were checked against installed `agDataSource.d.ts` and `agDataEngine.d.ts`, plus the [official release notes](https://www.ag-grid.com/blog/whats-new-in-ag-studio-3-1/).
   - Only Studio's own bundle is used. Enterprise Grid or Charts features are not used outside Studio, and the licence is not assumed to cover them.
   - Six packages were added; the package licence is "Commercial".
 - **Licence location.** The owner's evaluation licence is read only as `AG_STUDIO_LICENSE_KEY` from the server's `.env`. Browser licences are client-side by design, so `GET /api/treasury/studio` hands the page that one value and nothing else.
@@ -84,10 +85,23 @@ Docs read: https://www.ag-grid.com/studio/javascript/quick-start/, `/custom-widg
   - the fallback when Studio is unavailable, and keyboard access to the map button;
   - no horizontal overflow.
 - **Stills**, licensed local render with example data: [Ledger](screenshots/treasury-ledger.png), [phone](screenshots/treasury-phone.png).
-- **Framework follow-up** (`test/e2e/studio-agent.spec.mjs`): actual Studio harness with scripted fake Anthropic/PayPal transports, covering one scoped request, cleanup, late-result suppression, explicit retry after failure, unavailable-Studio fallback and exact-order server proof. Current counts and browser scope are in [VALIDATION.md](VALIDATION.md). This does not close the live popup/get_order gap.
+- **Framework follow-up** (`test/e2e/studio-agent.spec.mjs`): actual Studio harness with scripted fake Anthropic/PayPal transports, covering one scoped request, cleanup, late-result suppression, explicit retry after failure, unavailable-Studio fallback and exact-order server proof. Current counts and browser scope are in [VALIDATION.md](VALIDATION.md). The separately verified in-app sandbox result is documented in [IN-APP-SANDBOX-VERIFICATION.md](IN-APP-SANDBOX-VERIFICATION.md); these fake-transport tests do not add live evidence.
 
 ## Not done / limits
 
 - One application under an evaluation licence that expires December 2026. Production use needs a commercial licence decision by the owner.
-- The 5.5 MB Studio bundle loads on first Ledger open (local only). There is no hosting.
+- The 6.7 MB Studio 3.1 bundle loads on first Ledger open (local only). There is no hosting.
 - PayPal sandbox records appear exactly as stored. No fresh `get_order` is claimed by the Treasury. The coordinated in-app popup → single credit → exact-order rehearsal belongs to its existing operator on 3021.
+
+## Sponsor-depth design lock (November 6)
+
+Keep the woodland map as the main view. Inside the existing parchment Ledger, use the bundled area-card artwork for one illustrated next-area strip, followed by a compact planned/recorded weekly comparison with expandable record links. Reference: the owner's AG Studio examples use meaningful pictures and linked detail; the Refero Wayfinder and Duolingo references support a scenery-first view and recognisable milestones. Do not copy their palettes, add another dashboard, or turn reported starting progress into a deposit. Existing Alegreya typography and parchment tokens remain authoritative.
+
+
+## Sponsor-depth behavior (November 6)
+
+The next-area strip reuses `assets/area-cards/` with the existing parchment palette. The two weekly bars compare the accepted plan dates against contribution/refund ledger entries in the Monday–Sunday UTC window; they do not allocate contributions to plan weeks or treat starting savings, bills, gifts, pending or canceled orders as deposits. No accepted plan displays “No plan”; an accepted plan with nothing due displays $0. Refunds can produce a negative net week. Closed record details identify the date basis and starting savings separately, then link up to five recent entries to the existing receipt. Simulated/sandbox sources remain distinguishable. This is a read-only local calculation, not a new provider reconciliation.
+
+The original licence validation above is historical 3.0 evidence. The 3.1 browser checks use the unlicensed trial build and fake/example data; the owner’s key was not retrieved or revalidated.
+
+The grid applies stable-ID row transactions, and Studio 3.1 applies live transactions to the existing `areas` and `week` tables. Neither is recreated for ordinary updates. Selection, search and sorting remain in place. If the live-data engine fails, the same local milestone stays visible and the disposed Studio agent is replaced by the existing direct steward runner on the next explicit request; there is no automatic model or provider retry. See [the current validation section](VALIDATION.md) for this pass's checks and screenshots; earlier counts above describe the initial Treasury implementation.
