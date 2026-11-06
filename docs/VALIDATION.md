@@ -1,5 +1,11 @@
 # Validation
 
+## Fairy and wizard staff — November 5, 2026
+
+Rapunzel's balcony now has one hovering fairy with four pale wings, a rose/teal dress and small wand; the Observatory's existing wizard is more readable, with a crystal-tipped staff and two restrained sparks. Both use the existing ambient tick, pause behind modals and stay still under reduced motion. No UI, unlock threshold, financial record, provider call or dependency was added. [Reference lock, actual renders and precise checks](WOODLAND-LEGENDS.md#fairy-and-staff--november-5-reference-lock).
+
+Two existing desktop/phone exploration checks passed. Three final one-off review contexts cover desktop/phone reduced-motion renders and normal-motion/occlusion at 1000×740. Initial full-size normal-motion screenshot timeout remains preserved; subsequent focused movement/occlusion verification passed. Actual day/night stills were inspected. Original-art/source guard and final changed-file syntax/diff checks passed. This is Chromium emulation, not a physical phone or performance claim; owner sandbox data and previous video remain separate.
+
 ## In-app sandbox and same-order steward — November 5 PST / November 6 UTC, 2026
 
 The owner completed the approved single $15 USD contribution in the preserved 3021 rehearsal. The server has one completed order/capture and one contribution credit: $60 reported + $15 sandbox = $75/$300, with village and Manor open. A real scoped Agent Toolkit `get_order` and ledger read produced deterministic `match`, selected-order `verified` and no warnings. No second payment, refund, planner suite or merchant search was run. [Exact evidence and limits](IN-APP-SANDBOX-VERIFICATION.md).

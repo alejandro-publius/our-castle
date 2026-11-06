@@ -1,0 +1,28 @@
+{
+  "date_pacific": "2026-11-05",
+  "base_commit": "e5c8799ab2d4f35ec11398c9dc5ff37df8285511",
+  "scope": "Actual Chromium screenshots, fresh in-memory example household; no provider calls or owner data. Images use reduced motion; see ignored final visual report for normal motion and occlusion.",
+  "viewport": {
+    "width": 1440,
+    "height": 1000
+  },
+  "sources": {
+    "src/world/woodland-legends.js": "d862c3e23a434614eabfe996e6a1656d0fb51660af6c1bf0e3ac2e8e19d86b2e",
+    "src/world/realm-models.js": "6b2c4ea78fe85714de0a97f02eac2e7acec463416e7dae215367373dfb67c21b",
+    "src/world/board-scene.js": "1c08fcde924c4f02aac7d68ff025665ef87b80077116908719353f412d7725ad"
+  },
+  "images": {
+    "docs/screenshots/wizard-staff.png": {
+      "sha256": "22d169f4b9a17b09bbcc886a8418a519566da2573b8486cb146ee984e9687581",
+      "original": "test-results/fairy-wizard/polished/desktop-wizard-detail.png"
+    },
+    "docs/screenshots/rapunzel-fairy.png": {
+      "sha256": "0a1ecbc4e543b3cc217c36d88d421d69ee0a23cc07f7745910ad4e783aee92ad",
+      "original": "test-results/fairy-wizard/polished/desktop-fairy-detail.png"
+    },
+    "docs/screenshots/rapunzel-fairy-night.png": {
+      "sha256": "130e6a851efe7b7b5e1f3266b6a21454aa398ac91690e401ead75f6bce90132d",
+      "original": "test-results/fairy-wizard/polished/desktop-fairy-night.png"
+    }
+  }
+}

@@ -463,7 +463,7 @@ export function createRealmModels({ builder, part: addPart, models, colours: C }
     return landscape;
   }
   function build(group,state,helpers,flag){
-    farm.reset();tavern.reset();
+    farm.reset();tavern.reset();legends.reset();
     const started=performance.now(),districts=realmAccess(state),bridges=[];
     for(const d of districts){
       const region=new THREE.Group();region.position.set(d.x,0,d.z);group.add(region);
@@ -474,7 +474,7 @@ export function createRealmModels({ builder, part: addPart, models, colours: C }
       d.drawMeshes=paint.meshes;d.greyPaint=paint.greyPaint;d.hues=paint.hues;
     }
     for(const entry of bridgeAccess(state))bridges.push(bridge(group,entry,entry.open));
-    builder.flush();
+    builder.flush();legends.tick(0);
     return {districts,bridges,landscape:{...landscape,rebuildMs:Math.round(performance.now()-started)}};
   }
   // Where warm night light falls: in front of each district's main door, and at both gates of every bridge.
@@ -496,6 +496,7 @@ export function createRealmModels({ builder, part: addPart, models, colours: C }
     stepFarm: (seconds) => farm.tick(seconds), farmDebug: () => farm.debug(),
     stepTavern: (seconds) => tavern.tick(seconds), tavernDebug: () => tavern.debug(),
     stepCurrent: (seconds) => current?.tick(seconds), currentDebug: () => current?.debug() ?? null,
+    stepLegends: (seconds) => legends.tick(seconds), legendsDebug: () => legends.debug(),
     surfaces: () => ({...surfaceMeshes, ripples: current?.mesh}),
   };
 }

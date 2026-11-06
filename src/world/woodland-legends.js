@@ -2,6 +2,7 @@ import * as THREE from 'three';
 // Original folklore miniatures. All parts use the world's shared geometry/material batches.
 export function createWoodlandLegends({ part, models, colours: C }) {
   const ivory=0xf4e4be,course=0x88978d,plum=0x686084,plumDark=0x453f61,teal=0x397b73,rose=0xb65d76;
+  let mage=null,spell=null,fairy=null,wings=[];
   const box=(g,x,y,z,w,h,d,c,ry=0,rz=0)=>part(g,'box',x,y,z,w,h,d,c,ry,rz);
   const round=(g,x,y,z,w,h,d,c)=>part(g,'round',x,y,z,w,h,d,c);
   const rock=(g,x,y,z,w,h,d,c)=>part(g,'rock',x,y,z,w,h,d,c);
@@ -31,6 +32,48 @@ export function createWoodlandLegends({ part, models, colours: C }) {
   function roses(g,x,z) {
     box(g,x,.42,z,2.6,.28,1.3,ivory);box(g,x,.59,z,2.35,.06,1.12,C.soil);
     for(let i=0;i<4;i++){rock(g,x-.85+i*.56,.79,z,.55,.45,.6,C.leaf);rock(g,x-.85+i*.56,1.02,z+.06,.28,.25,.26,i%2?rose:C.red);}
+  }
+  function gardenWizard(g) {
+    mage=new THREE.Group();mage.name='observatory-wizard';mage.position.set(-2.1,.28,7.1);mage.rotation.y=.3;mage.scale.setScalar(1.3);g.add(mage);
+    for(const side of [-1,1])box(mage,side*.24,.16,.12,.3,.25,.48,plumDark);
+    cone(mage,0,1.05,0,1.3,1.8,1.2,plum);round(mage,0,1.63,0,.72,.55,.66,plum);
+    round(mage,0,.26,0,1.3,.12,1.2,C.gold);box(mage,0,1.35,.38,.12,.85,.08,C.gold);
+    rock(mage,0,2.18,.02,.63,.65,.59,C.skin);
+    for(const x of [-.15,.15])box(mage,x,2.26,.32,.06,.07,.04,C.dark);
+    rock(mage,0,2.16,.37,.15,.2,.2,C.skin);
+    part(mage,'cone',0,1.99,.32,.5,.7,.35,ivory,0,Math.PI);
+    round(mage,0,2.55,0,1.26,.12,1.2,plumDark);cone(mage,.1,3.15,0,.94,1.2,.94,plum);
+    round(mage,0,2.65,0,.89,.1,.88,C.gold);star(mage,.1,3.12,.4,.3);
+    rod(mage,[.4,1.7,.02],[.94,1.57,.12],.25,plum);rock(mage,.95,1.56,.13,.24,.23,.25,C.skin);
+    rod(mage,[-.4,1.7,0],[-.65,1.22,.12],.26,plum);rock(mage,-.65,1.22,.15,.22,.22,.23,C.skin);
+    // A visible walnut staff with a gilt cradle and cool faceted crystal, separate from garden lamps.
+    rod(mage,[1.02,.15,.06],[1.02,2.68,.06],.17,C.wood);
+    for(const y of [.5,1.43,2.48])round(mage,1.02,y,.06,.23,.1,.23,C.gold);
+    for(const side of [-1,1])rod(mage,[1.02,2.6,.06],[1.02+side*.23,2.95,.06],.1,C.gold);
+    rock(mage,1.02,2.97,.06,.45,.68,.43,C.water);rock(mage,1.02,3.12,.27,.18,.29,.1,models.roles.glass);
+    spell=new THREE.Group();spell.name='staff-spell';spell.userData.live=true;spell.position.set(1.02,3.05,.06);mage.add(spell);
+    for(let i=0;i<2;i++){const spark=new THREE.Group();spell.add(spark);star(spark,0,0,0,i?.23:.33,i?C.gold:models.roles.lamp);}
+  }
+  function towerFairy(g) {
+    fairy=new THREE.Group();fairy.name='rapunzel-fairy';fairy.userData.live=true;fairy.position.set(-5.2,17.8,4.3);fairy.rotation.y=.66;fairy.scale.setScalar(1.18);g.add(fairy);
+    wings=[];
+    for(const side of [-1,1]){
+      const wing=new THREE.Group();wing.position.set(side*.12,.95,-.17);fairy.add(wing);wings.push({group:wing,side});
+      for(const [x,y,w,h,tilt] of [[.65,.42,1.05,1.65,-.3],[.57,-.48,.85,.94,.38]]){
+        part(wing,'rock',side*x,y,0,w,h,.2,C.water,0,side*tilt);
+        part(wing,'rock',side*x,y,.1,w*.79,h*.79,.12,models.roles.glass,0,side*tilt);
+        rod(wing,[side*.08,0,.19],[side*(x+.15),y+.12,.19],.055,course);
+      }
+    }
+    for(const side of [-1,1]){rod(fairy,[side*.13,.5,0],[side*.2,.12,.05],.12,C.skin);box(fairy,side*.2,.1,.1,.19,.12,.3,teal);}
+    cone(fairy,0,.65,0,.83,.66,.7,rose);box(fairy,0,1.02,0,.4,.48,.34,teal);
+    for(const x of [-.23,0,.23])rock(fairy,x,.39,.2,.25,.22,.16,rose);
+    rock(fairy,0,1.49,-.04,.57,.62,.5,C.gold);rock(fairy,0,1.46,.19,.4,.42,.25,C.skin);
+    rock(fairy,.17,1.8,-.08,.29,.29,.3,C.gold);box(fairy,-.06,1.67,.15,.45,.12,.24,C.gold,0,.12);
+    for(const side of [-1,1]){rock(fairy,side*.27,1.46,.06,.14,.18,.14,C.skin);box(fairy,side*.1,1.5,.32,.045,.06,.035,C.dark);}
+    rod(fairy,[-.25,1.16,.03],[-.45,.83,.17],.13,C.skin);rod(fairy,[.25,1.16,.03],[.55,1.17,.22],.13,C.skin);
+    rod(fairy,[.55,1.05,.24],[.98,1.64,.24],.065,C.gold);star(fairy,1.02,1.7,.25,.38,models.roles.lamp);
+    for(const [x,y] of [[-.8,-.32],[-.43,-.64]])star(fairy,x,y,.1,.17,C.gold);
   }
   function wizard(g,field) {
     g.name='starfall-observatory';
@@ -63,11 +106,7 @@ export function createWoodlandLegends({ part, models, colours: C }) {
     box(g,-4,1,5.5,.65,1.6,.65,C.wood);box(g,-4,1.86,5.5,1.5,.16,1,C.gold);
     for(const side of [-1,1])box(g,-4+side*.36,2.02,5.5,.75,.1,.9,ivory,0,-side*.12);
     for(let i=0;i<3;i++)box(g,-4.55,2.08,5.25+i*.2,.4,.025,.025,course);
-    const x=-1.9,z=5.5;
-    cone(g,x,.99,z,1.2,1.7,1.2,plum);round(g,x,1.55,z,.6,.55,.6,plum);
-    rock(g,x,2.05,z,.56,.59,.55,C.skin);rock(g,x,1.88,z+.27,.38,.55,.3,ivory);
-    round(g,x,2.35,z,1.05,.1,1.05,plumDark);cone(g,x+.08,2.86,z,.8,1.05,.8,plum);
-    star(g,x+.06,2.8,z+.32,.25);rod(g,[x+.8,.35,z],[x+.8,2.5,z],.1,C.wood);rock(g,x+.8,2.65,z,.42,.5,.42,models.roles.lamp);
+    gardenWizard(g);
     box(g,-6,.31,6.5,13,.07,2.7,C.dust);
     box(g,-10.5,.31,0,2.7,.07,13.5,C.dust);box(g,-11.75,.31,0,2.5,.07,2.7,C.dust);
   }
@@ -107,6 +146,7 @@ export function createWoodlandLegends({ part, models, colours: C }) {
     for(let i=0;i<25;i++){const y=.6+i*.62,x=-1.8+Math.sin(i*.7)*.35;rod(g,[x,y,1.1],[x+.12,y+.65,1.1],.07,C.pine);rock(g,x-.12,y+.3,1.25,.42,.38,.15,C.leaf);if(i%4===0)rock(g,x+.18,y+.44,1.3,.22,.24,.18,rose);}
     for(const x of [-7,7])for(const z of [5.6,9.4])roses(g,x,z);
     for(const x of [-4.4,4.4])models.lantern(g,x,5,.2,true);
+    towerFairy(g);
     box(g,-6,.31,0,12,.07,2.7,C.dust);box(g,0,.31,6,2.7,.07,10,C.dust);
     for(let i=0;i<5;i++)rock(g,-3.8+i*.9,.36,10.5,.7,.15,.65,course);
   }
@@ -128,5 +168,16 @@ export function createWoodlandLegends({ part, models, colours: C }) {
     for(let i=0;i<9;i++){const a=i*2.4;rock(g,Math.sin(a)*4.3,.39,Math.cos(a)*4,.7,.4,.55,C.leaf);if(i%2===0){round(g,Math.sin(a)*4.3,.58,Math.cos(a)*4,.08,.35,.08,ivory);cone(g,Math.sin(a)*4.3,.82,Math.cos(a)*4,.42,.18,.42,C.red);}}
     for(let i=0;i<5;i++)rock(g,-4+i*.65,.31,4-i*.43,.65,.16,.52,course);
   }
-  return {wizard,rapunzel,sword};
+  function tick(seconds) {
+    if(spell)spell.children.forEach((spark,i)=>{
+      const a=seconds*1.15+i*Math.PI;
+      spark.position.set(Math.cos(a)*(.57+i*.12),.24+Math.sin(a*1.3)*.36,Math.sin(a)*.43);
+      spark.rotation.z=Math.sin(a)*.2;
+    });
+    if(fairy){fairy.position.y=17.8+Math.sin(seconds*1.9)*.22;for(const {group,side} of wings)group.rotation.y=side*(.22+Math.sin(seconds*5.8)*.25);}
+  }
+  function reset(){mage=null;spell=null;fairy=null;wings=[];}
+  const point=g=>({x:g.position.x,y:g.position.y,z:g.position.z});
+  const debug=()=>({wizard:mage?{position:point(mage),sparks:spell.children.map(point)}:null,fairy:fairy?{position:point(fairy),wingAngles:wings.map(w=>w.group.rotation.y)}:null});
+  return {wizard,rapunzel,sword,tick,reset,debug};
 }
