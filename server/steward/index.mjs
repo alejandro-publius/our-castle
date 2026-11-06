@@ -183,7 +183,7 @@ export function createSteward({ db, contributions, householdId, ai = null, paypa
 
       const context = [
         `Question from ${member.name} (${member.role}, example persona) in ${household.name}: ${text}`,
-        focus ? `They are asking about PayPal order ${focus}.` : null,
+        focus ? `They selected PayPal order ${focus}. Use get_order with that exact order_id before answering whether this payment is verified. If the lookup fails, say it remains unverified.` : null,
         paypalTools ? null : 'PayPal tools are off because this server is in example payment mode; only the ledger is available.',
         `Today is ${clock.today()}.`,
       ].filter(Boolean).join('\n');
@@ -200,7 +200,9 @@ export function createSteward({ db, contributions, householdId, ai = null, paypa
             output_config: { effort: 'low' },
             system: STEWARD_SYSTEM,
             tools,
-            ...(focus && turn === 0 ? { tool_choice: { type: 'tool', name: 'get_order' } } : {}),
+            // Opus 5.5 rejects forced tool choice. Keep strict schemas and the explicit selected-order
+            // instruction; only a real get_order result can pass the server's verification below.
+            tool_choice: { type: 'auto' },
             messages,
           });
           model = response.model ?? model;

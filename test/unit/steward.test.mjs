@@ -11,10 +11,14 @@ const message = (content, stop_reason = 'end_turn') => ({
   id: `msg_${Math.random()}`, type: 'message', role: 'assistant', model: 'claude-opus-5-5', stop_reason, stop_details: null, content, usage: { input_tokens: 5, output_tokens: 5 },
 });
 
-function scriptedAnthropic(turns) {
+function scriptedAnthropic(turns, { rejectForcedToolChoice = false } = {}) {
   const requests = [];
   const fetch = async (url, init) => {
     requests.push(JSON.parse(init.body));
+    if (rejectForcedToolChoice && ['tool', 'any'].includes(requests.at(-1).tool_choice?.type)) {
+      return new Response(JSON.stringify({ type: 'error', error: { type: 'invalid_request_error', message: 'tool_choice: type "tool" and "any" are not supported for this model.' } }),
+        { status: 400, headers: { 'Content-Type': 'application/json' } });
+    }
     const next = turns[Math.min(requests.length - 1, turns.length - 1)];
     const body = typeof next === 'function' ? next(requests.at(-1)) : next;
     return new Response(JSON.stringify(body), { status: 200, headers: { 'Content-Type': 'application/json' } });
@@ -31,7 +35,7 @@ async function sandboxWithCapture() {
 
 const ai = { apiKey: 'sk-test-only', model: 'claude-opus-5-5' };
 
-test('the steward checks a payment with PayPal’s read-only get_order and reports a deterministic reconciliation', async () => {
+test('the steward verifies the selected get_order with a provider that rejects forced tool choice', async () => {
   const env = await sandboxWithCapture();
   const lookups = [];
   const paypalTools = {
@@ -41,7 +45,7 @@ test('the steward checks a payment with PayPal’s read-only get_order and repor
   const anthropic = scriptedAnthropic([
     message([{ type: 'tool_use', id: 'toolu_1', name: 'read_household_ledger', input: {} }, { type: 'tool_use', id: 'toolu_2', name: 'get_order', input: { order_id: env.orderId } }], 'tool_use'),
     message([{ type: 'text', text: `Yes — PayPal shows order ${env.orderId} completed for $15.00, and it is counted toward your $300.00 goal. The Keep is next at $180.00, $105.00 away.` }]),
-  ]);
+  ], { rejectForcedToolChoice: true });
   const steward = createSteward({ db: env.db, contributions: env.service, householdId: env.householdId, ai, paypalTools, fetch: anthropic.fetch, clock: env.clock });
   const result = await steward.ask({ question: 'Did PayPal confirm our $15 contribution?', memberId: 'm_wren', focusOrderId: env.orderId });
 
@@ -56,7 +60,8 @@ test('the steward checks a payment with PayPal’s read-only get_order and repor
 
   assert.deepEqual(result.verification, { orderId: env.orderId, status: 'verified' });
   const [first, second] = anthropic.requests;
-  assert.deepEqual(first.tool_choice, { type: 'tool', name: 'get_order' });
+  assert.deepEqual(first.tool_choice, { type: 'auto' });
+  assert.match(first.messages[0].content, new RegExp(`Use get_order with that exact order_id`));
   assert.deepEqual(first.tools.map((t) => t.name), ['read_household_ledger', 'get_order', 'list_transactions']);
   assert.deepEqual(first.tools[1].input_schema.properties.order_id.enum, [env.orderId], 'only this household’s orders can be looked up');
   assert.ok(first.tools.every((t) => t.strict === true));
