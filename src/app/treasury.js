@@ -40,7 +40,9 @@ export function drawNextArea(root, next, { formatMoney, onVisit }) {
   bar.setAttribute('aria-valuenow', String(next.progressCents));
   bar.setAttribute('aria-valuetext', `${formatMoney(next.progressCents)} of ${formatMoney(next.thresholdCents)}`);
   const fill = el('span');
-  fill.style.width = `${next.thresholdCents ? Math.min(100, (100 * next.progressCents) / next.thresholdCents) : 0}%`;
+  // Studio's calculated field supplies the share; the fallback (no Studio) computes the same ratio here.
+  const share = Number.isFinite(next.share) ? next.share : next.thresholdCents ? next.progressCents / next.thresholdCents : 0;
+  fill.style.width = `${Math.max(0, Math.min(100, 100 * share))}%`;
   bar.append(fill);
   const meta = el('p', 'next-area-meta', `${formatMoney(next.progressCents)} of ${formatMoney(next.thresholdCents)} · ${formatMoney(next.remainingCents)} to go`);
   const visit = el('button', 'link-button next-area-visit', 'View on map');
@@ -56,7 +58,8 @@ export function drawNextArea(root, next, { formatMoney, onVisit }) {
 const field = (name, aggregation, key = name) => ({ fieldId: `areas.${name}`, key, aggregation });
 export const NEXT_AREA_QUERY = Object.freeze({
   fields: [field('id', 'first'), field('groupLabel', 'first'), field('percent', 'max'), field('thresholdCents', 'max'),
-    field('progressCents', 'max'), field('remainingCents', 'max'), field('id', 'count', 'count')],
+    field('progressCents', 'max'), field('remainingCents', 'max'), field('id', 'count', 'count'),
+    { fieldId: 'shareOfThreshold', key: 'share', aggregation: 'max' }],
   filter: [{ field: { fieldId: 'areas.next', key: 'areas.next' }, operator: 'isTrue', value: null }],
 });
 
@@ -72,7 +75,7 @@ class NextAreaWidget {
     const row = response.results?.rows?.[0];
     const next = row && row.count > 0 ? {
       id: row.id, label: row.groupLabel, percent: row.percent, thresholdCents: row.thresholdCents,
-      progressCents: row.progressCents, remainingCents: row.remainingCents,
+      progressCents: row.progressCents, remainingCents: row.remainingCents, share: row.share,
     } : null;
     drawNextArea(this.root, next, context);
     this.root.dataset.source = 'ag-studio';
@@ -96,6 +99,31 @@ const rowsFor = (state) => state.treasury.areas.map((a) => ({
   id: a.id, name: a.name, groupLabel: a.groupLabel, percent: a.percent, thresholdCents: a.thresholdCents,
   progressCents: a.progressCents, remainingCents: a.remainingCents, open: a.open, next: a.next,
 }));
+// Studio's data model for the Treasury: one typed, described table of the server's milestone rows, and one calculated
+// column (progress toward each area's threshold) evaluated by Studio's engine. Descriptions are the AI-facing schema
+// notes Studio's framework reads; amounts stay integer cents from the server, so nothing here re-derives entitlement.
+const cents = (id, name, description) => ({ id, name, description, format: 'integerFormat' });
+export const AREA_FIELDS = Object.freeze([
+  { id: 'id', name: 'Area id', format: 'textFormat', description: 'Stable district id from the server realm.' },
+  { id: 'name', name: 'Area', format: 'textFormat', description: 'District name shown on the map.' },
+  { id: 'groupLabel', name: 'Opens with', format: 'textFormat', description: 'Every district that opens at the same milestone.' },
+  { id: 'percent', name: 'Milestone', format: 'integerFormat', description: 'Share of the goal, in percent, at which this area opens.' },
+  cents('thresholdCents', 'Opens at (cents)', 'Confirmed progress, in integer cents, that opens this area.'),
+  cents('progressCents', 'Progress (cents)', 'Confirmed goal progress counted toward this threshold, capped at it.'),
+  cents('remainingCents', 'To go (cents)', 'Cents still needed; zero once open.'),
+  { id: 'open', name: 'Open', format: 'booleanFormat', description: 'Opened by an earned server achievement.' },
+  { id: 'next', name: 'Next', format: 'booleanFormat', description: 'Part of the lowest locked milestone group.' },
+]);
+export const AREA_EXPRESSIONS = Object.freeze([{
+  id: 'shareOfThreshold', name: 'Share of threshold', format: 'percentageFormat', isMeasure: false,
+  description: 'Progress divided by the threshold for each area (1 = open).',
+  expression: { operator: 'divide', inputs: [{ id: 'areas.progressCents' }, { id: 'areas.thresholdCents' }] },
+}]);
+const dataFor = (state) => ({
+  description: "One family's savings goal as milestone areas of a woodland realm. Read-only rows from the server's confirmed ledger.",
+  sources: [{ id: 'areas', name: 'Areas', description: 'Milestone districts in opening order.', data: rowsFor(state), fields: AREA_FIELDS }],
+  expressions: AREA_EXPRESSIONS,
+});
 const fallbackNext = (state) => {
   const n = state.treasury.nextArea;
   return n && { id: n.ids[0], label: state.treasury.areas.find((a) => a.id === n.ids[0])?.groupLabel ?? n.names[0], percent: n.percent,
@@ -151,7 +179,7 @@ export function createTreasury(container, { formatMoney, onVisit, getLicence, re
           }],
           menu: config.menu,
         }),
-        data: { sources: [{ id: 'areas', name: 'Areas', data: rowsFor(latest) }] },
+        data: dataFor(latest),
         initialState: { pages: [{ id: 'treasury', widgets: { next: { type: 'nextArea' } }, widgetLayout: { next: { xTrack: 0, yTrack: 0, xSpan: 24, ySpan: ROWS } } }], selectedPageId: 'treasury' },
       });
       status.source = 'ag-studio';
@@ -171,7 +199,7 @@ export function createTreasury(container, { formatMoney, onVisit, getLicence, re
     update(state) {
       latest = state;
       if (failed) { fallback(); return Promise.resolve(); }
-      if (studio) { studio.setProperty('data', { sources: [{ id: 'areas', name: 'Areas', data: rowsFor(state) }] }); return Promise.resolve(); }
+      if (studio) { studio.setProperty('data', dataFor(state)); return Promise.resolve(); }
       starting ??= start();
       return starting;
     },
