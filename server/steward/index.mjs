@@ -169,7 +169,8 @@ export function createSteward({ db, contributions, householdId, ai = null, paypa
     paypalToolsAvailable: Boolean(client && paypalTools),
     localHistoryAvailable: true,
 
-    async ask({ question, memberId, focusOrderId = null }) {
+    async ask({ question, memberId, focusOrderId = null, assertAccess = () => {} }) {
+      assertAccess();
       const text = typeof question === 'string' ? question.trim().replace(/\s+/g, ' ') : '';
       if (text.length < 3 || text.length > 300) throw new DomainError(400, 'invalid_question', 'Ask a question of 3–300 characters.');
       const member = getMember(db, householdId, memberId);
@@ -231,6 +232,7 @@ export function createSteward({ db, contributions, householdId, ai = null, paypa
       let model = ai.model;
       try {
         for (let turn = 0; turn < 6; turn++) {
+          assertAccess();
           const response = await client.beta.messages.create({
             model: ai.model,
             max_tokens: 4000,
@@ -244,6 +246,8 @@ export function createSteward({ db, contributions, householdId, ai = null, paypa
             tool_choice: { type: 'auto' },
             messages,
           });
+          // A model/provider wait must not carry an expired or removed member into another tool or answer.
+          assertAccess();
           model = response.model ?? model;
           if (response.stop_reason === 'refusal') throw new PlannerProviderError('refusal', 'The AI provider declined to answer this question.');
           messages.push({ role: 'assistant', content: response.content });
@@ -251,6 +255,8 @@ export function createSteward({ db, contributions, householdId, ai = null, paypa
           if (response.stop_reason === 'tool_use' && calls.length) {
             const results = [];
             for (const call of calls) {
+              // Keep access failures outside the tool-error catch: do not feed them into another paid model turn.
+              assertAccess();
               let output;
               let isError = false;
               try { output = await executeTool(call.name, call.input); } catch (error) { output = { error: error.message }; isError = true; }
@@ -284,6 +290,7 @@ export function createSteward({ db, contributions, householdId, ai = null, paypa
       const verification = focus ? { orderId: focus, status: focusedCheck?.reconciliation?.verdict === 'match' ? 'verified' : 'unverified' } : null;
       if (focus && verification.status !== 'verified')
         warnings.push('This payment has not been verified against the same PayPal order. No progress was changed.');
+      assertAccess();
       return { status: 'ok', answer, checks, warnings, model, paypalTools: Boolean(paypalTools), verification };
     },
   };

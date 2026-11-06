@@ -25,13 +25,13 @@ function mutableClock(start = '2026-11-03T12:00:00') {
   };
 }
 
-async function startServer({ file = ':memory:', clock = mutableClock(), port = 0 } = {}) {
+async function startServer({ file = ':memory:', clock = mutableClock(), port = 0, appOptions = {}, onRequest } = {}) {
   const db = openDatabase(file);
   let app;
-  const server = http.createServer((req, res) => app.handler(req, res));
+  const server = http.createServer((req, res) => { const pending = app.handler(req, res); onRequest?.(req); return pending; });
   await new Promise((resolve) => server.listen(port, '127.0.0.1', resolve));
   const origin = `http://localhost:${server.address().port}`;
-  app = createApp({ config: loadConfig({ OUR_CASTLE_ACCESS: 'family', OUR_CASTLE_ORIGIN: origin }, { root }), db, clock, root });
+  app = createApp({ config: loadConfig({ OUR_CASTLE_ACCESS: 'family', OUR_CASTLE_ORIGIN: origin }, { root }), db, clock, root, ...appOptions });
   let closing = null;
   const close = () => (closing ??= new Promise((resolve) => { server.closeAllConnections(); server.close(() => { db.close(); resolve(); }); }));
   return { db, origin, clock, app, close, port: server.address().port };
@@ -431,3 +431,92 @@ test('upgrading a goal-project database adds only the access tables; existing ro
     db.close();
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
+
+// Independent review: authorization must still be valid when a deferred action actually starts.
+const gate = () => { let release; const promise = new Promise(resolve => { release = resolve; }); return { promise, release }; };
+async function endAccess(reason, s, owner, adult, adultId) {
+  if (reason === 'active') return;
+  if (reason === 'expiry') s.clock.advance(13 * 3_600_000);
+  else if (reason === 'sign-out') assert.equal((await adult.call('POST', '/api/auth/signout', {})).status, 200);
+  else assert.equal((await owner.call('POST', `/api/family/members/${adultId}/revoke`, {})).status, 200);
+}
+
+for (const reason of ['revocation', 'expiry', 'sign-out']) {
+  test(`${reason} while a request body is delayed prevents its later household write`, { timeout: 10_000 }, async () => {
+    const admitted = gate();
+    const s = await startServer({ onRequest: req => {
+      if (req.headers['x-review-gate'] === 'delayed-body') admitted.release(req);
+    } });
+    let req;
+    try {
+      const { owner, Ash: adult } = await familyWith(s, [['Ash', 'adult']]);
+      const before = (await owner.call('GET', '/api/state')).json;
+      const adultId = before.access.members.find(m => m.name === 'Ash').id;
+      const payload = JSON.stringify({ kind: 'gift_sent', amountCents: 100, label: 'Delayed fixture gift', memberId: adultId });
+      const answer = new Promise((resolve, reject) => {
+        req = http.request(s.origin + '/api/entries', { method: 'POST', headers: {
+          Origin: s.origin, Cookie: [...adult.jar].map(([k,v]) => `${k}=${v}`).join('; '),
+          'X-CSRF-Token': adult.csrf, 'Content-Type': 'application/json',
+          'Content-Length': Buffer.byteLength(payload), 'X-Review-Gate': 'delayed-body',
+        } }, res => { let body = ''; res.on('data', c => { body += c; }); res.on('end', () => resolve({ status: res.statusCode, json: JSON.parse(body) })); });
+        req.on('error', reject); req.write(payload.slice(0, 1));
+      });
+      const incoming = await admitted.promise;
+      assert.ok(incoming.listenerCount('readable') > 0 || incoming.listenerCount('data') > 0, 'handler is waiting for the body');
+      await endAccess(reason, s, owner, adult, adultId);
+      req.end(payload.slice(1));
+      const result = await answer;
+      assert.equal(result.status, 401, `a ${reason} request returned ${result.status}`);
+      assert.equal(s.db.prepare("SELECT COUNT(*) AS n FROM ledger_entries WHERE label = 'Delayed fixture gift'").get().n, 0);
+      assert.equal((await adult.call('GET', '/api/state')).status, 401);
+    } finally { req?.destroy(); await s.close(); }
+  });
+}
+
+for (const [reason, phase] of [['revocation', 'model'], ['expiry', 'model'], ['sign-out', 'model'], ['revocation', 'tool'], ['active', 'model']]) {
+  test(`${reason} membership during a ${phase} wait controls tool/model turns and the private answer`, { timeout: 10_000 }, async () => {
+    const entered = gate(), finish = gate(), calls = [], lookups = [];
+    const message = content => ({ id: 'msg_review', type: 'message', role: 'assistant', model: 'claude-opus-5-5',
+      stop_reason: content[0].type === 'tool_use' ? 'tool_use' : 'end_turn', stop_details: null, content,
+      usage: { input_tokens: 1, output_tokens: 1 } });
+    const s = await startServer({ appOptions: {
+      stewardAi: { apiKey: 'synthetic-review-key', model: 'claude-opus-5-5' },
+      paypalTools: {
+        getOrder: async () => { throw new Error('No order lookup expected'); },
+        listTransactions: async () => {
+          lookups.push('list_transactions');
+          if (phase === 'tool') { entered.release(); await finish.promise; }
+          return { transaction_details: [] };
+        },
+      },
+      stewardFetch: async (_url, init) => {
+        calls.push(JSON.parse(init.body));
+        if (calls.length === 1 && phase === 'model') { entered.release(); await finish.promise; }
+        return new Response(JSON.stringify(message(calls.length === 1
+          ? [{ type: 'tool_use', id: 'toolu_review', name: 'list_transactions', input: { days: 1, status: 'S' } }]
+          : [{ type: 'text', text: 'I read the household records.' }])), { status: 200, headers: { 'Content-Type': 'application/json' } });
+      },
+    } });
+    try {
+      const { owner, Ash: adult } = await familyWith(s, [['Ash', 'adult']]);
+      const before = (await owner.call('GET', '/api/state')).json;
+      const adultId = before.access.members.find(m => m.name === 'Ash').id;
+      const request = adult.call('POST', '/api/steward', { question: 'What is our goal?' });
+      await entered.promise;
+      await endAccess(reason, s, owner, adult, adultId);
+      finish.release();
+      const result = await request;
+      if (reason === 'active') {
+        assert.equal(result.status, 200); assert.equal(result.json.status, 'ok');
+        assert.equal(calls.length, 2); assert.equal(lookups.length, 1);
+        assert.equal(result.json.answer, 'I read the household records.');
+        return;
+      }
+      assert.equal(result.status, 401, `${reason} request returned ${result.status}, after ${calls.length} model turns`);
+      assert.equal(calls.length, 1, 'no tool output enters another model turn after access ends');
+      assert.equal(lookups.length, phase === 'tool' ? 1 : 0, 'already-started lookups may finish; no later lookup begins');
+      assert.equal(result.json.answer, undefined); assert.equal(result.json.checks, undefined);
+      assert.equal((await adult.call('GET', '/api/state')).status, 401);
+    } finally { finish.release(); await s.close(); }
+  });
+}
