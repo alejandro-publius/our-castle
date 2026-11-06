@@ -1,5 +1,7 @@
 # Release readiness — November 6, 2026
 
+**Latest scenery activation — November 6, 22:43 UTC:** [PR #18](https://github.com/alejandro-publius/our-castle/pull/18), source `adc23ba`, expands the realm to 356×260 with complete mountain slopes and extended river outlets. Owner 3010 PID **74569** and preserved rehearsal 3021 PID **74592** run the reviewed source. Consistent backups, every application-table fingerprint, schema 4, core household state, access flags, environment bytes/mode/mtime and runtime modes matched before/after. Served world/renderer hashes and API dimensions match. Progress remains $60/$300 and $75/$300; no provider call, order or recording. [Visual checks/captures](MOUNTAIN-BORDER.md#extra-mountain-room--november-6). Private report: `~/projects/our-house/test-results/mountain-room-activation-20261106T224331Z/report.json`. This supersedes older runtime PIDs below; pending sponsor/family-access branches remain separate.
+
 The owner asked Codex to finish the remaining integration and release work. The approved sandbox contribution and same-order steward check now pass; recording and entry submission remain separate unfinished steps. [Current runtime evidence](IN-APP-SANDBOX-VERIFICATION.md).
 
 | Item | Current state |

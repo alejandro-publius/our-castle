@@ -15,6 +15,8 @@ The original 292×196 expansion and its activation evidence below are historical
 
 The realm/terrain unit checks and six distinct desktop/phone browser cases passed. Two final capture cases were rechecked with the journal closed. Actual renders were inspected: [day overview](screenshots/mountain-room-day.png), [turned view](screenshots/mountain-room-turned.png), [phone overview](screenshots/mountain-room-phone.png). The close-up home and night/rain renders remain in ignored `test-results/mountain-room/evidence/`. [Exact capture/source hashes](screenshots/mountain-room-sources.json). This uses only isolated example data; existing videos and historical captures are unchanged.
 
+**Active locally:** [PR #18](https://github.com/alejandro-publius/our-castle/pull/18), source `adc23ba`, is served on owner 3010 and the preserved 3021 rehearsal. Consistent backups preceded restart. Both schema-4 databases, every application-table fingerprint, core household state, district/bridge access, environment bytes/mode/mtime and runtime modes matched before/after. The new API map dimensions and six served world/renderer hashes match reviewed source. Owner progress remains $60/$300; rehearsal $75/$300. PIDs: 74569 / 74592. No provider call, order or recording occurred. Private report: `~/projects/our-house/test-results/mountain-room-activation-20261106T224331Z/report.json`.
+
 ## Original expansion
 
 Owner direction, November 5: a Hollywood-style PayPal sign using PayPal's own lettering, plus one unbuilt square of land on each side and mountainous terrain beyond the existing properties. Direct build in the current forest world; no new financial district or reward threshold.
