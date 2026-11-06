@@ -7,6 +7,14 @@ innovation, presentation (equal weight). Status values: `done on main`, `impleme
 Ground rule for every item below: the steward stays read-only, money is credited only from a server-verified capture,
 and nothing fakes payment proof. Items that would weaken that are not listed.
 
+## Current follow-up — November 6 PST
+
+The recovery UI, saved status/time and local **Needs a check?** query are already implemented. The existing check row now follows the receipt amount directly. The steward note explicitly says it cannot make payments. AG Studio already provides a calculated `shareOfThreshold` field and the custom agent runner; the shared verification-status function is not duplicated as another Studio formula.
+
+Codex applied the official [Doctor command checklist](PAYPAL-DOCTOR-REVIEW.md) as a source-guided review, found and corrected late-callback reporting defects, and recorded a public-webhook timing limit. The native command is not installed or claimed as run; no MCP/live probes were made. The [APIMatic form answer](SUBMISSION-DRAFT.md#prepared-apimatic-plugin-use-answer) now names the actual context use; the authenticated form remains unfilled. The public sponsor brief was rechecked, while the webinar qualifier phrasing remains attributed to the supplied notes. Sandbox-account naming and recording remain future owner steps.
+
+The W1–W4 items below preserve the earlier notes and review history; this paragraph supersedes their old open-PR/native-doctor status.
+
 ## W1. Start building with PayPal (Oct 6)
 
 1. **Verify webhook signatures against the raw delivered body.** W1: "ALWAYS verify the signature so nobody can fake an
@@ -22,10 +30,10 @@ and nothing fakes payment proof. Items that would weaken that are not listed.
    (DECLINED/DENIED, PENDING, 5xx-unknown, REFUNDED and REVERSED webhooks, replay). ROI: already the project's strongest
    technical story; make sure `docs/SUBMISSION-DRAFT.md` "How we built it" names these cases in one sentence (S).
 4. **Run the AI Toolkit `doctor` scan and record the result.** W1: `doctor` scans a codebase for integration mistakes.
-   Status: proposed, S. Files: `docs/VALIDATION.md` (one dated paragraph, findings and what was fixed or declined).
+   Status: source-guided review completed; native command not installed. [Method, findings and limits](PAYPAL-DOCTOR-REVIEW.md).
    ROI: a sponsor-named tool applied to our own integration, with a written result, costs under an hour and reads as
-   diligence under "technical implementation". Must be run by the owner on a machine with the plugin; it reads code
-   only, so no order, refund or paid call is involved.
+   diligence under "technical implementation". The upstream command can optionally run live probes, including order creation; those probes are outside this review
+   and were not enabled.
 
 ## W2. APIMatic Context Plugins (Oct 7)
 
@@ -36,8 +44,8 @@ and nothing fakes payment proof. Items that would weaken that are not listed.
    main; this closes the same gap for webhook verification and client tokens, so the story "every PayPal call is bounded"
    becomes true end to end.
 2. **Answer the APIMatic plugin question on the Devpost form.** W2: qualification is "use the plugin while building,
-   then answer the plugin question." Status: done on main (prepared answer in `docs/SUBMISSION-DRAFT.md`, provenance in
-   `docs/APIMATIC-CODEX.md`). ROI: the sponsor prize is gated on this one form field; nothing further to build.
+   then answer the plugin question." Status: answer prepared on main; the actual signed-in form is still unfilled (draft in `docs/SUBMISSION-DRAFT.md`, provenance in
+   `docs/APIMATIC-CODEX.md`). ROI: the supplied notes identify a plugin-use question; its actual form wording/completion remains unverified, so the draft is not a submitted sponsor entry.
 3. **Close the plugin's plan -> build -> verify loop for this diff.** W2: the plugin mandates a plan first and a verify
    pass against best practices at the end. Status: in this branch. File: `test/unit/paypal-reconciliation.test.mjs`
    (verify body byte-identical to `rawBody`; timeout -> unknown outcome, with timeouts, unreachable hosts and
@@ -93,7 +101,7 @@ and nothing fakes payment proof. Items that would weaken that are not listed.
 1. W2.3: unit tests for the diff (timeout, raw-body verify, dashboard refund, pending refund). Done in this branch.
 2. W3.2: Studio calculated-field and meter browser checks are implemented; results are recorded below.
 3. W4.1 + W4.2: review the refund reconciliation and pending-refund guard (in this branch, tested by 1).
-4. W1.4: run AI Toolkit `doctor`, record findings in `docs/VALIDATION.md`. S, owner machine.
+4. W1.4: source-guided Doctor checklist review completed; native slash command not installed. See PAYPAL-DOCTOR-REVIEW.md.
 5. W4.3: name sandbox accounts; add the step to `docs/RUNBOOK.md`. S, owner action, helps every recording.
 
 Not recommended before the deadline: W3.4 (second source and calendar, M) unless 1–5 are done and there is time left.

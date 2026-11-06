@@ -72,13 +72,16 @@ export async function mountPayPalButton(container, { getOrderInput, getOwnership
     },
     async onCancel() {
       if (currentOrderId) {
-        try { onResult(await api.post(`/api/paypal/orders/${encodeURIComponent(currentOrderId)}/cancel`, getOwnership())); } catch { /* status below is enough */ }
+        try {
+          onResult(await api.post(`/api/paypal/orders/${encodeURIComponent(currentOrderId)}/cancel`, getOwnership()));
+          return; // the server's current receipt, including completed/pending, owns the resulting message
+        } catch { /* the window closing cannot establish a financial result when the local read fails */ }
       }
-      onStatus({ kind: 'info', message: 'PayPal was closed before approval. Nothing was charged and progress is unchanged.' });
+      onStatus({ kind: 'info', message: 'PayPal window closed. Check the contribution record before trying again.' });
     },
     onError(error) {
       console.error('[paypal] checkout error', error);
-      onStatus({ kind: 'error', message: 'PayPal sandbox reported an error. No progress was recorded.' });
+      onStatus({ kind: 'error', message: 'PayPal sandbox reported an error. Check the contribution record before trying again.' });
     },
   });
 

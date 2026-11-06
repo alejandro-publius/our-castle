@@ -445,11 +445,16 @@ export function createContributionService({ db, clock, mode, paypal = null, webh
       return { ...applied, contribution: view(row.id), check };
     },
 
-    /** The buyer closed PayPal. Harmless to trust: it can only mark an uncaptured order canceled. */
+    /** A closed window cannot override capture status or establish whether PayPal charged. */
     cancelPayPalOrder({ providerOrderId, householdId, goalId }) {
       requireMode('sandbox');
       const row = ownedOrder(providerOrderId, householdId, goalId);
-      if (['creating', 'created'].includes(row.status)) setStatus(row, 'approval_canceled', 'The approver closed PayPal without paying. Nothing was charged.');
+      // SDK window events can arrive after capture/refund or while a capture is unresolved. They say nothing about
+      // money: retain the canonical record and report it without another provider request or financial mutation.
+      if (SETTLED.has(row.status)) return result(row, 'already_completed');
+      if (row.status === 'pending') return result(row, 'pending');
+      if (!['creating', 'created', 'approval_canceled'].includes(row.status)) return result(row, 'record_unchanged');
+      if (['creating', 'created'].includes(row.status)) setStatus(row, 'approval_canceled', 'The PayPal window was closed. Check this contribution’s status before trying again.');
       return result(row, 'canceled');
     },
 
