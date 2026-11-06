@@ -72,6 +72,7 @@ let state = null;
 let scene = null;
 let paypal = null;
 let paypalMount = null;
+let paypalLoadFailed = false;
 let ledgerGrid = null;
 let familyAvatars = null;
 let merchant = null;
@@ -1093,6 +1094,10 @@ function renderGive() {
 function renderGiveAction(ready) {
   const box = $('#give-action');
   if (isSandbox()) {
+    paypal?.setEnabled(ready);
+    // Planning and exploring the world do not need PayPal's SDK or eligibility service. A failed initialization waits
+    // for an explicit retry here; editing an amount/approval must never restart a provider load behind the family.
+    if (ui.tab !== 'give' || !state.household.setupComplete || persona()?.role !== 'adult' || paypalLoadFailed) return;
     if (!paypalMount && !box.querySelector('paypal-button')) {
       box.replaceChildren(h('p', { class: 'fine' }, 'Loading PayPal sandbox checkout…'));
       paypalMount = mountPayPalButton(box, {
@@ -1102,12 +1107,16 @@ function renderGiveAction(ready) {
         onResult: (res) => handleContributionResult(res),
       }).then((control) => { paypal = control; paypal.setEnabled(readyToPay()); })
         .catch((error) => {
-          box.replaceChildren();
-          setStatus('#give-status', 'error', `PayPal sandbox checkout could not start: ${error.message}`);
+          paypalLoadFailed = true;
+          box.replaceChildren(h('button', { type: 'button', id: 'retry-checkout', onclick: () => {
+            paypalLoadFailed = false;
+            setStatus('#give-status', '', '');
+            renderGive();
+          } }, 'Retry checkout'));
+          setStatus('#give-status', 'error', `Checkout unavailable: ${error.message}`);
           paypalMount = null;
         });
     }
-    paypal?.setEnabled(ready);
     return;
   }
   if (!box.querySelector('#simulate-pay')) {
@@ -1539,6 +1548,7 @@ function selectTab(name, { focus = true, remember = true, open = true } = {}) {
     $(`#panel-${tab}`).hidden = !selected;
   }
   if (name === 'ledger' && state) { renderTreasury(); renderLedgerGrid(); renderLedgerRecord(); }
+  if (name === 'give' && state) renderGive();
   if (state) renderNextStep();
   if (focus) $(`#tab-${name}`).focus();
 }

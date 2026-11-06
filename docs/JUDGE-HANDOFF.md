@@ -85,6 +85,7 @@ Identify the commit you actually inspected, read [release readiness](RELEASE-REA
 
 | Review question | Implementation | Focused evidence |
 | --- | --- | --- |
+| Does checkout stay off the initial world path and preserve one approval attempt? | [SDK wrapper](../src/app/paypal-checkout.js), Contribute in [main.js](../src/app/main.js) | [Readiness/load/retry/race cases](../test/e2e/checkout-readiness.spec.mjs), [previous callback cases](../test/e2e/paypal-callbacks.spec.mjs); 22 desktop/phone fake-provider passes, no new real popup claim |
 | Can progress credit or reverse twice? | [Contribution service](../server/payments/contributions.mjs), [SDK adapter](../server/payments/paypal-sdk-client.mjs) | [Payment cases](../test/unit/payments.test.mjs), [uncertain outcomes](../test/unit/paypal-unknown-outcome.test.mjs), [reconciliation](../test/unit/paypal-reconciliation.test.mjs) |
 | Does a receipt remember an honest check without rechecking on load? | [Migration 4](../server/db.mjs), contribution service, [receipt/error rendering](../src/app/main.js) | [Saved-check unit cases](../test/unit/receipt-checks.test.mjs), [browser recheck cases](../test/e2e/payment-recheck.spec.mjs) |
 | Can AI verify from prose or move money? | [Steward/reconciliation](../server/steward/index.mjs), [read-tool wrapper](../server/steward/paypal-tools.mjs), [planner validation](../server/planner/validate.mjs) | [Steward cases](../test/unit/steward.test.mjs), [injection cases](../test/unit/prompt-injection.test.mjs), separate [actual runtime result](IN-APP-SANDBOX-VERIFICATION.md) |

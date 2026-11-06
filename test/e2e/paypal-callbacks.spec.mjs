@@ -43,9 +43,10 @@ async function mount(page, pending = false) {
   await page.evaluate(async ({ input, owner }) => {
     window.callbacksObserved = { results: [], statuses: [] };
     const { mountPayPalButton } = await import('/src/app/paypal-checkout.js');
-    await mountPayPalButton(document.getElementById('checkout'), { getOrderInput: () => input, getOwnership: () => owner,
+    const control = await mountPayPalButton(document.getElementById('checkout'), { getOrderInput: () => input, getOwnership: () => owner,
       onResult: result => window.callbacksObserved.results.push(result),
       onStatus: status => window.callbacksObserved.statuses.push(status) });
+    control.setEnabled(true); // the fixture's amount-specific adult approval, as in the actual app
   }, { input: contribution(), owner: { householdId: env.householdId, goalId: env.goalId } });
   await page.locator('paypal-button').click();
   await expect.poll(() => page.evaluate(() => window.sdkOrder?.orderId)).toBeTruthy();
