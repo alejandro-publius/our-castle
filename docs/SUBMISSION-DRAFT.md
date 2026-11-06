@@ -32,6 +32,10 @@ The Treasury keeps the next area, contribution records and a selected receipt to
 - **Postman:** guarded example and opt-in sandbox walkthroughs, including replay and wrong-household checks.
 - **Stack and art:** Node.js (`node:http`, `node:sqlite`), browser JavaScript and Three.js. Original Tiny Castle art, fonts and the 90-colour renderer carry over from the owner's earlier project; the connected world and PayPal/AI/sponsor experience were built for Our Castle. Inspiration references contributed no copied third-party game art or code.
 
+## Existing materials and work completed during the hackathon
+
+We reused the owner's earlier Tiny Castle artwork, bundled fonts and pixel-rendering foundation. We built Our Castle's family setup, shared goal and weekly plan, connected woodland districts, bridges and earned deed cards during the hackathon. New integration work includes adult-approved PayPal sandbox checkout, a server-verified contribution ledger and persistent rewards, the live AI planner and read-only payment steward, Channel3's merchant, and the AG Grid/AG Studio Treasury. Repository history and [validation records](VALIDATION.md) document that work; the earlier artwork is not presented as newly created for this event.
+
 ## What we verified
 
 | Evidence | What it establishes |
@@ -55,7 +59,7 @@ Runtime AI is Anthropic Claude through the official SDK, called server-side for 
 
 ## What's next
 
-Complete the approved in-app sandbox evidence and final public video. Beyond the hackathon: real member authentication, shared household access, commercial licensing and provider-backed bill rewards. No utility provider is connected; household-entered bills remain reported and verified-bill rewards remain connection-required. This goal ledger is not a bank balance or a savings account.
+Finish the final public video using genuine source footage and submit the entry. The approved sandbox contribution and same-order verification now pass; no replacement payment is needed. Beyond the hackathon: real member authentication, shared household access, commercial licensing and provider-backed bill rewards. No utility provider is connected; household-entered bills remain reported and verified-bill rewards remain connection-required. This goal ledger is not a bank balance or a savings account.
 
 ## Submission fields still to supply
 
@@ -63,6 +67,15 @@ Complete the approved in-app sandbox evidence and final public video. Beyond the
 - Public YouTube video under three minutes: **not uploaded**. Existing cuts are review drafts; the missing live insert remains unfilmed.
 - Functional demo: repository setup instructions; a hosted site is not required by the checked rules.
 - Sponsor entries: Channel3, AG Grid/Studio and APIMatic; describe the exact use above. No award eligibility or result is guaranteed.
+- APIMatic plugin-use question: use the prepared answer below, adapting it to the actual form wording. The signed-in submission form has not been inspected or filled here; this is a draft, not a completed sponsor entry.
+
+### Prepared APIMatic plugin-use answer
+
+Yes. We used PayPal's APIMatic Context Plugin TypeScript/Node guidance in Codex while developing Our Castle's PayPal integration. Eight SDK-specific skills are installed and discovery-verified at repository scope. We used them to check the exact PayPal Server SDK 2.5.0 initialization, sandbox environment, OAuth fields, timeouts and retry behavior. The guidance informed recovery for uncertain captures and bounded read checks, with focused fake-provider tests and documented findings. Installation, provenance and actual use: https://github.com/alejandro-publius/our-castle/blob/main/docs/APIMATIC-CODEX.md . This is a repository-scoped context installation, not a claim of global marketplace registration.
+
+### Submission timing
+
+Use **Thursday, November 12, 2026, 12:00 p.m. Pacific**, as stated in the [official rules](https://paypalaihackathon.devpost.com/rules) checked November 5. The supplied webinar notes report a later spoken time; the written rules govern this draft's schedule. The [APIMatic sponsor page](https://paypalaihackathon.devpost.com/details/apimatic) describes plugin-use benefits; actual form completion and award selection are still separate steps.
 
 ## Prepared video upload fields
 
