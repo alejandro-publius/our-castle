@@ -15,10 +15,13 @@ let csrfToken = null;
 let onSessionLost = null;
 export function setSession({ csrf = null, lost = null } = {}) { csrfToken = csrf; onSessionLost = lost; }
 
-async function request(method, url, body, { signal } = {}) {
+// A background read (a shared family's page re-reading after a live update, or its fallback refresh) says so: it is not
+// the person's activity, so it never keeps an idle session alive.
+async function request(method, url, body, { signal, background = false } = {}) {
   let response;
   const headers = body === undefined ? { Accept: 'application/json' } : { 'Content-Type': 'application/json', Accept: 'application/json' };
   if (csrfToken && method !== 'GET') headers['X-CSRF-Token'] = csrfToken;
+  if (background) headers['X-Our-Castle-Refresh'] = 'background';
   try {
     response = await fetch(url, {
       method,
@@ -41,7 +44,7 @@ async function request(method, url, body, { signal } = {}) {
 }
 
 export const api = {
-  get: (url) => request('GET', url),
+  get: (url, options) => request('GET', url, undefined, options),
   post: (url, body = {}, options) => request('POST', url, body, options),
   put: (url, body = {}) => request('PUT', url, body),
 };
