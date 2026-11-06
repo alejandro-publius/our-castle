@@ -1,10 +1,11 @@
 import { PayPalAgentToolkit } from '@paypal/agent-toolkit/openai';
+import { PAYPAL_READ_TOOLS } from '../../src/core/steward-policy.js';
 
 // PayPal's Agent Toolkit, restricted to two read-only actions. The steward can look up an order and
 // list sandbox transactions; it is never given create, capture ("pay_order"), refund, invoice or
 // subscription tools. Arguments are rebuilt by the server, never passed through from the model.
 export const READ_ONLY_ACTIONS = Object.freeze({ orders: Object.freeze({ get: true }), transactions: Object.freeze({ list: true }) });
-const ALLOWED_TOOLS = new Set(['get_order', 'list_transactions']);
+const ALLOWED_TOOLS = new Set(PAYPAL_READ_TOOLS);
 const ORDER_ID = /^[A-Z0-9]{17,32}$/;
 
 export function createPayPalReadTools({ clientId, clientSecret, toolkit = null, now = () => new Date(), timeoutMs = 30_000 }) {

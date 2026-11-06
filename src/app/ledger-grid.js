@@ -61,6 +61,19 @@ export function createLedgerGrid(container, { formatMoney, onSelect = () => {} }
     wrap.append(a, b);
     return wrap;
   };
+  const checkLine = (row) => {
+    if (!row.lastChecked) return null;
+    const line = document.createElement('small');
+    line.className = 'record-check'; line.dataset.check = row.lastChecked.key;
+    line.textContent = row.lastChecked.text;
+    line.title = `${row.lastChecked.detail} · ${row.lastChecked.checkedAt}`;
+    return line;
+  };
+  const entryCell = (row) => {
+    const wrap = twoLine(row.entry, row.when), check = checkLine(row);
+    if (check) wrap.append(check);
+    return wrap;
+  };
   const columnDefs = [
     {
       colId: 'record', headerName: 'Record', minWidth: 102, flex: 1, sortable: false,
@@ -69,7 +82,7 @@ export function createLedgerGrid(container, { formatMoney, onSelect = () => {} }
     },
     {
       colId: 'entry', field: 'entry', headerName: 'Entry', minWidth: 136, flex: 1.6, sort: 'desc', comparator: byIso, autoHeight: true,
-      cellRenderer: (p) => (p.node.rowPinned ? twoLine(p.data.entry, '') : twoLine(p.data.entry, p.data.when)),
+      cellRenderer: (p) => (p.node.rowPinned ? twoLine(p.data.entry, '') : entryCell(p.data)),
     },
     {
       colId: 'amount', field: 'signedCents', headerName: 'Amount', minWidth: 84, flex: 0.8, type: 'rightAligned',
@@ -78,10 +91,10 @@ export function createLedgerGrid(container, { formatMoney, onSelect = () => {} }
     { colId: 'counts', field: 'counts', headerName: 'Counts toward goal', minWidth: 92, flex: 0.9, wrapText: true, autoHeight: true, wrapHeaderText: true, autoHeaderHeight: true },
   ];
 
-  function choose(row) {
+  function choose(row, userInitiated = false) {
     if (!row || row.id === 'total') return;
     selected = String(row.id);
-    onSelect(row);
+    onSelect(row, { userInitiated });
   }
   function fallback() {
     const all = [...rows].sort((a, b) => b.whenIso.localeCompare(a.whenIso)).filter((r) =>
@@ -100,8 +113,10 @@ export function createLedgerGrid(container, { formatMoney, onSelect = () => {} }
           const button = document.createElement('button');
           button.type = 'button'; button.className = 'ledger-record-button';
           button.textContent = r[key] ?? '';
+          const check = checkLine(r);
+          if (check) button.append(check);
           button.setAttribute('aria-pressed', String(String(r.id) === selected));
-          button.addEventListener('click', () => { choose(r); fallback(); });
+          button.addEventListener('click', () => { choose(r, true); fallback(); });
           td.append(button);
         } else td.textContent = r[key] ?? '';
         tr.append(td);
@@ -134,7 +149,8 @@ export function createLedgerGrid(container, { formatMoney, onSelect = () => {} }
         getRowId: (p) => String(p.data.id),
         rowSelection: { mode: 'singleRow', checkboxes: false, enableClickSelection: true, isRowSelectable: (node) => !node.rowPinned },
         onSelectionChanged: (event) => { const row = event.api.getSelectedRows()[0]; if (row) choose(row); },
-        onCellKeyDown: (event) => { if (event.event?.key === 'Enter' && !event.node.rowPinned) event.node.setSelected(true); },
+        onCellClicked: (event) => { if (!event.node.rowPinned) { event.node.setSelected(true); choose(event.data, true); } },
+        onCellKeyDown: (event) => { if (event.event?.key === 'Enter' && !event.node.rowPinned) { event.node.setSelected(true); choose(event.data, true); } },
         rowClassRules: { 'not-savings': (p) => !p.node.rowPinned && p.data?.category !== 'goal' },
         ensureDomOrder: true,
         suppressColumnVirtualisation: true,
@@ -158,6 +174,9 @@ export function createLedgerGrid(container, { formatMoney, onSelect = () => {} }
       if (grid) {
         grid.setGridOption('rowData', rows);
         grid.setGridOption('pinnedBottomRowData', [total]);
+        // These renderers read saved-check/source metadata as well as the Entry field. A new check can leave that
+        // field unchanged, so AG Grid's value comparison alone would retain a stale (or missing) status line.
+        grid.refreshCells({ columns: ['record', 'entry'], force: true });
       } else fallback();
     },
     setFilter(next) {

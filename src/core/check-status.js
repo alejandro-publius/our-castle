@@ -47,3 +47,16 @@ export function checkStatus(c) {
   if (k.captureStatus === 'COMPLETED') return status('match', 'Checked · matches PayPal', 'checked, matches', 'ok', false);
   return status('uncaptured', 'Checked · not paid yet', 'checked, not paid', 'warn', false);
 }
+
+/** A saved check's compact grid label. A match on an unpaid/pending order must not read as a completed payment. */
+export function savedCheckSummary(c) {
+  const check = checkStatus(c);
+  if (!c?.lastCheck || check.key === 'none') return null;
+  const labels = {
+    match: 'Match', pending: 'Pending', refund_pending: 'Refund pending',
+    failed: 'Needs check', mismatch: 'Needs check', action: 'Needs check', unknown: 'Needs check',
+    refunded: c.status === 'partially_refunded' ? 'Partly refunded' : 'Refunded',
+    stale: 'Checked before refund', uncaptured: 'Not paid',
+  };
+  return { key: check.key, label: labels[check.key] ?? 'Needs check', checkedAt: c.lastCheck.checkedAt, detail: check.label };
+}
