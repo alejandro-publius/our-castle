@@ -1385,7 +1385,7 @@ const STEWARD_SUGGESTIONS = ['Did PayPal confirm our last contribution?', 'How c
 
 function renderSteward() {
   const { steward } = state;
-  $('#steward-note').textContent = !steward.available ? (steward.localHistory ? 'Saved confirmations' : 'Steward unavailable.') : steward.paypalTools ? 'AI · can check PayPal records' : 'AI · household records';
+  $('#steward-note').textContent = !steward.available ? (steward.localHistory ? 'Saved confirmations' : 'Steward unavailable.') : steward.paypalTools ? 'Reads PayPal and household records. Cannot make payments.' : 'Reads household records. Cannot make payments.';
   const suggestions = $('#steward-suggestions');
   if (!suggestions.childElementCount) {
     suggestions.append(h('button', { type: 'button', 'data-question': STEWARD_SUGGESTIONS[0], 'aria-label': STEWARD_SUGGESTIONS[0] }, h('span', {}, 'Check last payment')));
