@@ -754,6 +754,7 @@ function renderPlan() {
   badge.textContent = plan.source === 'ai'
     ? 'AI plan'
     : plan.source === 'household-edited' ? 'Household plan' : 'Built-in plan';
+  if (state.acceptedPlanId === plan.id) badge.append(' · in use');
   $('#plan-headline').textContent = plan.headline;
   $('#plan-summary').textContent = plan.summary;
   const review = state.planReview;
@@ -796,13 +797,19 @@ function renderPlan() {
 }
 
 async function refreshPlanGoal() {
+  const fields = ['goal-name-input', 'goal-target', 'goal-starting'];
+  const before = Object.fromEntries(fields.map(id => [id, $(`#${id}`).value]));
   const latest = await api.get('/api/state');
-  const weekly = $('#goal-weekly').value, date = $('#goal-date').value;
-  ui.planFormDirty = false;
-  applyState(latest);
-  $('#goal-weekly').value = weekly;
-  $('#goal-date').value = date;
+  // Keep current trial inputs and optional bill rows, including edits made while this local read was pending.
+  // Refresh only goal facts the family has not meanwhile edited; a newly selected market draft keeps its own scope.
   ui.planFormDirty = true;
+  applyState(latest);
+  if (ui.goalDraft) return false;
+  const values = { 'goal-name-input': latest.goal.name, 'goal-target': centsToInput(latest.goal.targetCents), 'goal-starting': centsToInput(latest.progress.startingCents) };
+  for (const id of fields) if ($(`#${id}`).value === before[id]) $(`#${id}`).value = values[id];
+  ui.planGoalId = latest.goal.id;
+  ui.planGoalRevision = latest.merchantGoalRevision;
+  return true;
 }
 
 async function showPlanError(error) {
@@ -813,7 +820,7 @@ async function showPlanError(error) {
     $('#ask-planner').focus();
     return;
   }
-  setStatus('#plan-status', 'error', error.message, { issues: error.issues });
+  setStatus('#plan-status', 'error', error.message, { issues: error.code === 'invalid_edit' ? [] : error.issues });
 }
 
 // ---------- Market Town merchant draft: shown in the Plan form, saved only on "Save as our goal" ----------
@@ -832,6 +839,7 @@ function renderGoalDraft() {
   $('#goal-draft-review').disabled = ui.goalDraftBusy;
   $('#goal-draft-discard').disabled = ui.goalDraftBusy;
   $('#ask-planner').disabled = Boolean(draft); // one explicit decision at a time: save or discard the draft first
+  planCheck?.update(); // programmatic market selections must clear calculations for the previous goal immediately
   const item = state.goalItem;
   const line = $('#goal-item');
   line.hidden = Boolean(draft) || !item;

@@ -45,6 +45,9 @@ async function visitCampsite(page, info) {
 }
 
 test('the campsite develops with progress, steps back on a refund or a bigger goal, survives reload and never writes', async ({ page, request }, info) => {
+  // Seven scene reloads and their real captures exceed 90 seconds on software WebGL; individual assertions remain
+  // bounded. This changes only the total scenario budget, not its states, checks or rendering.
+  test.setTimeout(180_000);
   const errors = [], writes = [];
   page.on('pageerror', (e) => errors.push(e.message)); page.on('request', (r) => { if (r.method() !== 'GET') writes.push(`${r.method()} ${new URL(r.url()).pathname}`); });
   const shot = (name) => page.locator('.realm-map').screenshot({ path: `${evidence}${info.project.name}-${name}.png` });

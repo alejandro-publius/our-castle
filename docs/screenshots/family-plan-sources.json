@@ -1,0 +1,16 @@
+{
+  "date": "2026-11-06",
+  "source": "test/e2e/plan-check.spec.mjs, first scenario before its explicit Make-plan action",
+  "mode": "isolated in-memory example; synthetic $60 of $300; built-in accepted plan; no provider calls",
+  "limits": "Chromium desktop and emulated 390px touch phone, reduced motion; no physical-device or performance claim",
+  "images": {
+    "docs/screenshots/family-plan-desktop.png": {
+      "sha256": "daf96cfc4012aebdb74870f14694deae50a221d0de1702aa0796c7eb69d769fb",
+      "source": "test-results/family-plan-review/peer-fixes-artifacts/plan-check-trying-a-weekly-553b6-explicitly-makes-a-new-plan-desktop/remaining-plan-check.png"
+    },
+    "docs/screenshots/family-plan-phone.png": {
+      "sha256": "447ed9a1205906f4ec4f1c49f492217836f4b3595031c71df92cb36bccf97940",
+      "source": "test-results/family-plan-review/peer-fixes-artifacts/plan-check-trying-a-weekly-553b6-explicitly-makes-a-new-plan-phone/remaining-plan-check.png"
+    }
+  }
+}

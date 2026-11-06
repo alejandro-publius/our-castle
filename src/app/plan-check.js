@@ -43,12 +43,13 @@ export function createPlanCheck({ getState, isBlocked = () => false, refreshGoal
       action.addEventListener('click', async () => {
         action.disabled = true;
         try {
-          await refreshGoal();
+          const loaded = await refreshGoal();
+          if (loaded === false || isBlocked()) return;
           stateKey = facts();
           message('Latest goal loaded. Check your schedule again.');
           button.focus();
         } catch (error) {
-          message(error.message, { error: true, reload: true });
+          if (!isBlocked()) message(error.message, { error: true, reload: true });
         }
       });
       result.append(action);
@@ -145,6 +146,13 @@ export function createPlanCheck({ getState, isBlocked = () => false, refreshGoal
 
   button.addEventListener('click', check);
   $('plan-form').addEventListener('input', (event) => { if (fields.includes(event.target.id)) clear(); });
+  // Trying a weekly amount/date with Enter is a read-only calculation. The focused Make-plan button retains its
+  // explicit submit behavior; implicit form submission must not save settings or invoke the model here.
+  $('plan-form').addEventListener('keydown', (event) => {
+    if (event.key === 'Enter' && !event.isComposing && ['goal-weekly', 'goal-date'].includes(event.target.id)) {
+      event.preventDefault(); check();
+    }
+  });
   return {
     clear,
     update() {
