@@ -141,7 +141,7 @@ export function createApp({ config, db, clock, paypal = null, aiProvider = null,
     s.modes.merchant = shop.status();
     s.goalItem = goalItemFor(db, s.goal);
     s.merchantGoalRevision = merchantGoalRevision(s.goal, s.progress.startingCents);
-    s.treasury = treasuryFor(s);
+    s.treasury = treasuryFor(s, clock.iso(), planner.accepted(s.goal.id));
     if (family) s.access = access.viewer(scope);
     return s;
   };
@@ -207,13 +207,28 @@ export function createApp({ config, db, clock, paypal = null, aiProvider = null,
       return { ...found, goalId: goal.id, goalRevision };
     }],
     ['POST', '/api/merchant/goal', ({ body, scope }) => {
-      if (family && !draftHouseholds.get(str(body.draftId))?.households.has(scope.householdId)) {
+      if (family && !shownTo(body.draftId, scope)) {
         throw new DomainError(410, 'merchant_draft_expired', 'That merchant result has expired. Search again for a fresh price before saving.');
       }
       const item = shop.draft(str(body.draftId));
       saveGoalFromItem(db, { householdId: scope.householdId, goalId: scope.goalId, expectedGoalId: str(body.goalId), expectedGoalRevision: str(body.expectedGoalRevision), item, goal: body.goal }, clock);
       return { status: 'ok', state: state(scope) };
     }],
+    ...['refresh', 'alternatives'].map((action) => ['POST', `/api/merchant/${action}`, async ({ body, scope }) => {
+      const goal = getActiveGoal(db, scope.householdId);
+      const goalRevision = merchantGoalRevision(goal, progressFor(db, goal.id).startingCents);
+      // References come from this server's saved goal or a short-lived shown result, never a caller's product/URL/price.
+      if (body.goalId !== goal.id) throw new DomainError(409, 'goal_changed', 'The goal changed. Open the merchant again.');
+      // In family mode a shown result is usable only by a household this server showed it to, checked before any provider call.
+      if (family && body.saved !== true && !shownTo(body.referenceId, scope)) {
+        throw new DomainError(410, 'merchant_draft_expired', 'That merchant result has expired. Search again for a fresh price before saving.');
+      }
+      const item = body.saved === true ? goalItemFor(db, goal) : shop.draft(str(body.referenceId));
+      if (!item) throw new DomainError(404, 'merchant_item_missing', 'There is no saved item for this goal.');
+      const found = action === 'refresh' ? await shop.refresh(item) : await shop.alternatives(item, body.budgetCents ?? null);
+      if (family) rememberDrafts(found, scope);
+      return { ...found, goalId: goal.id, goalRevision };
+    }]),
     // ---- Treasury: read-only. The AG Studio licence (if configured) is the only setting the page may read here. ----
     ['GET', '/api/treasury/studio', () => ({ licenseKey: config.studio?.licenseKey ?? null })],
     ['POST', '/api/steward', async ({ body, scope }) => (family ? stewardFor(scope.householdId) : steward)
@@ -313,12 +328,14 @@ export function createApp({ config, db, clock, paypal = null, aiProvider = null,
       requestId: str(body.requestId),
     };
   }
+  // A shown result's ids (its draft and its refresh/similar reference) are usable only by households it was shown to.
+  const shownTo = (id, scope) => typeof id === 'string' && Boolean(draftHouseholds.get(id)?.households.has(scope.householdId));
   function rememberDrafts(found, scope) {
     const at = clock.now().getTime();
-    for (const row of found?.results ?? []) {
-      if (!row?.draftId) continue;
-      const entry = draftHouseholds.get(row.draftId) ?? { at, households: new Set() };
-      entry.households.add(scope.householdId); draftHouseholds.set(row.draftId, entry);
+    for (const row of found?.results ?? []) for (const id of new Set([row?.draftId, row?.referenceId])) {
+      if (typeof id !== 'string') continue;
+      const entry = draftHouseholds.get(id) ?? { at, households: new Set() };
+      entry.households.add(scope.householdId); draftHouseholds.set(id, entry);
     }
     if (draftHouseholds.size > 2000) for (const [id, e] of draftHouseholds) if (at - e.at > 3_600_000) draftHouseholds.delete(id);
   }

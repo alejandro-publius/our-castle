@@ -40,8 +40,8 @@ test('upgrading an existing database keeps every goal a campsite and changes not
   try {
     // A database exactly as the previous release left it: the earlier migrations, an existing goal and an accepted plan.
     const old = new DatabaseSync(file);
-    const before5 = MIGRATIONS.findIndex((sql) => sql.includes('ADD COLUMN project_kind'));
-    MIGRATIONS.slice(0, before5).forEach((sql, i) => { old.exec(sql); old.exec(`PRAGMA user_version = ${i + 1}`); });
+    const before5 = MIGRATIONS.findIndex((step) => step.id === 'goal-project-kind');
+    MIGRATIONS.slice(0, before5).forEach((step, i) => { if (typeof step === 'string') old.exec(step); else step.ensure(old); old.exec(`PRAGMA user_version = ${i + 1}`); });
     old.exec(`INSERT INTO households (id, name, play_mode, crest_field, crest_charge, is_example, setup_complete, created_at)
       VALUES ('hh_old', 'House of Alder', 'family', 'cobalt', 'stag', 1, 1, '2026-11-01T12:00:00.000Z');
       INSERT INTO goals (id, household_id, name, target_cents, currency, target_date, weekly_budget_cents, created_at)

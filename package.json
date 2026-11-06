@@ -29,8 +29,8 @@
     "@paypal/paypal-server-sdk": "2.5.0",
     "@simplewebauthn/browser": "14.0.0",
     "@simplewebauthn/server": "14.0.3",
-    "ag-grid-community": "36.2.0",
-    "ag-studio": "3.0.0"
+    "ag-grid-community": "36.3.0",
+    "ag-studio": "3.1.0"
   },
   "devDependencies": {
     "@playwright/test": "1.64.1"

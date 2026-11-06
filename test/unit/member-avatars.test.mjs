@@ -54,7 +54,7 @@ test('the additive avatar migration preserves an existing version-one household 
     const financial=financialSnapshot(db),members=people(db);
     db.exec('ALTER TABLE members DROP COLUMN avatar_id; DROP TABLE goal_items; ALTER TABLE goals DROP COLUMN project_kind; PRAGMA user_version = 1;');
     db.close();db=openDatabase(file);
-    assert.equal(db.prepare('PRAGMA user_version').get().user_version,6); // avatars, merchant goal_items, saved order_checks, the goal's project kind, family access tables
+    assert.equal(db.prepare('PRAGMA user_version').get().user_version,7); // avatars, goal_items, order_checks, project kind, item selection, family access
     assert.deepEqual(people(db),members);
     assert.deepEqual(financialSnapshot(db),financial);
     assert.deepEqual(getMembers(db,s.householdId).map(m=>m.avatarId),['ranger','bard']);

@@ -963,8 +963,8 @@ function renderGoalDraft() {
   const line = $('#goal-item');
   line.hidden = Boolean(draft) || !item;
   if (item && !draft) {
-    line.replaceChildren(`Goal item: ${item.title} · ${formatCents(item.priceCents, item.currency)} at ${item.merchant}, Channel3 price checked ${timeLabel(item.checkedAt)}. `,
-      h('a', { href: item.url, target: '_blank', rel: 'noopener noreferrer nofollow' }, 'Retailer page', h('span', { class: 'sr-only' }, ' (opens a retailer site in a new tab)')));
+    line.replaceChildren(`${item.title} · ${formatCents(item.priceCents, item.currency)} saved price. `,
+      h('button', { type: 'button', class: 'link-button', onclick: (e) => merchant.openSaved(e.currentTarget) }, 'Check item'));
   }
   if (!draft) return;
   const image = $('#goal-draft-image');
@@ -1447,6 +1447,11 @@ function recordImpact(row) {
 function renderTreasury() {
   if (ui.tab !== 'ledger') return;
   treasury ??= createTreasury($('#treasury-next'), { formatMoney: money, onVisit: visitDistrict,
+    onRecord: (id) => {
+      ui.ledgerRecord = id; ui.refundArm = null;
+      ledgerGrid?.selectRecord(id); renderLedgerRecord();
+      revealInLedger(() => $('#ledger-contributions li'), true);
+    },
     requestSteward: (payload, options) => api.post('/api/steward', payload, options),
     getStewardScope: () => JSON.stringify([state.household.id, state.household.name, state.goal, state.progress, state.plan?.id, state.acceptedPlanId,
       state.contributions.map((c) => [c.id, c.status, c.updatedAt]), persona()?.id, ui.ledgerRecord]),

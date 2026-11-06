@@ -319,11 +319,98 @@ test('searching changes nothing; only an explicitly confirmed draft changes the 
       provider: 'Channel3', productId: 'fakeTent01', title: 'Test fixture: Four-person dome tent', merchant: 'example-outfitter.com',
       url: 'https://buy.trychannel3.com/fake/tent-a', priceCents: 18950, currency: 'USD', availability: 'InStock',
       checkedAt: tent.checkedAt, savedAt: new Date(FIXED_NOW).toISOString(),
+      selection: [], condition: 'new',
     });
     // Renaming the goal through the ordinary editor detaches the item rather than mislabelling the new goal.
     const renamed = await s.call('PUT', '/api/goal', goalFrom(after, { name: 'Something else' }));
     assert.equal(renamed.json.state.goalItem, null);
   } finally { await s.close(); }
+});
+
+test('refresh keeps the retailer and selected variant, returns a fresh link, and changes no goal or ledger', async () => {
+  let price = 189.5;
+  const selection = [{ name: 'Size', label: '4 person' }];
+  const product = () => fakeProduct({ variants: { selected: selection }, offers: [{ ...fakeProduct().offers[0], price: { price, currency: 'USD' }, url: `https://buy.trychannel3.com/fake/fresh-${price}` }] });
+  const s = await startServer({ respond: (url) => url.includes('/products/') ? product() : fakeSearchResponse([product()]) });
+  try {
+    const initial = (await s.call('GET', '/api/state')).json;
+    const found = (await s.call('POST', '/api/merchant/search', { query: 'tent' })).json;
+    const saved = await s.call('POST', '/api/merchant/goal', { draftId: found.results[0].draftId, goalId: found.goalId, expectedGoalRevision: found.goalRevision, goal: goalFrom(initial, { name: 'Our tent', targetCents: 18950 }) });
+    assert.equal(saved.status, 200, saved.text);
+    assert.deepEqual(saved.json.state.goalItem.selection, selection);
+    price = 169;
+    const checked = await s.call('POST', '/api/merchant/refresh', { saved: true, goalId: found.goalId, productId: 'forged', url: 'https://evil.test' });
+    assert.equal(checked.status, 200, checked.text);
+    const [r] = checked.json.results;
+    assert.equal(r.priceCents, 16900); assert.equal(r.previousPriceCents, 18950);
+    assert.equal(r.url, 'https://buy.trychannel3.com/fake/fresh-169');
+    assert.equal(r.usable, true);
+    assert.deepEqual((await s.call('GET', '/api/state')).json, saved.json.state);
+    const req = s.fake.calls.at(-1), url = new URL(req.url);
+    assert.equal(req.method, 'GET'); assert.equal(req.body, null);
+    assert.equal(url.pathname, '/v1/products/fakeTent01');
+    assert.equal(url.searchParams.get('website_ids'), 'example-outfitter.com');
+    assert.equal(url.searchParams.get('option_Size'), '4 person');
+    const before = s.fake.calls.length;
+    assert.equal((await s.call('POST', '/api/merchant/refresh', { saved: true, goalId: 'another-household' })).status, 409);
+    assert.equal((await s.call('POST', '/api/merchant/refresh', { referenceId: 'forged', goalId: found.goalId })).status, 410);
+    assert.equal(s.fake.calls.length, before);
+  } finally { await s.close(); }
+});
+
+test('out-of-stock, changed variant, missing retailer, non-USD and mismatched product never silently replace the saved item', async () => {
+  const reference = { productId: 'fakeTent01', merchant: 'example-outfitter.com', priceCents: 18950, currency: 'USD', condition: 'new', selection: [{ name: 'Size', label: 'Large' }] };
+  const base = fakeProduct({ variants: { selected: reference.selection } });
+  for (const [product, reason] of [
+    [{ ...base, offers: [{ ...base.offers[0], availability: 'OutOfStock' }] }, /out of stock/],
+    [{ ...base, variants: { selected: [{ name: 'Size', label: 'Small' }] } }, /size or colour/],
+    [{ ...base, offers: [base.offers[1]] }, /No price/],
+    [{ ...base, offers: [{ ...base.offers[0], price: { price: 100, currency: 'EUR' } }] }, /Priced in EUR/],
+  ]) {
+    const fake = createFakeChannel3(() => product);
+    const m = createMerchant({ apiKey: KEY, fetch: fake.fetch });
+    const r = (await m.refresh(reference)).results[0];
+    assert.equal(r.usable, false); assert.equal(r.draftId, null); assert.match(r.unusableReason, reason);
+  }
+  for (const [reply, code] of [[{ ...base, id: 'different' }, 'merchant_malformed'], [new Response('{}', { status: 404 }), 'merchant_item_missing']]) {
+    const fake = createFakeChannel3(() => reply);
+    await rejects(createMerchant({ apiKey: KEY, fetch: fake.fetch }).refresh(reference), code);
+    assert.equal(fake.calls.length, 1, 'missing product never triggers a replacement paid search');
+  }
+});
+
+test('similar uses the strict lower of budget and saved price, drops unsafe suggestions and never buys', async () => {
+  const products = [120, 140, 160].map((p, i) => fakeProduct({ id: `alternative${i}`, offers: [{ ...fakeProduct().offers[0], price: { price: p, currency: 'USD' } }] }));
+  const fake = createFakeChannel3(() => fakeSearchResponse(products));
+  const m = createMerchant({ apiKey: KEY, fetch: fake.fetch });
+  const ref = { productId: 'fakeTent01', priceCents: 15000, currency: 'USD' };
+  const res = await m.alternatives(ref, 13000);
+  assert.deepEqual(res.results.map((r) => r.priceCents), [12000]);
+  assert.equal(res.budgetCents, 13000);
+  assert.deepEqual(fake.calls[0].body, { product_id: 'fakeTent01', limit: 3, filters: { price: { max_price: 130 } }, config: { country: 'US', currency: 'USD', language: 'en' } });
+  assert.equal(fake.calls[0].url, 'https://api.trychannel3.com/v1/similar');
+  await m.alternatives(ref, 20000);
+  assert.equal(fake.calls[1].body.filters.price.max_price, 149.99);
+  const bad = createFakeChannel3(() => fakeSearchResponse([
+    fakeProduct(),
+    fakeProduct({ id: 'out', offers: [{ ...products[0].offers[0], availability: 'OutOfStock' }] }),
+    fakeProduct({ id: 'eur', offers: [{ ...products[0].offers[0], price: { price: 20, currency: 'EUR' } }] }),
+  ]));
+  assert.deepEqual((await createMerchant({ apiKey: KEY, fetch: bad.fetch }).alternatives(ref, 20000)).results, []);
+});
+
+test('concurrent refreshes share a call; timeout and expiry are bounded without a paid retry', async () => {
+  let release;
+  const gate = new Promise((r) => { release = r; });
+  const fake = createFakeChannel3(async () => { await gate; return fakeProduct(); });
+  const m = createMerchant({ apiKey: KEY, fetch: fake.fetch });
+  const ref = { productId: 'fakeTent01', merchant: 'example-outfitter.com', priceCents: 18950 };
+  const both = Promise.all([m.refresh(ref), m.refresh({ ...ref, priceCents: 21000 })]); release();
+  const answers = await both; assert.equal(fake.calls.length, 1);
+  assert.deepEqual(answers.map((x) => x.results[0].previousPriceCents), [18950, 21000]);
+  const hang = hangingFetch();
+  await rejects(createMerchant({ apiKey: KEY, fetch: hang.fetch, timeoutMs: 25 }).refresh(ref), 'merchant_timeout');
+  assert.equal(hang.calls.length, 1);
 });
 
 test('failed saves change nothing; a fully funded low-cost item is saved like any goal edit', async () => {
@@ -393,7 +480,7 @@ test('the goal_items migration is additive: an existing version-two household ke
   db.close();
   db = openDatabase(file);
   try {
-    assert.equal(db.prepare('PRAGMA user_version').get().user_version, 6); // saved checks, the goal's project kind, then family access tables
+    assert.equal(db.prepare('PRAGMA user_version').get().user_version, 7); // saved checks, project kind, item selection, family access
     assert.deepEqual(snapshot(db), before);
     assert.equal(db.prepare('SELECT COUNT(*) AS n FROM goal_items').get().n, 0);
     assert.equal(db.prepare('SELECT COUNT(*) AS n FROM order_checks').get().n, 0);

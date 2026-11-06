@@ -456,8 +456,9 @@ button { font: inherit; }
 .merchant-item-name { margin:0; font:700 16px/1.25 Alegreya, Arial, sans-serif; overflow-wrap:anywhere; }
 .merchant-item-meta { margin:3px 0 0; font-size:15px; font-variant-numeric:tabular-nums; }
 .merchant-item-note { margin:2px 0 0; font-size:14px; color:var(--warn); }
-.merchant-item-more { margin-top:2px; font-size:14px; color:var(--ink-muted); }
-.merchant-item-more summary { min-height:32px; display:inline-flex; align-items:center; cursor:pointer; color:var(--ink); text-decoration:underline; text-underline-offset:3px; }
+.merchant-item-more { font-size:14px; color:var(--ink-muted); }
+.merchant-item-more[open] { flex-basis:100%; }
+.merchant-item-more summary { min-height:44px; display:inline-flex; align-items:center; cursor:pointer; color:var(--ink); text-decoration:underline; text-underline-offset:3px; }
 .merchant-item-more p { margin:0 0 4px; overflow-wrap:anywhere; }
 .merchant-item-more a { color:#6e4a12; }
 .merchant-use { align-self:center; padding:8px 12px; font-size:15px; }
@@ -570,12 +571,26 @@ button { font: inherit; }
 /* Studio's root frame and canvas padding are removed here only, so the widget is one parchment row, not a box in a box. */
 .treasury-next .ag-studio-root-inner { background: transparent; border: 0; }
 .treasury-next .ag-studio-layout { padding: 0; }
-.next-area { display: flex; align-items: center; gap: 12px; padding: 10px 12px; background: var(--paper-3); border: 1px solid var(--ink-line); color: var(--ink); font: 15px/1.35 Alegreya, Arial, sans-serif; box-sizing: border-box; }
+.next-area { display: flex; flex-direction: column; gap: 14px; padding: 12px; background: var(--paper-3); border: 1px solid var(--ink-line); color: var(--ink); font: 15px/1.35 Alegreya, Arial, sans-serif; box-sizing: border-box; }
+.next-area-main { display: flex; align-items: center; gap: 12px; width: 100%; }
+.next-area-art { width: 88px; height: 64px; object-fit: cover; image-rendering: pixelated; border: 1px solid var(--ink-line); }
+.treasury-week { width: 100%; padding-top: 10px; border-top: 1px solid var(--ink-line); }
+.treasury-week-head { display: flex; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+.treasury-week-head > span { color: var(--ink-muted); font-size: 13px; }
+.treasury-week-row { display: grid; grid-template-columns: 64px minmax(24px,1fr) 70px; align-items: center; gap: 8px; font-size: 14px; margin: 5px 0; }
+.treasury-week-row > strong { text-align: right; font-variant-numeric: tabular-nums; }
+.treasury-week-track { height: 7px; background: var(--paper-2); }
+.treasury-week-track > span { display: block; height: 100%; background: #927341; }
+.treasury-week-row.recorded .treasury-week-track > span { background: #557454; }
+.treasury-week summary { cursor: pointer; color: var(--ink-muted); min-height: 36px; line-height: 36px; font-size: 14px; }
+.treasury-week-records { margin: 0; padding: 0; list-style: none; }
+.treasury-week-records button { min-height: 44px; text-align: left; }
+.merchant-item-actions { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 0 16px; }
+.merchant-item-actions button, .merchant-item-more button { min-height: 44px; text-align: left; }
 .next-area-text { flex: 1; min-width: 0; }
 .next-area-name { margin: 0; overflow-wrap: anywhere; }
-.next-area-label { font-size: 13px; text-transform: uppercase; letter-spacing: .6px; color: var(--brass-dark); }
-.next-area-name strong { font-size: 16px; }
-.next-area-percent { font-size: 13px; color: var(--ink-muted); }
+.next-area-label { display: block; font-size: 13px; text-transform: uppercase; letter-spacing: .6px; color: var(--brass-dark); }
+.next-area-name strong { display: block; font-size: 16px; }
 .next-area-bar { height: 6px; margin: 6px 0 4px; background: var(--paper-2); border: 1px solid var(--ink-line); }
 .next-area-bar span { display: block; height: 100%; background: var(--brass); }
 .next-area-meta { margin: 0; font-size: 14px; color: var(--ink-muted); font-variant-numeric: tabular-nums; }
@@ -584,7 +599,9 @@ button { font: inherit; }
 details.steward > summary { min-height: 44px; display: flex; align-items: center; cursor: pointer; font: 700 16px Alegreya, Arial, sans-serif; color: var(--ink); }
 details.steward:not([open]) > summary { color: var(--ink-muted); font-weight: 500; }
 @media (max-width: 480px) {
-  .next-area { flex-wrap: wrap; gap: 0 12px; }
+  .next-area-main { display: grid; grid-template-columns: 64px minmax(0,1fr); gap: 8px; }
+  .next-area-art { width: 64px; height: 64px; }
+  .next-area-visit { grid-column: 2; justify-self: start; }
   .next-area-visit { min-height: 40px; }
 }
 

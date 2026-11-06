@@ -415,8 +415,8 @@ test('upgrading a goal-project database adds only the access tables; existing ro
   const file = path.join(dir, 'before.sqlite');
   try {
     const old = new DatabaseSync(file);
-    const access = MIGRATIONS.findIndex((sql) => sql.includes('CREATE TABLE IF NOT EXISTS accounts'));
-    MIGRATIONS.slice(0, access).forEach((sql, i) => { old.exec(sql); old.exec(`PRAGMA user_version = ${i + 1}`); });
+    const access = MIGRATIONS.findIndex((step) => step.id === 'family-access');
+    MIGRATIONS.slice(0, access).forEach((step, i) => { if (typeof step === 'string') old.exec(step); else step.ensure(old); old.exec(`PRAGMA user_version = ${i + 1}`); });
     old.exec(`INSERT INTO households (id, name, play_mode, crest_field, crest_charge, is_example, setup_complete, created_at) VALUES ('hh_old', 'House of Alder', 'family', 'cobalt', 'stag', 1, 1, '2026-11-01T12:00:00.000Z');
       INSERT INTO members (id, household_id, display_name, role, is_example, sort) VALUES ('m_old', 'hh_old', 'Rowan', 'adult', 1, 0);
       INSERT INTO goals (id, household_id, name, target_cents, currency, target_date, weekly_budget_cents, created_at, project_kind) VALUES ('goal_old', 'hh_old', 'Garden', 30000, 'USD', '2026-12-29', 3000, '2026-11-01T12:00:00.000Z', 'garden');`);

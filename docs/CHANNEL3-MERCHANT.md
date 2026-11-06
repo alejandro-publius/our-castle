@@ -43,14 +43,14 @@ From each product the adapter picks one offer: the goal currency first, then wit
 - one image, either `cleaned_url` or `url`, and only from `*.trychannel3.com`, the page's only extra `img-src`;
 - the offer's `url` (https only), `domain`, `price.price` and `price.currency`, `availability` and `condition`.
 
-A missing price stays "No price returned". A non-USD price is shown in its own currency and cannot become the USD goal; prices are never converted. The panel carries one line near the links: "Channel3 prices and stock, checked HH:MM; tax and shipping not included. We may earn a commission when you buy through links on this page." The second sentence is the disclosure Channel3's commissions page requires wherever its links appear.
+A missing price stays "No price returned". A non-USD price is shown in its own currency and cannot become the USD goal; prices are never converted. The panel carries one note near the links: "Channel3 catalog checked HH:MM; retailer price and stock may differ. Tax/shipping extra. We may earn a commission from these links." This distinguishes a catalog read from retailer verification and keeps the affiliate disclosure with the links.
 
 Server bounds:
 - query 2–80 characters, and a link is refused rather than sent;
 - budget $1–$100,000;
 - 8-second timeout, and redirects refused;
 - a 2-minute cache, and identical concurrent searches share one request;
-- at most 6 provider searches a minute;
+- at most 6 provider operations a minute (search, refresh and similar share the limit);
 - provider errors become short states: key rejected, no credits, rate limited, unavailable, unreadable response, timeout or unreachable.
 
 In the browser, only the newest search may update the list; an older answer is aborted or dropped, including when the replacement query is invalid. Starting another search clears the old selectable results. The results summary retains the budget used for that search; an over-budget offer still carries its own warning. Provider text is added only as text.
@@ -73,12 +73,12 @@ The household has a single active goal, and goal edits already set earlier plans
 - A refused save leaves the goal, item and records unchanged.
 - Goal edits are checked against a revision of the fields being replaced, including the separately stored starting-progress report. The browser binds it to the Plan fields actually shown, even if another tab edited that same goal before the product search began. Search responses also supply request-specific goal context, independent of cached product results. Missing/stale context is refused; contributions alone do not invalidate a draft. This is optimistic concurrency, not household authentication.
 - Correction (November 5): an earlier version refused any amount that would open an area from already-tracked progress and offered an inflated minimum ($240.01 for the $189.50 tent). That merchant-only rule was a misreading of "browsing must not unlock anything" and has been removed.
-- Provenance is kept in the additive `goal_items` table (migration 3): product id, title, merchant, link, item price, currency, availability and the time Channel3 checked. It is not search history. The Plan form shows it while the goal keeps that name. Channel3 says offer links are short-lived, so the saved link is labelled as of its checked time.
+- Provenance is kept in the additive `goal_items` table (migration 3): product id, title, merchant, link, item price, currency, availability and the time Channel3 checked. It is not search history. The Plan form shows it while the goal keeps that name. Saved links are historical provenance only. The Plan form offers **Check item** rather than navigating to the stored link. Migration 5 adds selected variant labels and condition; older items retain an empty selection and require fresh review.
 - Role rules are unchanged: anyone who may edit the goal may confirm a draft. Contributions still need an adult's amount-specific approval, and nothing here touches payment code.
 
 ## Evidence
 
-**Fakes** (`test/helpers/fake-channel3.mjs`, documented response shape with invented products). These are not live Channel3 answers.
+**Initial implementation, before the November 6 extension.** Fakes (`test/helpers/fake-channel3.mjs`, documented response shape with invented products) are not live Channel3 answers. Current extension checks are recorded in [VALIDATION.md](VALIDATION.md).
 - Fifteen unit cases in `test/unit/channel3-merchant.test.mjs`:
   - the exact request and headers, with no household data;
   - valid, missing-price, non-USD, out-of-range and malformed answers;
@@ -126,8 +126,28 @@ Fixture stills (drawn stand-in image, invented products): [results](screenshots/
 ## Remaining
 
 - US/USD search only, because the goal currency is USD.
-- No price refresh. Channel3's free `GET /v1/products/{id}` could recheck a saved item but is not wired.
-- Saved offer links may expire.
+- Explicit catalog refresh and cheaper alternatives are implemented in the November 6 extension below; those endpoints still lack live-provider evidence.
+- Saved offer links may expire. A visit reads the catalog again and uses the returned link; retailer availability can still differ.
 - The owner's 3010 app was updated and restarted November 5; the additive `goal_items` table is empty and all prior application records are preserved.
 - Claude's direct Devpost fetch returned 403. Codex subsequently read the public [brief](https://paypalaihackathon.devpost.com/details/channel3): meaningful API/MCP use is required, and one real search is recorded above. The advertised 20,000-search promotion was not applied or tested.
 - None of this is PayPal, checkout or verified-savings evidence.
+
+## Freshness and cheaper alternatives — November 6
+
+The owner's pasted Channel3 staff messages (George, October 15 and November 1) explicitly say supported checkout will not be available for this hackathon. Discovery and an external retailer visit are kept separate from Our Castle's adult-approved sandbox contribution. A contribution never represents a retailer purchase or fulfillment.
+
+Contracts for this extension were read from the [official Channel3 skills repository](https://github.com/channel3-ai/skills/tree/db55b30bb42e0f6306d47a9857bf1cd6482ecb48), `SKILL.md` and `references/api-reference.md`, at revision `db55b30bb42e0f6306d47a9857bf1cd6482ecb48`. This is official documentation evidence, not a new live API check.
+
+- **Check item / Details → Check price & stock:** explicit `POST /api/merchant/refresh` accepts only the active goal's saved item or a server-issued result reference. The server calls `GET /v1/products/{id}` with US/USD locale, the same `website_ids` retailer and `option_<name>` selected labels. A missing retailer, relaxed variant, non-USD price or unavailable stock cannot silently become a replacement goal. The returned price is a new draft; goal amount, ledger and payments stay unchanged until the family confirms **Save as our goal**.
+- **Cheaper options:** explicit `POST /api/merchant/alternatives` calls `POST /v1/similar` with the server's product ID and a ceiling equal to the lower of the entered budget and one cent below the reference price. Local checks also require a different product, in-stock USD offer within that ceiling. At most three results use the same compact list. No match is reported honestly, with no automatic paid fallback search.
+- **Retailer visit:** Details → Visit reserves a user-initiated tab and refreshes the product before navigating to the newly returned offer URL. If price, stock or selected variant changed, the empty tab closes and the family reviews the changed result first. No old saved URL is used. Browser popup blocking gives a clear retry instruction. No purchase is made by the app.
+- Refresh has no price cache; identical in-flight lookups coalesce. Search keeps its existing two-minute cache. All calls share the bounded rate limit and eight-second timeout; 404, timeout and other errors never loop. Reopening the dialog clears old results. Closing it or starting another action invalidates late answers.
+- Option labels and condition are additive provenance, not private account data. The same goal-revision guard still protects saving after another tab edits the goal.
+
+Tests use only invented products and an injected Channel3 transport. The earlier November 5 live search remains the live evidence; product refresh and similar endpoints have **not** been called with the owner's key in this pass. Automatic price subscriptions and checkout services are not added.
+
+### Staff availability guidance applied — November 6
+
+The supplied feature-request thread adds a material limitation. George's August 10–12 replies distinguish incorrect stock extraction from stale links; a deleted product can redirect an older offer link to a merchant home page while `GET /products/{id}` returns 404. His September 11 update reports availability **signal coverage**, not verified-stock accuracy. Re-reading Channel3's product endpoint therefore does not establish a fresh scrape or independently confirm retailer stock. `checkedAt` is Our Castle's catalog-read time, not the retailer's update time. The existing single source note and success feedback now reflect that distinction.
+
+The visit flow already re-reads the product and refuses a 404 before opening any retailer URL. The added browser case verifies that it closes the reserved tab, removes stale results, retains the search, leaves all goal/financial records unchanged and makes no automatic retry. Failed CDN images use the existing neutral thumbnail instead of a broken-image icon. Cleaned images remain preferred where supplied; the October 6 transparent-background discussion describes a proof of concept, so no released background-removal capability is assumed. Website/category filtering requests are not treated as implemented API contracts.

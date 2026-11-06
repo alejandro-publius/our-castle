@@ -1,5 +1,20 @@
 # APIMatic PayPal context in Codex
 
+## Actual SDK transport contracts — November 6
+
+`test/unit/paypal-sdk-transport.test.mjs` now exercises the pinned **2.5.0** SDK's real OAuth manager, generated controllers, request serialization, response parsing and error mapping. Following the installed [testing skill](../.agents/skills/typescript-testing/SKILL.md), only the axios transport is replaced through `unstable_httpClientOptions.adapter`. The production adapter accepts this internal injection in code; it is not exposed by HTTP input or an environment setting. Earlier controller-stub tests remain useful service tests but do not establish these wire contracts.
+
+Six focused cases cover:
+
+- OAuth and every operation stay on `api-m.sandbox.paypal.com`; auth receives fake credentials, and both auth and operations receive the configured timeout.
+- Actual snake-case Orders v2 JSON, exact decimal amounts, local order references, `NO_SHIPPING`, `PAY_NOW`, `PayPal-Request-Id` and `Prefer` headers.
+- Capture/get-order/get-capture/refund endpoint contracts; refund amount and bounded note serialization; one reused fake OAuth token.
+- Raw response preservation, including `seller_receivable_breakdown` and unknown future fields, through the real SDK response parser.
+- 422 issue/debug-ID mapping, 503 and timeout failures with one attempt and **no retry-policy override in the test**.
+- OAuth failure stopping before an order operation, and malformed responses never becoming a successful receipt.
+
+All provider responses are test fixtures. No PayPal account, order, capture, refund or paid AI call is created by these tests. A transport fixture verifies timeout **configuration** reaches axios; it does not prove elapsed-time behavior of a real network connection. The escape hatch is intentionally version-pinned and will need review with any SDK upgrade. No new SDK bug is claimed: this closes the previous serialization/configuration coverage gap using the APIMatic guidance.
+
 The owner asked Codex to handle this directly. The PayPal Server SDK Context Plugin's eight TypeScript/Node skills are installed in this repository's `.agents/skills/`. Codex discovers them as enabled repository skills; no Claude session or global permission change is needed.
 
 ## Installed source

@@ -4,6 +4,14 @@
 
 The owner asked Codex to finish the remaining integration and release work. The approved sandbox contribution and same-order steward check now pass; recording and entry submission remain separate unfinished steps. [Current runtime evidence](IN-APP-SANDBOX-VERIFICATION.md).
 
+## Sponsor extension awaiting integration — November 6
+
+`feature/sponsor-depth` adds explicit Channel3 item refresh/cheaper alternatives, AG Studio 3.1 live-data updates and an illustrated weekly Treasury, plus real PayPal SDK serialization tests with fake transport. This is a source review branch, **not an activation of owner 3010 or the preserved 3021 rehearsal**. Its extension checks and limits are in [VALIDATION.md](VALIDATION.md); the previous real provider evidence remains separate.
+
+Integration order matters: this branch's migration 5 adds `goal_items.selection_json` and `condition`. Claude's [goal-projects PR #16](https://github.com/alejandro-publius/our-castle/pull/16) independently uses migration 5 for `goals.project_kind`, and its family-access work is stacked separately. Preserve both migrations and renumber them in one reviewed integration; do not run either partial schema against an owner database. [Treasury-proof PR #15](https://github.com/alejandro-publius/our-castle/pull/15) remains intentionally unmerged. No automatic merge, key transfer, paid provider retest or production licence validation is part of this pass.
+
+## Established release state
+
 | Item | Current state |
 | --- | --- |
 | Game and three sponsors | Implemented: Channel3 Merchant, AG Grid/Studio Treasury and Agent Framework, APIMatic context/SDK improvements |
