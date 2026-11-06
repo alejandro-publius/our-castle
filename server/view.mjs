@@ -76,6 +76,8 @@ export function buildState({ db, householdId, planner, contributions, config, st
     achievements,
     rewards,
     plan,
+    // Whether that plan still matches the server's facts (a proposal with needsRefresh cannot be accepted or edited).
+    planReview: planner.review(goal.id),
     acceptedPlanId: planner.accepted(goal.id)?.id ?? null,
     nextStep: planNextStep(planner.accepted(goal.id), entries),
   };
