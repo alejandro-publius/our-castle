@@ -50,10 +50,11 @@ test('the additive avatar migration preserves an existing version-one household 
   const s=setupDomain({file});let db=s.db;
   try {
     // Model the real prior schema in a synthetic fixture, never the owner's file.
-    db.exec('ALTER TABLE members DROP COLUMN avatar_id; DROP TABLE goal_items; PRAGMA user_version = 1;');
+    // Financial tables as they are now (a goal's later project_kind column returns at its campsite default).
     const financial=financialSnapshot(db),members=people(db);
+    db.exec('ALTER TABLE members DROP COLUMN avatar_id; DROP TABLE goal_items; ALTER TABLE goals DROP COLUMN project_kind; PRAGMA user_version = 1;');
     db.close();db=openDatabase(file);
-    assert.equal(db.prepare('PRAGMA user_version').get().user_version,4); // avatars, merchant goal_items, then saved order_checks
+    assert.equal(db.prepare('PRAGMA user_version').get().user_version,5); // avatars, merchant goal_items, saved order_checks, then the goal's project kind
     assert.deepEqual(people(db),members);
     assert.deepEqual(financialSnapshot(db),financial);
     assert.deepEqual(getMembers(db,s.householdId).map(m=>m.avatarId),['ranger','bard']);

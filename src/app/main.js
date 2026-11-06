@@ -18,7 +18,7 @@ import { REALM_DISTRICTS, REALM_LEGENDS, realmAccess, districtById, homeDistrict
 import { ledgerTrail } from '../core/ledger.js';
 import { createMerchantDialog, resultFacts } from './merchant.js';
 import { createTreasury } from './treasury.js';
-import { FAMILY_PROJECT_SITE, projectLabel, projectStage } from '../core/family-project.js';
+import { FAMILY_PROJECT_SITE, PROJECT_KINDS, projectKind, projectLabel, projectStage } from '../core/family-project.js';
 import { CONFIRMATION_HISTORY_QUESTION, NEEDS_CHECK_QUESTION, isLocalQuestion, isNeedsCheckQuestion } from '../core/steward-questions.js';
 import { checkStatus } from '../core/check-status.js';
 import { createPlanCheck } from './plan-check.js';
@@ -45,6 +45,15 @@ const dateLabel = (iso) => {
   return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
 };
 const timeLabel = (iso) => new Date(iso).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+// The family project's stage, read from the server's progress and goal, drawn as the goal's saved Build choice.
+const currentProject = () => projectStage(state.progress.progressCents, state.goal.targetCents, state.goal.projectKind);
+// Its map marker, in the quiet gold-and-ink glint style: a tent, a sprout in its bed, or a schoolhouse with its bell.
+const PROJECT_ICON_STROKE = 'stroke="#3b2a12" stroke-width="1.6" stroke-linejoin="round"';
+const PROJECT_ICONS = {
+  campsite: `<svg viewBox="0 0 28 28" width="28" height="28" fill="none" aria-hidden="true"><path d="M14 4 2.5 24h23L14 4Z" fill="currentColor" ${PROJECT_ICON_STROKE}/><path d="M14 11.5 9 24h10l-5-12.5Z" fill="#3b2a12"/><path d="M14 1v3" stroke="#3b2a12" stroke-width="1.6" stroke-linecap="round"/></svg>`,
+  garden: `<svg viewBox="0 0 28 28" width="28" height="28" fill="none" aria-hidden="true"><path d="M14 19.5V10" stroke="#3b2a12" stroke-width="1.8" stroke-linecap="round"/><path d="M13.6 14.2C8.4 14.6 5.2 11.6 5 6.6c5.1-.3 8.4 2.6 8.6 7.6Z" fill="currentColor" ${PROJECT_ICON_STROKE}/><path d="M14.4 11.2c.2-5 3.5-7.9 8.6-7.6-.2 5-3.4 8-8.6 7.6Z" fill="currentColor" ${PROJECT_ICON_STROKE}/><path d="M3 25h22l-2.4-5.6H5.4L3 25Z" fill="currentColor" ${PROJECT_ICON_STROKE}/></svg>`,
+  schoolhouse: `<svg viewBox="0 0 28 28" width="28" height="28" fill="none" aria-hidden="true"><path d="M10.6 9.5V4.2h6.8v5.3" fill="currentColor" ${PROJECT_ICON_STROKE}/><path d="M9.4 4.4 14 1.3l4.6 3.1H9.4Z" fill="#3b2a12"/><circle cx="14" cy="6.6" r="1.35" fill="#3b2a12"/><path d="M3.5 15.4 14 8.6l10.5 6.8v9.4h-21v-9.4Z" fill="currentColor" ${PROJECT_ICON_STROKE}/><path d="M12 24.8v-5.4h4v5.4" fill="#3b2a12"/></svg>`,
+};
 const pref = {
   get(key) { try { return localStorage.getItem(`our-castle:${key}`); } catch { return null; } },
   set(key, value) { try { localStorage.setItem(`our-castle:${key}`, value); } catch { /* private mode: fine */ } },
@@ -86,6 +95,7 @@ const ui = {
   planFormDirty: false,
   planGoalId: null,
   planGoalRevision: null,
+  planProjectKind: null, // the saved Build choice the Plan form last loaded; only a change from it is sent
   scheduleDirty: false,
   schedulePlanId: null,
   commitments: [{ label: 'Internet bill', amount: '60.00', cadence: 'monthly' }],
@@ -266,6 +276,7 @@ async function boot() {
   applySky();
   loadLocalWeather();
   buildCrestPickers();
+  buildProjectChoices();
   bindEvents();
   try {
     applyState(await api.get('/api/state'), { animate: false });
@@ -464,8 +475,9 @@ function renderBoard({ animate, result, added = [], hasNewDistrict = false }) {
     playMode: household.playMode,
     members: state.members,
     milestoneSpaces: board.milestoneSpaces.map((m) => m.space),
-    // The campsite's stage is read from the server's progress and goal through the existing milestone rules.
-    project: (({ index, key, detail }) => ({ index, key, detail }))(projectStage(state.progress.progressCents, state.goal.targetCents)),
+    // The project's stage is read from the server's progress and goal through the existing milestone rules; what it
+    // builds is the family's saved choice, never an unsaved Plan field.
+    project: (({ index, key, detail, kind }) => ({ index, key, detail, kind }))(currentProject()),
   }, { animate }).then(() => {
     if (!hasNewDistrict && (result?.awarded?.length || added.length)) celebrate(result?.awarded ?? [], added);
   });
@@ -496,9 +508,10 @@ function renderRealmNavigation() {
   $('#realm-markers').replaceChildren(...regions.map((d) => h('button', { type: 'button', class: 'realm-marker', 'data-district': d.id, 'data-status': d.status, 'aria-label': `Inspect ${d.name} on the map`, hidden: true },
     !d.open && h('span', { class: 'realm-lock', 'aria-hidden': 'true', html: lock }), h('strong', {}, d.name))));
   $('#realm-markers').append(h('button', {type:'button',id:'sword-glint',class:'realm-legend','data-legend':'sword-stone','aria-label':'Investigate the glint in the trees','aria-pressed':'false',hidden:true},h('span',{'aria-hidden':'true'},'✦')));
-  // The family campsite: a small tent marker in the west meadow. Selecting it only moves the camera and names its stage.
-  const tent = '<svg viewBox="0 0 28 28" width="28" height="28" fill="none" aria-hidden="true"><path d="M14 4 2.5 24h23L14 4Z" fill="currentColor" stroke="#3b2a12" stroke-width="1.6" stroke-linejoin="round"/><path d="M14 11.5 9 24h10l-5-12.5Z" fill="#3b2a12"/><path d="M14 1v3" stroke="#3b2a12" stroke-width="1.6" stroke-linecap="round"/></svg>';
-  $('#realm-markers').append(h('button', {type:'button',id:'project-marker',class:'realm-legend realm-project','data-legend':FAMILY_PROJECT_SITE.id,'aria-label':`Visit the ${FAMILY_PROJECT_SITE.name.toLowerCase()}`,'aria-pressed':'false',hidden:true},h('span',{'aria-hidden':'true',html:tent})));
+  // The family project: a small marker in the west meadow drawn as the chosen place (a tent, a sprout or a schoolhouse
+  // with its bell). Selecting it only moves the camera and names its stage.
+  const kind = projectKind(state.goal.projectKind);
+  $('#realm-markers').append(h('button', {type:'button',id:'project-marker',class:'realm-legend realm-project','data-legend':FAMILY_PROJECT_SITE.id,'data-kind':kind.key,'aria-label':`Visit the ${kind.name.toLowerCase()}`,'aria-pressed':'false',hidden:true},h('span',{'aria-hidden':'true',html:PROJECT_ICONS[kind.key]})));
   $('#realm-focus-status').textContent = 'Select a district.';
 }
 function syncRealmMarkers({focus,points}){
@@ -544,7 +557,7 @@ function syncRealmMarkers({focus,points}){
     deedButton.setAttribute('aria-label', `View deed for ${d.name}`);
   } else delete deedButton.dataset.district;
   const secret = REALM_LEGENDS.find(d=>d.id===focus);
-  const message=focus===FAMILY_PROJECT_SITE.id ? projectLabel(projectStage(state.progress.progressCents, state.goal.targetCents)) : secret ? secret.name : d && !d.open ? `${d.name} · ${districtCondition(d)}` : '';
+  const message=focus===FAMILY_PROJECT_SITE.id ? projectLabel(currentProject()) : secret ? secret.name : d && !d.open ? `${d.name} · ${districtCondition(d)}` : '';
   if($('#realm-focus-status').textContent!==message)$('#realm-focus-status').textContent=message;
 }
 
@@ -670,6 +683,10 @@ function buildCrestPickers() {
     h('input', { type: 'radio', name: 'crestCharge', value: c.key, 'aria-label': c.label }),
     h('span', { html: `${chargeIcon(c.key)}<span>${c.label}</span>` }))));
 }
+// The Plan form's "Build" choice: the listed places only. Its value is saved with the goal, never on change.
+function buildProjectChoices() {
+  $('#goal-project').replaceChildren(...PROJECT_KINDS.map((k) => h('option', { value: k.key }, k.label)));
+}
 
 function houseDraft() {
   if (!ui.houseDirty || !ui.houseDraft) {
@@ -731,12 +748,15 @@ function renderPlan() {
   const { goal, progress, modes, plan } = state;
   $('#planner-lede').textContent = '';
   $('#planner-lede').hidden = true;
-  $('#plan-project-stage').textContent = projectLabel(projectStage(progress.progressCents, goal.targetCents));
+  $('#plan-project-stage').textContent = projectLabel(currentProject());
+  $('#visit-campsite').textContent = `Visit ${projectKind(goal.projectKind).label.toLowerCase()}`;
   $('#ask-planner').textContent = modes.ai.mode === 'live' ? 'Ask the AI planner' : 'Make an example plan';
   renderGoalDraft();
   if (!ui.planFormDirty) {
     ui.planGoalId = goal.id;
     ui.planGoalRevision = state.merchantGoalRevision;
+    ui.planProjectKind = goal.projectKind;
+    $('#goal-project').value = goal.projectKind;
     $('#goal-name-input').value = goal.name;
     $('#goal-target').value = centsToInput(goal.targetCents);
     $('#goal-starting').value = centsToInput(progress.startingCents);
@@ -798,7 +818,7 @@ function renderPlan() {
 }
 
 async function refreshPlanGoal() {
-  const goalValues = (s) => ({ 'goal-name-input': s.goal.name, 'goal-target': centsToInput(s.goal.targetCents), 'goal-starting': centsToInput(s.progress.startingCents), 'goal-weekly': centsToInput(s.goal.weeklyBudgetCents), 'goal-date': s.goal.targetDate });
+  const goalValues = (s) => ({ 'goal-name-input': s.goal.name, 'goal-target': centsToInput(s.goal.targetCents), 'goal-starting': centsToInput(s.progress.startingCents), 'goal-weekly': centsToInput(s.goal.weeklyBudgetCents), 'goal-date': s.goal.targetDate, 'goal-project': s.goal.projectKind });
   const saved = goalValues(state), fields = Object.keys(saved);
   const before = Object.fromEntries(fields.map(id => [id, $(`#${id}`).value]));
   const latest = await api.get('/api/state');
@@ -811,6 +831,7 @@ async function refreshPlanGoal() {
   for (const id of fields) if (before[id] === saved[id] && $(`#${id}`).value === before[id]) $(`#${id}`).value = values[id];
   ui.planGoalId = latest.goal.id;
   ui.planGoalRevision = latest.merchantGoalRevision;
+  ui.planProjectKind = latest.goal.projectKind; // a Build choice the family made still differs from it and is sent
   return true;
 }
 
@@ -950,6 +971,9 @@ function readGoalFields() {
   }
   if (goal.name.length < 2) errors.push('Name the goal.');
   if (!goal.targetDate) errors.push('Choose a target date.');
+  // The Build choice travels only when the family changed it, so an untouched form never reverts a newer saved choice.
+  const project = $('#goal-project').value;
+  if (project && project !== ui.planProjectKind) goal.projectKind = project;
   return { goal, errors };
 }
 
@@ -1309,7 +1333,8 @@ function visitDistrict(id, e) {
   const marker = $(`#realm-markers [data-district="${CSS.escape(id)}"]`);
   marker?.focus({ preventScroll: true }); revealRealm(marker, { instant: e?.detail === 0 });
 }
-// The same journey as "Visit <district>", to the campsite: close the journal, focus the meadow, land on its marker.
+// The same journey as "Visit <district>", to the family project (campsite, garden or schoolhouse): close the journal,
+// focus the meadow, land on its marker.
 function visitCampsite(e) {
   setJournalOpen(false); scene?.focusLegend(FAMILY_PROJECT_SITE.id); $('.realm-map').dataset.focused = 'true';
   const marker = $('#project-marker');

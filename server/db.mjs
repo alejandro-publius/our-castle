@@ -3,8 +3,8 @@ import { mkdirSync } from 'node:fs';
 import path from 'node:path';
 
 // Durable local storage. One file per payment mode so simulated example entries can never mix
-// with PayPal-sandbox-confirmed ones.
-const MIGRATIONS = [
+// with PayPal-sandbox-confirmed ones. Exported read-only so a test can build an older database and prove an upgrade.
+export const MIGRATIONS = Object.freeze([
   `
   CREATE TABLE households (
     id TEXT PRIMARY KEY,
@@ -159,7 +159,10 @@ const MIGRATIONS = [
   );
   CREATE INDEX IF NOT EXISTS order_checks_order ON order_checks (order_id, id);
   `,
-];
+  // What the family chose the current goal to build in the meadow. A picture only: no amount, date, plan or progress.
+  // Every existing goal keeps the campsite it has always shown.
+  `ALTER TABLE goals ADD COLUMN project_kind TEXT NOT NULL DEFAULT 'campsite' CHECK (project_kind IN ('campsite', 'garden', 'schoolhouse'));`,
+]);
 
 export function openDatabase(file) {
   if (file !== ':memory:') mkdirSync(path.dirname(file), { recursive: true });

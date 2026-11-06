@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import {
   DEMO_HOUSEHOLD_ID, DomainError, addSelfReportedEntry, ensureDemoHousehold, getActiveGoal, getGoal, resetHousehold,
-  progressFor, setupHousehold, updateCrest, updateGoal, updateMemberAvatar,
+  progressFor, setupHousehold, updateCrest, updateGoal, updateGoalProject, updateMemberAvatar,
 } from './household.mjs';
 import { PlanInputError } from './planner/basis.mjs';
 import { createPlanner } from './planner/index.mjs';
@@ -266,7 +266,10 @@ export function createApp({ config, db, clock, paypal = null, aiProvider = null,
     const starting = state().progress.startingCents;
     const changed = input.name !== current.name || input.targetCents !== current.targetCents || input.targetDate !== current.targetDate
       || input.weeklyBudgetCents !== current.weeklyBudgetCents || input.startingCents !== starting;
+    // The page sends projectKind only when the family changed the Build choice. With figures, it is saved by the same
+    // validated edit (all or nothing); alone, it changes only the picture and leaves every plan and figure as it is.
     if (changed) updateGoal(db, current.id, input, clock);
+    else if (input.projectKind !== undefined && input.projectKind !== current.projectKind) updateGoalProject(db, current.id, input.projectKind);
   }
 
   async function serveStatic(req, res, pathname) {

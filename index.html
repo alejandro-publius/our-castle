@@ -150,7 +150,7 @@
         <section class="panel parchment" id="panel-plan" role="tabpanel" aria-labelledby="tab-plan" hidden>
           <h3 id="plan-heading" tabindex="-1">Plan the journey</h3>
           <p class="lede" id="planner-lede"></p>
-          <!-- The family campsite's current stage and the one way to it from the journal. Camera only; it writes nothing. -->
+          <!-- The family project's current stage and the one way to it from the journal. Camera only; it writes nothing. -->
           <p class="plan-project" id="plan-project"><span id="plan-project-stage"></span><button type="button" class="link-button" id="visit-campsite">Visit campsite</button></p>
           <!-- A Market Town merchant result waiting for the family's confirmation. Nothing is saved until "Save as our goal". -->
           <section class="goal-draft" id="goal-draft" hidden aria-labelledby="goal-draft-title">
@@ -168,6 +168,8 @@
               <input id="goal-name-input" type="text" maxlength="60" required>
             </div>
             <p class="goal-item span-2" id="goal-item" hidden></p>
+            <!-- What the goal builds in the west meadow. Saved only with the goal's own save; a picture, never money. -->
+            <label class="field project-choice span-2"><span>Build</span><select id="goal-project"></select></label>
             <label class="field"><span>Goal amount</span><span class="money"><input id="goal-target" inputmode="decimal" autocomplete="off" required></span></label>
             <label class="field"><span>Already set aside <small>(you report this)</small></span><span class="money"><input id="goal-starting" inputmode="decimal" autocomplete="off" required></span></label>
             <label class="field"><span>Target date</span><input id="goal-date" type="date" required></label>
