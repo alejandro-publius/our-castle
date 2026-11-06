@@ -74,7 +74,7 @@ test('pending, failed and unchecked records are named with their receipts; match
   assert.equal(res.paypalTools, false);
   // Records are listed newest first, as in the ledger.
   assert.match(res.answer, /^2 contributions need a PayPal check: \$25\.00 \(the last check did not get an answer from PayPal\); \$20\.00 \(pending in PayPal\)\. Open the receipt and use Check with PayPal\./);
-  assert.match(res.answer, /1 completed contribution has no saved check; it was verified by this server when paid\./);
+  assert.match(res.answer, /1 contribution has no saved check\./);
   assert.match(res.answer, /This reads saved records only; no new PayPal check was made\.$/);
   assert.deepEqual(res.receipts, [
     { contributionId: failed.contributionId, orderId: failed.orderId, amount: '$25.00', status: 'Check failed · PayPal did not answer', needsCheck: true },
@@ -127,4 +127,22 @@ test('the answer is scoped to the asking household and goal', async () => {
   assert.deepEqual(res.receipts.map((r) => r.orderId), [ours.orderId]);
   assert.doesNotMatch(res.answer, /\$42\.00/);
   assert.match(res.answer, /^1 contribution needs a PayPal check: \$15\.00 \(pending in PayPal\)/);
+});
+
+test('a refunded payment without saved checks is not described as a current completed contribution', async (t) => {
+  const env = setupDomain({ mode: 'sandbox' });
+  t.after(() => env.db.close());
+  const { orderId } = await captured(env, env.service, 1500);
+  const payment = env.service.contributions(env.goalId).find(c => c.providerOrderId === orderId);
+  await env.service.refundPayPalCapture({ captureId: payment.captures[0].captureId, householdId: env.householdId,
+    approverId: 'm_rowan', approvalConfirmed: true });
+  const before = rows(env.db), requests = env.fake.requests.length;
+  const { steward, calls } = localSteward(env);
+  const result = await steward.ask({ question: NEEDS_CHECK_QUESTION, memberId: 'm_rowan' });
+  assert.match(result.answer, /1 contribution has no saved check/);
+  assert.doesNotMatch(result.answer, /completed contribution|verified by this server when paid/);
+  assert.equal(result.receipts[0].status, 'Refunded · no saved check');
+  assert.equal(rows(env.db), before);
+  assert.equal(env.fake.requests.length, requests);
+  assert.deepEqual(calls, []);
 });

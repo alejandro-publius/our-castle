@@ -18,15 +18,28 @@ export function checkStatus(c) {
   const k = c.lastCheck ?? null;
   if (!k) {
     if (c.status === 'pending') return status('pending', 'Pending · not checked yet', 'pending, not checked', 'warn', true);
-    if (CHECKABLE.has(c.status)) return status('unchecked', 'No saved check', 'no saved check', 'muted', false);
+    if (CHECKABLE.has(c.status)) {
+      const refund = c.status === 'refunded' ? 'Refunded' : c.status === 'partially_refunded' ? 'Partly refunded' : '';
+      return status('unchecked', refund ? `${refund} · no saved check` : 'No saved check', refund ? `${refund.toLowerCase()}, no saved check` : 'no saved check', 'muted', false);
+    }
     return NONE;
   }
   if (k.verdict === 'unavailable') return status('failed', 'Check failed · PayPal did not answer', 'check failed', 'bad', true);
   if (k.verdict === 'differs') return status('mismatch', 'Check failed · did not match', 'check failed', 'bad', true);
   if (k.verdict === 'action') return status('action', 'Needs a PayPal check', 'needs a check', 'warn', true);
   if (k.verdict !== 'match') return status('unknown', 'Check saved', 'check saved', 'muted', false);
-  if (REFUNDED.has(k.captureStatus) || (k.refundIds?.length ?? 0) > 0) {
+  const capture = c.captures?.find((cap) => cap.captureId === k.captureId);
+  const refunds = capture?.refunds ?? [];
+  // An ID is only a reference, not proof of a completed refund. Keep the current refund state separate from the
+  // historical check: saved checks store IDs, but do not snapshot every refund's status or amount.
+  if (refunds.some((r) => r.status === 'PENDING' && !r.credited)) return status('refund_pending', 'Refund pending', 'refund pending', 'warn', true);
+  if (k.captureStatus === 'PARTIALLY_REFUNDED' && c.status === 'refunded') return status('stale', 'Checked before the full refund', 'checked before full refund', 'muted', false);
+  if (REFUNDED.has(k.captureStatus)) {
     return status('refunded', k.captureStatus === 'PARTIALLY_REFUNDED' ? 'Checked · partly refunded' : 'Checked · refunded', 'checked, refunded', 'muted', false);
+  }
+  if (refunds.some((r) => r.credited && k.refundIds?.includes(r.refundId))) {
+    const label = c.status === 'partially_refunded' ? 'Partly refunded' : 'Refunded';
+    return status('refunded', `${label} · check saved`, `${label.toLowerCase()}, check saved`, 'muted', false);
   }
   // The record was refunded after this check: the match is true of an earlier state, not of the refund.
   if (c.status === 'refunded' || c.status === 'partially_refunded') return status('stale', 'Checked before the refund', 'checked before refund', 'muted', false);

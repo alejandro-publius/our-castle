@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { checkStatus } from '../../src/core/check-status.js';
+import { contribution, setupDomain } from '../helpers/setup.mjs';
 
 // The compact saved-check status is derived from the record alone. These cases pin the wording and the one rule that
 // matters most: a newer failed check is never hidden behind an older success, and a pending match is never "completed".
@@ -26,6 +27,8 @@ test('a captured payment with no saved check says so without implying failure; p
   assert.deepEqual(checkStatus(record('completed')), { key: 'unchecked', label: 'No saved check', short: 'no saved check', tone: 'muted', needsCheck: false });
   assert.deepEqual(checkStatus(record('pending')), { key: 'pending', label: 'Pending · not checked yet', short: 'pending, not checked', tone: 'warn', needsCheck: true });
   for (const status of ['created', 'approval_canceled', 'declined', 'failed', 'rejected']) assert.equal(checkStatus(record(status)).key, 'none', status);
+  assert.equal(checkStatus(record('refunded')).label, 'Refunded · no saved check');
+  assert.equal(checkStatus(record('partially_refunded')).label, 'Partly refunded · no saved check');
 });
 
 test('a newer failed check is never replaced by an older successful one', () => {
@@ -40,10 +43,45 @@ test('a newer failed check is never replaced by an older successful one', () => 
 
 test('a match saved before a later refund is not shown as a current match', () => {
   assert.deepEqual(checkStatus(record('refunded', [check()])), { key: 'stale', label: 'Checked before the refund', short: 'checked before refund', tone: 'muted', needsCheck: false });
+  assert.equal(checkStatus(record('refunded', [check({ captureStatus: 'PARTIALLY_REFUNDED', refundIds: ['REF1'] })])).label, 'Checked before the full refund');
 });
 
 test('simulated and non-PayPal records have no saved-check status', () => {
   assert.equal(checkStatus(record('completed', [check()], { simulated: true })).key, 'none');
   assert.equal(checkStatus(record('completed', [], { providerOrderId: null })).key, 'none');
   assert.equal(checkStatus(null).key, 'none');
+});
+
+test('saved refund references distinguish pending, failed and partial refunds without changing the ledger', async (t) => {
+  const env = setupDomain({ mode: 'sandbox' });
+  t.after(() => env.db.close());
+  const owner = { householdId: env.householdId, goalId: env.goalId };
+  const { orderId } = await env.service.createPayPalOrder(contribution());
+  await env.service.capturePayPalOrder({ providerOrderId: orderId, ...owner });
+  const unit = env.fake.orders.get(orderId).purchase_units[0], cap = unit.payments.captures[0];
+  const refund = { id: 'REVIEWREFUND001', status: 'PENDING', amount: { value: '5.00', currency_code: 'USD' },
+    links: [{ rel: 'up', href: `https://api-m.sandbox.paypal.com/v2/payments/captures/${cap.id}` }] };
+  unit.payments.refunds = [refund];
+  let res = await env.service.refreshPayPalOrder({ providerOrderId: orderId, ...owner });
+  assert.equal(res.check.verdict, 'match');
+  assert.equal(res.contribution.status, 'completed');
+  assert.equal(res.progress.progressCents, 7500);
+  assert.deepEqual(checkStatus(res.contribution), { key: 'refund_pending', label: 'Refund pending', short: 'refund pending', tone: 'warn', needsCheck: true });
+
+  refund.status = 'FAILED';
+  res = await env.service.refreshPayPalOrder({ providerOrderId: orderId, ...owner });
+  assert.equal(checkStatus(res.contribution).key, 'match', 'a failed refund does not mean money was returned');
+  assert.equal(res.progress.progressCents, 7500);
+
+  refund.status = 'COMPLETED'; // PayPal can include a refund while the capture still reads COMPLETED.
+  res = await env.service.refreshPayPalOrder({ providerOrderId: orderId, ...owner });
+  assert.equal(res.check.captureStatus, 'COMPLETED');
+  assert.equal(res.contribution.status, 'partially_refunded');
+  assert.equal(res.progress.progressCents, 7000);
+  assert.equal(checkStatus(res.contribution).label, 'Partly refunded · check saved');
+  const rows = env.db.prepare('SELECT * FROM ledger_entries ORDER BY rowid').all();
+  const calls = env.fake.requests.length;
+  checkStatus(res.contribution);
+  assert.equal(env.fake.requests.length, calls);
+  assert.deepEqual(env.db.prepare('SELECT * FROM ledger_entries ORDER BY rowid').all(), rows);
 });

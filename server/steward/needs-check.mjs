@@ -6,7 +6,7 @@ import { checkStatus } from '../../src/core/check-status.js';
 
 const REASON = {
   pending: 'pending in PayPal', failed: 'the last check did not get an answer from PayPal',
-  mismatch: 'the last check did not match', action: 'completed in PayPal but not counted yet',
+  mismatch: 'the last check did not match', action: 'the saved check needs a receipt recheck', refund_pending: 'a refund is pending',
 };
 const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
 
@@ -28,8 +28,7 @@ export function needsCheckAnswer(list) {
       + `${flagged.map((x) => `${money(x.c)} (${REASON[x.status.key] ?? x.status.label.toLowerCase()})`).join('; ')}. Open the receipt and use Check with PayPal.`);
   }
   if (unchecked.length) {
-    sentences.push(`${plural(unchecked.length, 'completed contribution has', 'completed contributions have')} no saved check; `
-      + `${unchecked.length === 1 ? 'it was' : 'they were'} verified by this server when paid.`);
+    sentences.push(`${plural(unchecked.length, 'contribution has', 'contributions have')} no saved check.`);
   }
   sentences.push('This reads saved records only; no new PayPal check was made.');
   return {

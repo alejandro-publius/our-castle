@@ -5,7 +5,7 @@ import { test, expect } from '@playwright/test';
 import { createApp } from '../../server/app.mjs';
 import { loadConfig } from '../../server/config.mjs';
 import { createContributionService } from '../../server/payments/contributions.mjs';
-import { createPayPalClient } from '../../server/payments/paypal-client.mjs';
+import { createPayPalClient, PayPalError } from '../../server/payments/paypal-client.mjs';
 import { contribution, setupDomain } from '../helpers/setup.mjs';
 
 // Saved-check status on Treasury records and the selected receipt, the local "Needs a check?" question and the
@@ -105,7 +105,7 @@ test('records and receipts show their saved-check status; the local question nam
     await page.getByRole('button', { name: 'Needs a check?', exact: true }).click();
     await expect(answer.locator('.verification-title')).toHaveText('PayPal checks');
     await expect(answer).toContainText('2 contributions need a PayPal check: $25.00 (the last check did not get an answer from PayPal); $20.00 (pending in PayPal). Open the receipt and use Check with PayPal.');
-    await expect(answer).toContainText('1 completed contribution has no saved check; it was verified by this server when paid. This reads saved records only; no new PayPal check was made.');
+    await expect(answer).toContainText('1 contribution has no saved check. This reads saved records only; no new PayPal check was made.');
     const links = answer.locator('.receipt-links button');
     await expect(links).toHaveText(['Open receipt · $25.00 · Check failed · PayPal did not answer', 'Open receipt · $20.00 · Pending · not checked yet', 'Open receipt · $30.00 · No saved check']);
     await expect(answer).not.toContainText(/toolkit|get_order|webhook/i);
@@ -143,5 +143,53 @@ test('records and receipts show their saved-check status; the local question nam
     expect([matched.id, pending.id, unchecked.id].every(Boolean)).toBe(true);
   } finally {
     await page.close(); server.closeAllConnections(); await new Promise((resolve) => server.close(resolve)); domain.db.close();
+  }
+});
+
+test('a failed saved check on an unpaid order exposes one read-only recovery action', async ({ page }) => {
+  const domain = setupDomain({ mode: 'sandbox' });
+  const owner = { householdId: domain.householdId, goalId: domain.goalId };
+  const { orderId } = await domain.service.createPayPalOrder(contribution());
+  const getOrder = domain.paypal.getOrder;
+  domain.paypal.getOrder = async () => { throw new PayPalError('Fixture offline', { status: 500 }); };
+  await expect(domain.service.refreshPayPalOrder({ providerOrderId: orderId, ...owner })).rejects.toMatchObject({ code: 'paypal_error' });
+  domain.paypal.getOrder = getOrder;
+  const app = createApp({ root, db: domain.db, clock: domain.clock, paypal: domain.paypal,
+    config: loadConfig({ PAYPAL_CLIENT_ID: 'fake-client', PAYPAL_CLIENT_SECRET: 'fake-secret' }, { root }) });
+  const server = http.createServer(app.handler);
+  await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+  const base = `http://127.0.0.1:${server.address().port}`, writes = [], outside = [];
+  await page.route('**/*', route => {
+    const r = route.request(), url = new URL(r.url());
+    if (url.hostname === 'www.sandbox.paypal.com' && url.pathname === '/web-sdk/v6/core') return route.fulfill({ status: 503, body: 'No checkout in this fixture.' });
+    if (url.origin !== base) { outside.push(r.url()); return route.abort(); }
+    if (r.method() !== 'GET') writes.push(`${r.method()} ${url.pathname}`);
+    return route.continue();
+  });
+  const reads = () => domain.fake.requests.filter(r => r.method === 'GET' && r.pathname.endsWith(orderId)).length;
+  const before = reads();
+  try {
+    await page.goto(base);
+    await page.waitForFunction(() => document.body.dataset.ready === 'true');
+    if (await page.locator('#journey').isHidden()) await page.locator('#journal-toggle').click();
+    await page.locator('#tab-ledger').click();
+    await page.locator('#ledger-goal').getByText('check failed', { exact: false }).first().click();
+    const receipt = page.locator('#ledger-contributions');
+    const button = receipt.getByRole('button', { name: 'Check with PayPal', exact: true });
+    await expect(receipt.locator('[data-check="failed"]')).toBeVisible();
+    await expect(button).toHaveCount(1);
+    expect(reads()).toBe(before);
+    expect(writes).toEqual([]);
+    await button.click();
+    await expect(receipt.locator('[data-check="uncaptured"]')).toContainText('Checked · not paid yet');
+    await expect(button).toHaveCount(0);
+    expect(reads()).toBe(before + 1);
+    expect(writes).toEqual([`POST /api/paypal/orders/${orderId}/refresh`]);
+    expect(domain.fake.requests.filter(r => /\/capture$/.test(r.pathname))).toHaveLength(0);
+    expect(domain.db.prepare('SELECT COUNT(*) AS n FROM ledger_entries').get().n).toBe(1);
+    expect(await page.evaluate(() => window.__ourCastle.state.progress.progressCents)).toBe(6000);
+    expect(outside).toEqual([]);
+  } finally {
+    await page.close(); server.closeAllConnections(); await new Promise(resolve => server.close(resolve)); domain.db.close();
   }
 });

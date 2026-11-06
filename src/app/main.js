@@ -1212,6 +1212,9 @@ function renderLedgerGrid() {
   if (ui.tab !== 'ledger') return ui.ledgerLayout;
   const rows = ledgerRows(); ensureLedgerSelection(rows);
   if (!ledgerGrid) ledgerGrid = createLedgerGrid($('#ledger-goal'), { formatMoney: money, onSelect: (row) => {
+    // Programmatic selection already rendered the receipt. AG Grid may report it asynchronously; rebuilding the
+    // same receipt then would remove its focused element after an "Open receipt" link moved keyboard focus there.
+    if (ui.ledgerRecord === row.id) return;
     ui.ledgerRecord = row.id; ui.refundArm = null; renderLedgerRecord();
     if (ui.stewardFocus && row.contribution?.providerOrderId !== ui.stewardFocus) $('#steward-answer').hidden = true;
   } });
@@ -1285,7 +1288,7 @@ function renderLedgerRecord() {
     if (c.status === 'pending' && c.simulated) actions.push(h('button', { type: 'button', onclick: () => completePending(c.id) }, 'Simulate PayPal completing it'));
     // The existing explicit check. It runs only from this button: never on open, search, reload or a local question.
     const check = checkStatus(c);
-    const checkButton = !c.simulated && c.providerOrderId && ['pending', 'completed', 'partially_refunded'].includes(c.status)
+    const checkButton = !c.simulated && c.providerOrderId && (check.needsCheck || ['pending', 'completed', 'partially_refunded'].includes(c.status))
       ? h('button', { type: 'button', onclick: () => refreshOrder(c.providerOrderId) }, 'Check with PayPal') : null;
     if (checkButton && !check.needsCheck) actions.push(checkButton);
     if (!c.simulated && c.providerOrderId && state.steward.paypalTools) {
