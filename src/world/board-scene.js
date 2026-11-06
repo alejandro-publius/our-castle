@@ -392,6 +392,7 @@ export function createBoardScene(container, { reducedMotion = false, isOccluded 
   function applyAtmosphere() {
     const look = LOOKS[atmosphere.period] ?? LOOKS.day, wet = atmosphere.weather === 'rain', dull = wet || atmosphere.weather === 'overcast';
     const night = atmosphere.period === 'night';
+    court.setNight(night);
     pipeline.setCloudSurround({ enabled: true, period: atmosphere.period, weather: atmosphere.weather });
     hemi.color.setHex(look.sky); if (dull) hemi.color.lerp(new THREE.Color(look.overcast), 0.65);
     hemi.groundColor.setHex(look.ground); hemi.intensity = look.hemi * (wet ? (night ? 0.85 : 0.7) : dull ? 0.84 : 1);

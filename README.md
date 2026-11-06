@@ -4,7 +4,7 @@
 
 A living pixel woodland turns shared progress into new places to explore. Keep the village, open the Manor, cross the rivers to the Keep, and reach the Royal Citadel, Rosewind Palace and two storybook towers. Nine districts, short deed cards, family avatars, roaming guests and changing light sit beside one compact household journal.
 
-![The connected woodland realm](docs/screenshots/legends-realm.png)
+![The connected woodland realm and mountain border](docs/screenshots/mountain-border-day.png)
 
 The reviewed source is **public on GitHub main**. The owner's updated Mac app runs at http://localhost:3010 with its existing records preserved. [Release status and remaining payment/video steps](docs/RELEASE-READINESS.md).
 
@@ -21,6 +21,8 @@ npm run demo
 ```
 
 The demo starts a fresh in-memory household on an unused localhost port. It ignores `.env`, configured keys and saved records. Progress survives refresh while the demo runs; closing it ends that session. Payments are simulated and the planner uses built-in rules, with their existing labels. For persistent local records and configured sandbox/AI integrations, use `npm start` and [the runbook](docs/RUNBOOK.md). [Short review route](docs/JUDGE-HANDOFF.md#2-a-short-review-route)
+
+Contributing with Rachel? [Start here](START-HERE-RACHEL.md) for one small task, a clean demo and the branch/PR workflow.
 
 ## A connected family journey
 

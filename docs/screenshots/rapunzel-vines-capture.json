@@ -1,0 +1,21 @@
+{
+  "date_pacific": "2026-11-05",
+  "base_commit": "6c8b414cd05adea31a656987ce4b63b5d8de3a64",
+  "scope": "Actual reduced-motion Chromium game renders in a fresh in-memory example with no credentials or provider calls. Existing reported $60 sample progress is unchanged.",
+  "sources": {
+    "src/world/woodland-legends.js": "6ae776ce3205cf4e05970e64a7b6326a8da2f85899cce051623f489f08628246",
+    "src/world/board-scene.js": "5f02ead21d45c7731c923ca89a73b4a4e394aaf0cd166cfc21f7d48033a7a114",
+    "src/core/realm.js": "ffddde56ad174d484f82ac8a99a12e72856fd256877d35ae3f13e9d7e72d728c"
+  },
+  "images": {
+    "docs/screenshots/rapunzel-vines.png": {
+      "sha256": "106e8414f9a351039e3f4f690704be0a338d69e08d4f63d5d6f58fe7df6119dc",
+      "original": "test-results/rapunzel-vines/final/tower-detail.png"
+    },
+    "docs/screenshots/rapunzel-vines-phone.png": {
+      "sha256": "e01d76552a0f063643944955719a889b4ada1260b8fc8fbdf3d5d78cc332d7d2",
+      "original": "test-results/rapunzel-vines/final/phone-day.png"
+    }
+  },
+  "checks": "Desktop/390 px touch-phone daylight and Night/Rain, detail/turn, original figures/court/bridges and access, unchanged full household state, no page errors, writes, outside requests or overflow. Source/art/palette/renderer guard and final source syntax/diff checks passed."
+}

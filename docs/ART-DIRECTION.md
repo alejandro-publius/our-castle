@@ -1,5 +1,9 @@
 # Art direction — preserve this visual family
 
+## A couple of candle lanterns (November 5, 2026)
+
+Kit in Hearth Village and Oswin at the Manor carry small brass-framed candle lanterns. At night, a tiny warm flame, restrained flicker and soft nearby ground light follow each guest's hand. Day and afternoon leave the lanterns unlit. The existing night buildings and articulated court are the reference: no extra controls, glowing crowd or large halos. These two familiar guests stay the only carriers as the court grows to twenty. The existing ambient clock drives the effect; reduced motion and modal pause preserve a still illuminated scene.
+
 ## Mountain border and PayPal hillside (November 5, 2026)
 
 The board is now 292×196, with one 32-unit unbuilt land row on every side of the original 228×132 interior. Twelve empty meadow clearings have no labels or reward rules. Green-and-stone mountain ridges rise beyond them, taller at the rear and lower at the front, with river valleys and a few highland pines. Every existing property, route and bridge stays at its previous location/ground level. The whole-realm camera fits the new relief; home/district close views remain unchanged.

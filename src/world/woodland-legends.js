@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+const FAIRY_HOME=Object.freeze({x:-5.2,y:17.8,z:4.3});
 // Original folklore miniatures. All parts use the world's shared geometry/material batches.
 export function createWoodlandLegends({ part, models, colours: C }) {
   const ivory=0xf4e4be,course=0x88978d,plum=0x686084,plumDark=0x453f61,teal=0x397b73,rose=0xb65d76;
@@ -33,6 +34,43 @@ export function createWoodlandLegends({ part, models, colours: C }) {
     box(g,x,.42,z,2.6,.28,1.3,ivory);box(g,x,.59,z,2.35,.06,1.12,C.soil);
     for(let i=0;i<4;i++){rock(g,x-.85+i*.56,.79,z,.55,.45,.6,C.leaf);rock(g,x-.85+i*.56,1.02,z+.06,.28,.25,.26,i%2?rose:C.red);}
   }
+  function towerVines(g) {
+    // Two narrow climbers on the stone, not a leafy sleeve around the whole tower.
+    const surface = (angle, y, radius = 2.71) => [Math.sin(angle) * radius, y, -1.1 + Math.cos(angle) * radius];
+    const leaf = (angle, y, side, size = 1) => {
+      const [x, , z] = surface(angle, y, 2.78);
+      part(g, 'rock', x, y, z, .5 * size, .63 * size, .14, C.pine, angle, side * .5);
+      part(g, 'rock', x + Math.cos(angle) * .035, y + .04, z - Math.sin(angle) * .035, .4 * size, .49 * size, .17, C.leaf, angle, side * .5);
+    };
+    const flower = (angle, y, pale) => {
+      const [x, , z] = surface(angle, y, 2.94);
+      for (let i = 0; i < 5; i++) {
+        const a = i * Math.PI * 2 / 5, along = Math.cos(a) * .18;
+        rock(g, x + Math.cos(angle) * along, y + Math.sin(a) * .18, z - Math.sin(angle) * along, .29, .29, .24, pale ? ivory : rose);
+      }
+      rock(g, x + Math.sin(angle) * .06, y, z + Math.cos(angle) * .06, .14, .14, .13, C.gold);
+    };
+    for (const [stem, count, baseAngle, phase] of [[0, 24, .62, 0], [1, 18, 1.94, 1.7]]) {
+      const point = i => {
+        const y = .72 + i * .65, angle = baseAngle + Math.sin(i * .48 + phase) * .14 + Math.sin(i * 1.1) * .035;
+        return { angle, y, at: surface(angle, y) };
+      };
+      for (let i = 0; i < count; i++) {
+        const a = point(i), b = point(i + 1), side = i % 2 ? -1 : 1;
+        rod(g, a.at, b.at, i > count - 5 ? .05 : .085, C.pine);
+        leaf(a.angle + side * .075, a.y + .26, side, i > count - 4 ? .7 : 1);
+        if (i % 3 === 1) leaf(a.angle - side * .1, a.y + .48, -side, .7);
+        if (i % 5 === 2) flower(a.angle + side * .07, a.y + .34, (i + stem) % 3 === 0);
+        if (i % 8 === 4) {
+          let previous = a.at;
+          for (let k = 1; k <= 3; k++) {
+            const angle = a.angle + side * k * .11, y = a.y + k * .38, next = surface(angle, y);
+            rod(g, previous, next, .05, C.pine); leaf(angle, y, side, .7 - k * .07); previous = next;
+          }
+        }
+      }
+    }
+  }
   function gardenWizard(g) {
     mage=new THREE.Group();mage.name='observatory-wizard';mage.position.set(-2.1,.28,7.1);mage.rotation.y=.3;mage.scale.setScalar(1.3);g.add(mage);
     for(const side of [-1,1])box(mage,side*.24,.16,.12,.3,.25,.48,plumDark);
@@ -55,7 +93,7 @@ export function createWoodlandLegends({ part, models, colours: C }) {
     for(let i=0;i<2;i++){const spark=new THREE.Group();spell.add(spark);star(spark,0,0,0,i?.23:.33,i?C.gold:models.roles.lamp);}
   }
   function towerFairy(g) {
-    fairy=new THREE.Group();fairy.name='rapunzel-fairy';fairy.userData.live=true;fairy.position.set(-5.2,17.8,4.3);fairy.rotation.y=.66;fairy.scale.setScalar(1.18);g.add(fairy);
+    fairy=new THREE.Group();fairy.name='rapunzel-fairy';fairy.userData.live=true;fairy.position.set(FAIRY_HOME.x,FAIRY_HOME.y,FAIRY_HOME.z);fairy.rotation.y=.66;fairy.scale.setScalar(1.18);g.add(fairy);
     wings=[];
     for(const side of [-1,1]){
       const wing=new THREE.Group();wing.position.set(side*.12,.95,-.17);fairy.add(wing);wings.push({group:wing,side});
@@ -142,8 +180,7 @@ export function createWoodlandLegends({ part, models, colours: C }) {
     cone(g,0,22.2,-1.1,8,4.8,8,teal);round(g,0,19.8,-1.1,8.12,.16,8.12,C.gold);
     cone(g,0,24,-1.1,2.65,2.55,2.65,0x28594f);round(g,0,25.55,-1.1,.11,.65,.11,C.gold);rock(g,0,25.98,-1.1,.38,.4,.38,C.gold);
     models.shield(g,0,14.7,1.65,field,.85);
-    // Ivy climbs the stone on the left; garden beds stay clear of the falling braid.
-    for(let i=0;i<25;i++){const y=.6+i*.62,x=-1.8+Math.sin(i*.7)*.35;rod(g,[x,y,1.1],[x+.12,y+.65,1.1],.07,C.pine);rock(g,x-.12,y+.3,1.25,.42,.38,.15,C.leaf);if(i%4===0)rock(g,x+.18,y+.44,1.3,.22,.24,.18,rose);}
+    towerVines(g);
     for(const x of [-7,7])for(const z of [5.6,9.4])roses(g,x,z);
     for(const x of [-4.4,4.4])models.lantern(g,x,5,.2,true);
     towerFairy(g);
@@ -174,7 +211,14 @@ export function createWoodlandLegends({ part, models, colours: C }) {
       spark.position.set(Math.cos(a)*(.57+i*.12),.24+Math.sin(a*1.3)*.36,Math.sin(a)*.43);
       spark.rotation.z=Math.sin(a)*.2;
     });
-    if(fairy){fairy.position.y=17.8+Math.sin(seconds*1.9)*.22;for(const {group,side} of wings)group.rotation.y=side*(.22+Math.sin(seconds*5.8)*.25);}
+    if(fairy){
+      // One short balcony loop, then a long hover: lively without constant darting.
+      const phase=seconds%11,flying=phase<2.6,t=flying?phase/2.6:0;
+      const travel=t*t*(3-2*t),angle=travel*Math.PI*2;
+      fairy.position.set(FAIRY_HOME.x+Math.sin(angle)*1.8,FAIRY_HOME.y+Math.sin(seconds*1.9)*.18+Math.sin(travel*Math.PI)*.55,FAIRY_HOME.z+(1-Math.cos(angle))*1.25);
+      fairy.rotation.y=.66+Math.sin(angle)*.2;fairy.rotation.z=-Math.sin(angle)*.14;
+      for(const {group,side} of wings)group.rotation.y=side*(.22+Math.sin(seconds*(flying?8.5:5.8))*.25);
+    }
   }
   function reset(){mage=null;spell=null;fairy=null;wings=[];}
   const point=g=>({x:g.position.x,y:g.position.y,z:g.position.z});

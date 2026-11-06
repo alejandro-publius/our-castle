@@ -1,5 +1,23 @@
 # Validation
 
+## Flowering Rapunzel vines — November 5 PST / November 6 UTC, 2026
+
+Two slender climbers with upward forks, small green leaves and nine pink/ivory blooms replace the old barely visible ivy. Most ivory stone remains exposed; windows, braid, crest, balcony and fairy stay readable. Static parts share existing geometry/material batches and add no controls, timers, rewards or provider actions. [Reference lock, actual renders and exact evidence](WOODLAND-LEGENDS.md#flowering-tower-vines--november-5-2026).
+
+Final desktop/390 px touch-phone Chromium reviews passed: day, Night/Rain, zoom/rotation, original figures/court/bridges/access, unchanged full example household state, no overflow, page errors, writes or outside requests. The initial review-driver assumption about not-yet-rendered rain geometry is recorded with its failed capture; no product bug or passed full suite is claimed. Original 47-file/palette/renderer guard and final changed-source syntax/diff checks passed. This used fresh in-memory example data only; no new order, paid call or video.
+
+## Villager candle lanterns — November 5 PST / November 6 UTC, 2026
+
+Kit carries the village's candle lantern; Oswin adds a second at the Manor. Tiny night-only flames, two short-range shadowless lights and small warm ground pools follow their actual articulated hands. The existing ambient tick supplies restrained flicker; daylight/afternoon extinguish both, and reduced motion/modal pause freeze the effect. No extra guests, controls, reward gates, provider calls or dependencies.
+
+Focused Chromium review used a fresh in-memory example with **$75 explicitly reported test progress**, not a PayPal payment. Actual desktop/390 px touch-phone renders were inspected. Day/night/afternoon switching, night refresh, reduced motion, six tier/crest rebuilds and twelve normal-motion samples passed. Rebuilds retained one carrier at the cottage, two at Manor/final tier, the original 2/6/20 guests, nine districts/bridges and a stable 21 geometries. Actual light positions followed the corresponding hand near each walker and paused under an occluding modal. The browser made no writes or outside requests, raised no page errors and left household/financial state unchanged. Three existing court unit cases and the 47-file/palette/renderer/syntax guard passed. Evidence: ignored `test-results/villager-lanterns/`; this is Chromium emulation, not a physical-device or performance claim. No payment, paid AI call or video was made.
+
+## Fairy flight and Rachel handoff — November 5, 2026
+
+The fairy now makes brief, bounded balcony loops with longer hovering pauses on the existing ambient clock. A fresh-example Chromium review sampled 44 normal-motion poses, verified multiple flight/rest positions, advancing rendered frames, modal pause and unchanged progress/contributions. A touch-phone reduced-motion review sampled five identical poses with ambient animation off. Neither produced a page error, write or outside request; the actual flight frame was inspected. Original 47-file art/palette/renderer/syntax guard passed. No new full suite, provider call, order or video was needed. Evidence: ignored `test-results/fairy-flight/`.
+
+GitHub confirms `rachelselbrede` has write access. [START-HERE-RACHEL.md](../START-HERE-RACHEL.md) provides an isolated no-keys run, three bounded task options, a small Claude prompt and branch/PR workflow. The old visual/integration handoffs now point to the current expanded map and completed exact-order proof, avoiding a duplicate build or paid check. No message/invitation was sent and no access or visibility setting changed.
+
 ## Mountain border and PayPal hillside — November 5, 2026
 
 The board expands from 228×132 to 292×196 around its unchanged interior. Twelve unbuilt meadows, faceted mountain ridges, river valleys and highland pines add depth without new districts, reward thresholds or financial actions. Six solid extruded letters use PayPal's official wordmark outline, with white faces and grounded rear supports. Font software is not bundled. [Source, reference lock, captures and exact checks](MOUNTAIN-BORDER.md).

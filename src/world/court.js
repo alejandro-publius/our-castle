@@ -1,5 +1,8 @@
 import * as THREE from 'three';
 import { courtForTier, courtWorldPose, courtResidents } from '../core/court.js';
+// One familiar face in the village, and one at the Manor; later courts don't gain a crowd of lights.
+const LANTERN_CARRIERS = new Set(['kit', 'oswin']);
+const LANTERN_POOL_RADII = [1.25, .82, .42];
 
 // All articulated guests share instanced geometry/material batches. Twenty guests do not mean twenty model graphs
 // or a second animation loop: the board's existing low-rate ambient clock drives this entire court.
@@ -12,7 +15,13 @@ export function createEstateCourt(group, builder, colours) {
   const matrix = new THREE.Matrix4();
   const skins = [0xd9a67f, 0xa47153, 0xedc4a0, 0x8e5f48];
   const paints = [C.red, C.blue, C.rose, C.violet, C.teal];
-  let actors = [], batches = [], tier = -1, flag = null, elapsed = 0;
+  let actors = [], batches = [], tier = -1, flag = null, elapsed = 0, night = false, lanterns = [];
+  const flameMaterial = new THREE.MeshBasicMaterial({ color: 0xffcf79 });
+  const poolGeometry = new THREE.CircleGeometry(1, 12);
+  const poolMaterial = new THREE.MeshBasicMaterial({ color: 0xf2b057, transparent: true, opacity: .075, depthWrite: false });
+  const pools = new THREE.InstancedMesh(poolGeometry, poolMaterial, LANTERN_CARRIERS.size * LANTERN_POOL_RADII.length);
+  pools.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+  pools.count = 0; pools.visible = false; pools.renderOrder = 2; pools.frustumCulled = false; group.add(pools);
 
   function pieces(person, crest) {
     const result = [];
@@ -88,12 +97,26 @@ export function createEstateCourt(group, builder, colours) {
       box(.31, .83, .21, .27, .37, .19, C.wood);
       box(0, 1.2, .25, .09, .68, .04, C.soil, 'body', -.5);
     }
+    if (LANTERN_CARRIERS.has(person.id)) {
+      // A small handled cage, wax candle and wick. Only the flame is hidden during daylight.
+      for (const side of [-1, 1]) box(side * .1, -.61, .06, .035, .2, .035, C.gold, 'rightArm');
+      box(0, -.51, .06, .23, .035, .04, C.gold, 'rightArm');
+      part('cone', 0, -.75, .06, .47, .16, .42, C.gold, 'rightArm');
+      box(0, -1.18, .06, .43, .07, .37, C.gold, 'rightArm');
+      for (const x of [-.17, .17]) for (const z of [-.08, .2]) box(x, -.97, z, .035, .35, .035, C.dark, 'rightArm');
+      part('round', 0, -1.075, .06, .12, .19, .12, C.cream, 'rightArm');
+      box(0, -.965, .06, .025, .045, .025, C.soil, 'rightArm');
+      part('cone', 0, -.87, .06, .13, .17, .13, C.gold, 'rightArm');
+      Object.assign(result.at(-1), { nightOnly: true, lanternFlame: true });
+    }
     return result;
   }
 
   function clear() {
     for (const { mesh } of batches) { group.remove(mesh); mesh.dispose(); }
     batches = [];
+    for (const { light } of lanterns) { group.remove(light); light.dispose(); }
+    lanterns = []; pools.count = 0; pools.visible = false;
   }
   function setTier(nextTier, crest) {
     if (tier === nextTier && flag === crest) return;
@@ -102,17 +125,24 @@ export function createEstateCourt(group, builder, colours) {
     const buckets = new Map();
     actors.forEach((actor, index) => {
       for (const piece of pieces(actor.person, crest)) {
-        const key = `${piece.kind}:${piece.color}`;
-        if (!buckets.has(key)) buckets.set(key, { kind: piece.kind, color: piece.color, pieces: [] });
+        const key = `${piece.kind}:${piece.color}:${Boolean(piece.nightOnly)}`;
+        if (!buckets.has(key)) buckets.set(key, { kind: piece.kind, color: piece.color, nightOnly: Boolean(piece.nightOnly), pieces: [] });
         buckets.get(key).pieces.push({ ...piece, actor: index });
       }
     });
     for (const bucket of buckets.values()) {
-      const mesh = new THREE.InstancedMesh(builder.geo[bucket.kind], builder.material(bucket.color), bucket.pieces.length);
+      const mesh = new THREE.InstancedMesh(builder.geo[bucket.kind], bucket.nightOnly ? flameMaterial : builder.material(bucket.color), bucket.pieces.length);
       mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
       mesh.frustumCulled = false;
-      group.add(mesh); batches.push({ mesh, pieces: bucket.pieces });
+      mesh.visible = !bucket.nightOnly || night;
+      group.add(mesh); batches.push({ mesh, pieces: bucket.pieces, nightOnly: bucket.nightOnly });
     }
+    actors.forEach((actor, index) => {
+      if (!LANTERN_CARRIERS.has(actor.person.id)) return;
+      const light = new THREE.PointLight(0xffb45c, 0, 4.5, 2);
+      light.visible = night; group.add(light); lanterns.push({ actor: index, id: actor.person.id, light });
+    });
+    pools.count = lanterns.length * LANTERN_POOL_RADII.length; pools.visible = night && lanterns.length > 0;
     tick(elapsed);
   }
   function tick(seconds) {
@@ -139,18 +169,44 @@ export function createEstateCourt(group, builder, colours) {
           joint.rotation.z = left ? -.1 : .1;
           if (!pose.moving && !left) joint.rotation.x = -.42 + Math.sin(seconds * 2 + person.index) * .15;
           if (person.role === 'musician' && !left) joint.rotation.x = -.75 + Math.sin(seconds * 6) * .12;
+          if (!left && LANTERN_CARRIERS.has(person.id)) joint.rotation.x = -.42 + Math.sin(seconds * 1.2 + person.index) * .05;
         }
         joint.updateMatrix();
         transform.position.set(p.x, p.y, p.z); transform.scale.set(p.w, p.h, p.d); transform.rotation.set(0, 0, p.rz); transform.updateMatrix();
         matrix.multiplyMatrices(root.matrix, joint.matrix).multiply(transform.matrix);
         mesh.setMatrixAt(i, matrix);
+        if (p.lanternFlame) lanterns.find(l => l.actor === p.actor)?.light.position.setFromMatrixPosition(matrix);
       });
       mesh.instanceMatrix.needsUpdate = true;
     }
+    updateLanterns();
+  }
+  function updateLanterns() {
+    lanterns.forEach(({ light, actor }, i) => {
+      light.visible = night; light.intensity = night ? 2 + Math.sin(elapsed * 3.1 + actor) * .12 : 0;
+      for (const [k, r] of LANTERN_POOL_RADII.entries()) {
+        transform.position.set(light.position.x, .283 + k * .002, light.position.z);
+        transform.rotation.set(-Math.PI / 2, 0, 0); transform.scale.set(r, r, 1); transform.updateMatrix();
+        pools.setMatrixAt(i * LANTERN_POOL_RADII.length + k, transform.matrix);
+      }
+    });
+    pools.instanceMatrix.needsUpdate = true;
+  }
+  function setNight(on) {
+    night = Boolean(on);
+    for (const b of batches) if (b.nightOnly) b.mesh.visible = night;
+    pools.visible = night && lanterns.length > 0; updateLanterns();
   }
   return {
-    setTier, tick,
-    debug: () => ({ ...courtForTier(tier), batches: batches.length, guests: actors.map(({ person, pose }) => ({ id: person.id, name: person.name, role: person.role, ...pose })) }),
-    dispose: clear,
+    setTier, tick, setNight,
+    debug: () => ({
+      ...courtForTier(tier), batches: batches.length,
+      guests: actors.map(({ person, pose }) => ({ id: person.id, name: person.name, role: person.role, ...pose })),
+      lanterns: lanterns.map(l => ({ id: l.id, lit: l.light.visible, intensity: l.light.intensity, x: l.light.position.x, y: l.light.position.y, z: l.light.position.z })),
+      lanternPointLights: group.children.filter(c => c.isPointLight).length,
+      litFlames: batches.filter(b => b.nightOnly && b.mesh.visible).reduce((n, b) => n + b.mesh.count, 0),
+      lightPools: pools.visible ? pools.count : 0,
+    }),
+    dispose() { clear(); group.remove(pools); pools.dispose(); poolGeometry.dispose(); poolMaterial.dispose(); flameMaterial.dispose(); },
   };
 }
