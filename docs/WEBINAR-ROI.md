@@ -1,9 +1,8 @@
 # Webinar ROI: what the four hackathon webinars are worth to Our Castle
 
-Source: `test-results/webinar-notes.md` (paraphrased notes on W1–W4, Oct 6–13, 2026; ignored by git). Deadline is
+Source: Rachel's `test-results/webinar-notes.md` (paraphrased notes on W1–W4, Oct 6–13, 2026; ignored by git), with the official recordings linked from [Devpost resources](https://paypalaihackathon.devpost.com/resources). Deadline is
 **November 12, 2026, 12:00 p.m. PST** per the written rules. Judging: technical implementation, design, impact,
-innovation, presentation (equal weight). Status values: `done on main`, `in the uncommitted diff` (this worktree,
-branch `feature/webinar-roi`, not yet committed or tested in a browser), `proposed` (with a size S/M/L).
+innovation, presentation (equal weight). Status values: `done on main`, `implemented in PR #2`, and `proposed` (with a size S/M/L). The review checks below use local fake transports, never a new provider payment or paid AI call.
 
 Ground rule for every item below: the steward stays read-only, money is credited only from a server-verified capture,
 and nothing fakes payment proof. Items that would weaken that are not listed.
@@ -11,12 +10,11 @@ and nothing fakes payment proof. Items that would weaken that are not listed.
 ## W1. Start building with PayPal (Oct 6)
 
 1. **Verify webhook signatures against the raw delivered body.** W1: "ALWAYS verify the signature so nobody can fake an
-   upgrade." Status: in the uncommitted diff. Files: `server/payments/paypal-client.mjs` (`verifyWebhookSignature` now
+   upgrade." Status: implemented in PR #2. Files: `server/payments/paypal-client.mjs` (`verifyWebhookSignature` now
    splices `rawBody` into the verify request instead of re-serialized JSON), `server/payments/contributions.mjs`
-   (`handleWebhook` passes `rawBody`). ROI: a re-serialized event can change number formatting and make PayPal reject a
-   genuine delivery; this is the one webhook defect that would show up in a live demo. Technical implementation.
+   (`handleWebhook` passes `rawBody`). ROI: preserves number formatting, escapes and surrounding whitespace in the outgoing verification request. Real signed webhook delivery remains untested; the local assertion proves request preservation only.
 2. **Surface the PayPal debug id for `explain-error`.** W1: `doctor` and `explain-error` "will be your best friends";
-   support needs the debug id. Status: in the uncommitted diff. Files: `server/app.mjs` (warn log with debug id),
+   support needs the debug id. Status: implemented in PR #2. Files: `server/app.mjs` (warn log with debug id),
    `server/payments/contributions.mjs` (debug id kept on verify and client-token failures). ROI: cheap, and it is the
    evidence trail a judge or PayPal engineer asks for when a sandbox call fails.
 3. **Negative-path coverage: declines, cancellations, refunds, reversals.** W1: "test unhappy paths... not just the happy
@@ -32,7 +30,7 @@ and nothing fakes payment proof. Items that would weaken that are not listed.
 ## W2. APIMatic Context Plugins (Oct 7)
 
 1. **Bounded wait on every REST call.** W2: production-readiness checks (retries, outages, unexpected responses); the
-   installed `typescript-configuration-resilience` skill. Status: in the uncommitted diff. File:
+   installed `typescript-configuration-resilience` skill. Status: implemented in PR #2. File:
    `server/payments/paypal-client.mjs` (`AbortSignal.timeout(timeoutMs)` wrapper; no answer becomes a `PayPalError`
    with no status, which callers already treat as "unknown outcome"). ROI: the SDK client already had a 30 s timeout on
    main; this closes the same gap for webhook verification and client tokens, so the story "every PayPal call is bounded"
@@ -50,15 +48,13 @@ and nothing fakes payment proof. Items that would weaken that are not listed.
 ## W3. AG Grid / AG Studio dashboard (Oct 12)
 
 1. **A real Studio data model: typed, described fields and a calculated field.** W3: sources are required; calculated
-   fields and descriptions are what the engine and AI assistant read. Status: in the uncommitted diff. File:
+   fields and descriptions are what the engine and AI assistant read. Status: implemented in PR #2. File:
    `src/app/treasury.js` (`AREA_FIELDS`, `AREA_EXPRESSIONS` with `shareOfThreshold = progress / threshold`, consumed by
    `NEXT_AREA_QUERY` and the meter width). ROI: moves the Treasury from "one untyped array" to the model shape James
    described, with the entitlement arithmetic still on the server. Matches the installed 3.0.0 typings
    (`expressions`, `divide`, `isMeasure`, `integerFormat`/`percentageFormat`).
 2. **Browser check that the calculated field reaches the widget.** W3 demo: Studio evaluates expressions in its engine.
-   Status: proposed, S. File: `test/e2e/treasury.spec.mjs` (assert `data-source="ag-studio"` and that the meter width
-   equals progress/threshold from the server state). ROI: `npm run test:unit` cannot see this code; without it the diff's
-   Studio change is unverified, and AG Grid judges read the tests section.
+   Status: implemented in PR #2. File: `test/e2e/treasury.spec.mjs` checks the actual Studio-calculated `share` and meter width before/after contribution and refund, plus the no-Studio fallback. ROI: verifies that the expression reaches the real browser widget.
 3. **Describe the Studio use precisely in the entry's tools section.** W3 (James): the tools section "is where prizes
    come into play"; they most want custom agents, custom tools and ideas they have not thought of. Status: done on main
    (`docs/SUBMISSION-DRAFT.md`: custom widget, parchment theme, custom `house-steward` runner in the native harness,
@@ -73,19 +69,18 @@ and nothing fakes payment proof. Items that would weaken that are not listed.
 
 1. **Reconcile dashboard refunds from `get_order` when the webhook never arrives.** W4: sandbox delivery lags, PayPal
    stops retrying after 3 days, missed events must be fetched from the API; "test a refund from the merchant side and
-   check the app reacts." Status: in the uncommitted diff. File: `server/payments/contributions.mjs` (`applyOrder`
+   check the app reacts." Status: implemented in PR #2. File: `server/payments/contributions.mjs` (`applyOrder`
    walks `purchase_units[].payments.refunds`, applies each once by refund id; `applyCapture` treats a credited capture
    that reads REFUNDED as `already_completed` instead of `not_credited`). ROI: local runs have no tunnel, so this is the
-   only way a merchant-side refund reaches the ledger in the demo; it is also the exact scenario the presenters named.
-2. **Refuse a second refund while one is pending.** W1/W4 negative testing: refunds and reversals. Status: in the
-   uncommitted diff. File: `server/payments/contributions.mjs` (`refundPreconditions` rejects with `refund_pending`).
+   explicit API recovery when a verified webhook is unavailable; it is also the exact scenario the presenters named.
+2. **Refuse a second refund while one is pending.** W1/W4 negative testing: refunds and reversals. Status: implemented in PR #2. File: `server/payments/contributions.mjs` (`refundPreconditions` rejects with `refund_pending`).
    ROI: a pending refund has not reduced `refunded_cents`, so without this an adult could ask PayPal for the same money
-   twice. No test covers it yet (see W2.3).
+   twice. Covered by the pending-refund regression in W2.3.
 3. **Name the sandbox accounts and re-run the merchant-side refund once.** W4: "name the sandbox accounts so transactions
    are readable and look right in a demo"; default "John Doe" shows in transactions. Status: proposed, S (owner action,
    no code). Files: `docs/RUNBOOK.md` (sandbox setup step), `docs/SUBMISSION-SHOTLIST.md`. ROI: presentation is a fifth
    of the score and Best Demo Delivery is its own award; readable names in the receipt and PayPal activity are free.
-   The refund re-run is only needed if the owner records new footage; it must stay in the isolated rehearsal.
+   New recording/payment/refund work is paused and requires separate owner authorization. Existing sandbox proof is preserved.
 4. **Refresh the token when PayPal rejects it.** W4: cache the token, or fetch a new one only when PayPal rejects it.
    Status: done on main for expiry-based caching (`accessToken()` in `server/payments/paypal-client.mjs`, 60 s margin;
    the Server SDK refreshes its own). Proposed, S: on a 401 from the REST client, drop the cache and retry once. Only
@@ -96,10 +91,15 @@ and nothing fakes payment proof. Items that would weaken that are not listed.
 ## Suggested order (top 5 across all webinars)
 
 1. W2.3: unit tests for the diff (timeout, raw-body verify, dashboard refund, pending refund). Done in this branch.
-2. W3.2: one e2e assertion that the Studio calculated field drives the meter. S. The Studio change is still unverified
-   in a browser.
+2. W3.2: Studio calculated-field and meter browser checks are implemented; results are recorded below.
 3. W4.1 + W4.2: review the refund reconciliation and pending-refund guard (in this branch, tested by 1).
 4. W1.4: run AI Toolkit `doctor`, record findings in `docs/VALIDATION.md`. S, owner machine.
 5. W4.3: name sandbox accounts; add the step to `docs/RUNBOOK.md`. S, owner action, helps every recording.
 
 Not recommended before the deadline: W3.4 (second source and calendar, M) unless 1–5 are done and there is time left.
+
+## PR review and verification — November 5 PST / November 6 UTC
+
+Codex reviewed both Rachel PRs against current main, retained the recent scenery and corrected transport errors during response-body reads plus whitespace preservation in the webhook request. Completed receipts can explicitly recheck with PayPal; the steward compares full/partial refund totals before declaring agreement. Studio schema notes preserve reported/simulated source distinctions and treat the server's access flag as authoritative after refunds.
+
+Combined-source validation: **184 unit passes, one existing intentional skip, eight desktop/phone browser passes**, protected-art/source guard and final syntax/diff checks. Browser assertions confirm the actual Studio-calculated share reaches the meter, with contribution/refund/reload and fallback covered. An isolated fake-sandbox receipt recheck applies a missed dashboard refund once without a webhook, AI call or new capture. All provider/model traffic was fake/local; no new actual order, refund, paid call or video. [Precise results and initial failures](VALIDATION.md#rachels-pr-review--november-5-pst--november-6-utc-2026).

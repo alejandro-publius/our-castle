@@ -1,5 +1,15 @@
 # Validation
 
+## Rachel's PR review — November 5 PST / November 6 UTC, 2026
+
+[PR #1](https://github.com/alejandro-publius/our-castle/pull/1) adds prompt/data separation and five scripted-model injection tests. Its checked changes merged into current main with the latest vines, lanterns and fairy retained. This tests the server's behavior when a model follows hostile text, not a live model's resistance; the existing free-text limitations remain documented in [PROMPT-INJECTION.md](PROMPT-INJECTION.md).
+
+[PR #2](https://github.com/alejandro-publius/our-castle/pull/2) adds bounded REST waits, preserved webhook JSON, missed-refund reconciliation, a pending-refund guard and a typed Studio model/calculated progress field. Review reproduced and fixed three transport/request failures: timeout/reset while reading a response body escaped recovery, and trimming webhook JSON lost surrounding whitespace. Added regressions now preserve an uncertain capture or settle it from the same order once. A separate failing regression showed that refund totals were ignored by the steward; it now requests a receipt recheck until the full/partial refund matches. Completed/partially refunded receipts expose that explicit **Check with PayPal** action. Studio descriptions distinguish reported/simulated progress from provider confirmation and retained access after refunds.
+
+Actual combined-source checks: **185 unit tests, 184 passed, one existing intentional skip; eight desktop/390 px touch-phone Chromium cases passed**. The real AG Studio engine supplies shares .8/.625/.5 and corresponding meter widths across contribution/refund/reload; fallback and keyboard access pass. Fake-sandbox receipt checks pick up a dashboard refund with no webhook or AI call, one reversal, no new capture and the earned Manor retained. The 47-file/palette/renderer/syntax guard and final changed-file syntax/diff checks pass. No full browser suite, actual provider test, new payment, paid AI/merchant call or video was run.
+
+An initial default-motion Treasury screenshot timed out on software rendering after its functional assertions passed. That run was stopped (one following case interrupted); its log/traces are retained. The records/query suite now uses reduced motion and all eight relevant cases pass. Evidence: ignored `test-results/rachel-pr-review/{before-fix.log,payment-fix.log,refund-reconciliation-before.log,refund-reconciliation-after.log,unit.log,browser.log,browser-artifacts/}`. No product animation assertion was removed.
+
 ## Flowering Rapunzel vines — November 5 PST / November 6 UTC, 2026
 
 Two slender climbers with upward forks, small green leaves and nine pink/ivory blooms replace the old barely visible ivy. Most ivory stone remains exposed; windows, braid, crest, balcony and fairy stay readable. Static parts share existing geometry/material batches and add no controls, timers, rewards or provider actions. [Reference lock, actual renders and exact evidence](WOODLAND-LEGENDS.md#flowering-tower-vines--november-5-2026).

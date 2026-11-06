@@ -116,7 +116,7 @@ export const AREA_FIELDS = Object.freeze([
 ]);
 export const AREA_EXPRESSIONS = Object.freeze([{
   id: 'shareOfThreshold', name: 'Share of threshold', format: 'percentageFormat', isMeasure: false,
-  description: 'Progress divided by the threshold for each area (1 = open).',
+  description: 'Progress divided by the threshold for each area (1 = threshold reached). Access comes from the server open flag; keepsakes can remain open after a refund.',
   expression: { operator: 'divide', inputs: [{ id: 'areas.progressCents' }, { id: 'areas.thresholdCents' }] },
 }]);
 const dataFor = (state) => ({
