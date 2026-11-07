@@ -1,5 +1,54 @@
 # Validation
 
+## Payment recovery across an abrupt process restart — November 7, 2026
+
+Branch `claude/payment-restart-recovery`, at the reviewed PR #40 head `e3bc6ff` (main `579b4f6` does not contain it yet). There is **no production change**: the current code already holds these crash windows, so this adds evidence and one fake-PayPal fidelity fix.
+
+**What was missing.**
+- **No abrupt process death:** clean close and reopen, and same-process dropped-response recovery, were already tested. No test killed the app process at the windows between PayPal's answer and the local credit.
+- **Other process tests:** `demo.test` stops the demo with SIGINT, and the family runner restarts with SIGTERM. Neither touches a payment.
+
+**The harness:**
+- **`test/unit/payment-restart.test.mjs` (the parent)** runs the existing stateful fake PayPal on 127.0.0.1. Its orders and captures therefore survive the app's death.
+- **`test/helpers/payment-app-child.mjs` (the app)** runs the real server and payment service on a disposable database in a child process:
+  - it is forked with an empty environment, explicit fake credentials and no `.env`;
+  - it uses the production PayPal SDK adapter, with real SDK auth, controllers and serialization, through its existing transport seam;
+  - that transport reaches only the parent. Every non-loopback dispatch is refused.
+- **Killing:** each child is killed with SIGKILL, so no shutdown code runs. Only the test's own children are signalled.
+- **Gates, waits and cleanup:** a gate in the parent holds PayPal's answer, and a gate in the child's harness wrapper withholds the app's answer. Every wait is bounded, and each test removes only its own temporary folder and children.
+
+| Scenario | What happened | Fake PayPal counters | Recovered records |
+| --- | --- | --- | --- |
+| 1. Killed while PayPal's capture answer was held | No credit was invented: the order was still `created`, with no capture or entry and $60.00. The restarted process did nothing by itself, making 0 provider calls at startup. The existing same-order retry sent the **same `PayPal-Request-Id`**, and PayPal replayed its first answer. The explicit check saved a `match` | 2 tokens (one per process), 1 order created, **2 capture requests with 1 request id**, 1 order read, **1 provider capture** | Order `completed`; 1 capture credited; 1 contribution of $15.00; 1 saved check (`match`); $75.00 |
+| 2. Killed after the credit was committed but before the answer reached the client | The retry returned `already_completed` **without calling PayPal**. The same webhook event returned `duplicate_event`; a new event for the capture returned `already_completed` | **1 capture request**, 0 order reads, 3 webhook verifications, 1 provider capture | 1 capture credited; 1 contribution; $75.00 |
+| 3. A dashboard refund made while the app was down, with no webhook | Nothing was reconciled at startup. The explicit check recorded the refund once, and a second check returned `already_completed`. The late refund event returned `duplicate_refund`, then `duplicate_event` | 1 capture request, 2 order reads, 2 webhook verifications, 1 provider capture | Order `refunded`; 1 contribution and 1 refund of $15.00; refunded $15.00; $60.00, debited once |
+
+**A fidelity fix to the fake.** The real SDK OAuth path had never run against the shared fake. Its token answer lacked `token_type`, which real PayPal sends and the installed SDK 2.5.0's `oAuthToken` schema requires. So the first harness run could not create an order: every scenario failed with a 502 before any payment logic ran. The fake now answers with `token_type: 'Bearer'`.
+
+| Check | Actual result |
+| --- | --- |
+| The restart tests on Node 22.16.0, 26.0.0 and 26.13.0 | 3 passed on each |
+| Deliberate service mutations, restored with a matching hash: an unstable capture request id; a settled retry that calls PayPal | Each fails its scenario's own assertion: "one PayPal-Request-Id for the order" and "the settled order is answered without calling PayPal" |
+| Affected suites on the three versions: the restart tests, payments, paypal-reconciliation, paypal-unknown-outcome, payment-dispatch-access, shared-capture-access, paypal-sdk, paypal-sdk-transport, migration-integration, ledger and household-snapshot | 116 tests: 115 passed, 1 existing designed skip, 0 failed on each |
+| The other unit files that use the changed fake (family-live, family-runtime-boundaries, planning-revision, server), on Node 22.16.0 and 26.13.0 | 42 passed on each |
+| `npm run check` | Passed: 47 copied art/runtime files, the original 90-color palette, the renderer wiring and JavaScript syntax |
+| `git diff --check` | Clean |
+
+The test command is `node --test test/unit/payment-restart.test.mjs`. The existing full unit command picks it up, so the hosted release checks run it on Node 22.16.0, 24 and 26; that result is reported on the PR.
+
+**Limits.**
+- **What "abrupt" means here:** killing a process is not power loss, a disk failure or an operating-system crash. It is not real PayPal reliability or device evidence, and not a playtest.
+- **The fake:** the provider is the existing stateful fake, with gates that model a held answer; it is not network-fault injection. The refund scenario edits the fake's order record, as the existing reconciliation test does.
+- **Unchanged:** approval, access checks, amount, currency and household matching, the read-only steward, mode separation and the existing recovery semantics. Nothing captures or reconciles at startup.
+
+Raw evidence is ignored and stays local in `test-results/payment-restart-20261107/`:
+- the first runs: `first-run-node26.log` (the 502 from the incomplete fake token) and `second-run-node26.log` (passing after the fix);
+- `debug-transport.mjs`, the probe that found the missing `token_type`;
+- the mutation logs, and `contributions.original.mjs`, the file they were restored from;
+- the `affected-*.log`, `fake-users-*.log` and `final-*.log` files, and `check.log`.
+
+No owner household, credential, real order, paid model or provider call, recording, deployment or submission was used.
+
 ## Household snapshots — November 7, 2026
 
 Branch `claude/household-snapshots`, from main `579b4f6`. That commit contains the reviewed PR #38 head `f4bf89c` and every earlier reviewed head.
