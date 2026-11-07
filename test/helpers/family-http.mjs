@@ -29,13 +29,13 @@ export function mutableClock(start = '2026-11-03T12:00:00') {
   };
 }
 
-export async function startServer({ file = ':memory:', clock = mutableClock(), port = 0, live = {}, merchant = null, env = {}, paypal = null } = {}) {
+export async function startServer({ file = ':memory:', clock = mutableClock(), port = 0, live = {}, merchant = null, env = {}, paypal = null, extra = {} } = {}) {
   const db = openDatabase(file);
   let app;
   const server = http.createServer((req, res) => app.handler(req, res));
   await new Promise((resolve) => server.listen(port, '127.0.0.1', resolve));
   const origin = `http://localhost:${server.address().port}`;
-  app = createApp({ config: loadConfig({ ...env, OUR_CASTLE_ACCESS: 'family', OUR_CASTLE_ORIGIN: origin }, { root }), db, clock, root, live, merchant, paypal });
+  app = createApp({ config: loadConfig({ ...env, OUR_CASTLE_ACCESS: 'family', OUR_CASTLE_ORIGIN: origin }, { root }), db, clock, root, live, merchant, paypal, ...extra });
   let closing = null;
   const close = () => (closing ??= new Promise((resolve) => { app.live?.close(); server.closeAllConnections(); server.close(() => { db.close(); resolve(); }); }));
   return { db, origin, clock, app, close, port: server.address().port };

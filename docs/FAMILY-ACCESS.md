@@ -13,7 +13,7 @@ Then open **http://localhost:3200** (exactly this address; other local addresses
 - **Starting a family.** **Start a new family** asks for your name and creates a passkey on this device. You become the owner of a new household with an empty placeholder goal, no progress and no example data. Found the house in **House**, then set the real goal in **Plan**.
 - **Inviting.** In **House → Invite to the family**, give a name and choose **Adult** or **Child**, then send the link yourself. It works once, for 48 hours, and Our Castle sends no email.
 - **Joining.** The invited person opens the link in their own browser, confirms the family and role, and creates their own passkey.
-- **Day to day.** Members see the same goal, place, plan and progress. Open pages refresh quietly when focused, and at most every 45 seconds while visible. Sign out and add a passkey from **House**.
+- **Day to day.** Members see the same goal, place, plan and progress. An open page shows another member's saved change as it happens ([live updates](#live-updates)); without a connection it re-reads when shown or focused, and at most every 45 seconds while visible. Sign out and add a passkey from **House**.
 
 The runner keeps its own database (`<data>/our-castle-family-example.sqlite`). It reads no `.env` file and no provider keys: payments are simulated and plans use the built-in rules. The server can also run in this mode with `OUR_CASTLE_ACCESS=family` and `OUR_CASTLE_ORIGIN=http://localhost:<port>`. No request can choose the mode.
 
@@ -43,7 +43,28 @@ The runner keeps its own database (`<data>/our-castle-family-example.sqlite`). I
 | Per-request scope | Planner, steward and state use the request's own household. Market drafts are accepted only from a household this server showed them to. The example-only reset is refused. PayPal's signed webhook stays a machine route. | No shared "current household" and no cross-family cached results |
 | Limits | 30 ceremony requests a minute per address per ceremony; 30 invitations an hour per household; up to 12 members and open invitations | Bounded abuse; the counters live in memory |
 | Audit | `audit_events`: actor, household, action, time and an id (never a token, hash or credential) for family creation, invitations, joining, passkeys, sign-in and sign-out, refused sign-ins and access removal | Internal evidence; no dashboard |
-| Data | Migration 6 adds new tables only (accounts, passkeys, memberships, invitations, sessions, ceremony challenges, audit events). Family mode uses its own database file and never creates the example household. | Existing rows and columns are untouched (tested from a pre-access file). |
+| Data | The `family-access` migration (step 7 of the integrated sequence) adds new tables only (accounts, passkeys, memberships, invitations, sessions, ceremony challenges, audit events). Family mode uses its own database file and never creates the example household. | Existing rows and columns are untouched (tested from a pre-access file and from every earlier schema; see [Integration](#integration-one-migration-sequence)). |
+
+## Live updates
+
+Every open page of a shared family keeps one live-update stream (`GET /api/events`, server-sent events), so a change saved on one device appears on the others without a reload or a click.
+
+| Area | Decision | Why |
+| --- | --- | --- |
+| What travels | Only an event name (`ready`, `invalidate`, `end`) and an opaque household revision such as `Xy3…a.12`. No record, name, id, amount or token. The page then re-reads `/api/state` through the normal authorized route. | Minimal data on the stream; the same authorization as any read |
+| Who is told | After any authorized write (except calculations, look-ups and questions), every open page of **that household**, and no other. A verified PayPal webhook tells only the households whose payment records it changed; a newly accepted invitation tells the family. A write the access rules refuse announces nothing; one that fails inside its route still sends a notice, since it may have recorded a status. | No cross-family signal |
+| Order | Each household's revision moves before a write runs and again after it, and every family-mode state carries it. A page keeps only answers for its own member and household that are no older than the one it shows (a server restart is a newer start). One read at a time; a change announced during a read reads once more after it. | An older answer that arrives late never replaces a newer one |
+| Sessions | A stream and a background re-read (`X-Our-Castle-Refresh: background`) are not activity, so they never keep an idle session alive. The server re-checks each stream's session and membership every 15 seconds and ends the stream at once on sign-out, removed access, a renewed sign-in in the same browser, and idle or absolute expiry. The page then asks for the passkey with the reason ("Your access to this family was removed."). | An open tab is not a way around expiry or revocation |
+| Bounds | Up to 3 streams per sign-in (a new tab replaces the oldest, which falls back to re-reading on focus), 24 per household and 200 per server; more are refused with `503 live_busy`. One shared timer, released with the last stream; every stream ends when the server stops. | Bounded connections and timers |
+| Reconnecting | The browser reconnects a dropped stream by itself. A refused or unreachable stream retries with backoff (1 s doubling to 30 s, with jitter), checks the session first, and refreshes the CSRF token after a renewed sign-in. On reconnect the page re-reads if the revision moved. After 8 seconds away it shows one compact control in the top bar: "Updates paused · **Reconnect**". | Recover from drops and restarts without a storm of requests |
+| Work in progress | Unsaved Plan fields, a schedule trial, a Merchant draft, an avatar being chosen and a half-typed invitation stay as they are; only results for an older goal are cleared (a trial result, an old answer). A save against a goal another member changed is refused once with **Load latest goal** / **Review latest goal**, which keeps the member's own edits. A newly opened area's deed card can appear over a form; it changes nothing, and closing it returns focus to where it was. The Ledger keeps its filter, search, sort, selection and keyboard position. | Live updates never cost anyone their typing |
+| Approvals | A ticked contribution approval covers one amount, for one goal, by one adult, in one session. If the goal (or the sign-in) changes underneath it, the tick is cleared with one message and must be given again; an unrelated change, a dropped connection or a server restart (the same session) keeps it; ticking also stops a later suggested amount replacing the approved one. Server verification is unchanged. | Amount-specific adult approval stays true to what was seen |
+
+Example mode has no stream and its state carries no revision.
+
+## Integration: one migration sequence
+
+The integrated build has seven schema steps: main's four SQL steps, then three checked steps that each test the actual tables before changing them: `goal-project-kind` (5), `merchant-selection` (6) and `family-access` (7). Schema 5 and 6 were written by two different pre-integration branches (goal projects and sponsor depth each used 5; family access used 6), so a database at 5 or 6 is named in a warning and re-checked from step 5, never trusted. Every path (4, both 5s, 6, 7) reaches exactly a fresh database's schema with its rows kept; a schema newer than 7 is refused and left untouched (`test/unit/migration-integration.test.mjs`). This was also checked against each source branch's own `openDatabase` on throwaway files.
 
 ## Recovery limits
 
@@ -55,6 +76,14 @@ The runner keeps its own database (`<data>/our-castle-family-example.sqlite`). I
 ## Checks
 
 These are local tests: real HTTP and real WebAuthn verification, with simulated payments and no provider calls.
+
+**Live updates (`test/unit/family-live.test.mjs`, 7 cases).** Real streams over HTTP read like an EventSource, two families on one server: only the changed household's pages are told, with a bare revision, and every state answer is ordered by it; reads, calculations, merchant look-ups and refused writes announce nothing; a fake Channel3 product saved as a goal is announced; one simulated contribution is credited once and announced once per page; removed access, a renewed sign-in, sign-out and idle expiry end a stream at once, and streams and background reads never extend a session; per-session, per-household and server bounds; every stream, listener and the timer released; a verified fake-PayPal webhook tells only the household it settled; a real restart on the same file; example mode has none.
+
+**Browser (`test/e2e/shared-live.spec.mjs`, 4 cases).** Each person a separate Chromium context with its own virtual passkey; every request leaving the server's origin is refused and recorded, and none were (Channel3's image CDN gets a drawn stand-in):
+- **Three members and a separate family (desktop):** a goal and Build choice reaching the others without reload or focus; a schedule trial, an avatar being chosen and a half-typed invitation untouched by an unrelated change and surviving another member's goal save, with **Load latest goal** keeping the member's own field; an approval kept through an unrelated change and cleared once when the goal changed elsewhere; one simulated contribution credited once with the same receipt and the Manor Gardens deed on every family page; the owner's Ledger keeping its filter, search, sort, selected receipt and keyboard position while the weekly Treasury moved by Studio live data in the same instance; a fake Channel3 product saved only after **Review latest goal**; the child shown no steward questions; the other family never re-reading; removed access ending the child's page at once; no stream or timer left after the pages closed.
+- **A dropped connection (desktop):** the server cut every connection while one device was offline; nothing shown for a brief drop, then one **Reconnect** control; the change made meanwhile arriving on reconnect, by click and by itself; 31 idle minutes ending both open sessions without a click.
+- **A real restart of `scripts/family.mjs` (desktop):** both pages reconnecting by themselves to the new server start and still receiving changes, in the same document; an approval given before the restart kept (the same session) and paid once after it.
+- **Two 390 px phones:** a change arriving live; the Reconnect control fitting the top bar with a 44 px target and no horizontal scroll.
 
 **Server (`test/unit/family-access.test.mjs`, 10 cases).** A software authenticator, test-only `node:crypto` P-256, produces genuine signed responses. The cases cover:
 - **Configuration and routes:** server-only configuration; every route enumerated in both directions.
@@ -80,6 +109,8 @@ These are local tests: real HTTP and real WebAuthn verification, with simulated 
 - **Expiry and links:** session expiry returning to sign-in; withdrawn, broken and expired invitation links.
 - **Restart:** a real restart of `scripts/family.mjs` keeping the family and session.
 - **Phone:** 390 px fit with 44 px controls.
+
+Live captures: [owner's page showing the Manor deed from another member's contribution](screenshots/shared-live-owner-manor.png) · [owner's Ledger kept through a live update](screenshots/shared-live-owner-ledger.png) · [Reconnect, desktop](screenshots/shared-live-reconnect.png) · [Reconnect, phone](screenshots/shared-live-phone-reconnect.png) · [access removed during a connection](screenshots/shared-live-removed.png) ([provenance](screenshots/shared-live-sources.json)).
 
 Captures: [phone sign-in](screenshots/family-access-phone-sign-in.png) · [invitation](screenshots/family-access-invitation.png) · [owner's family section](screenshots/family-access-owner.png) · [child's read-only plan](screenshots/family-access-child-plan.png) · [removed access](screenshots/family-access-revoked.png) · [phone family section](screenshots/family-access-phone-house.png) ([provenance](screenshots/family-access-sources.json)).
 

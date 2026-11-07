@@ -1,5 +1,43 @@
 # Validation
 
+## Shared families, live: one integrated build and dependable cross-device updates — November 6, 2026
+
+Claude branch `claude/shared-live-integration` from `main` `86c8287` (PR #20; not merged or activated). Normal merges of #19 (with #16) and #17, then live updates for shared families. See [FAMILY-ACCESS.md](FAMILY-ACCESS.md#live-updates).
+
+- **Integration.** One migration sequence: main's four SQL steps, then checked steps `goal-project-kind` (5), `merchant-selection` (6) and `family-access` (7). Branch-only schemas 5 and 6 are named and re-checked from step 5; a newer schema is refused. Exact pins kept: `@simplewebauthn/server` 14.0.3, `@simplewebauthn/browser` 14.0.0, `ag-grid-community` 36.3.0, `ag-studio` 3.1.0. Merchant refresh and alternatives have explicit adult rules, use the request's scope, and accept a shown result only from the household it was shown to, before any provider call.
+- **Live updates.** `GET /api/events` (members only) carries only an event name and a household revision; pages re-read `/api/state`. Revisions order every state answer; streams and background reads never extend a session; streams end at once on sign-out, removed access, a renewed sign-in and expiry; connections are bounded; reconnects back off and check the session; one compact Reconnect control.
+- **Work in progress.** Unsaved Plan fields, trials, Merchant drafts, avatar and invitation fields stay; an approval is cleared once if its goal or sign-in changed, and kept through unrelated updates and reconnects; the Ledger keeps filter, search, sort, selection and keyboard position.
+
+**Upgrade check against the real branches.** Each source branch's own `openDatabase` (main, goal-projects, sponsor-depth, shared-family-access, extracted by `git cat-file`) wrote a throwaway file at its schema (4, 5, 5, 6); the integrated build opened each: all reached schema 7 with exactly a fresh database's schema, rows kept, reopening idempotent, and the explicit warning for 5 and 6. Not committed (it needs the branch sources); `test/unit/migration-integration.test.mjs` rebuilds the same schemas from the identical statements.
+
+**Unit: 291 cases, 290 passed, 1 pre-existing skip.**
+- New `family-live` (7): the changed household only, a bare revision, ordered answers; quiet reads, calculations, look-ups and access refusals; a fake Channel3 goal; one contribution, one credit, one notice per page; access removal, renewal, sign-out and idle expiry ending streams, with no session extension; bounds and release of every stream and the timer; a verified fake-PayPal webhook telling only its household; a real restart; example mode.
+- New `family-sponsor` (1): a child and another family refused on every Merchant route and the steward before the fake Channel3 or fake Anthropic transport is reached; the adult's refresh, cheaper alternatives, save and steward answer stay in their household.
+- New `migration-integration` (3): every earlier schema to the fresh one; a newer schema refused and untouched.
+- Changed: the family HTTP helpers moved to `test/helpers/family-http.mjs`.
+
+**Browser.** New `shared-live.spec.mjs` (4 cases, desktop 1440×1000 and emulated 390×844 touch phone), each person a separate context with a virtual passkey; requests leaving the server origin refused and recorded (none were):
+- three members and a separate family through goal, Build, trials, avatar, invitation, an unrelated change that moves nothing being edited and keeps a given approval, a goal change that clears it, two contributions (one credit each; Manor Gardens deed on every family page), Ledger and weekly Treasury, the Treasury record link, a fake Channel3 product after Review latest goal, child limits, access removal and cleanup;
+- a connection cut while offline, the Reconnect control, catching up by click and by itself, and idle expiry during the connection;
+- a real restart of `scripts/family.mjs` with both pages reconnecting in the same document, and an approval given before it kept (same session) and paid once after it;
+- two 390 px phones and the Reconnect control's fit.
+
+`family-access.spec.mjs` now expects changes live (no focus nudge) and the removed-access reason.
+
+**Focused regressions (18 related suites, desktop and phone, 42.4 min): 157 passed, 15 deliberate viewport skips, 10 failed.**
+- Eight failures (`channel3-merchant` ×2, `connected-journey` and `area-cards`, each on both projects) came from an intermediate version of this branch that held a newly opened area's deed while focus was in a text field. After "Save as our goal" the page focuses the goal name, so the family's own deed waited. That deferral was removed; deeds show at once, as on main.
+- The other two are `journey.spec.mjs` "cancel, decline and pending outcomes…" on both projects. It expects "Nothing was charged", text that `origin/main`'s app has not rendered since `1dd3952`, so it fails on main as well. It was left for its owner.
+
+**Final run after the fixes (in progress when this was written):** `area-cards` "four journey tabs … visits the castle" still fails on desktop: the castle marker is not focused after **Visit your castle**. The same test passes at `944457f` (the integration before the live work), so a live-work commit causes it in example mode. It is not yet diagnosed and is the open blocker. The other results of that run were not collected before work stopped. `npm run check` passed.
+
+Captures: `docs/screenshots/shared-live-*.png` with [provenance](screenshots/shared-live-sources.json).
+
+**Limits.**
+- One server process and one SQLite file, as before; live state (revisions, streams) is in memory and restarts with the server. Several server processes would need a shared notifier.
+- The dropped connection is Chromium offline emulation plus the server closing its connections, not real network loss; the virtual authenticator is not a real device; the browser checks ran in headless Chromium only.
+- Fake Channel3, PayPal and Anthropic transports only: no provider, payment, order or model call. PayPal sandbox through the browser in family mode was not exercised.
+- Owner apps on 3010 and 3021, their `.env`, checkout and databases were not touched; no deployment, video or submission. Rachel's real family playtests remain open.
+
 ## Shared families: passkeys, invitations and permissions — November 6, 2026
 
 Claude branch `claude/shared-family-access`, stacked on `claude/goal-projects`; not merged or activated. See [FAMILY-ACCESS.md](FAMILY-ACCESS.md).
