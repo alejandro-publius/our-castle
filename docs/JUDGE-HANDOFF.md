@@ -51,7 +51,7 @@ New unlock cards briefly welcome the household's selected pixel characters besid
 
 ## 4. What remains, by who has to act
 
-**Current Mac apps:** the owner household stays at **http://localhost:3010** and the isolated rehearsal at **http://localhost:3021**, both from `~/projects/our-castle-reviewed`. The original checkout stays clean at `791e8ae`; private keys and both existing databases remain. Reviewed PRs #1–#5 are active, including the additive schema-4 receipt history. Existing application rows and environment are preserved, including 3010's separate original $60 state. [Release readiness](RELEASE-READINESS.md#current-mac-app) and the private session metadata hold the latest process/source details; this review guide does not assign a new checkout operator.
+**Current Mac apps:** the owner household stays at **http://localhost:3010** and the isolated rehearsal at **http://localhost:3021**, both running reviewed main `d87d92b` from `~/projects/our-castle-release-20261106`. PRs #20/#27 are merged, with schema 7, sponsor extensions, shared-family source and final access-race fixes. Both original households keep their prior access/provider modes and $60/$75 progress; shared-family mode uses its separate opt-in runner. Every original application-table column/value and the private environment matched activation checks. [Release readiness](RELEASE-READINESS.md#current-mac-app) and private session metadata hold exact PIDs, backups and source details; this review guide does not assign a new checkout operator.
 
 **Completed manual checkout:** the owner was the sole browser operator and completed the approved $15 contribution. This worker inspected the saved capture/credit, fixed the provider's forced-tool incompatibility, and made one necessary same-order steward retry through the local API. It genuinely called `get_order`; the server returned `match`, selected-order `verified`, and no warnings. Do not create another payment or repeat paid suites.
 
@@ -61,7 +61,7 @@ The rehearsal now has **one completed order, one completed capture, two ledger e
 
 **Submission:** current entry copy is [SUBMISSION-DRAFT.md](SUBMISSION-DRAFT.md). The current three-minute shot plan is [SUBMISSION-SHOTLIST.md](SUBMISSION-SHOTLIST.md). A public YouTube video is not uploaded, and no authenticated Devpost submission control is available here. Hosting is optional under the checked rules. The deadline is **November 12, 2026, noon PST**.
 
-**Production follow-up, not a claim of current support:** real family sign-in, multi-device access, live webhooks, physical-device/screen-reader passes, suitable AG commercial terms and remaining dependency advisories. Utility rewards require genuine authorized provider evidence; there is no such connection.
+**Production follow-up:** hosted multi-family operation, public webhook delivery, physical passkey/device and screen-reader passes, suitable AG commercial terms and remaining dependency advisories. Local passkey households and cross-page updates are implemented and tested with virtual authenticators; they are not a claim of hosted production validation. Utility rewards require genuine authorized provider evidence; there is no such connection.
 
 ## 5. Current review cut and preserved media
 

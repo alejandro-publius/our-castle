@@ -10,7 +10,7 @@ Codex reviewed the assembled integration, including the phone-marker fix at `e52
 - **Palace correction:** the existing scene has 150 light-pool rings (nine doors, two stables, the tavern and eighteen bridge gates, five rings each), while the test still expected 135. Only that expected count changed. The full palace exploration → simulated contribution → deeds → crossing/focus case then passed on **desktop and phone, 2/2** in 1.7 minutes. No lighting or payment code changed for this correction.
 - **Mac preparation:** the exact lockfile installed in a separate release worktree; local startup and bundled sponsor/Studio/Grid/WebAuthn resources served successfully. Private copies of both existing databases migrated 4→7 with every original-column checksum unchanged across all 12 old tables. Full app startup/state reads on those copies preserved all 19 resulting tables and the separate $60/$75 progress.
 
-All new payment/model/search checks used fake providers. No physical phone or new provider result is implied. Activation details, when completed, belong in [release readiness](RELEASE-READINESS.md); the earlier failed-run records below remain historical evidence.
+All new payment/model/search checks used fake providers. No physical phone or new provider result is implied. The completed main merge and local schema-7 activation are recorded in [release readiness](RELEASE-READINESS.md); the earlier failed-run records below remain historical evidence.
 
 ## Map names clear of the map controls on a phone — November 6, 2026
 
