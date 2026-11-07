@@ -733,6 +733,13 @@ function syncRealmMarkers({focus,points}){
   const compactOverview = !focus && map.clientWidth < 640;
   const home = homeDistrict(state?.board?.builtTier ?? 0).id;
   const occupied=[];
+  // The toolbar (Areas, Whole realm, View, settings) and the area row along the bottom are laid over the map, above its
+  // names. Their actual boxes, in the map's coordinates (a details menu by its summary, not its open panel):
+  const frame=map.getBoundingClientRect();
+  const controls=[...board.querySelectorAll('.world-hud > *, .board-foot > *')].flatMap((el)=>{
+    const r=(el.matches('details')?el.querySelector(':scope > summary'):el)?.getBoundingClientRect();
+    return r&&r.width&&r.height?[{left:r.left-frame.left,right:r.right-frame.left,top:r.top-frame.top,bottom:r.bottom-frame.top,toolbar:Boolean(el.closest('.world-hud'))}]:[];
+  });
   const priority=(p)=>document.activeElement?.dataset?.district===p.id?3:p.id===home?2:0;
   for(const point of [...points].sort((a,b)=>priority(b)-priority(a))){
     const legend = point.id === 'sword-stone' || point.id === FAMILY_PROJECT_SITE.id;
@@ -743,7 +750,14 @@ function syncRealmMarkers({focus,points}){
     el.hidden = !visible;
     if (visible) {
       const px=Math.max(el.offsetWidth/2+8,Math.min(point.width-el.offsetWidth/2-8,point.x));
-      const py=Math.max(el.offsetHeight+8,Math.min(point.height-8,point.y));
+      let py=Math.max(el.offsetHeight+8,Math.min(point.height-8,point.y));
+      // A name or marker that would sit under one of those controls moves just clear of it: above the area row, then
+      // below the toolbar, which wins when the map is too short for both. Anything not overlapping stays where it was.
+      const across=controls.filter(c=>px-el.offsetWidth/2<c.right&&px+el.offsetWidth/2>c.left);
+      const rowTop=Math.min(Infinity,...across.filter(c=>!c.toolbar).map(c=>c.top));
+      const toolbarBottom=Math.max(-Infinity,...across.filter(c=>c.toolbar).map(c=>c.bottom));
+      if(py>rowTop)py=rowTop-6;
+      if(py-el.offsetHeight<toolbarBottom)py=toolbarBottom+6+el.offsetHeight;
       const bounds={left:px-el.offsetWidth/2,right:px+el.offsetWidth/2,top:py-el.offsetHeight,bottom:py};
       if(!legend&&!focus){
         if(el!==document.activeElement&&occupied.some(b=>bounds.left<b.right+6&&bounds.right>b.left-6&&bounds.top<b.bottom+6&&bounds.bottom>b.top-6)){el.hidden=true;continue;}
