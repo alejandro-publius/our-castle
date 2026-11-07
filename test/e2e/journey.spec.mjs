@@ -320,7 +320,6 @@ test('the world keeps living, and board events drive synthesized sound through t
   const first = await scene(page);
   expect(first).toMatchObject({ ambient: true, grazers: 4, butterflies: 4 });
   await expect.poll(async () => (await scene(page)).ambientFrames, { timeout: 5000 }).toBeGreaterThan(first.ambientFrames + 3);
-  await openMenu(page, 'world-settings');
   const toggle = page.locator('#sound-toggle');
   await expect(toggle).toHaveAttribute('aria-pressed', 'false');
   await toggle.click();

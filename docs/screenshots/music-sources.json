@@ -1,0 +1,38 @@
+{
+  "date": "2026-11-07",
+  "baseCommit": "579b4f6995a407796b38cdda1f9600e80bb32e2f",
+  "mode": "Isolated in-memory example; simulated household; browser audio output muted for automated checks. No owner app, credentials or provider calls.",
+  "sources": {
+    "src/app/sound.js": "3e9abf3905d83bb2760b21c5e2ef9d65f119b7b68b6349c4bcce54b1cee7d377",
+    "src/app/main.js": "a836957a795dd3b6ad3477c0a7e261687684387863e7451371f489deb6c8181d",
+    "index.html": "8889894ad0a433391aaaa5104f4bde465e79319d24593abe9340bbb90f7254e4",
+    "app.css": "44e168f6a7a217646c3d3a1efbb2d4df1731dbb2eab71a32cbd7c282e428404d",
+    "server/app.mjs": "55bb64c03f27277dc318f3e6e0d6b4e9355aadc4b824fc21b2bef1fe801b361e",
+    "test/e2e/music.spec.mjs": "391c2432eab9e72eae415ac77619af74ca64a71ed4f0afb330cc19d1c478daa5"
+  },
+  "captures": [
+    {
+      "file": "music-header-desktop.png",
+      "sha256": "7c17cd194760314423ac1c31dc9a09ef414f0a6533b2f136908fe0acc8a5fefd",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "capture": "Actual .topbar screenshot on initial local example page, before enabling music; no image edits."
+    },
+    {
+      "file": "music-header-phone.png",
+      "sha256": "b0d33e58a0f69ce01f06ff7e9c5123ce849b705146a74515a37e4fa8b0e376cd",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "capture": "Actual .topbar screenshot on initial local example page, before enabling music; no image edits."
+    }
+  ],
+  "checks": {
+    "music": "Four native-media scenarios each passed on desktop and phone (eight executed cases), covering initial silence/local loop/reload, blocked play and visibility, late play completion, and failed-download retry.",
+    "regressions": "Existing sound bus journey passed on desktop and phone, animated unlock passed on desktop, and shared-family phone/reconnect header case passed. Two complementary viewport cases skip by existing design.",
+    "limits": "Automated Chromium with phone emulation; no physical-device listening, Safari claim or human playtest."
+  }
+}
