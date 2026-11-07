@@ -52,7 +52,7 @@ async function closeDeed(page, name) {
   await expect(page.locator('#deed-dialog')).toBeHidden();
 }
 
-test('fresh family -> merchant goal -> reviewed plan -> example contribution -> world -> Treasury and reload', async ({ page }, info) => {
+test('fresh family -> merchant goal -> reviewed plan -> example contribution -> world -> Treasury and reload', { tag: '@release' }, async ({ page }, info) => {
   await start(page);
   // Start from the actual House form rather than preparing a household through an API helper.
   await page.locator('input[name="playMode"][value="family"]').check();

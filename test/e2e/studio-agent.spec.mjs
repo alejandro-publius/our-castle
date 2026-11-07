@@ -142,7 +142,7 @@ test('changing member during a held request cancels the scoped run and never sho
   expect(s.issues).toEqual([]);
 });
 
-test('a question asked while Studio never answers is refused after a member change; the next runs once without Studio, and a late Studio starts nothing', async ({ page }) => {
+test('a question asked while Studio never answers is refused after a member change; the next runs once without Studio, and a late Studio starts nothing', { tag: '@release' }, async ({ page }) => {
   await start(page, { stall: true });
   const before = s.finance();
   await ask(page);

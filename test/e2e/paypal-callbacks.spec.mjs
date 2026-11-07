@@ -68,7 +68,7 @@ for (const pending of [false, true]) test(`a late SDK cancel preserves the ${pen
   expect(captureCalls()).toBe(1); expect(s.errors).toEqual([]); expect(s.outside).toEqual([]);
 });
 
-test('an SDK error after a server-confirmed capture cannot claim that no progress was recorded', async ({ page }) => {
+test('an SDK error after a server-confirmed capture cannot claim that no progress was recorded', { tag: '@release' }, async ({ page }) => {
   await mount(page);
   const before = snapshot(s.env.db), calls = s.env.fake.requests.length, writes = s.writes.length;
   await page.evaluate(() => window.sdkCallbacks.onError(new Error('Fixture: SDK closes after capture')));

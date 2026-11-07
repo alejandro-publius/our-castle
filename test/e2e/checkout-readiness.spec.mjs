@@ -76,7 +76,7 @@ async function mount(page) {
   }, { householdId: s.env.householdId, goalId: s.env.goalId });
 }
 
-test('world and planning load without PayPal; failed checkout can retry while keeping the chosen amount', async ({ page }, info) => {
+test('world and planning load without PayPal; failed checkout can retry while keeping the chosen amount', { tag: '@release' }, async ({ page }, info) => {
   await prepare(page, { full: true, firstScript: 'fail' });
   const before = snapshot();
   await page.locator('#tab-plan').click();
@@ -152,7 +152,7 @@ test('a slow SDK download can finish after thirty seconds without an automatic r
   expect(s.env.fake.requests).toHaveLength(0); expect(s.outside).toEqual([]); expect(s.pageErrors).toEqual([]);
 });
 
-test('rapid clicks and an early SDK start return create only one approval attempt and one credit', async ({ page }) => {
+test('rapid clicks and an early SDK start return create only one approval attempt and one credit', { tag: '@release' }, async ({ page }) => {
   await prepare(page); expect((await mount(page)).ok).toBe(true);
   await page.evaluate(() => { const button = document.querySelector('paypal-button'); button.click(); button.click(); });
   await expect.poll(() => orders().length).toBe(1);
@@ -186,7 +186,7 @@ test('late callbacks for an earlier window cannot cancel or enable the next chec
   expect(s.outside).toEqual([]); expect(s.pageErrors).toEqual([]);
 });
 
-test('an approval naming a different order cannot cause a capture', async ({ page }) => {
+test('an approval naming a different order cannot cause a capture', { tag: '@release' }, async ({ page }) => {
   await prepare(page); expect((await mount(page)).ok).toBe(true);
   await page.locator('paypal-button').click();
   await expect.poll(() => page.evaluate(() => window.sdkSessions[0]?.order?.orderId)).toBeTruthy();

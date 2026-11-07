@@ -163,7 +163,7 @@ test('a returning family resumes, keeps its chosen tab and unsaved amount, and c
   await expect(row).toContainText('Completed — counted');
 });
 
-test('the final contribution opens its Treasury receipt before the next action returns to the castle', async ({ page }, info) => {
+test('the final contribution opens its Treasury receipt before the next action returns to the castle', { tag: '@release' }, async ({ page }, info) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
   const writes = trackWrites(page);
   await ready(page);
