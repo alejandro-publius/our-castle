@@ -1,6 +1,6 @@
 # Run and review Our Castle
 
-Review [current main](https://github.com/alejandro-publius/our-castle/tree/main) and state the commit you inspected. Nine woodland districts, a campsite that develops with the goal, one household journal, Merchant, Treasury, APIMatic context, the Studio Agent Framework and saved explicit receipt checks are implemented. [Family-planning integration](FAMILY-PLAN-REVIEW.md) adds read-only amount/date checks and protection against using stale plans. [Release status](RELEASE-READINESS.md) records actual runtime evidence and remaining recording/submission gaps. This is not a submitted entry.
+Review [current main](https://github.com/alejandro-publius/our-castle/tree/main) and state the commit you inspected. Nine woodland districts, a chosen campsite/garden/schoolhouse that develops with the goal, one household journal, Merchant, Treasury, APIMatic context, the Studio Agent Framework and saved explicit receipt checks are implemented. Opt-in [shared families](FAMILY-ACCESS.md) add passkeys, invitations, server-enforced adult/child permissions and live page updates. [Family-planning integration](FAMILY-PLAN-REVIEW.md) adds read-only amount/date checks and protection against using stale plans. [Release status](RELEASE-READINESS.md) records actual runtime evidence and remaining recording/submission gaps. This is not a submitted entry.
 
 ## 1. Run it
 
@@ -23,16 +23,26 @@ For live integrations on another machine, use your own sandbox developer credent
 ## 2. A short review route
 
 1. Name the house and choose a crest. The map starts close to Hearth Village; **Whole realm** shows all nine districts.
-2. **Journal → Plan → Find an item**, or **Areas → Market Town → Merchant:** with Channel3 configured, search within a budget. **Use as goal** drafts the Plan; confirm **Save as our goal** explicitly. The no-key demo keeps search disconnected and uses its existing camping-trip goal; do not treat the disconnected state as fake product results.
-3. **Journal → Plan:** try a weekly amount/date with **Check schedule**; a later-date suggestion only fills the form. Explicitly make, review and use a plan to save it. The AI planner is live only with a runtime key; otherwise the rules planner is labelled accordingly. **Visit campsite** reaches the developing family project, including on a phone.
+2. **Journal → Plan → Find an item**, or **Areas → Market Town → Merchant:** with Channel3 configured, search within a budget. **Use as goal** drafts the Plan; confirm **Save as our goal** explicitly. Manual refresh and cheaper alternatives keep changed offers subject to review; selected stock/variant checks can expire an old draft. The no-key demo keeps search disconnected and uses its existing camping-trip goal; do not treat the disconnected state as fake product results.
+3. **Journal → Plan:** save a campsite, garden or schoolhouse **Build** choice with the goal, then try a weekly amount/date with **Check schedule**; a later-date suggestion only fills the form. Explicitly make, review and use a plan to save it. The AI planner is live only with a runtime key; otherwise the rules planner is labelled accordingly. The project's **Visit** control reaches the chosen place, including on a phone.
 4. **Contribute:** choose Rowan (adult), approve the exact amount and contribute. A $15 simulated contribution from the synthetic $60/$300 starting state opens the Manor at $75. It is labelled simulated.
 5. Dismiss the short deed, inspect the Manor and confirm the village remains. **View deed** reopens an earned area's card.
-6. **Ledger:** the Studio milestone points to the next area, AG Grid filters/search affect only the list, and a selected contribution opens its receipt. **Visit…** returns to the earned district. The existing steward stays closed until requested.
+6. **Ledger:** the illustrated Studio 3.1 milestone points to the next area and its weekly comparison uses the accepted plan and contribution/refund records. AG Grid filters/search affect only the list; select a contribution to see its receipt and saved-check status/time when present. A record with no saved check says so. **Visit…** returns to the earned district. The existing **House steward** disclosure identifies its read-only role: the configured steward says “Cannot make payments,” while the no-key demo says “Saved confirmations.” **Last confirmation** reads saved local history without a model or PayPal call. Opening the Ledger or a receipt never makes a fresh provider check.
 7. Refresh and select the receipt again. Goal, contribution records and earned areas persist while this demo session runs. Explore night/rain and inspect the palace, towers and sword; viewing a locked property does not earn it. Saved PayPal-check history belongs to the configured sandbox flow, not to simulated receipts.
 
 Searching does not buy a product. Bills/gifts do not count toward savings. No verified utility provider is connected.
 
 New unlock cards briefly welcome the household's selected pixel characters beside the crest. The parallel banner is suppressed for the same event; reopening a deed uses the original compact face. [Reference lock](UNLOCK-CELEBRATION.md). For observed usability sessions, use the [three-person playtest sheet](PLAYTEST.md); no participant results have been invented.
+
+### Optional shared-family route
+
+Run `npm run family -- --port 3200` separately, then open **http://localhost:3200** on this computer. It uses its own persistent database, simulated payments and the rules planner; it reads no provider keys. It leaves the existing owner/rehearsal apps alone.
+
+1. **Start a new family** and create a passkey. Set the house and goal in House/Plan.
+2. In **House → Invite to the family**, invite another adult. Open that one-time link in a **separate browser profile or browser**, then join with that member's own passkey. Two tabs in one profile share the sign-in cookie and do not represent two members.
+3. Save a goal or Build change on one page and observe the other update without reloading. An optional adult-approved **simulated** contribution shows the same progress, receipt and earned-area event on both pages. This is separate from the preserved $15 sandbox evidence.
+
+Passkey setup needs a compatible browser/device. Existing multi-context tests use virtual authenticators; they do not establish a human playtest or physical-phone result. [Permissions, recovery and exact checks](FAMILY-ACCESS.md).
 
 ## 3. Evidence, without mixing modes
 
@@ -42,9 +52,10 @@ New unlock cards briefly welcome the household's selected pixel characters besid
 | Saved explicit receipt checks | [Reviewed PR #5](VALIDATION.md#saved-receipt-checks--november-5-pst--november-6-utc-2026): persistence, scope, failure/mismatch/refund outcomes, schema upgrade and immediate failed-result display | Fake-provider unit/browser evidence; activation added an empty history table, without backfilling the earlier live result or making another provider lookup |
 | PayPal Server SDK | [Historical sandbox run](LIVE-VERIFICATION.md): hosted buyer approval, $15 capture, single credit, replay/mismatch checks, matching order and refund | Not an in-app popup recording |
 | AI planner/steward | [Historical live AI run](LIVE-VERIFICATION-AI.md): exact plan arithmetic, impossible target, ledger and transaction listing | No same-household-order `get_order` in that run |
-| Channel3 Merchant | One real desktop search; local fake-provider phone/save/journey tests | No new credit or live phone/save retest |
-| AG Grid / Studio | Actual installed widget, theme, harness/custom runner, cancellation, cleanup and fallback in browser checks | Provider responses in framework tests are fake; production licence not included |
-| APIMatic | [Eight SDK-specific Codex skills](APIMATIC-CODEX.md), discovery/hash evidence and tested payment fixes | Developer context, not another runtime money service |
+| Channel3 Merchant | One real desktop search; fake-provider search/save/journey, manual freshness, cheaper alternatives and selected-variant recovery checks | Refresh/alternatives/variant endpoints have not been rechecked live; no live phone/save retest |
+| AG Grid / Studio | Studio 3.1 illustrated next-area/weekly widget, live data preserving the report, Grid 36.3 records, theme and Agent Framework custom runner; cancellation/cleanup/fallback checks | Provider responses in framework tests are fake; production licence not included |
+| APIMatic | [Eight SDK-specific Codex skills](APIMATIC-CODEX.md), discovery/hash evidence, documented payment fixes and real generated-SDK wire contracts using fake transport | Developer context and fixture-backed contracts, not another runtime money service or new live-provider proof |
+| Shared-family access | [Passkeys, invitations, adult/child permissions and live updates](FAMILY-ACCESS.md); separate authenticated browser contexts and fake-provider boundary/recovery checks | Local WebAuthn with virtual authenticators; no hosted service, physical-device or observed human-playtest claim |
 | World and family journey | Focused desktop/touch-phone Chromium and Linux WebKit checks | Browser emulation, not physical devices/macOS Safari |
 
 [VALIDATION.md](VALIDATION.md) gives exact runs and versions. [AWARD-STRATEGY.md](AWARD-STRATEGY.md) maps the implementations to official sponsor briefs without guaranteeing a prize.
