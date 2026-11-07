@@ -2,6 +2,8 @@
 
 Follow-up to PR #22, based on the shared-live integration at `264d5c2`. The earlier fix withholds private responses after access ends and records already-dispatched settlements. This fix also prevents an **unsent** capture or refund from leaving after access ends during OAuth.
 
+After Claude integrated Merchant freshness, this branch also incorporated PR #20 at `bd0e716` by a normal conflict-free merge. The final integration check below covers those changes together.
+
 ## Reproduced gap
 
 A family adult requests a capture or refund with an empty token cache. While the PayPal client waits for its OAuth token, the owner removes that adult. Both the REST client and the actual pinned Server SDK then sent the financial request anyway. HTTP returned 401, but only after the operation had run.
@@ -31,6 +33,8 @@ node --test test/unit/payment-dispatch-access.test.mjs test/unit/family-runtime-
 - One added SDK concurrency case proves a removed caller cannot dispatch while an active caller succeeds on the same client. SDK 2.5.0 makes two simultaneous cold-token requests here; the test does not claim it coalesces them.
 - Existing tests retain amount/currency checks, request IDs, raw response fields, timeout/no-hidden-retry contracts, uncertain-outcome recovery, live notices and already-dispatched settlement behavior. The only skip is the pre-existing controller-substitution SDK OAuth-cache case; actual SDK token behavior is covered by the transport cases.
 - `npm run check` and `git diff --check` passed. No browser suite was rerun for this server/client-only change.
+
+After merging `bd0e716`, `node --test test/unit/payment-dispatch-access.test.mjs test/unit/merchant-freshness.test.mjs` passed **29/29**, with no skips. This confirms the OAuth-wait guards and Merchant freshness cases on the same combined tree. Log: `test-results/payment-dispatch/merchant-integration.txt`.
 
 Ignored logs are in `test-results/payment-dispatch/{before,after,validation,final-targeted,final,check}.txt`. The early concurrency test incorrectly expected a single cold-token fetch; its assertion was corrected to the SDK's observed two requests, without changing application behavior.
 
