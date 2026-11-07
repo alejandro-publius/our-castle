@@ -2,6 +2,8 @@
 
 Review [current main](https://github.com/alejandro-publius/our-castle/tree/main) and state the commit you inspected. Nine woodland districts, a chosen campsite/garden/schoolhouse that develops with the goal, one household journal, Merchant, Treasury, APIMatic context, the Studio Agent Framework and saved explicit receipt checks are implemented. Opt-in [shared families](FAMILY-ACCESS.md) add passkeys, invitations, server-enforced adult/child permissions and live page updates. [Family-planning integration](FAMILY-PLAN-REVIEW.md) adds read-only amount/date checks and protection against using stale plans. [Release status](RELEASE-READINESS.md) records actual runtime evidence and remaining recording/submission gaps. This is not a submitted entry.
 
+Public main also includes the reviewed scene lifecycle and Treasury stalled-asset recovery fixes, plus [credential-free CI](VALIDATION.md#release-checks-workflow--november-7-2026). The final PR #38 hosted run passed 361 unit tests with one existing skip on each of three Node versions, and 19 desktop/phone browser checks with one designed skip. These are fake-provider checks. The preserved Mac apps described below still run the earlier compass/receipt release; cloning main gives the updated source.
+
 ## 1. Run it
 
 Use Node.js **22.16 or later** (verified development environment: Node 26). The no-credentials game runs with simulated payments and a built-in rules planner. It is not a live PayPal/AI demonstration.
