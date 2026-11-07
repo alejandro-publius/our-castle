@@ -1,5 +1,83 @@
 # Validation
 
+## Household snapshots — November 7, 2026
+
+Branch `claude/household-snapshots`, from main `579b4f6`. That commit contains the reviewed PR #38 head `f4bf89c` and every earlier reviewed head.
+
+**The gap, reproduced on `579b4f6` before any change.** No backup or snapshot command existed, and `server/db.mjs` opens every database file in WAL mode. The fixture was an isolated example database in a fresh temporary folder, with no network. The $60 seed was checkpointed. Then one simulated $15 contribution was committed with the writer still open:
+
+| Observation | Node 22.16.0, SQLite 3.49.1 | Node 26.0.0, SQLite 3.53.4 |
+| --- | --- | --- |
+| WAL holding the commit | 53,592 bytes | 53,592 bytes |
+| Copy of the main file only | $60.00 | $60.00 |
+| `sqlite.backup()` from a read-only connection | $75.00; integrity ok; 0 foreign-key violations; 1 credited capture; 1 simulated entry | The same |
+| Source after that read-only backup | $75.00, WAL still 53,592 bytes | The same |
+
+The same probes found three more behaviours on both versions:
+- **Overwrite:** `backup()` replaced an existing SQLite destination; the caller's table was gone.
+- **Interruption:** a throwing progress callback left a 0-byte file at the destination.
+- **Sidecar files:** a read-only open leaves `-wal` and `-shm` files beside the file it opens.
+
+**The command.** `npm run snapshot -- <existing.sqlite> <new.sqlite>` runs `scripts/snapshot.mjs`:
+- **Copy:** it opens the source read-only, then makes a one-step SQLite online backup into a private temporary file with mode `0600`.
+- **Checks:** the copy must pass integrity, foreign-key and schema checks.
+- **Publishing:** a hard link, which never replaces a file. Lock waits are bounded (5 s by default).
+- **Output:** a counts-only summary, with the runtime SQLite version and a SHA-256 that identifies the file but is not a correctness check.
+- **Not included:** no dependency, endpoint, UI, scheduler, upload or restore.
+
+The details and limits are in the [runbook](RUNBOOK.md#household-snapshots).
+
+| Check | Actual result |
+| --- | --- |
+| New `test/unit/household-snapshot.test.mjs`, 6 tests, on Node 22.16.0 and 26.0.0 | 6 passed on each |
+| Deliberate mutations of the tool, each restored with a matching hash: copying the main file instead of the backup; an overwriting rename instead of the hard link; no validation | 3, 1 and 1 tests fail respectively |
+| The new tests with `migration-integration`, `ledger`, `payments` (both PayPal adapters) and `paypal-reconciliation`, on Node 22.16.0 and 26.0.0 | 59 tests: 58 passed, 1 existing designed skip, 0 failed on each |
+| Command run on a disposable example file | Written at `0600`; an existing destination refused with exit 1; no paths gives usage and exit 2 |
+| `npm run check` | Passed: 47 copied art/runtime files, the original 90-color palette, the renderer wiring and JavaScript syntax |
+| `git diff --check` | Clean |
+
+**What the six tests show:**
+1. **WAL content:** with the app's writer open and a committed contribution in its WAL, a main-file copy reads $60.00. The snapshot reopens at $75.00 with the same simulated labels. The source's rows, main-file bytes and WAL size are unchanged, and the snapshot has mode `0600`. Repeating the request on the reopened copy returns `already_processed`.
+2. **Sandbox, with the stateful fake PayPal:** one order, one credited capture, one contribution credit, the saved check and the recorded webhook event all survive unchanged. On the reopened copy:
+   - the same event returns `duplicate_event`;
+   - a new event for that capture, and a repeated capture, return `already_completed`;
+   - progress stays at $75.00, and the original database never sees those replays.
+3. **Refused sources, creating nothing:** a schema of 8 against this build's 7, a SQLite file that isn't Our Castle's, a text file, and a missing source, which is not created.
+4. **Never replaced:**
+   - an existing destination;
+   - the source itself, its `-wal` path, and a case-folded `-shm` path;
+   - a destination whose `-wal` already exists;
+   - a missing folder.
+
+   A file that appears at the destination after validation is left exactly as it was.
+5. **Not published:**
+   - a source under another connection's exclusive lock, refused within the bounded wait;
+   - an interruption before publishing;
+   - a copy with a damaged table page, which fails SQLite's integrity check.
+
+   No partial file remains.
+6. **Family fixture, through the command:** the command ran as a separate process against a family database that the in-process server was serving.
+   - The copy reports schema 7 with integrity ok.
+   - Its accounts, passkeys, memberships, invitations and sessions rows are identical.
+   - The output contains none of these: the invitation token, the session cookie, the token and CSRF hashes, the passkey ids, the user handles or the names.
+   - Missing paths exit 2 with usage.
+
+**Limits.**
+- **Point in time:** later PayPal captures or refunds are not recreated offline.
+- **Access state:** serving restored family access state needs a separate, explicit recovery procedure. A snapshot is not permission to reactivate old sessions.
+- **No restore:** there is no restore command and no app start on a snapshot.
+- **SQLite version:** Node 22.16.0's SQLite 3.49.1 is within the WAL-reset bug's affected range. The command's connection only reads and never checkpoints, and the runtime was not upgraded.
+- **How the faults were made:** a lock taken by exclusive locking mode, corruption by overwriting one page header, and interruption by a test hook. Hardware failure, power loss and a full disk were not tested.
+- **Hosted result:** the PR's existing release-checks workflow runs the full unit suite on Node 22.16.0, 24 and 26. That result is reported on the PR, not here.
+
+Raw evidence is ignored and stays local in `test-results/household-snapshots-20261107/`:
+- the reproduction scripts and their JSON results: `repro*.mjs`, `repro-node22.16.0.json`, `repro-node26.json`, `repro-overwrite.json`, `repro-rate-lock.json` and `repro-corrupt.json`;
+- the test logs `new-tests-*.log`, `mutation-*.log` and `focused-unit-*.log`;
+- `check.log`;
+- `snapshot.original.mjs`, the exact file the mutations were restored from.
+
+No owner household, credential, real order, paid model or provider call, recording, deployment or submission was used. No database file is committed.
+
 ## Release checks workflow — November 7, 2026
 
 Stacked on PR #37 (`claude/treasury-stall-fallback` at `2cd641d`), which is itself stacked on PR #36 (`a3f262d`, from main `01fb478`). The reviewed candidate had extensive unit and Playwright tests but no committed workflow. `.github/workflows/release-checks.yml` now runs the existing scripts and tests on every pull request, stacked ones included, and on pushes to main.
