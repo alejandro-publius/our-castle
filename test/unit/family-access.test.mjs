@@ -415,6 +415,8 @@ for (const [reason, phase] of [['revocation', 'model'], ['expiry', 'model'], ['s
       const adultId = before.access.members.find(m => m.name === 'Ash').id;
       const request = adult.call('POST', '/api/steward', { question: 'What is our goal?' });
       await entered.promise;
+      const seenAtStart = s.db.prepare('SELECT last_seen_at FROM sessions WHERE member_id = ? AND revoked_at IS NULL').get(adultId).last_seen_at;
+      if (reason === 'active') s.clock.advance(2 * 60_000);
       await endAccess(reason, s, owner, adult, adultId);
       finish.release();
       const result = await request;
@@ -422,6 +424,7 @@ for (const [reason, phase] of [['revocation', 'model'], ['expiry', 'model'], ['s
         assert.equal(result.status, 200); assert.equal(result.json.status, 'ok');
         assert.equal(calls.length, 2); assert.equal(lookups.length, 1);
         assert.equal(result.json.answer, 'I read the household records.');
+        assert.equal(s.db.prepare('SELECT last_seen_at FROM sessions WHERE member_id = ? AND revoked_at IS NULL').get(adultId).last_seen_at, seenAtStart, 'model/tool rechecks do not extend an idle session');
         return;
       }
       assert.equal(result.status, 401, `${reason} request returned ${result.status}, after ${calls.length} model turns`);

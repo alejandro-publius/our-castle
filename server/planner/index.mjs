@@ -80,7 +80,8 @@ export function createPlanner({ db, clock, provider = null }) {
   return {
     mode: provider ? 'live' : 'example',
 
-    async propose({ householdId, goalId, commitments: rawCommitments }) {
+    async propose({ householdId, goalId, commitments: rawCommitments, assertAccess = () => {} }) {
+      assertAccess();
       const goal = goalFor(householdId, goalId);
       const commitments = cleanCommitments(rawCommitments);
       const inputs = { commitments };
@@ -93,6 +94,10 @@ export function createPlanner({ db, clock, provider = null }) {
       } catch (error) {
         if (!(error instanceof PlannerProviderError)) throw error;
         return { status: 'provider_error', provider: provider.provider, model: provider.model, error: { kind: error.kind, message: error.message } };
+      } finally {
+        // The caller may lose access while the model runs. Check before validating/storing a proposal, or returning
+        // a provider failure, rather than saving a late plan and merely hiding its HTTP response afterwards.
+        assertAccess();
       }
       const check = validateAiPlan(result.output, basis);
       if (!check.ok) {
