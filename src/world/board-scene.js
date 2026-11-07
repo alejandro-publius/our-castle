@@ -9,6 +9,7 @@ import { createEstateCourt } from './court.js';
 import { createRealmModels } from './realm-models.js';
 import { createGoldFountains } from './gold-fountain.js';
 import { createFamilyProject } from './family-project.js';
+import { createSponsorSigns } from './sponsor-signs.js';
 import { FAMILY_PROJECT_SITE, projectSite } from '../core/family-project.js';
 import { REALM_SIZE, REALM_BOUNDS, REALM_DISTRICTS, REALM_LEGENDS, REALM_BRIDGES, REALM_ROUTE, homeDistrict, districtById, legendById, viewLocation, journeyLeg, journeyPosition } from '../core/realm.js';
 import { MOUNTAIN_PEAKS } from '../core/realm-terrain.js';
@@ -83,7 +84,7 @@ export function createBoardScene(container, { reducedMotion = false, isOccluded 
   let renderer; let pipeline; let scene; let camera; let builder; let observer; let models; let court;
   const part = (...args) => builder.part(...args);
   const groups = {};
-  let realmModels; let fountains; let project; let realm = { districts: [], bridges: [], landscape: null };
+  let realmModels; let fountains; let project; let sponsors; let realm = { districts: [], bridges: [], landscape: null };
   const perf = { lastMs: 0, maxMs: 0, totalMs: 0, draws: 0, calls: 0, triangles: 0 };
   let state = { builtTier: 0, position: 0, crest: { field: 'cobalt', charge: 'stag' }, gardens: 0, playMode: 'family', milestoneSpaces: [5, 12, 20], reached: [], estateLevel: 0, previewFeature: null };
   let shownPosition = 0;
@@ -551,6 +552,7 @@ export function createBoardScene(container, { reducedMotion = false, isOccluded 
   court = createEstateCourt(groups.court, builder, colours);
   groups.castle = new THREE.Group(); scene.add(groups.castle);
   const scenery=realmModels.woodland(groups.woodland),hillSign=scenery.frontier.hillsideSign;
+  sponsors = createSponsorSigns(groups.woodland, { part, builder, colours, onReady: () => draw() });
   FRAME_POINTS.push(new THREE.Vector3(hillSign.x,hillSign.top,hillSign.z));
   buildAtmosphere();
   buildLandscape();buildRoute(); buildGardens(); buildCastle(); buildEstate(); buildToken(); buildCourt(); buildProject();
@@ -659,8 +661,8 @@ export function createBoardScene(container, { reducedMotion = false, isOccluded 
       const t = groups.token.position;
       return { spaces, travelers: toScreen(t.x, t.y + 1.5, t.z), canvas: { left: rect.left, top: rect.top, width: rect.width, height: rect.height } };
     },
-    debug: () => ({ region: REALM_SIZE, estateLevel: state.estateLevel, view: { ...view }, previewFeature: state.previewFeature, tier: state.builtTier, position: state.position, shownPosition, gardens: state.gardens, crest: { ...state.crest }, playMode: state.playMode, familyAvatars: householdParty().map((m, i) => ({ memberId: m.id, avatarId: memberAvatar(m, i).id, role: m.role })), animating, frames, ambient: Boolean(ambientTimer), ambientFrames, grazers: grazers.length, butterflies: flutterers.length, court: court.debug(), legends: REALM_LEGENDS.map(({id,x,z})=>({id,x,z})), districts: realm.districts.map(({id,open,status,greyPaint,drawMeshes,hues})=>({id,open,status,greyPaint,drawMeshes,hues})), bridges: realm.bridges.map(({id,open,panels,gate,river})=>({id,open,gate,river,raised:panels.some(p=>Math.abs(p.group.rotation.z)>.01)})), landscape: realm.landscape, tavern: realmModels.tavernDebug(), farm: realmModels.farmDebug(), folklore: realmModels.legendsDebug(), project: { ...project.debug(), ...projectMeshes() }, riverCurrent: realmModels.currentDebug(), fountains: fountains.debug(), surround: pipeline.cloudSurroundDebug(), atmosphere: atmosphereDebug(), render: { ...perf, averageMs: perf.draws ? perf.totalMs / perf.draws : 0, geometries: renderer.info.memory.geometries } }),
-    dispose() { for (const [name,fn,options] of interactions) renderer.domElement.removeEventListener(name,fn,options); clearInterval(ambientTimer); observer?.disconnect(); fountains?.dispose(); court?.dispose(); for (const g of Object.values(groups)) disposeGroup(g); flutterGeo?.dispose(); builder?.dispose(); pipeline?.dispose(); renderer?.dispose(); },
+    debug: () => ({ region: REALM_SIZE, estateLevel: state.estateLevel, view: { ...view }, previewFeature: state.previewFeature, tier: state.builtTier, position: state.position, shownPosition, gardens: state.gardens, crest: { ...state.crest }, playMode: state.playMode, familyAvatars: householdParty().map((m, i) => ({ memberId: m.id, avatarId: memberAvatar(m, i).id, role: m.role })), animating, frames, ambient: Boolean(ambientTimer), ambientFrames, grazers: grazers.length, butterflies: flutterers.length, court: court.debug(), legends: REALM_LEGENDS.map(({id,x,z})=>({id,x,z})), districts: realm.districts.map(({id,open,status,greyPaint,drawMeshes,hues})=>({id,open,status,greyPaint,drawMeshes,hues})), bridges: realm.bridges.map(({id,open,panels,gate,river})=>({id,open,gate,river,raised:panels.some(p=>Math.abs(p.group.rotation.z)>.01)})), landscape: realm.landscape, sponsors: sponsors.debug(), tavern: realmModels.tavernDebug(), farm: realmModels.farmDebug(), folklore: realmModels.legendsDebug(), project: { ...project.debug(), ...projectMeshes() }, riverCurrent: realmModels.currentDebug(), fountains: fountains.debug(), surround: pipeline.cloudSurroundDebug(), atmosphere: atmosphereDebug(), render: { ...perf, averageMs: perf.draws ? perf.totalMs / perf.draws : 0, geometries: renderer.info.memory.geometries } }),
+    dispose() { for (const [name,fn,options] of interactions) renderer.domElement.removeEventListener(name,fn,options); clearInterval(ambientTimer); observer?.disconnect(); fountains?.dispose(); sponsors?.dispose(); court?.dispose(); for (const g of Object.values(groups)) disposeGroup(g); flutterGeo?.dispose(); builder?.dispose(); pipeline?.dispose(); renderer?.dispose(); },
   };
 
   function districtsOnScreen(){
