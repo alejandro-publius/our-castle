@@ -1,0 +1,53 @@
+{
+  "date": "2026-11-06",
+  "basedOn": "3b1d02ac697e8b796dc1683b9347687bb75105f7",
+  "sources": {
+    "src/app/main.js (before, at 3b1d02a)": "054c8508bd2f6862cb998623b8b11f5bc01931795c4ca0c0a7d4fbc35bc0b4c2",
+    "src/app/main.js (after)": "52577b8aaaf228bda9cba7ece70e0870478d9fbf6de9d750a825fc143f5e88ec",
+    "test/e2e/realm-focus.spec.mjs (after)": "a5c678ca3265843a0dffca8d27881feef7fb715adbf69a1a75e9d46d96786719"
+  },
+  "environment": "Playwright 1.64.1 Chromium, software WebGL (SwiftShader), reduced motion; desktop 1440x1000 and an emulated 390x844 touch phone",
+  "mode": "Example mode on a free local port with a scratch data folder and an empty environment: no credentials, no provider request, no write",
+  "steps": [
+    "Load, wait for data-ready, close the journal, set World settings > Time of day to Day",
+    "For each area: choose it in Areas, then View > Zoom in up to six times (1.2x a step, closest 2.8x), settling after each step",
+    "Capture the view; the before image used the committed src/app/main.js at 3b1d02a, the others the fixed file"
+  ],
+  "images": [
+    {
+      "path": "docs/screenshots/map-controls-phone-observatory-before.png",
+      "sha256": "c390216de9bedd8caf378a666b822a83143d889c079d363777d5f613b940696d",
+      "viewport": "phone 390x844 (device scale 2)",
+      "shows": "Starfall Observatory focused, sixth Zoom in (2.8x), before the fix: its name under Whole realm and View",
+      "code": "before"
+    },
+    {
+      "path": "docs/screenshots/map-controls-phone-observatory.png",
+      "sha256": "c1a79eda46b59033cabc80328aa76f96ac3d2eb4ac4c44a5c3393502ae6fc7d8",
+      "viewport": "phone 390x844 (device scale 2)",
+      "shows": "The same view after the fix: the name sits just below the toolbar",
+      "code": "after"
+    },
+    {
+      "path": "docs/screenshots/map-controls-phone-sword.png",
+      "sha256": "f58e252688a593a655575c4dd8bbe03d7d03645d5687ea6f27b7d02b5291b8c0",
+      "viewport": "phone 390x844 (device scale 2)",
+      "shows": "Stone Keep focused, second Zoom in: the Sword in the Stone glint just below Whole realm (before the fix it sat under it)",
+      "code": "after"
+    },
+    {
+      "path": "docs/screenshots/map-controls-phone-rapunzel.png",
+      "sha256": "898879b4e5c66e0e65fb425523449776dee57906ae3b5115a1be2d3eddc294d5",
+      "viewport": "phone 390x844 (device scale 2)",
+      "shows": "Rapunzel’s Tower focused, fourth Zoom in: its name just below the toolbar (before the fix it sat under Whole realm and View)",
+      "code": "after"
+    },
+    {
+      "path": "docs/screenshots/map-controls-desktop-village.png",
+      "sha256": "20f828117176e32d05f361fdc75215876af04fa23401c9ce00499b617641a211",
+      "viewport": "desktop 1440x1000",
+      "shows": "The starting Hearth Village view: the family-project tent marker just below Areas and Whole realm (before the fix it sat under them); every district name in place",
+      "code": "after"
+    }
+  ]
+}

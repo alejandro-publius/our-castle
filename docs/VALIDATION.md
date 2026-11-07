@@ -1,5 +1,49 @@
 # Validation
 
+## Map names clear of the map controls on a phone — November 6, 2026
+
+On a 390×844 phone at close zoom, an area's name could slide under the map's toolbar (Areas, Whole realm, View), which is drawn above the names. It was reported for Starfall Observatory at the closest zoom.
+
+**Reproduced.** A scratch probe, not committed, ran its own example-mode server with an empty environment.
+- **Method.** It chose each of the nine areas from Areas and stepped View → Zoom in to the closest zoom, on the phone and on desktop. At each step it measured every visible name and legend marker against the actual boxes of the toolbar and of the area row along the bottom.
+- **Before the fix,** something sat under a control in 8 of 64 phone views and 2 of 64 desktop views:
+
+  | Viewport | What was hidden | Under | Views |
+  | --- | --- | --- | --- |
+  | Phone | Starfall Observatory's name | Whole realm and View | +4 steps to the closest zoom |
+  | Phone | Rapunzel's Tower's name | Whole realm and View | +3 to +5 |
+  | Phone | Sword in the Stone glint | Whole realm | Stone Keep, +2 and +3 |
+  | Desktop | Family-project tent marker | Whole realm | Starting Hearth Village view |
+  | Desktop | Family-project tent marker | Areas | One step closer |
+
+**Fix** (`syncRealmMarkers` in `src/app/main.js`).
+- **Measurement.** Each placement measures the toolbar's controls, using a menu's summary rather than its open panel, and the area row, both in the map's coordinates.
+- **Movement.** A name or marker that would overlap one of them moves just clear of it: above the area row, then below the toolbar. The toolbar wins if the map is too short for both. Anything that doesn't overlap stays exactly where it was.
+- **Unchanged.** The camera, the projection, the controls (still drawn on top) and keyboard focus are untouched, and the sponsor signs keep their size.
+
+**Placement after the fix,** in the same views:
+- No view on either viewport has an overlap.
+- **Desktop:** 71 of 73 placements are identical. The two changes are the tent marker at the starting view and one step closer, each moved straight down below the toolbar. Every area name is unchanged.
+- **Phone:** 61 of 69 are identical. The 8 changes are exactly the overlapping cases, each moved straight down.
+- The same markers are shown in every view.
+
+**Regression** (`realm-focus.spec.mjs`, "no district name or legend marker slides under the map controls…").
+- **Coverage.** The starting view, the overview and all nine areas at every zoom step. It also checks that the controls are still the topmost elements at the closest observatory zoom.
+- **Result.** On the code before the fix it failed on both projects, listing 17 overlaps (3 desktop, 14 phone). After the fix it passes on both.
+
+**Checks** (desktop and phone; `npm run check` passed):
+- **`realm-focus`:** 8/8, all four cases including the new regression.
+- **`woodland-legends`:** 2/2, the sword glint.
+- **`area-cards`:** 18 passed, plus 2 deliberate desktop skips of its phone deed layouts.
+- **`palace` fails on both projects, as it already does on `main`.**
+  - It fails at its night-and-rain check (`pools` 150, expected 135), before it reaches its marker step.
+  - It fails identically on an exact copy of `main` at `86c8287`. The light spots it counts (9 doors, 2 stables, the tavern and 18 bridge gates, 5 rings each) are unchanged since then.
+  - So the expectation was already stale on `main`. It is left for its owner.
+
+**Screenshots** ([provenance](screenshots/map-controls-sources.json)): the phone observatory [before](screenshots/map-controls-phone-observatory-before.png) and [after](screenshots/map-controls-phone-observatory.png), the [sword glint](screenshots/map-controls-phone-sword.png), [Rapunzel's Tower](screenshots/map-controls-phone-rapunzel.png) and the [desktop starting village](screenshots/map-controls-desktop-village.png).
+
+**Limits.** Software-rendered Chromium on an emulated phone, with no physical device. Only the focused views above were measured; panned or turned views use the same rule but were not swept.
+
 ## Final assembly: PRs #25, #21 and #26 merged into PR #20 — November 6, 2026
 
 Three Codex PRs were reviewed and merged into `claude/shared-live-integration` one at a time. Each was a normal merge followed by focused checks. Nothing was merged into `main` or activated, and PR #24 was left as it is.
