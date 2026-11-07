@@ -112,14 +112,44 @@ test('a failed SDK download is retryable rather than cached as a permanent failu
 test('a stalled SDK download times out and permits an explicit fresh attempt', async ({ page }) => {
   await prepare(page, { firstScript: 'hold' });
   await page.clock.install();
+  await page.evaluate(() => { window.paypal = { Buttons() {} }; }); // A v5 namespace is not a loaded v6 SDK.
   const attempt = mount(page);
   await expect.poll(() => s.scripts).toBe(1);
-  await page.clock.fastForward(20_001);
+  await page.clock.fastForward(60_001);
   await expect(attempt).resolves.toMatchObject({ ok: false });
   await s.held.abort();
   expect((await mount(page)).ok).toBe(true);
   expect(s.scripts).toBe(2); expect(orders()).toHaveLength(0); expect(s.env.fake.requests).toHaveLength(0);
   expect(s.outside).toEqual([]); expect(s.pageErrors).toEqual([]);
+});
+
+test('a ready v6 SDK survives a missing script load event without creating another download or order', async ({ page }) => {
+  await prepare(page, { firstScript: 'hold' });
+  await page.clock.install();
+  const before = snapshot(), attempt = mount(page);
+  await expect.poll(() => s.scripts).toBe(1);
+  // Reproduce the upstream loader case: the v6 namespace exists, but the element's onload was not observed.
+  await page.evaluate(source => { (0, eval)(source); document.querySelector('script[src*="/web-sdk/v6/core"]').onload = null; }, sdk);
+  await page.clock.fastForward(60_001);
+  await expect(attempt).resolves.toMatchObject({ ok: true });
+  await s.held.abort();
+  await expect(page.locator('paypal-button')).toHaveAttribute('aria-disabled', 'false');
+  expect(s.scripts).toBe(1); expect(await page.evaluate(() => window.sdkInitializations)).toBe(1);
+  expect(snapshot()).toBe(before); expect(orders()).toHaveLength(0); expect(s.env.fake.requests).toHaveLength(0);
+  expect(s.outside).toEqual([]); expect(s.pageErrors).toEqual([]);
+});
+
+test('a slow SDK download can finish after thirty seconds without an automatic retry', async ({ page }) => {
+  await prepare(page, { firstScript: 'hold' });
+  await page.clock.install();
+  const before = snapshot(), attempt = mount(page);
+  await expect.poll(() => s.scripts).toBe(1);
+  await page.clock.fastForward(45_000);
+  expect(await page.evaluate(() => window.mountPending)).toBe(true);
+  await s.held.fulfill({ contentType: 'text/javascript', body: sdk });
+  await expect(attempt).resolves.toMatchObject({ ok: true });
+  expect(s.scripts).toBe(1); expect(snapshot()).toBe(before); expect(orders()).toHaveLength(0);
+  expect(s.env.fake.requests).toHaveLength(0); expect(s.outside).toEqual([]); expect(s.pageErrors).toEqual([]);
 });
 
 test('rapid clicks and an early SDK start return create only one approval attempt and one credit', async ({ page }) => {
