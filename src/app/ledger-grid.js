@@ -1,8 +1,11 @@
 // The house ledger as one AG Grid Community (MIT) grid, themed with the parchment tokens.
-// AG Grid is loaded only when the ledger is first shown. If it cannot load, a plain HTML table
-// with the same rows is rendered instead, so the ledger never disappears.
+// AG Grid is loaded only when the ledger is first shown. If it cannot load, or has not loaded within
+// LOAD_WAIT_MS, a plain HTML table with the same rows is rendered instead, so the ledger never disappears.
 import { rowChanges, hasChanges } from '../core/row-updates.js';
 
+// A script that never answers must not hold back the records. After this wait the plain table stays until a
+// reload, and a late load changes nothing.
+const LOAD_WAIT_MS = 6000;
 let loading = null;
 function loadAgGrid() {
   if (window.agGrid) return Promise.resolve(window.agGrid);
@@ -13,6 +16,7 @@ function loadAgGrid() {
       script.async = true;
       script.onload = () => (window.agGrid ? resolve(window.agGrid) : reject(new Error('AG Grid loaded without window.agGrid')));
       script.onerror = () => reject(new Error('AG Grid could not be loaded'));
+      setTimeout(() => reject(new Error('AG Grid did not load in time')), LOAD_WAIT_MS);
       document.head.append(script);
     });
   }

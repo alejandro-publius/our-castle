@@ -1,5 +1,60 @@
 # Validation
 
+## Treasury records when an optional bundle stalls — November 7, 2026
+
+Stacked on the reviewed release candidate, PR #36 (`claude/release-candidate` at `a3f262d`, from main `01fb478`, implementation `4082df5`). It is not merged, and the owner apps were not changed.
+
+**The gap, reproduced on `a3f262d`.** A probe held the self-hosted AG Grid and AG Studio scripts with request gates that never answered. Separately, it held Studio's licence request. It then timed, in real time for up to 12 s, from the Ledger's first request. Each case used the real app in-process, with a fresh in-memory example database and an empty environment, and steward cases used the studio-agent spec's scripted fake model transport.
+- **Neither script answers:** neither the records nor the milestone appeared. A filter, search and newer bill chosen in the meantime waited for a grid that never came.
+- **"Review the receipt" by keyboard:** focus never reached the selected receipt. It stayed on the step button.
+- **An explicit steward question while Studio is unanswered:** it stayed at "The steward is reading the ledger…" with no request, with or without a member change.
+- **Only the licence is unanswered:** the records appeared at 0.9 s, but the milestone never did.
+- **Controls:** released after 1.5 s, both mounted at 1.9 s; answered 503, the existing fallbacks appeared at 0.8 s.
+
+**The fix.** Both waits now have an upper bound, after which the existing fallbacks take over:
+- **`ledger-grid.js`:** the shared script load gives up after 6 s. The existing plain table is then drawn from the latest rows, with the active filter, search and selection.
+- **`treasury.js`:** Studio's start waits at most 6 s for the script and its licence together. The existing plain milestone is then drawn from the same server data.
+
+The page then keeps the honest fallback until the existing explicit reload. A late script changes nothing: no second mount, no focus change and no steward or provider request. Timely loads and explicit errors take the same path as before. The status reports the fallback: `data-grid`, the Treasury `source` and error, and the steward agent's `fallback` source.
+
+**After the fix, same probe** (plus a Journal case, run only after the fix):
+- **Neither script answers:** records and milestone were usable at 6.1 s, as the plain table and milestone.
+  - The newer bill, the Bills filter and the "water" search applied, with the $65.00 total and the $65.00 of $75.00 milestone.
+  - Clearing them showed all three latest records.
+  - When the scripts were released late, they loaded and nothing changed. A reload mounted AG Grid and Studio.
+- **The receipt route:** focus reached the selected $5 receipt at 6.1 s.
+- **Steward:**
+  - The explicit question ran once, in the fallback agent, about 5 s after it was asked: one `POST /api/steward` and one fake conversation.
+  - After a member change it refused with "The records changed. Check the current record again." and made no request.
+  - A late Studio started nothing.
+- **Only the licence unanswered:** the plain milestone appeared at 6.1 s.
+- **The Journal closed during the wait:** the fallback was drawn while it was hidden. Reopened, the rows were laid out and the milestone container had its natural 252 px height.
+- **Controls:** unchanged, with the mount at 1.9 s and the explicit-error fallback at 0.9 s.
+
+| Check | Actual result |
+| --- | --- |
+| New regressions, desktop and 390 px phone: two in `treasury.spec.mjs` (latest records, filter, search, late load and reload; the receipt route and its focus) and one in `studio-agent.spec.mjs` (a member change refuses the held question, the next runs once, and a late Studio starts nothing). Fake clock and request gates, no sleeps through the wait | 6 passed. On the candidate's two source files, all 6 fail: `#ledger-goal` never gets `data-grid` (empty received), the receipt is never focused, and no fallback milestone appears |
+| Related suites, desktop and phone: treasury, studio-agent, treasury-status, earned-realm, shared-live, and family-journey's two receipt cases (`:99`, `:166`) | 51 passed (the 6 new cases included), 5 designed project skips, 0 failed |
+| family-journey's two lazy-grid cases, which hold the grid script briefly, each at its own viewport | 4 passed, 4 designed viewport skips |
+| Treasury unit test | 4 passed |
+| Source/art/palette/syntax guard (`npm run check`) | Passed: 47 copied art/runtime files, the original 90-color palette, the renderer wiring and JavaScript syntax |
+| `git diff --check` | Clean |
+
+**Limits.**
+- **Emulated faults:** the stalls were request gates that never answered, not real network faults. Everything ran in software-rendered Chromium, with the phone as an emulated viewport.
+- **A slow load past 6 s:** a script that would have finished after the wait now leaves the plain fallback in place until a reload. This is the intended trade for usable records within eight seconds. The 6 s wait leaves room for the fallback to render and focus to land.
+- **A late AG Grid script still runs when it arrives,** since a started script can't be withdrawn. It adds its own stylesheets and registers five legacy icon fonts. The page's existing CSP (`font-src 'self'`) blocks those `data:` fonts and logs five console errors. The fallback's fonts, colours and layout measured the same before and after. A late Studio script changed nothing.
+- **No new controls:** no new copy, retry control, timeout message, dependency or provider retry.
+
+Raw evidence is ignored and stays local in `test-results/treasury-stall-20261107/`:
+- the probe, `probe.mjs`, with `result-before.json`, `result-after.json` and `result-after-journal.json`;
+- `spec-before-fix.log` and `spec-after-fix.log`;
+- `related-suites.log`, `lazy-grid.log`, `unit-treasury.log` and `check.log`;
+- the late-script diagnostics `diag-late-style.mjs`, its JSON and screenshots, and `diag-fonts.mjs`;
+- the exact files tested: `ledger-grid.candidate.js`, `treasury.candidate.js`, `ledger-grid.fixed.js` and `treasury.fixed.js`.
+
+No owner household, credential, real order, paid model or provider call, recording, deployment or submission was used.
+
 ## Release candidate: the scene lifecycle and Treasury loading fixes, with two stale checks corrected — November 7, 2026
 
 This candidate combines two reviewed fixes for integration review. It is not merged into main, and the owner apps were not changed.
