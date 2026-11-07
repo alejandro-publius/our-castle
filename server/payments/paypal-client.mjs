@@ -68,8 +68,11 @@ export function createPayPalClient({ clientId, clientSecret, fetch: rawFetch = g
     return cached.value;
   }
 
-  async function request(method, path, { body, json, requestId, prefer = 'return=representation' } = {}) {
+  async function request(method, path, { body, json, requestId, prefer = 'return=representation', assertAccess } = {}) {
+    assertAccess?.();
     const headers = { Authorization: `Bearer ${await accessToken()}`, Accept: 'application/json' };
+    // OAuth is a separate asynchronous operation. Losing access during it must stop a still-unsent payment.
+    assertAccess?.();
     if (json === undefined && body !== undefined) json = JSON.stringify(body);
     if (json !== undefined) headers['Content-Type'] = 'application/json';
     if (requestId) headers['PayPal-Request-Id'] = requestId;
@@ -115,8 +118,8 @@ export function createPayPalClient({ clientId, clientSecret, fetch: rawFetch = g
       });
     },
 
-    captureOrder(orderId, { requestId }) {
-      return request('POST', `/v2/checkout/orders/${encodeURIComponent(orderId)}/capture`, { requestId, body: {} });
+    captureOrder(orderId, { requestId, assertAccess }) {
+      return request('POST', `/v2/checkout/orders/${encodeURIComponent(orderId)}/capture`, { requestId, body: {}, assertAccess });
     },
 
     getOrder(orderId) {
@@ -127,9 +130,10 @@ export function createPayPalClient({ clientId, clientSecret, fetch: rawFetch = g
       return request('GET', `/v2/payments/captures/${encodeURIComponent(captureId)}`, { prefer: null });
     },
 
-    refundCapture(captureId, { amountCents, currency, requestId, note }) {
+    refundCapture(captureId, { amountCents, currency, requestId, note, assertAccess }) {
       return request('POST', `/v2/payments/captures/${encodeURIComponent(captureId)}/refund`, {
         requestId,
+        assertAccess,
         body: {
           amount: { currency_code: currency, value: centsToDecimalString(amountCents) },
           note_to_payer: (note ?? 'Our Castle sandbox refund').slice(0, 255),

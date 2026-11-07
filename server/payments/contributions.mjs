@@ -394,15 +394,16 @@ export function createContributionService({ db, clock, mode, paypal = null, webh
     },
 
     /** Called after the buyer approves in PayPal. The capture result, not the callback, decides. */
-    async capturePayPalOrder({ providerOrderId, householdId, goalId }) {
+    async capturePayPalOrder({ providerOrderId, householdId, goalId, assertAccess = () => {} }) {
       requireMode('sandbox');
       const row = ownedOrder(providerOrderId, householdId, goalId);
+      assertAccess();
       if (SETTLED.has(row.status)) return result(row, 'already_completed');
       if (inflight.has(row.id)) return inflight.get(row.id);
       const work = (async () => {
         let order;
         try {
-          ({ data: order } = await paypal.captureOrder(providerOrderId, { requestId: `capture-${row.id}` }));
+          ({ data: order } = await paypal.captureOrder(providerOrderId, { requestId: `capture-${row.id}`, assertAccess }));
         } catch (error) {
           if (!(error instanceof PayPalError)) throw error;
           if (error.hasIssue('ORDER_ALREADY_CAPTURED')) ({ data: order } = await paypal.getOrder(providerOrderId));
@@ -461,10 +462,11 @@ export function createContributionService({ db, clock, mode, paypal = null, webh
     async refundPayPalCapture(input) {
       requireMode('sandbox');
       const { cap, refundable } = refundPreconditions(input, 'paypal-sandbox');
+      input.assertAccess?.();
       const count = db.prepare('SELECT COUNT(*) AS n FROM payment_refunds WHERE capture_id = ?').get(cap.capture_id).n;
       let data;
       try {
-        ({ data } = await paypal.refundCapture(cap.capture_id, { amountCents: refundable, currency: cap.currency, requestId: `refund-${cap.capture_id}-${count + 1}` }));
+        ({ data } = await paypal.refundCapture(cap.capture_id, { amountCents: refundable, currency: cap.currency, requestId: `refund-${cap.capture_id}-${count + 1}`, assertAccess: input.assertAccess }));
       } catch (error) {
         if (error instanceof PayPalError && outcomeUnknown(error)) {
           // The refund may have happened. Nothing is recorded here. A retry keeps the same PayPal-Request-Id, but PayPal
