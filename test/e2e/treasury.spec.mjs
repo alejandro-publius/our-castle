@@ -143,6 +143,100 @@ test('a search typed while the records are still loading applies to them when th
   expect(writes.get(page)).toEqual([]);
 });
 
+// Both optional scripts go unanswered until `release()`, as a request that never settles would.
+async function holdBundles(page) {
+  let release;
+  const gate = new Promise((resolve) => { release = resolve; });
+  for (const path of ['**/vendor/ag-grid/ag-grid-community.min.js', '**/vendor/ag-studio/ag-studio.min.js'])
+    await page.route(path, async (route) => { await gate; await route.continue().catch(() => {}); });
+  return release;
+}
+// With the fake clock installed: move it to eight seconds after `t0`, the page's time when the Ledger was requested.
+const eightSecondsAfter = async (page, t0) => page.clock.fastForward(Math.max(0, Math.floor(t0 + 8000 - await page.evaluate(() => performance.now()))));
+const frames = (page) => page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+
+test('if the Grid and Studio scripts never answer, the latest records and milestone are usable within eight seconds; a late load changes nothing', async ({ page }) => {
+  await open(page);
+  await page.clock.install();
+  const release = await holdBundles(page);
+  if (await page.locator('#journey').isHidden()) await page.locator('#journal-toggle').click();
+  const t0 = await page.evaluate(() => performance.now());
+  await page.locator('#tab-ledger').click();
+  // A newer record, a filter and a search, all while neither script has answered.
+  await page.locator('#bill-form [name="label"]').fill('Test fixture: water');
+  await page.locator('#bill-form [name="amount"]').fill('25');
+  await page.locator('#bill-form button').click();
+  await expect(page.locator('#ledger-status')).toContainText('Logged');
+  await page.locator('#ledger-filter').getByRole('button', { name: 'Bills', exact: true }).click();
+  await page.locator('#ledger-search').fill('water');
+  await expect(page.locator('#ledger-goal')).not.toHaveAttribute('data-grid');
+  await expect(milestone(page)).toHaveCount(0);
+  await eightSecondsAfter(page, t0);
+  // The existing plain table and milestone, from the latest server state, with the filter and search applied.
+  await expect(page.locator('#ledger-goal')).toHaveAttribute('data-grid', 'fallback');
+  const rows = page.locator('#ledger-goal tbody tr:not(.total)');
+  await expect(rows).toHaveCount(1);
+  await expect(rows).toContainText('Test fixture: water');
+  await expect(page.locator('#ledger-goal tr.total')).toContainText('$60.00');
+  await expect(page.locator('#ledger-search')).toHaveValue('water');
+  await expect(page.locator('#ledger-search')).toBeFocused();
+  await expect(page.locator('#treasury-next .next-area[data-source="fallback"] .next-area-meta')).toHaveText('$60.00 of $75.00 · $15.00 to go');
+  expect(await treasury(page)).toMatchObject({ source: 'fallback', error: 'AG Studio did not start in time' });
+  await page.locator('#ledger-filter').getByRole('button', { name: 'All', exact: true }).click();
+  await page.locator('#ledger-search').fill('');
+  await expect(rows).toHaveCount(2);
+  // The scripts arrive late: nothing is mounted over the fallback, and focus stays where the family left it.
+  release();
+  await page.waitForFunction(() => window.agGrid && window.agStudio);
+  await frames(page);
+  await expect(page.locator('#ledger-goal')).toHaveAttribute('data-grid', 'fallback');
+  await expect(page.locator('#ledger-goal .ag-root-wrapper')).toHaveCount(0);
+  await expect(page.locator('#treasury-next .ag-studio-root')).toHaveCount(0);
+  await expect(rows).toHaveCount(2);
+  await expect(page.locator('#ledger-search')).toBeFocused();
+  expect((await treasury(page)).source).toBe('fallback');
+  // The existing explicit reload brings both back.
+  await page.reload();
+  await page.waitForFunction(() => window.__ourCastle?.state && window.__ourCastle.scene());
+  await openLedger(page);
+  await expect(page.locator('#ledger-goal .ag-root-wrapper')).toHaveCount(1);
+  await expect(page.locator('#ledger-goal .ag-row:not(.ag-row-pinned)')).toHaveCount(2);
+  expect(writes.get(page)).toEqual(['POST /api/entries']);
+});
+
+test('the receipt route reaches its record within eight seconds even if the Grid and Studio scripts never answer', async ({ page }) => {
+  await open(page);
+  await page.clock.install();
+  const release = await holdBundles(page);
+  if (await page.locator('#journey').isHidden()) await page.locator('#journal-toggle').click();
+  await page.locator('#tab-give').click();
+  await page.locator('#give-amount').fill('5.00');
+  await page.locator('#give-approve').check();
+  await page.getByRole('button', { name: 'Simulate approved payment', exact: true }).click();
+  await expect(page.locator('#next-step-go')).toHaveText('Review the receipt');
+  const contribution = await page.evaluate(() => window.__ourCastle.state.contributions[0]);
+  expect(contribution).toMatchObject({ amountCents: 500, status: 'completed', simulated: true });
+  await page.locator('#next-step-go').focus();
+  const t0 = await page.evaluate(() => performance.now());
+  await page.keyboard.press('Enter');
+  await expect(page.locator('#tab-ledger')).toHaveAttribute('aria-selected', 'true');
+  await expect(page.locator('#ledger-goal')).not.toHaveAttribute('data-grid');
+  await eightSecondsAfter(page, t0);
+  await expect(page.locator('#ledger-selected-record')).toBeFocused();
+  await expect(page.locator('#ledger-goal')).toHaveAttribute('data-grid', 'fallback');
+  await expect(page.locator('#ledger-contributions li[data-contribution]')).toHaveAttribute('data-contribution', contribution.id);
+  await expect(page.locator('#ledger-goal .ledger-record-button[aria-pressed="true"]')).toHaveText(/Simulated contribution/);
+  await expect(page.locator('#treasury-next .next-area[data-source="fallback"] .next-area-meta')).toHaveText('$65.00 of $75.00 · $10.00 to go');
+  // A late load keeps the receipt and its focus.
+  release();
+  await page.waitForFunction(() => window.agGrid && window.agStudio);
+  await frames(page);
+  await expect(page.locator('#ledger-selected-record')).toBeFocused();
+  await expect(page.locator('#ledger-goal .ag-root-wrapper')).toHaveCount(0);
+  await expect(page.locator('#treasury-next .ag-studio-root')).toHaveCount(0);
+  expect(writes.get(page)).toEqual(['POST /api/example/contributions']);
+});
+
 test('a completed contribution opens the Manor once; the Treasury moves on, survives reload, and pending or refunds behave', async ({ page }, info) => {
   await open(page, { plannedWeek: true });
   // The ordinary Contribute flow with adult approval (simulated example payment). The world shows the Manor deed.
