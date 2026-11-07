@@ -155,7 +155,7 @@ async function holdBundles(page) {
 const eightSecondsAfter = async (page, t0) => page.clock.fastForward(Math.max(0, Math.floor(t0 + 8000 - await page.evaluate(() => performance.now()))));
 const frames = (page) => page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
 
-test('if the Grid and Studio scripts never answer, the latest records and milestone are usable within eight seconds; a late load changes nothing', async ({ page }) => {
+test('if the Grid and Studio scripts never answer, the latest records and milestone are usable within eight seconds; a late load changes nothing', { tag: '@release' }, async ({ page }) => {
   await open(page);
   await page.clock.install();
   const release = await holdBundles(page);
@@ -204,7 +204,7 @@ test('if the Grid and Studio scripts never answer, the latest records and milest
   expect(writes.get(page)).toEqual(['POST /api/entries']);
 });
 
-test('the receipt route reaches its record within eight seconds even if the Grid and Studio scripts never answer', async ({ page }) => {
+test('the receipt route reaches its record within eight seconds even if the Grid and Studio scripts never answer', { tag: '@release' }, async ({ page }) => {
   await open(page);
   await page.clock.install();
   const release = await holdBundles(page);

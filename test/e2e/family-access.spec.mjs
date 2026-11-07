@@ -15,7 +15,7 @@ const evidence = fileURLToPath(new URL('../../test-results/family-access/', impo
 mkdirSync(evidence, { recursive: true });
 test.use({ reducedMotion: 'reduce' });
 
-test('a family with passkeys: owner, adult and child in their own browsers; a separate family stays apart', async ({ browser }, info) => {
+test('a family with passkeys: owner, adult and child in their own browsers; a separate family stays apart', { tag: '@release' }, async ({ browser }, info) => {
   test.skip(info.project.name === 'phone', 'The full journey runs on desktop; the phone fit has its own case.');
   test.setTimeout(240_000);
   const s = await familyServer();
