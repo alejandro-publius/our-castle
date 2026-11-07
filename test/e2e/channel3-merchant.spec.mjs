@@ -357,6 +357,53 @@ test('a deleted catalog item closes the waiting tab and never opens its old reta
   await expect(page.locator('#merchant-query')).toHaveValue('tent');
 });
 
+test('an unavailable selected size blocks the retailer visit and goal, then recovers only after an explicit check', async ({ page }, info) => {
+  let stock = null;
+  const product = () => fakeProduct({ offers: [fakeProduct().offers[0]], variants: {
+    selected: [{ name: 'Size', label: 'Large' }],
+    options: [{ name: 'Size', values: [{ label: 'Large', exists: true, available: stock }] }],
+  } });
+  await open(page, { respondWith: (url) => url.includes('/products/') ? product() : fakeSearchResponse([product()]) });
+  const before = await stateOf(page);
+  const visited = [];
+  await page.context().route('https://buy.trychannel3.com/**', (route) => { visited.push(route.request().url()); return route.abort(); });
+  await page.locator('#open-merchant').click();
+  await page.locator('#merchant-query').fill('large family tent');
+  await page.locator('#merchant-search').click();
+  const item = page.locator('#merchant-results > li').first();
+  await expect(item.getByRole('button', { name: 'Use as goal' })).toBeEnabled();
+  stock = 'OutOfStock';
+  await item.locator('summary').click();
+  await item.getByRole('button', { name: /Visit example-outfitter/ }).click();
+  await expect(page.locator('#merchant-status')).toHaveText('The offer changed. Review it before visiting the retailer.');
+  await expect(item.locator('.merchant-item-note')).toHaveText('The selected size or colour is out of stock.');
+  await expect(item.locator('.merchant-item-meta')).toContainText('Out of stock');
+  await expect(item.getByRole('button', { name: 'Use as goal' })).toBeDisabled();
+  await expect(item.getByRole('button', { name: /Visit example-outfitter/ })).toHaveCount(0);
+  await expect.poll(() => page.context().pages().length).toBe(1);
+  expect(visited).toEqual([]);
+  expect(await stateOf(page)).toEqual(before);
+  expect(s.fake.calls.map((c) => c.method)).toEqual(['POST', 'GET']);
+  await page.screenshot({ path: info.outputPath('selected-variant-unavailable.png') });
+
+  stock = 'InStock';
+  await item.locator('summary').click();
+  await item.getByRole('button', { name: 'Check price & stock' }).click();
+  await expect(item.getByRole('button', { name: 'Use as goal' })).toBeEnabled();
+  expect(await stateOf(page)).toEqual(before);
+  await item.getByRole('button', { name: 'Use as goal' }).click();
+  await expect(page.locator('#goal-draft')).toBeVisible();
+  await page.locator('#goal-draft-save').click();
+  await expect(page.locator('#goal-draft')).toBeHidden();
+  const saved = await stateOf(page);
+  expect(saved.goalItem.selection).toEqual([{ name: 'Size', label: 'Large' }]);
+  expect(saved.goal.targetCents).toBe(18950);
+  expect(saved.progress.progressCents).toBe(before.progress.progressCents);
+  expect(saved.contributions).toEqual(before.contributions);
+  expect(s.fake.calls.map((c) => c.method)).toEqual(['POST', 'GET', 'GET']);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)).toBe(false);
+});
+
 test('a changed family goal keeps the chosen product for explicit review and confirmation', async ({ page }, info) => {
   await open(page);
   const initial = await stateOf(page);

@@ -128,6 +128,19 @@ function usability(offer) {
   return { usable: true, reason: null };
 }
 
+// Listing stock and configuration stock are separate Channel3 facts. Detail hydrates `available`; search may leave it
+// unknown. Only the effective selection matters, so another size being absent/out of stock must not block this one.
+function blockedSelection(variants) {
+  const options = Array.isArray(variants?.options) ? variants.options : [];
+  for (const { name, label } of readSelection(variants?.selected)) {
+    const option = options.find((o) => cleanText(o?.name, 60) === name);
+    const value = Array.isArray(option?.values) ? option.values.find((v) => cleanText(v?.label, 100) === label) : null;
+    if (value?.exists === false) return { availability: null, reason: 'The selected size or colour is no longer available. Choose another item.' };
+    if (value?.available === 'OutOfStock') return { availability: 'OutOfStock', reason: 'The selected size or colour is out of stock.' };
+  }
+  return null;
+}
+
 /**
  * Turn a Channel3 search response into at most three display rows. Anything malformed is dropped rather than guessed;
  * a missing price stays missing. Throws `merchant_malformed` when the body is not a search response at all.
@@ -148,6 +161,7 @@ export function normalizeSearch(json, { budgetCents = null } = {}) {
     const offer = offers.length ? [...offers].sort((a, b) => compare(rankOffer(a, budgetCents), rankOffer(b, budgetCents)))[0] : null;
     const brand = Array.isArray(product.brands) ? cleanText(product.brands.find((b) => typeof b?.name === 'string')?.name, 60) : '';
     const { usable, reason } = usability(offer);
+    const variantBlock = blockedSelection(product.variants);
     results.push({
       productId,
       title,
@@ -157,13 +171,13 @@ export function normalizeSearch(json, { budgetCents = null } = {}) {
       url: offer?.url ?? null,
       priceCents: offer?.priceCents ?? null,
       currency: offer?.currency ?? null,
-      availability: offer?.availability ?? null,
+      availability: variantBlock ? variantBlock.availability : offer?.availability ?? null,
       condition: offer?.condition ?? null,
       selection: readSelection(product.variants?.selected),
       otherOffers: Math.max(0, offers.length - 1),
       overBudget: Boolean(budgetCents !== null && offer?.priceCents !== null && offer?.currency === MERCHANT_CURRENCY && offer.priceCents > budgetCents),
-      usable,
-      unusableReason: reason,
+      usable: usable && !variantBlock,
+      unusableReason: reason ?? variantBlock?.reason ?? null,
     });
   }
   return results;
