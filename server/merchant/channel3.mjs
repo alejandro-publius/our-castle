@@ -179,6 +179,13 @@ function readSelection(value) {
   }).sort((a, b) => a.name.localeCompare(b.name));
 }
 
+// Public offer identity, never a family identifier. Another retailer/condition/variant remains a separate choice.
+const offerKey = (item) => JSON.stringify([item.productId, item.merchant, item.condition ?? null, readSelection(item.selection)]);
+const offerFacts = (item) => item === null ? null : JSON.stringify([
+  item.merchant, item.priceCents, item.currency, item.availability, item.condition ?? null, readSelection(item.selection), item.usable,
+]);
+const expiredDraft = () => fail(410, 'merchant_draft_expired', 'That merchant result has expired. Search again for a fresh price before saving.');
+
 export function normalizeProduct(json, reference) {
   if (json?.id !== reference.productId) throw fail(502, 'merchant_malformed', 'Channel3 returned a different item. Nothing was changed.');
   const offers = Array.isArray(json.offers) ? json.offers.filter((o) => {
@@ -263,7 +270,9 @@ export function createMerchant({ apiKey = null, fetch, clock, ...options } = {})
   const client = apiKey ? createChannel3Client({ apiKey, fetch, timeoutMs: opts.timeoutMs }) : null;
   const cache = new Map(); // key -> { at, value }
   const inflight = new Map(); // key -> Promise
-  const drafts = new Map(); // draftId -> { expiresAt, item }
+  const drafts = new Map(); // draftId -> { expiresAt, item, offerKey, facts }
+  const observations = new Map(); // offerKey -> { version, facts, at }; bounded catalog knowledge, not search history
+  let readVersion = 0; // Start order, so an older slow response cannot revive an offer a newer lookup contradicted.
   let recent = []; // timestamps of provider calls in the last minute
 
   const connected = Boolean(client);
@@ -276,15 +285,34 @@ export function createMerchant({ apiKey = null, fetch, clock, ...options } = {})
   function prune(at) {
     for (const [key, entry] of cache) if (at - entry.at > opts.cacheTtlMs) cache.delete(key);
     for (const [id, entry] of drafts) if (at > entry.expiresAt) drafts.delete(id);
+    for (const [key, entry] of observations) if (at - entry.at > opts.draftTtlMs) observations.delete(key);
     while (cache.size > opts.maxCacheEntries) cache.delete(cache.keys().next().value);
     while (drafts.size > opts.maxDrafts) drafts.delete(drafts.keys().next().value);
+    while (observations.size > opts.maxDrafts * 2) observations.delete(observations.keys().next().value);
     recent = recent.filter((t) => at - t < 60_000);
+  }
+
+  function observe(reference, row, version) {
+    const key = offerKey(reference), facts = offerFacts(row);
+    const latest = observations.get(key);
+    if (latest && latest.version > version) {
+      if (latest.facts !== facts) throw expiredDraft();
+      return; // Same offer facts; retain the later read's ordering.
+    }
+    observations.delete(key);
+    observations.set(key, { version, facts, at: now() });
+    // A draft is not a reserved price. Once the catalog contradicts it, the family must review another result.
+    // Keep equal offers usable: a new tracking URL or a title/image change alone does not invalidate consent.
+    for (const [id, entry] of drafts) if (entry.offerKey === key && entry.facts !== facts) drafts.delete(id);
+    // Cached results carry the same short-lived references. Never return a list whose references just expired.
+    for (const [query, entry] of cache) if (entry.value.results.some((r) => !drafts.has(r.referenceId))) cache.delete(query);
+    prune(now());
   }
 
   function remember(row, checkedAt, query = '') {
     // Every shown product has a bounded reference for explicit refresh/similar; only usable products have goal drafts.
     const referenceId = `c3d_${randomBytes(12).toString('hex')}`;
-    drafts.set(referenceId, { expiresAt: now() + opts.draftTtlMs, item: { ...row, checkedAt, query } });
+    drafts.set(referenceId, { expiresAt: now() + opts.draftTtlMs, item: { ...row, checkedAt, query }, offerKey: offerKey(row), facts: offerFacts(row) });
     prune(now());
     return { ...row, draftId: row.usable ? referenceId : null, referenceId, checkedAt };
   }
@@ -303,7 +331,16 @@ export function createMerchant({ apiKey = null, fetch, clock, ...options } = {})
   async function refresh(reference) {
     const key = `product:${reference.productId}:${reference.merchant}:${reference.condition}:${JSON.stringify(readSelection(reference.selection))}`;
     const result = await bounded(key, async () => {
-      const row = normalizeProduct(await client.product(reference), reference);
+      const version = ++readVersion;
+      let json;
+      try { json = await client.product(reference); } catch (error) {
+        // A missing catalog item is evidence; a timeout, transport failure or malformed response is not.
+        if (error.code === 'merchant_item_missing') observe(reference, null, version);
+        throw error;
+      }
+      const row = normalizeProduct(json, reference);
+      observe(reference, row, version);
+      if (!row.selectionChanged && row.merchant && offerKey(row) !== offerKey(reference)) observe(row, row, version);
       const checkedAt = new Date(now()).toISOString();
       return { status: 'ok', provider: 'Channel3', checkedAt, results: [remember(row, checkedAt, reference.query)] };
     });
@@ -317,9 +354,11 @@ export function createMerchant({ apiKey = null, fetch, clock, ...options } = {})
     const ceiling = Math.min(budget ?? reference.priceCents, reference.priceCents - 1);
     if (ceiling < BUDGET_LIMITS.minCents) return { status: 'ok', provider: 'Channel3', results: [], budgetCents: ceiling, checkedAt: new Date(now()).toISOString() };
     return bounded(`similar:${reference.productId}:${ceiling}`, async () => {
+      const version = ++readVersion;
       const json = await client.similar(reference.productId, ceiling);
       // Provider filters are not a guarantee: enforce the budget, stock, currency and source exclusion locally too.
       const rows = normalizeSearch(json, { budgetCents: ceiling }).filter((r) => r.productId !== reference.productId && r.usable && r.availability === 'InStock' && r.priceCents <= ceiling);
+      for (const row of rows) observe(row, row, version);
       const checkedAt = new Date(now()).toISOString();
       return { status: 'ok', provider: 'Channel3', budgetCents: ceiling, checkedAt, results: rows.map((r) => remember(r, checkedAt, reference.query)) };
     });
@@ -337,8 +376,10 @@ export function createMerchant({ apiKey = null, fetch, clock, ...options } = {})
     if (recent.length >= opts.maxSearchesPerMinute) throw fail(429, 'merchant_busy', 'That is a lot of searches in one minute. Wait a moment, then search again.');
     recent.push(at);
     const pending = (async () => {
+      const version = ++readVersion;
       const json = await client.search(request);
       const rows = normalizeSearch(json, { budgetCents: request.budgetCents });
+      for (const row of rows) observe(row, row, version);
       at = now();
       const checkedAt = new Date(at).toISOString();
       const results = rows.map((row) => remember(row, checkedAt, request.query));
@@ -355,7 +396,7 @@ export function createMerchant({ apiKey = null, fetch, clock, ...options } = {})
   function draft(draftId) {
     prune(now());
     const entry = typeof draftId === 'string' ? drafts.get(draftId) : null;
-    if (!entry) throw fail(410, 'merchant_draft_expired', 'That merchant result has expired. Search again for a fresh price before saving.');
+    if (!entry) throw expiredDraft();
     return entry.item;
   }
 
