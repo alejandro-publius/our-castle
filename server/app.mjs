@@ -187,9 +187,9 @@ export function createApp({ config, db, clock, paypal = null, aiProvider = null,
       updateGoal(db, scope.goalId, body, clock);
       return { state: state(scope) };
     }],
-    ['POST', '/api/plans', async ({ body, scope }) => {
+    ['POST', '/api/plans', async ({ body, scope, assertAccess }) => {
       if (body.goal) applyGoalIfChanged(body.goal, scope, body.expectedGoalRevision);
-      const result = await planner.propose({ householdId: scope.householdId, goalId: scope.goalId, commitments: body.commitments });
+      const result = await planner.propose({ householdId: scope.householdId, goalId: scope.goalId, commitments: body.commitments, assertAccess });
       return { ...result, state: state(scope) };
     }],
     ['POST', '/api/plans/rules', ({ body, scope }) => {
@@ -246,8 +246,8 @@ export function createApp({ config, db, clock, paypal = null, aiProvider = null,
     }]),
     // ---- Treasury: read-only. The AG Studio licence (if configured) is the only setting the page may read here. ----
     ['GET', '/api/treasury/studio', () => ({ licenseKey: config.studio?.licenseKey ?? null })],
-    ['POST', '/api/steward', async ({ body, scope }) => (family ? stewardFor(scope.householdId) : steward)
-      .ask({ question: body.question, memberId: actingMember(body.memberId, scope), focusOrderId: str(body.focusOrderId) })],
+    ['POST', '/api/steward', async ({ body, scope, assertAccess }) => (family ? stewardFor(scope.householdId) : steward)
+      .ask({ question: body.question, memberId: actingMember(body.memberId, scope), focusOrderId: str(body.focusOrderId), assertAccess })],
     ['POST', '/api/entries', ({ body, scope }) => {
       const result = addSelfReportedEntry(db, { householdId: scope.householdId, goalId: scope.goalId, kind: body.kind, amountCents: body.amountCents, label: body.label, memberId: actingMember(body.memberId, scope) }, clock);
       return { ...result, state: state(scope) };
@@ -421,17 +421,17 @@ export function createApp({ config, db, clock, paypal = null, aiProvider = null,
    * non-public route needs a live session whose membership is still active, writes need the session's CSRF token, and
    * the household, goal and member come only from that session.
    */
-  function authorize(req, res, url, write) {
+  function authorize(req, res, url, write, { activity = true, clearCookie = true } = {}) {
     const rule = policyFor(req.method, url.pathname);
     if (!rule) throw new HttpError(403, 'route_not_permitted', 'This action is not available.');
     if (rule.access === 'deny') throw new HttpError(403, 'not_available', 'This is not available for shared families.');
     if (rule.access === 'machine') return { session: null, scope: null };
     // A live-update stream and the page's background re-reads are not activity: they never keep an idle session alive.
     const background = url.pathname === '/api/events' || req.headers['x-our-castle-refresh'] === 'background';
-    const { session, reason } = access.readSession(req, { activity: !background });
+    const { session, reason } = access.readSession(req, { activity: activity && !background });
     if (rule.access === 'public') return { session, scope: null };
     if (!session) {
-      if (reason !== 'none') access.clearSessionCookie(res);
+      if (clearCookie && reason !== 'none') access.clearSessionCookie(res);
       throw reason === 'none'
         ? new HttpError(401, 'session_required', 'Sign in with your passkey to continue.')
         : new HttpError(401, 'session_expired', 'Your session ended. Sign in again with your passkey.');
@@ -472,7 +472,7 @@ export function createApp({ config, db, clock, paypal = null, aiProvider = null,
         return Boolean(match);
       });
       if (!route) throw new HttpError(404, 'not_found', 'Unknown API route.');
-      const { session, scope } = family ? authorize(req, res, url, write) : { session: null, scope: exampleScope() };
+      let { session, scope } = family ? authorize(req, res, url, write) : { session: null, scope: exampleScope() };
       let body = {};
       let rawBody = '';
       if (write) {
@@ -483,15 +483,33 @@ export function createApp({ config, db, clock, paypal = null, aiProvider = null,
           if (body === null || typeof body !== 'object' || Array.isArray(body)) throw new HttpError(400, 'invalid_json', 'Request body must be a JSON object.');
         }
       }
+      // Reading a body yields: membership/session may have ended before the action has even begun. Rechecks are not
+      // activity and never clear cookies: a response from an old request must not erase a newer passkey sign-in.
+      if (family && write) ({ session, scope } = authorize(req, res, url, write, { activity: false, clearCookie: false }));
+      const assertAccess = () => {
+        if (!family || !scope) return;
+        const current = authorize(req, res, url, write, { activity: false, clearCookie: false }).scope;
+        if (!current || ['sessionId', 'householdId', 'memberId', 'accountId', 'goalId'].some(key => current[key] !== scope[key]))
+          throw new HttpError(409, 'scope_changed', 'Your family or goal changed. Reload and try again.');
+      };
+      // Sign-out deliberately ends this request's own session. Other private results (including route errors) need
+      // access at response time as well: a provider wait is not permission to return household data after revocation.
+      const assertResponseAccess = () => {
+        if (req.method !== 'POST' || url.pathname !== '/api/auth/signout') assertAccess();
+      };
       // Any authorized write (even one that ends in an error after recording a status) may change this household: its
       // revision moves before the write runs and again after it, when its open pages are told to re-read their state.
       // Reads, calculations and provider look-ups change nothing and move nothing.
       const changes = family && write && scope && !UNCHANGING_WRITES.has(url.pathname);
       if (changes) live.touch(scope.householdId);
       let result;
-      try { result = await route[2]({ req, res, body, rawBody, params: match ? match.slice(1) : [], session, scope }); }
+      try { result = await route[2]({ req, res, body, rawBody, params: match ? match.slice(1) : [], session, scope, assertAccess }); }
+      catch (error) { assertResponseAccess(); throw error; }
       finally { if (changes) live.notify(scope.householdId); }
       if (result === STREAMING) return;
+      // Financial services finish recording an already-dispatched capture/refund before this guard: provider truth
+      // must survive lost access even though the requester can no longer receive its receipt or family state.
+      assertResponseAccess();
       sendJson(res, 200, result);
     } catch (error) {
       if (error instanceof DomainError || error instanceof HttpError || error instanceof PlanInputError) {
