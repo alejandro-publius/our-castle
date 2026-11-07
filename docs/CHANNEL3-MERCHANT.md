@@ -143,6 +143,10 @@ Contracts for this extension were read from the [official Channel3 skills reposi
 - **Retailer visit:** Details → Visit reserves a user-initiated tab and refreshes the product before navigating to the newly returned offer URL. If price, stock or selected variant changed, the empty tab closes and the family reviews the changed result first. No old saved URL is used. Browser popup blocking gives a clear retry instruction. No purchase is made by the app.
 - Refresh has no price cache; identical in-flight lookups coalesce. Search keeps its existing two-minute cache. All calls share the bounded rate limit and eight-second timeout; 404, timeout and other errors never loop. Reopening the dialog clears old results. Closing it or starting another action invalidates late answers.
 - Option labels and condition are additive provenance, not private account data. The same goal-revision guard still protects saving after another tab edits the goal.
+- **A changed offer** (PR #23, [review](MERCHANT-FRESHNESS-REVIEW.md)). A newer search, refresh or cheaper-options answer can show different facts for the same product, retailer, condition and selected variant: price, currency, stock, variant or whether it can be used. So can the catalog no longer having the item. Older drafts and cached search lists for that offer then expire. Saving one returns the Plan form to **Search again**, with edits kept.
+  - An answer to an older lookup that arrives after a newer one contradicts it is refused, rather than bringing back the old offer.
+  - Equal offers (only a link, title or photo changed) stay usable, as do other retailers, conditions and variants. A timeout, failure or malformed answer changes nothing.
+  - Expiring a draft makes no provider call and writes nothing.
 
 Tests use only invented products and an injected Channel3 transport. The earlier November 5 live search remains the live evidence; product refresh and similar endpoints have **not** been called with the owner's key in this pass. Automatic price subscriptions and checkout services are not added.
 

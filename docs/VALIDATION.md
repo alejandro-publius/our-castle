@@ -1,5 +1,44 @@
 # Validation
 
+## Merchant drafts after a catalog change (PR #23 merged into PR #20) — November 6, 2026
+
+Codex's PR #23 (`review/merchant-freshness`, head `dddb951`, based on `1de17ba`) was reviewed and merged into `claude/shared-live-integration` by a normal merge (`0f7dca5`).
+- The change is confined to `server/merchant/channel3.mjs` plus tests. No file it touches had changed on this branch since `1de17ba`, so the merge was clean.
+- Nothing was merged into `main` or activated.
+- Codex's notes are in [MERCHANT-FRESHNESS-REVIEW.md](MERCHANT-FRESHNESS-REVIEW.md), and the behaviour is in [CHANNEL3-MERCHANT.md](CHANNEL3-MERCHANT.md#freshness-and-cheaper-alternatives--november-6).
+
+**Review, behaviour by behaviour.** All five behaviours hold, and family mode is preserved.
+- **Changed price, stock or a missing item.** Each lookup records an offer's facts under its identity.
+  - The identity is product, retailer, condition and selected variant. The facts are price, currency, stock, condition, variant and whether it can be used.
+  - A newer answer that contradicts them deletes older drafts for that offer at once, and so does a catalog 404.
+  - Unit cases cover a higher price, out of stock and a 404. In the higher-price case the stale save is refused with nothing changed, and the fresh draft then saves at $249.
+- **Cached lists and late answers.** A cached search list that points at an expired draft is dropped. Each lookup is numbered when it starts, and an older answer that contradicts a newer one is refused (410) before it creates drafts or fills the cache. Unit cases cover a slow older search after a newer refresh, and a slow older refresh after a newer search.
+- **What stays usable.** Equal facts keep their drafts and the cache, where only a link, title or photo changed. Other retailers, conditions and sizes keep theirs. A timeout, failure or malformed answer invalidates nothing, and identical refreshes still share one call.
+- **Budget.** Unchanged, and still enforced on the server.
+  - Budgets outside $1–$100,000 are refused.
+  - Cheaper options keep the stricter ceiling and the local stock, currency and price filters.
+  - Budget is not one of an offer's facts, so a search with another budget never expires a draft.
+- **No purchase or silent goal change.** Expiry only edits in-memory maps: no provider call and no database write. The family goal changes only through **Save as our goal**. The new browser case checks that goal, ledger and contributions are unchanged after the refused save, and that edits stay.
+- **Family mode, preserved.**
+  - Merchant routes keep their adult rules and household checks.
+  - PR #22's re-checks and the renewed-sign-in fix (`264d5c2`) are intact.
+  - Search, refresh and cheaper options still announce nothing on the live stream.
+
+**Observations, no change.**
+- **Ordering.** Lookups are ordered by when they start on this server, not by when the retailer updated its data, as PR #23 notes. If Channel3's search index lagged its product details, a newer search could bring back a price that a refresh had replaced.
+- **Variants.** A refresh compares the selected variant too. If real product details report a default variant that search results leave out, a refresh would expire an unchanged search draft and ask for review. The fake catalog has no variants by default and no real Channel3 response is recorded in the repository, so this is unverified. No live call was made.
+- **Shared facts.** The record of offer facts is shared by all families, since it holds public offer facts only. One family's refresh can expire another family's out-of-date draft for the same offer, which then asks for a fresh search. It grants no access: household checks still decide who may use a shown result.
+
+**Checks** (fake Channel3 and fake PayPal; no real order or paid call):
+- **Unit:** `channel3-merchant` 19/19, `merchant-freshness` 9/9 (new), `family-sponsor` 1/1.
+- **Browser, desktop and 390 px phone:** **27 passed, 1 deliberate one-viewport skip, 0 failed.**
+  - All nine `channel3-merchant` cases, including PR #23's new one, and both `connected-journey` Merchant cases: 22 passed (6.7 min).
+  - `plan-check`'s two market-draft cases: 4 passed.
+  - `shared-live`'s three-member case, which saves a fake Channel3 product in family mode only after **Review latest goal**: passed on desktop, skipped by design on the phone.
+- `npm run check` passed.
+
+**Limits.** The catalog is fake throughout: no live Channel3 search, refresh or cheaper-options call. Only the Merchant browser cases listed ran; the full browser suite was not rerun.
+
 ## Shared families, live: access re-checked during waits (PR #22 merged into PR #20) — November 6, 2026
 
 Codex's PR #22 (`review/family-revocation`, head `f91a0d3`, which already contained PR #20 through `f6535f8`) was reviewed and merged into `claude/shared-live-integration` by a normal merge (`40b65ee`). Nothing was merged into `main` or activated. Codex's notes are in [FAMILY-ACCESS-RACE-REVIEW.md](FAMILY-ACCESS-RACE-REVIEW.md), and the behaviour is in [FAMILY-ACCESS.md](FAMILY-ACCESS.md).
