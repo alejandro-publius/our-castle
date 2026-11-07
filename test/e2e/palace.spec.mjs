@@ -20,7 +20,8 @@ test('Rosewind can be explored while locked; the completed goal earns its own de
   expect(unchanged.progress).toEqual(before.progress);
   await openMenu(page, 'world-settings'); await page.selectOption('#time-mode', 'night');
   await openMenu(page, 'world-settings'); await page.selectOption('#weather-mode', 'rain');
-  expect((await scene(page)).atmosphere).toMatchObject({ period: 'night', weather: 'rain', pointLights: 9, pointLightCapacity: 9, pools: 135 });
+  // Nine doors, two stables, the tavern and eighteen bridge gates each cast five soft rings.
+  expect((await scene(page)).atmosphere).toMatchObject({ period: 'night', weather: 'rain', pointLights: 9, pointLightCapacity: 9, pools: 150 });
   await page.locator('#world canvas').screenshot({ path: info.outputPath('palace-night-rain.png') });
   await page.getByRole('tab', { name: /House/ }).click();
   await page.locator('#house-name').fill('House of Rosewind');
