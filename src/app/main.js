@@ -280,6 +280,7 @@ async function boot() {
       return;
     }
     setSession({ csrf: session.csrfToken, lost: sessionLost });
+    family.csrf = session.csrfToken;
     // This page belongs to one member of one household for its whole life; a state for anyone else is never shown here.
     family.householdId = session.household.id;
     family.memberId = session.member.id;
@@ -333,8 +334,8 @@ const family = {
   // Live updates: the stream, its state ('off', 'live', 'down', 'polling'), and the one state read allowed at a time.
   live: null, status: 'off', statusTimer: null, timer: null, lastRefresh: 0, refreshes: 0, reading: null, again: false, stale: false,
   // The newest household revision this page shows, the server starts it has seen (in order), answers set aside as older,
-  // and how many times this browser's session was renewed (a renewed session clears an approval given before it).
-  revision: null, boots: [], discarded: 0, epoch: 0, retryTimer: null,
+  // the session's CSRF token, and how many times it was renewed (a renewed session clears an approval given before it).
+  revision: null, boots: [], discarded: 0, csrf: null, epoch: 0, retryTimer: null,
 };
 const SESSION_ENDED = {
   expired: 'Your session ended. Sign in again with your passkey.',
@@ -382,14 +383,18 @@ function startFamilyLive() {
   family.timer = setInterval(() => { if (!streaming() && document.visibilityState === 'visible') readFamilyState({ background: true, throttle: true }); }, 45_000);
   $('#live-retry').addEventListener('click', () => { family.live?.retryNow(); readFamilyState(); });
 }
-// Is this browser still signed in as this page's member? A renewed session (signed in again in another tab) keeps the
-// page, with its new CSRF token; anyone else, or no one, sends it to sign-in.
+// Is this browser still signed in as this page's member? The same session (a dropped connection, a server restart)
+// changes nothing. A renewed session (signed in again in another tab) keeps the page with its new CSRF token, and
+// counts as a new session for approvals; anyone else, or no one, sends it to sign-in.
 async function checkFamilySession() {
   let session;
   try { session = await api.get('/api/session', { background: true }); } catch { return 'unreachable'; }
   if (!session.signedIn || session.member?.id !== family.memberId || session.household?.id !== family.householdId) return 'signed-out';
-  family.epoch++;
-  setSession({ csrf: session.csrfToken, lost: sessionLost });
+  if (session.csrfToken !== family.csrf) {
+    family.csrf = session.csrfToken;
+    family.epoch++;
+    setSession({ csrf: session.csrfToken, lost: sessionLost });
+  }
   return 'signed-in';
 }
 // One state read at a time. A change announced while one is under way reads once more after it; a hidden tab waits
@@ -484,7 +489,7 @@ function drawState(next, { animate = true, result = null } = {}) {
   renderQuest();
   renderNextStep();
   const boardDone = renderBoard({ animate, result, added, hasNewDistrict: opened.length > 0 });
-  if (opened.length) Promise.resolve(boardDone).then(() => queueDeedsWhenFree(opened, scope));
+  if (opened.length) Promise.resolve(boardDone).then(() => queueDeeds(opened, scope));
   renderHouse();
   renderPlan();
   renderGive();
@@ -762,18 +767,6 @@ function celebrate(awarded, added = []) {
 // An open dialog is never closed and reopened here: its close event arrives later and would clear the new deeds. New
 // deeds join an open queue, or replace a deed opened from the map, in place; focus later returns to the origin
 // that opened the dialog first.
-// A newly opened area's deed is a modal card. Someone typing (a goal, an invitation, an amount) keeps their place: the
-// card waits until focus leaves the field. This matters when the change came from another member's page.
-const editingField = () => document.activeElement?.matches?.('input:not([type="checkbox"]):not([type="radio"]):not([type="button"]):not([type="submit"]), textarea, select') ?? false;
-function queueDeedsWhenFree(ids, scope) {
-  if (!editingField()) { queueDeeds(ids, scope); return; }
-  const wait = () => setTimeout(() => {
-    if (editingField()) return;
-    document.removeEventListener('focusout', wait);
-    queueDeeds(ids, scope);
-  }, 0);
-  document.addEventListener('focusout', wait);
-}
 function queueDeeds(ids, scope) {
   if (state.household.id !== scope.householdId || state.goal.id !== scope.goalId) return;
   const open = new Set(state.rewards.realm.districts.filter((d) => d.open).map((d) => d.id));
