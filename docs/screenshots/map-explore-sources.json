@@ -1,6 +1,6 @@
 {
   "date": "2026-11-07",
-  "basedOn": "b7109d9 (main) plus this branch",
+  "basedOn": "d7c87f7e4fd006a24a2644e2095c5a10442398ef (original compass PR #30; captures precede the west-meadow bounds follow-up)",
   "sources": {
     "src/world/board-scene.js": "d3c2cb47c455440e2c095e7d9871fc04f9b3f06334723a43d4f65d614e516548",
     "src/app/main.js": "5bacf4d95781ada8478ac80b4c2b103ba1de4ab488476adf0bafcf76d31cdfaa",

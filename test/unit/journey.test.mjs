@@ -91,7 +91,7 @@ test('the next step follows saved state through house, plan, contributions, refu
     state = res.state;
     assert.equal(state.progress.progressCents, 7500);
     next = nextAction(state, { persona: adultOf(state), receipt: res.contribution, receiptReviewed: false });
-    assert.deepEqual([next.key, next.step, next.cta, next.target], ['receipt-ready', 'give', 'Review the receipt', '#receipt']);
+    assert.deepEqual([next.key, next.step, next.cta, next.target], ['receipt-ready', 'ledger', 'Review the receipt', '#ledger-selected-record']);
     assert.match(next.why[0], /The server counted this simulated example payment\. Goal progress is now \$75\.00 \(25%\)\./);
     next = nextAction(state, { persona: adultOf(state), receipt: res.contribution, receiptReviewed: true });
     assert.equal(next.key, 'contribute-week');
@@ -110,9 +110,11 @@ test('the next step follows saved state through house, plan, contributions, refu
     assert.match(next.why[0], /The Manor needs \$15\.00 more\./);
     assert.equal(next.record.status, 'refunded');
 
-    // Completing the goal points to the castle on the map.
+    // The final contribution has the same receipt route; after it is reviewed, the castle is next.
     res = await pay(s, state, state.progress.remainingCents, 'completed');
     state = res.state;
+    next = nextAction(state, { persona: adultOf(state), receipt: res.contribution, receiptReviewed: false });
+    assert.deepEqual([next.key, next.step, next.target], ['receipt-ready', 'ledger', '#ledger-selected-record']);
     next = nextAction(state, { persona: adultOf(state), receipt: res.contribution, receiptReviewed: true });
     assert.deepEqual([next.key, next.step, next.cta], ['goal-complete', 'realm', 'Visit your castle']);
     assert.match(next.why[0], /\$300\.00 of \$300\.00 is tracked/);

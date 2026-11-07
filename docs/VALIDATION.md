@@ -1,5 +1,24 @@
 # Validation
 
+## Direct receipt review and west-meadow exploration — November 7, 2026
+
+The existing **Review the receipt** action opens the matching Treasury record, including after the final goal contribution or after selecting an older record. One existing steward note is beside that record; its questions remain closed. The automatic focus on the Contribute confirmation no longer consumes the Treasury review step. No provider/check policy, approval, server endpoint, schema or dependency changes. [Behavior, design references and captures](RECEIPT-HANDOFF.md).
+
+The compass review found a separate concrete issue: the family project at x=−98 was outside the older interior bound of x=−82. Enabling Explore there clamped the target and moved the view; the new regression failed on desktop and phone (215 px horizontally on the phone). Bounds now include all playable-place footprints, preserving that close view and the first drag. The original compass captures below remain pinned to PR #30's `d7c87f7`; the receipt capture manifest records the new source hashes.
+
+| Check | Actual result |
+| --- | --- |
+| Journey domain/HTTP tests | 3 passed; the updated receipt-route assertion fails against the predecessor |
+| Returning/final-goal receipt paths and saved-check/recovery cases, desktop + 390px phone | 8 passed, using simulated payments/fake PayPal; opening/reviewing receipts makes no provider call |
+| Existing Studio framework case and its visible boundary note with questions closed, desktop + phone | 2 passed, fake model transport; no automatic ask |
+| House/Plan navigation and west-meadow compass regression, desktop + phone | 4 passed after the bounds fix; the meadow case fails on both before it |
+| Source/art/palette/syntax guard | Passed: 47 copied art/runtime files and the original 90-color palette |
+| Read-only receipt captures | Both layouts captured; zero browser writes, outside requests or page errors; all disposable application-table values unchanged after capture |
+
+An initial broader browser attempt exhausted its 90-second total budget in the existing House/Plan flow before reaching this change. That case was rerun with reduced motion and a 120-second total bound (expectation timeouts unchanged), passing on both layouts. Receipt/navigation cases use reduced motion; normal unlock animation retains its existing area-card coverage. The full browser suite was not repeated. These are automated Chromium/touch-emulation results, not a physical-phone or human-playtest claim.
+
+Ignored raw logs/capture script are in `test-results/receipt-handoff-20261107/`; meadow-before traces are in `test-results/compass-meadow-before/` and the final navigation run in `test-results/receipt-navigation-final/`. No owner household, credential, real order, paid model/provider call, recording, deployment or submission was used.
+
 ## Compass: explore the map by dragging — November 7, 2026
 
 This is the owner-requested feature, built after an actual-input pass over the existing map gestures. It is camera only: no household, goal, approval, provider or payment change.
@@ -13,7 +32,7 @@ This is the owner-requested feature, built after an actual-input pass over the e
 - **Turning it on** keeps what is on screen. The ground point at the middle of the canvas becomes the camera's target, at the same scale, with no snap to Whole realm. While exploring, that target stays at the middle of the canvas itself, so overlays appearing or hiding never move the world.
 - **While it is on,** a primary mouse drag or a one-finger drag pans across the realm, with a grab cursor.
   - Shift, middle and right drags, two-finger pan and pinch, the wheel and the keyboard keep working.
-  - The target can travel the whole realm interior, covering every area and the meadows between, so the middle of the view stays over land. The old ±25 limit around one home no longer traps an explorer.
+  - The target can travel the realm interior and the footprints of all playable places, including the west-meadow family project. The old ±25 limit around one home no longer traps an explorer. The footprint extension is checked in the follow-up above.
 - **Turning it off** keeps the view, and drags turn again around the same place.
 - **Explicit navigation** reframes as before and ends exploring, and the button follows. That covers Areas, a map name, a legend, Visit, Whole realm, Reset view and an unlock crossing. Starting or ending exploring counts as a user view change, so an unlock's automatic recentring does not override it.
 - **Names on a phone.** While exploring, the names of places in view stay, where the phone overview shows only the home's name. Overlapping names still hide.

@@ -266,8 +266,9 @@
             <div class="ledger-grid" id="ledger-goal" aria-label="House ledger records"></div>
           </section>
 
-          <section class="ledger-block" aria-labelledby="ledger-contrib-title">
+          <section class="ledger-block" id="ledger-selected-record" tabindex="-1" aria-labelledby="ledger-contrib-title" aria-describedby="steward-note">
             <h4 id="ledger-contrib-title" tabindex="-1">Selected record</h4>
+            <p class="fine" id="steward-note"></p>
             <ul class="contributions" id="ledger-contributions"></ul>
           </section>
 
@@ -290,10 +291,9 @@
             <ul class="keepsakes" id="achievements"></ul>
           </section>
 
-          <!-- The existing read-only steward and its server checks, unchanged; disclosed only when someone opens it. -->
+          <!-- Questions stay disclosed on request; the one read-only note is beside the selected receipt. -->
           <details class="ledger-block steward" id="steward-block">
             <summary><span id="steward-title">House steward</span></summary>
-            <p class="fine" id="steward-note"></p>
             <div class="quick-picks suggestions" id="steward-suggestions" role="group" aria-label="Suggested questions"></div>
             <form class="inline-form steward-form" id="steward-form" novalidate>
               <label class="field"><span>Your question</span><input name="question" type="text" maxlength="300" autocomplete="off" placeholder="Did PayPal confirm our last contribution?"></label>

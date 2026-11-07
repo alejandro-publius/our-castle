@@ -583,6 +583,12 @@ function openNextStep(e) {
     if (id && scene) visitDistrict(id, e);
     return;
   }
+  // Review follows the contribution that just completed, even if another record was selected meanwhile.
+  if (next.key === 'receipt-ready') {
+    const record = ledgerRows().find((r) => r.contribution?.id === ui.receipt?.contribution.id);
+    if (record) ui.ledgerRecord = record.id;
+    ui.refundArm = null;
+  }
   selectTab(next.step, { focus: false });
   let target = $(next.target);
   if (!target || target.hidden || target.closest('[hidden]')) target = $(`#panel-${next.step} h3`);
@@ -1954,7 +1960,14 @@ function bindEvents() {
   $('#deed-close').addEventListener('click', () => $('#deed-dialog').close());
   $('#deed-dialog').addEventListener('close', deedClosed);
   $('#next-step-record-go').addEventListener('click', openPaymentRecord);
-  $('#receipt').addEventListener('focus', () => { if (ui.receipt && ui.receiptReviewed !== receiptKey()) { ui.receiptReviewed = receiptKey(); renderNextStep(); } });
+  // The immediate Contribute confirmation is not the Treasury review. Mark the selected receipt reviewed only when
+  // the family reaches it, including through an existing saved-record link or one of its actions.
+  $('#ledger-selected-record').addEventListener('focusin', () => {
+    const contribution = ledgerRows().find((r) => r.id === ui.ledgerRecord)?.contribution;
+    if (ui.receipt && contribution?.id === ui.receipt.contribution.id && ui.receiptReviewed !== receiptKey()) {
+      ui.receiptReviewed = receiptKey(); renderNextStep();
+    }
+  });
 
   // House
   $('#panel-house').addEventListener('change', (e) => {

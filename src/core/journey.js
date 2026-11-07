@@ -58,7 +58,10 @@ export function nextAction(state, { persona = null, receipt = null, receiptRevie
   if (!household.setupComplete) {
     return step('found-house', 'house', 'Found your house', ['Choose solo or family, a house name and a crest. Nothing is paid here.'], 'Set up your house', '#house-heading');
   }
-  if (progress.remainingCents <= 0) {
+  const latestReceipt = receipt && !receiptReviewed ? (contributions.find((c) => c.id === receipt.id) ?? receipt) : null;
+  const reviewReceipt = latestReceipt?.status === 'completed';
+  // The final contribution has the same receipt route as every earlier one. The castle is next after review.
+  if (progress.remainingCents <= 0 && !reviewReceipt) {
     return step('goal-complete', 'realm', 'The goal is complete', [`${money(progress.progressCents)} of ${money(goal.targetCents)} is tracked toward ${goal.name}. The castle stands.`],
       'Visit your castle', '#realm-districts [data-district="castle"]');
   }
@@ -70,13 +73,10 @@ export function nextAction(state, { persona = null, receipt = null, receiptRevie
       'Its status and the next check are in the Ledger.',
     ], 'Check the pending payment', '#ledger-contrib-title');
   }
-  if (receipt && !receiptReviewed) {
-    const c = contributions.find((x) => x.id === receipt.id) ?? receipt;
-    if (c.status === 'completed') {
-      return step('receipt-ready', 'give', `${money(c.amountCents)} was confirmed`, [
-        `The server counted this ${kindOf(c)}. Goal progress is now ${money(progress.progressCents)} (${formatPercent(progress.progressCents, goal.targetCents)}).`,
-      ], 'Review the receipt', '#receipt');
-    }
+  if (reviewReceipt) {
+    return step('receipt-ready', 'ledger', `${money(latestReceipt.amountCents)} was confirmed`, [
+      `The server counted this ${kindOf(latestReceipt)}. Goal progress is now ${money(progress.progressCents)} (${formatPercent(progress.progressCents, goal.targetCents)}).`,
+    ], 'Review the receipt', '#ledger-selected-record');
   }
 
   // Supporting facts that must not read as credit.

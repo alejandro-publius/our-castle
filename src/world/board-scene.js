@@ -518,8 +518,14 @@ export function createBoardScene(container, { reducedMotion = false, isOccluded 
     const e = camera.matrixWorld.elements, along = -(e[1] * right + e[5] * up) / e[9];
     return { x: e[0] * right + e[4] * up + e[8] * along, z: e[2] * right + e[6] * up + e[10] * along };
   }
-  // An explorer travels the whole interior (every area, the meadows between), so the middle of the view stays over land.
-  const exploreBounds = { minX: REALM_INTERIOR.centerX - REALM_INTERIOR.width / 2, maxX: REALM_INTERIOR.centerX + REALM_INTERIOR.width / 2, minZ: REALM_INTERIOR.centerZ - REALM_INTERIOR.depth / 2, maxZ: REALM_INTERIOR.centerZ + REALM_INTERIOR.depth / 2 };
+  // Include every playable place's footprint: the family project's west meadow extends beyond the older interior.
+  const explorePlaces = [...REALM_DISTRICTS, ...REALM_LEGENDS, FAMILY_PROJECT_SITE];
+  const exploreBounds = {
+    minX: Math.min(REALM_INTERIOR.centerX - REALM_INTERIOR.width / 2, ...explorePlaces.map((p) => p.x - p.width / 2)),
+    maxX: Math.max(REALM_INTERIOR.centerX + REALM_INTERIOR.width / 2, ...explorePlaces.map((p) => p.x + p.width / 2)),
+    minZ: Math.min(REALM_INTERIOR.centerZ - REALM_INTERIOR.depth / 2, ...explorePlaces.map((p) => p.z - p.depth / 2)),
+    maxZ: Math.max(REALM_INTERIOR.centerZ + REALM_INTERIOR.depth / 2, ...explorePlaces.map((p) => p.z + p.depth / 2)),
+  };
   const keepInside = (x, z) => ({ x: Math.max(exploreBounds.minX, Math.min(exploreBounds.maxX, x)), z: Math.max(exploreBounds.minZ, Math.min(exploreBounds.maxZ, z)) });
   const clampZoom = (z) => Math.min(ZOOM.max, Math.max(ZOOM.min, z));
   function wheelZoom(deltaY) { viewRevision++; view.zoom = clampZoom(view.zoom * Math.exp(-deltaY * 0.001)); resize(); }

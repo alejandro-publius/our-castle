@@ -197,6 +197,31 @@ test('the compass toggles from the keyboard and keeps focus', async ({ page }, i
   expect(writes).toEqual([]);
 });
 
+test('exploring from the west-meadow project keeps the view in place and follows the first drag', async ({ page }, info) => {
+  test.setTimeout(120_000);
+  const writes = trackWrites(page), use = input(page, info);
+  await ready(page);
+  await page.locator('#journal-toggle').click();
+  await page.locator('#tab-plan').click();
+  await page.locator('#visit-campsite').click();
+  for (let i = 0; i < 3; i++) await clickView(page, 'Zoom in');
+  await frames(page);
+  const ground = () => page.evaluate(() => { const t = window.__ourCastle.route().travelers; return { x: t.x, y: t.y }; });
+  const before = { view: await view(page), ground: await ground() };
+  expect(before.view.focus).toBe('family-project');
+  await use.press(page.getByRole('button', { name: 'Explore map' }));
+  await frames(page);
+  const on = { view: await view(page), ground: await ground() };
+  expect(on.view.wpp).toBeCloseTo(before.view.wpp, 6);
+  expect(Math.abs(on.ground.x - before.ground.x)).toBeLessThanOrEqual(1);
+  expect(Math.abs(on.ground.y - before.ground.y)).toBeLessThanOrEqual(1);
+  await use.drag(-60, 0);
+  const after = await ground();
+  expect(Math.abs(after.x - on.ground.x + 60)).toBeLessThanOrEqual(1);
+  expect(Math.abs(after.y - on.ground.y)).toBeLessThanOrEqual(1);
+  expect(writes).toEqual([]);
+});
+
 test('a wheel over a name on the map zooms the map', async ({ page }, info) => {
   test.skip(info.project.name === 'phone', 'A wheel is desktop input.');
   await ready(page);

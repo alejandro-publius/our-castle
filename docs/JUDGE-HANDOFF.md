@@ -30,6 +30,8 @@ For live integrations on another machine, use your own sandbox developer credent
 6. **Ledger:** the Studio milestone points to the next area, AG Grid filters/search affect only the list, and a selected contribution opens its receipt. **Visit…** returns to the earned district. The existing steward stays closed until requested.
 7. Refresh and select the receipt again. Goal, contribution records and earned areas persist while this demo session runs. Explore night/rain and inspect the palace, towers and sword; viewing a locked property does not earn it. Saved PayPal-check history belongs to the configured sandbox flow, not to simulated receipts.
 
+**After an in-app contribution:** finish the deed's Visit/Close action, then **Review the receipt** opens Treasury at that contribution and its existing saved-check status. The steward's one note sits beside the record; its questions stay closed until requested. A final contribution follows this receipt route before **Visit your castle**. [Handoff and focused evidence](RECEIPT-HANDOFF.md).
+
 Searching does not buy a product. Bills/gifts do not count toward savings. No verified utility provider is connected.
 
 New unlock cards briefly welcome the household's selected pixel characters beside the crest. The parallel banner is suppressed for the same event; reopening a deed uses the original compact face. [Reference lock](UNLOCK-CELEBRATION.md). For observed usability sessions, use the [three-person playtest sheet](PLAYTEST.md); no participant results have been invented.

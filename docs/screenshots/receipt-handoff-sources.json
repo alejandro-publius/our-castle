@@ -1,0 +1,45 @@
+{
+  "capturedAt": "2026-11-07T10:07:19.798Z",
+  "environment": "Playwright 1.64.1 / Chromium 156.0.8078.4, Linux SwiftShader; phone uses touch emulation",
+  "fixture": "Disposable in-memory example household, fixed November 3 test clock, one $15 simulated contribution from $60 to $75; no provider keys or clients",
+  "steps": [
+    "Load the seeded local example household",
+    "Open Ledger and wait for AG Grid",
+    "Focus the selected-record section with its single visible note; steward questions stay closed",
+    "Capture the existing selected-record region and a private viewport"
+  ],
+  "readOnlyCapture": {
+    "writes": [],
+    "outside": [],
+    "errors": [],
+    "applicationTablesUnchanged": true
+  },
+  "sources": {
+    "index.html": "e1186068ff7686301c78795668b990536eea02601d566e5b6943ab68ba6360c1",
+    "src/app/main.js": "e73c43365a678846bed5024a14347fb771e9585bc8f738348099c79598add4d7",
+    "src/core/journey.js": "370000310fa10e0303d937cea9c85779baa5ef4d113750868240f277a1dd8e95",
+    "src/world/board-scene.js": "359a2ecb6ac22e99dd8fedd285ea55b77329f916f8e268649bdac4208d14a4cd"
+  },
+  "images": [
+    {
+      "path": "docs/screenshots/receipt-handoff-desktop.png",
+      "sha256": "ddcba183daaf8cab084d2b442f9935f3f5e39dd00fb1db1bb8c18cb7c1ff170a",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "region": "#ledger-selected-record",
+      "mode": "simulated fixture; no PayPal transaction"
+    },
+    {
+      "path": "docs/screenshots/receipt-handoff-phone.png",
+      "sha256": "5cd5ffe2bcc761cb0abf0e0ecef832908a648a24e635e0cdca1e30cd9330553f",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "region": "#ledger-selected-record",
+      "mode": "simulated fixture; no PayPal transaction"
+    }
+  ]
+}
