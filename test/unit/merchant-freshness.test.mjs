@@ -6,7 +6,7 @@ import { createApp } from '../../server/app.mjs';
 import { loadConfig } from '../../server/config.mjs';
 import { openDatabase } from '../../server/db.mjs';
 import { createClock } from '../../server/household.mjs';
-import { createMerchant } from '../../server/merchant/channel3.mjs';
+import { createMerchant, normalizeProduct, normalizeSearch } from '../../server/merchant/channel3.mjs';
 import { createFakeChannel3, fakeProduct, fakeSearchResponse } from '../helpers/fake-channel3.mjs';
 
 // Invented catalog responses only. Tests never contact Channel3, PayPal or a model.
@@ -217,4 +217,71 @@ test('a late response with equal offer facts remains usable and identical refres
     for (const row of [first.results[0], later.results[0], ...answers.map((r) => r.results[0])]) assert.equal(merchant.draft(row.draftId).priceCents, 18950);
     assert.equal(fake.calls.length, 3);
   } finally { finish.release(); await pending.catch(() => {}); }
+});
+
+// Channel3 hydrates OptionValue.available on detail, independently of the listing's availability.
+const selectedTent = (value) => product(189.5, 'InStock', { variants: {
+  selected: [{ name: 'Size', label: 'Large' }],
+  options: [{ name: 'Size', values: [
+    { label: 'Large', ...value },
+    { label: 'Small', exists: false, available: 'OutOfStock' },
+  ] }],
+} });
+
+for (const [description, value] of [
+  ['out of stock', { exists: true, available: 'OutOfStock' }],
+  ['no longer available', { exists: false, available: null }],
+]) test(`a selected configuration that is ${description} cannot save a goal despite an in-stock offer`, async () => {
+  let current = selectedTent({ exists: true, available: null });
+  const s = await serverFor((url) => url.includes('/products/') ? current : fakeSearchResponse([current]));
+  try {
+    const before = (await s.call('GET', '/api/state')).json;
+    const found = (await s.call('POST', '/api/merchant/search', { query: 'large family tent' })).json;
+    const original = found.results[0];
+    assert.equal(original.usable, true, 'search stock is unknown per option; the listing can still be reviewed');
+    current = selectedTent(value);
+    const fresh = await s.call('POST', '/api/merchant/refresh', { goalId: found.goalId, referenceId: original.referenceId });
+    assert.equal(fresh.status, 200);
+    const checked = fresh.json.results[0];
+    assert.equal(checked.usable, false, 'listing stock cannot override an explicitly unavailable selected configuration');
+    assert.equal(checked.draftId, null);
+    assert.match(checked.unusableReason, /selected size or colour/i);
+    assert.equal(checked.availability, value.available === 'OutOfStock' ? 'OutOfStock' : null);
+    const payload = { goalId: found.goalId, expectedGoalRevision: found.goalRevision,
+      goal: goalBody(before, { name: 'Large family tent', targetCents: 18950 }) };
+    assert.equal((await s.call('POST', '/api/merchant/goal', { ...payload, draftId: original.draftId })).status, 410);
+    const bypass = await s.call('POST', '/api/merchant/goal', { ...payload, draftId: checked.referenceId });
+    assert.equal(bypass.status, 400, 'the unusable reference cannot bypass the disabled goal action');
+    assert.equal(bypass.json.error.code, 'merchant_price_unusable');
+    assert.deepEqual((await s.call('GET', '/api/state')).json, before, 'no goal, plan, credit, deed or saved item changes');
+    assert.equal(s.fake.calls.length, 2, 'only the explicit search and detail lookup ran');
+
+    current = selectedTent({ exists: true, available: 'InStock' });
+    const restored = await s.call('POST', '/api/merchant/refresh', { goalId: found.goalId, referenceId: checked.referenceId });
+    assert.equal(restored.status, 200);
+    assert.equal(restored.json.results[0].usable, true);
+    const saved = await s.call('POST', '/api/merchant/goal', { ...payload, draftId: restored.json.results[0].draftId });
+    assert.equal(saved.status, 200, 'a separately reviewed, available configuration can be explicitly saved');
+    assert.deepEqual(saved.json.state.goalItem.selection, [{ name: 'Size', label: 'Large' }]);
+    assert.equal(saved.json.state.progress.progressCents, before.progress.progressCents);
+    assert.deepEqual(saved.json.state.contributions, before.contributions);
+    assert.equal(s.fake.calls.length, 3);
+  } finally { await s.close(); }
+});
+
+test('unselected unavailable values and unknown option stock do not block an available selected configuration', () => {
+  for (const value of [{ exists: true, available: 'InStock' }, { exists: true, available: null }, { exists: true }]) {
+    const raw = selectedTent(value);
+    const [shown] = normalizeSearch(fakeSearchResponse([raw]));
+    const refreshed = normalizeProduct(raw, shown);
+    assert.equal(shown.usable, true);
+    assert.equal(refreshed.usable, true);
+    assert.equal(refreshed.availability, 'InStock');
+  }
+  for (const variants of [null, {}, { options: null, selected: [] }]) {
+    assert.equal(normalizeSearch(fakeSearchResponse([product(189.5, 'InStock', { variants })]))[0].usable, true);
+  }
+  const out = selectedTent({ exists: true, available: 'InStock' });
+  out.offers[0].availability = 'OutOfStock';
+  assert.equal(normalizeSearch(fakeSearchResponse([out]))[0].usable, false, 'variant stock cannot revive an unavailable retailer offer');
 });

@@ -1,5 +1,16 @@
 # Validation
 
+## Merchant selected configuration stock — November 6 PST, 2026
+
+Current Channel3 public product/variant documentation exposed a missed case: listing stock can be **InStock** while the effective selected size is explicitly out of stock or absent. The old adapter failed both real-HTTP reproductions by returning a usable goal draft. [Contract, fix and boundaries](MERCHANT-VARIANT-REVIEW.md).
+
+- **Focused unit/HTTP:** 32 passed, 0 failed across `merchant-freshness`, `channel3-merchant` and `family-sponsor`.
+- **New browser case:** 2/2 passed, desktop and 390 px phone, in 55 seconds. A retailer visit refreshes the item, closes its reserved tab without retailer navigation, shows the selected-size restriction and disables the existing goal action. Household state stays unchanged. A later explicit check and confirmed save recover with the original selection and no contribution.
+- Unknown variant stock and unavailable unselected sizes remain usable when the offer is otherwise valid; unavailable retailer stock still blocks the item.
+- Source/art/palette/syntax guard and whitespace checks passed. All products/providers are fake; public documentation fetches used no key. No owner app, live product request, payment, model or recording was used.
+
+Ignored evidence: `test-results/merchant-variants/`. The full unit/browser suites were not repeated for this isolated normalizer change. The preceding integrated build's complete unit result below remains separate evidence.
+
 ## Final integrated review — November 6 PST / November 7 UTC, 2026
 
 Codex reviewed the assembled integration, including the phone-marker fix at `e52f95a`, and closed the shared-capture and late-passkey-enrollment races. [Reproductions, boundaries and exact commands](FAMILY-REQUEST-COMPLETION.md).
