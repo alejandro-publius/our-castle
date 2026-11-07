@@ -1,5 +1,17 @@
 # Validation
 
+## Final integrated review — November 6 PST / November 7 UTC, 2026
+
+Codex reviewed the assembled integration, including the phone-marker fix at `e52f95a`, and closed the shared-capture and late-passkey-enrollment races. [Reproductions, boundaries and exact commands](FAMILY-REQUEST-COMPLETION.md).
+
+- **Complete unit run:** 358 passed, 1 pre-existing skip, 0 failures on `f63c2d9`; subsequent source changes are the independently checked marker placement and the test correction below.
+- **Family browser checks:** 3 passed, with 3 deliberate opposite-viewport skips: desktop household isolation and renewed-sign-in recovery, plus 390 px family controls.
+- **Phone/map review:** the `e52f95a` run below passed 28 cases with 2 deliberate viewport skips; its only two failures were the stale palace lighting expectation.
+- **Palace correction:** the existing scene has 150 light-pool rings (nine doors, two stables, the tavern and eighteen bridge gates, five rings each), while the test still expected 135. Only that expected count changed. The full palace exploration → simulated contribution → deeds → crossing/focus case then passed on **desktop and phone, 2/2** in 1.7 minutes. No lighting or payment code changed for this correction.
+- **Mac preparation:** the exact lockfile installed in a separate release worktree; local startup and bundled sponsor/Studio/Grid/WebAuthn resources served successfully. Private copies of both existing databases migrated 4→7 with every original-column checksum unchanged across all 12 old tables. Full app startup/state reads on those copies preserved all 19 resulting tables and the separate $60/$75 progress.
+
+All new payment/model/search checks used fake providers. No physical phone or new provider result is implied. Activation details, when completed, belong in [release readiness](RELEASE-READINESS.md); the earlier failed-run records below remain historical evidence.
+
 ## Map names clear of the map controls on a phone — November 6, 2026
 
 On a 390×844 phone at close zoom, an area's name could slide under the map's toolbar (Areas, Whole realm, View), which is drawn above the names. It was reported for Starfall Observatory at the closest zoom.

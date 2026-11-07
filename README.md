@@ -22,7 +22,7 @@ npm run demo
 
 The demo starts a fresh in-memory household on an unused localhost port. It ignores `.env`, configured keys and saved records. Progress survives refresh while the demo runs; closing it ends that session. Payments are simulated and the planner uses built-in rules, with their existing labels. For persistent local records and configured sandbox/AI integrations, use `npm start` and [the runbook](docs/RUNBOOK.md). [Short review route](docs/JUDGE-HANDOFF.md#2-a-short-review-route)
 
-Several people in one family, each with their own passkey? `npm run family -- --port 3200` runs the opt-in shared-family mode (invitations, adult/child permissions, simulated payments, its own database). See [shared families](docs/FAMILY-ACCESS.md).
+Several people in one family, each with their own passkey? `npm run family -- --port 3200` runs the opt-in shared-family mode with invitations, adult/child permissions and live updates across open pages. Unsaved edits stay in place; an approval is cleared if its goal or sign-in changes. This runner uses simulated payments and its own database. See [shared families](docs/FAMILY-ACCESS.md).
 
 Contributing with Rachel? [Start here](START-HERE-RACHEL.md) for one small task, a clean demo and the branch/PR workflow.
 
@@ -35,13 +35,19 @@ Contributing with Rachel? [Start here](START-HERE-RACHEL.md) for one small task,
 
 Searching does not buy an item. This is goal progress, not a bank balance. Reported savings, bills, gifts, simulated contributions and PayPal sandbox receipts retain their sources. Verified utility-bill rewards require a provider connection that is not present.
 
+The walkthrough captures use isolated test households and simulated contributions:
+
+| An area opens for the family | Treasury keeps the records |
+| --- | --- |
+| ![Manor deed arriving on another family member's page](docs/screenshots/shared-live-owner-manor.png) | ![Illustrated Treasury milestone, weekly plan and contribution records](docs/screenshots/sponsor-treasury-desktop.png) |
+
 ## Three sponsor integrations
 
 | Tool | In the game | Implementation and evidence |
 | --- | --- | --- |
-| **Channel3** | Market Town merchant, up to three real results, explicit goal draft | Server-side API, budget and error handling; one real desktop search plus fake-provider journey checks. [Details](docs/CHANNEL3-MERCHANT.md) |
-| **AG Grid / AG Studio** | Treasury milestone, records and receipts in parchment | Real Studio custom widget/data engine/theme; Agent Framework manages the existing steward through a scoped custom runner, with cancellation and cleanup. No second chat panel. [Details](docs/TREASURY.md) |
-| **APIMatic** | Behind the scenes | Official generated PayPal Server SDK 2.5.0 and eight installed, discovery-verified Codex context skills; documented capture-recovery/read fixes. [Details](docs/APIMATIC-CODEX.md) |
+| **Channel3** | Market Town merchant, up to three results, refresh, cheaper choices and explicit goal draft | Server-side API and budget checks; changed offers expire stale drafts. One real desktop search is separate from fake-provider freshness/journey checks. [Details](docs/CHANNEL3-MERCHANT.md) |
+| **AG Grid / AG Studio** | Illustrated Treasury milestone, weekly plan, records and receipts in parchment | Studio 3.1 live data preserves the report; Grid 36.3 keeps selection and filters. The Agent Framework manages the existing steward through a scoped custom runner, with cancellation and cleanup. [Details](docs/TREASURY.md) |
+| **APIMatic** | Behind the scenes | Official generated PayPal Server SDK 2.5.0 and eight installed, discovery-verified Codex context skills; real SDK serialization/auth/retry tests with fake transport, plus documented capture-recovery/read fixes. [Details](docs/APIMATIC-CODEX.md) |
 
 PayPal JavaScript SDK v6 handles the browser session; Server SDK Orders v2/Payments v2 handle sandbox operations. PayPal Agent Toolkit enables only scoped read tools. Anthropic Claude (`claude-opus-5-5`) supplies runtime planning/steward answers; it cannot authorize, capture or refund a payment. Postman provides guarded walkthroughs.
 
