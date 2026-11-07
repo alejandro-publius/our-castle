@@ -49,7 +49,9 @@ test('Night and Rain light the world, survive refresh, district inspection and a
   await openMenu(page, 'world-settings'); await page.selectOption('#weather-mode', 'rain');
   await expect(status(page)).toHaveText('Night (chosen by you) · Rain (chosen by you)');
   let a = await sky(page);
-  expect(a).toMatchObject({ period: 'night', weather: 'rain', pointLights: 9, pointLightCapacity: 9, pools: 135, rain: { visible: true } });
+  // 30 light spots of five rings each: 9 district doors (the only ones with point lights), 18 bridge gates,
+  // the 2 royal stables and the tavern patio. Built from the realm layout, so the same in every household.
+  expect(a).toMatchObject({ period: 'night', weather: 'rain', pointLights: 9, pointLightCapacity: 9, pools: 150, rain: { visible: true } });
   expect(a.glassGlow).toBeGreaterThan(0);
   expect(a.panes).toBeGreaterThan(40);
   expect(a.lamps).toBeGreaterThan(30);

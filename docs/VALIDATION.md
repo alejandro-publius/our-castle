@@ -1,5 +1,148 @@
 # Validation
 
+## Release candidate: the scene lifecycle and Treasury loading fixes, with two stale checks corrected — November 7, 2026
+
+This candidate combines two reviewed fixes for integration review. It is not merged into main, and the owner apps were not changed.
+
+**Source.** Branch `claude/release-candidate`, from main `01fb478` (implementation `4082df5`). Two normal merges:
+- PR #34 at reviewed head `4cca30b`, merged as `62a1b07`;
+- PR #35 at reviewed head `737f5df`, merged as `8c2f8b8`.
+
+Both remote heads were unchanged when fetched, and neither was already on main. Their code and test files are byte-identical to the reviewed heads. The PR branches and the PRs themselves are unchanged.
+
+**Conflict.** The only conflict was in this file, where both PRs added a top section. Both sections are kept whole, each with its own closing line: Treasury loading (the later task) first, then scene lifecycle. At the merge commit, compared with each reviewed head, the file only adds the other PR's section.
+
+**Two stale checks corrected.** Tests only; the product is unchanged. Both failed on main on desktop and phone, as recorded in `test-results/scene-lifecycle-20261107/preexisting-on-main.log` (SHA-256 `44910faa…`). That baseline was not rerun.
+- **`area-cards.spec.mjs:276`.** The journey still expected "Visit your castle" straight after the completed goal. Since the receipt route (`4c8bc79`), the final contribution first offers "Review the receipt". The journey now follows that step by keyboard and checks:
+  - the Ledger tab is selected, and focus is on the selected-record section;
+  - the receipt is the $240 completed simulated contribution, matched by its id, and the grid's one selected row shows $240.00;
+  - the step makes no writes.
+
+  The original castle checks then run unchanged: focus and pressed state, the Journal hidden, the view's focus, no writes, the empty status and the visible deed. The test title now names the receipt step.
+- **`atmosphere.spec.mjs:44`.** The expected night light pools change from 135 to 150. The realm has 30 light spots of five rings each:
+  - 9 district doors, the only spots with point lights, so the point-light capacity stays 9;
+  - 18 bridge gates;
+  - the 2 royal stables, added in `c0921ed`;
+  - the tavern patio, added in `a542b06`.
+
+  Those two November 4 commits added spots without updating either spec. `89b5a91` updated `palace.spec.mjs` to 150 but not this one. Pools are built from the fixed realm layout, so the reset example household doesn't change the count. The point-light, rain, refresh, access and no-write checks are unchanged.
+
+| Check, on the combined candidate | Actual result |
+| --- | --- |
+| The two corrected cases, desktop and 390 px phone | 4 passed |
+| Scene lifecycle spec; the held-search Treasury regression; compass `map-explore.spec.mjs:97` and `:200`; receipt `family-journey.spec.mjs:99` and `:166`; desktop and phone | 12 passed, 2 skipped (scene lifecycle on the phone, by design) |
+| Source/art/palette/syntax guard (`npm run check`) | Passed: 47 copied art/runtime files, the original 90-color palette, the renderer wiring and JavaScript syntax |
+| `git diff --check` | Clean |
+
+**Limits.** This is a focused selection, not a full-suite run; no other new failure appeared, so the selection was not broadened. Everything ran in software-rendered Chromium, with the phone as an emulated 390 px viewport, not a physical device. Payments were simulated and providers fake.
+
+Raw evidence is ignored and stays local in `test-results/release-candidate-20261107/`: `corrected-cases.log`, `combined-regressions.log` and `check.log`.
+
+No owner household, credential, real order, paid model or provider call, recording, deployment or submission was used.
+
+## Treasury loading: a search typed while the records load — November 7, 2026
+
+This pass tested what happens while the Ledger's self-hosted AG Grid and the Treasury's AG Studio bundles are slow or fail, on main `01fb478` (implementation `4082df5`). Deterministic request gates held the two bundles; each was then released, answered with a 503, or recovered by a reload.
+- **Isolation:** each case ran the real app in-process, with a fresh in-memory example database and an empty environment. That means example payments and planner, and no licence or credentials.
+- **Steward cases:** these used the studio-agent spec's scripted fake model transport.
+
+**One defect, now fixed** (`src/app/ledger-grid.js`):
+- **The bug.** A search typed while the Grid bundle was still loading was stored but never given to the grid when it mounted. The later re-application then skipped it as unchanged.
+- **Reproduction.** There were three records. Typing "reported" while the bundle was held left all three in the grid, while the box still read "reported". Typed after the grid mounts, the same search shows two. The next edit of the search corrected it.
+- **The fix.** The grid now starts with the stored search.
+
+**Held, then released: already correct.**
+- **A filter chosen while held** (Bills) applied when the grid appeared, and the selection moved to a visible record.
+- **A record selected while held,** from the Treasury's week, was the selected row once the grid appeared. Its receipt was shown in the meantime.
+- **A household update while both bundles were held,** an explicit bill and a goal change, appeared once they were released. The grid showed the latest records, and the milestone read $60.00 of $100.00.
+- **Closing the Journal while both were held,** releasing them while it was hidden, then reopening it, showed one grid and one Studio root. The rows were laid out, with entry cells 148 px wide, and the milestone container fitted its 252 px content.
+- **The steward asked while Studio was held** waited with its existing "reading the ledger" status. There was no model request or POST while held, and exactly one run after release: one `POST /api/steward` and one fake conversation.
+- **A member change during that wait** made it refuse with "The records changed. Check the current record again.", with no request.
+
+**Failed and recovered: already correct.** Both bundles were answered with a 503 after a filter and a search were chosen.
+- The plain table showed the filtered, searched record, and the milestone was drawn from the same server data, with the error recorded.
+- Reopening the Ledger is not a retry.
+- Once the bundles were available again, a reload mounted AG Grid and Studio.
+
+Every case had one grid and at most one Studio root, and no page errors. There was no outside, provider or steward request apart from the one explicit steward ask, and no write apart from the explicit bill.
+
+| Check | Actual result |
+| --- | --- |
+| New treasury case "a search typed while the records are still loading applies to them when the grid appears", desktop and 390 px phone | 2 passed. On main's `ledger-grid.js` both fail: 2 records shown, 1 expected |
+| Probe, 9 cases, before and after the fix | Only the held search changed: 3 records before, 2 after, the same as a search typed after mount |
+| Related suites, desktop and phone: treasury, earned-realm, treasury-status, shared-live, studio-agent | 41 passed, 5 designed project skips, 0 failed |
+| Source/art/palette/syntax guard | Passed: 47 copied art/runtime files and the original 90-color palette |
+
+**Limits.**
+- **Emulated failures.** Holds and failures are emulated with Playwright route gates and a 503, not real network faults.
+- **Empty areas while held.** While a bundle is held, its records grid or milestone area stays empty, with no loading text. A request that never answers has no timeout. This was not changed: there is no new retry, timeout or loading UI.
+- **Family live updates** take the same update path as the explicit example updates checked here, and the existing shared-live spec passed. No physical device was used.
+
+Raw evidence is ignored and stays local in `test-results/treasury-loading-20261107/`:
+- the probe script, `probe.mjs`, with its results `result-before.json` and `result-after.json`;
+- the spec logs `spec-before-fix.log` and `spec-after-fix.log`;
+- the suite and guard logs `related-suites.log` and `check.log`;
+- `ledger-grid.main.js` and `ledger-grid.final.js`, the exact files tested.
+
+No owner household, credential, real order, paid model or provider call, recording, deployment or submission was used.
+
+## Scene lifecycle: disposal and hidden-page recovery — November 7, 2026
+
+This checks the board scene's lifecycle through its public API, on main `01fb478` (implementation `4082df5`). The probe used a standalone render fixture: art states only, with no ledger, payment or household state. Playwright's fake clock drove `performance.now`, the ambient interval and animation frames. The page counted GL draw and allocation calls, host view callbacks and scene events. Two defects were reproduced and fixed in `src/world/board-scene.js`. Appearance, the compass, controls, art, palette and payment behaviour are unchanged.
+
+**Already sound.**
+- **Disposing an idle scene cleans up.** It removes all ten canvas listeners: pointer, wheel and context menu, plus three.js's WebGL context listeners. Window and document listeners are unchanged. It clears the ambient interval and disconnects the resize observer. No draw, allocation, callback or event followed in the next 2.5 s, including after a container resize.
+- **Sponsor texture callbacks** were already guarded.
+- **A covering dialog** already paused ambient life and resumed it in phase.
+- **Existing specs already cover** frames pausing behind cards (area-cards), hidden rain frames (atmosphere), and the farm and tavern hidden clocks. Those checks were not repeated.
+
+**Disposal did not stop queued animation.** This is reachable through the public API: call `update(next, { animate: true })`, then `dispose()` before it resolves. The app itself never disposes its scene.
+- **Before:** the animation-frame chain and the update queue kept running against the disposed renderer.
+  - **Mid-walk:** 108 GL draws, 34 GL allocations, 98 view callbacks and 4 `hop` events after `dispose()`.
+  - **Mid-unlock:** 4,951 draws, 87 allocations and 167 callbacks. `bridge:open`, `hop`, `rise`, `fountain:start`, `fountain:end` and `arrival` were still announced.
+  - **An `update()` sent after `dispose()`:** 86,755 draws and 818 allocations, re-uploading the realm.
+  - **`debug().ambient`** stayed `true` although the timer had been cleared.
+- **Now:**
+  - An animation in flight ends at its next frame without drawing.
+  - Nothing more is drawn, announced or reported to the host.
+  - Pending and later updates resolve without doing any work.
+  - `ambient` reads `false`.
+  - Every case counts zero after `dispose()`.
+
+**A hidden page made part of ambient life jump forward.** The ambient clock was compensated for a covering dialog but not for a hidden page. The measured sequence was 10 s hidden, then 0.25 s visible again.
+- **Before:**
+  - The court guests' clock advanced 10.25 s. It was recovered exactly from the twenty guests' poses.
+  - The fairy moved 2.66 units, against 0.90 behind a dialog.
+  - By code reading, the deer, butterflies, waterwheel, windmill sails and rain use the same clock.
+  - The farm, tavern, river and clouds clamp each step, and advanced 0.375 s.
+- **Now:** a hidden page pauses exactly as a covering card does. The court advances 0.25 s, the same as behind a dialog. The clamped clocks also advance 0.25 s.
+
+| Check | Actual result |
+| --- | --- |
+| New `scene-lifecycle.spec.mjs`, desktop. The phone project skips it, since lifecycle does not depend on the viewport | 2 passed. Both fail on main's scene: disposal left 10,036 draws, 107 allocations, 280 callbacks, 10 events and `ambient: true`, and the court clock read 12.25 s instead of 2.25 s |
+| Probe, 6 cases, before and after | Before, as above. After, zero draws, allocations, callbacks and events following `dispose()` in every case; hidden and covered both advance 0.25 s |
+| Related suites, desktop and 390 px phone: farm-life, tavern, atmosphere, area-cards, gold-fountain, earned-realm and the new spec | 55 passed, 7 designed project or viewport skips, 4 failed. The 4 are two tests that fail identically on main's unchanged scene, listed below |
+| Journey "the world keeps living, and board events drive synthesized sound", desktop and phone | 2 passed |
+| Source/art/palette/syntax guard | Passed: 47 copied art/runtime files and the original 90-color palette |
+
+**Already failing on main, not changed here.** Both reproduce with main's `board-scene.js` on both projects:
+- **`area-cards.spec.mjs:276`** expects the next step after a completed goal to be "Visit your castle". Since the receipt route (`4c8bc79`), "Review the receipt" comes first.
+- **`atmosphere.spec.mjs:44`** expects 135 night light pools, from 27 light spots. The current realm has 150, from 30 spots.
+
+**Limits.**
+- **Hidden pages are emulated** by overriding `document.hidden`, as the existing specs do. A real background tab throttles timers to about once a second, so the pause starts at the first throttled tick, up to about a second late. A page the browser freezes outright fires no tick while hidden, and this change does not cover it.
+- **The canvas stays after `dispose()`,** together with its WebGL context: three.js leaves the canvas to its host. The app never disposes its scene, so this was not changed.
+- **Software-rendered Chromium only.** There is no performance or physical-device claim.
+
+Raw evidence is ignored and stays local in `test-results/scene-lifecycle-20261107/`:
+- the probe script, `probe.mjs`, with its results `result-before.json` and `result-after.json`;
+- the spec logs `spec-before-fix.log`, `spec-after-fix.log` and `spec-final.log`;
+- the related-suite logs `related-suites.log`, `journey-world-living.log` and `preexisting-on-main.log`;
+- the guard log `check-final.log`;
+- `board-scene.main.js` and `board-scene.final.js`, the exact scene files tested.
+
+No owner household, credential, real order, paid model or provider call, recording, deployment or submission was used.
+
 ## Direct receipt review and west-meadow exploration — November 7, 2026
 
 The existing **Review the receipt** action opens the matching Treasury record, including after the final goal contribution or after selecting an older record. One existing steward note is beside that record; its questions remain closed. The automatic focus on the Contribute confirmation no longer consumes the Treasury review step. No provider/check policy, approval, server endpoint, schema or dependency changes. [Behavior, design references and captures](RECEIPT-HANDOFF.md).

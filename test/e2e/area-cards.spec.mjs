@@ -273,7 +273,7 @@ test.describe('idle rendering behind cards', () => {
 });
 
 
-test('four journey tabs recover an old Rewards selection and a completed goal visits the castle', async ({ page }) => {
+test('four journey tabs recover an old Rewards selection, and a completed goal reviews its receipt before visiting the castle', async ({ page }) => {
   test.setTimeout(150_000); // The full route jump also runs on software-rendered CI.
   const writes = trackWrites(page);
   await ready(page);
@@ -291,6 +291,24 @@ test('four journey tabs recover an old Rewards selection and a completed goal vi
   await settled(page, 60_000);
   await expect(dialog(page)).toHaveAttribute('open', '');
   await page.getByRole('button', { name: 'Close all' }).click();
+  // The final contribution takes the same receipt route as every other: its Treasury receipt first, then the castle.
+  const final = await page.evaluate(() => window.__ourCastle.state.contributions.find((c) => c.amountCents === 24000));
+  expect(final).toMatchObject({ status: 'completed', simulated: true });
+  await expect(page.locator('#next-step-go')).toHaveText('Review the receipt');
+  const beforeReceipt = writes.length;
+  await page.locator('#next-step-go').focus();
+  await page.keyboard.press('Enter');
+  await expect(page.locator('#tab-ledger')).toHaveAttribute('aria-selected', 'true');
+  await expect(page.locator('#ledger-selected-record')).toBeFocused();
+  const receipt = page.locator('#ledger-contributions li[data-contribution]');
+  await expect(receipt).toHaveCount(1);
+  await expect(receipt).toHaveAttribute('data-contribution', final.id);
+  await expect(receipt).toContainText('$240.00');
+  await expect(receipt).toContainText('Completed — counted');
+  await expect(receipt).toContainText('simulated');
+  await expect(page.locator('#ledger-goal .ag-row-selected')).toHaveCount(1);
+  await expect(page.locator('#ledger-goal .ag-row-selected')).toContainText('$240.00');
+  expect(writes.slice(beforeReceipt)).toEqual([]);
   await expect(page.locator('#next-step-go')).toHaveText('Visit your castle');
   const beforeVisit = writes.length;
   await page.locator('#next-step-go').focus();

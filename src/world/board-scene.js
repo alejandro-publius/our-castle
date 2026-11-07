@@ -106,7 +106,10 @@ export function createBoardScene(container, { reducedMotion = false, isOccluded 
   let flutterGeo = null;
   let ambientFrames = 0;
   let ambientTimer = null;
-  const emit = (type, detail) => { try { onEvent(type, detail); } catch (error) { console.error('[board] event listener failed', error); } };
+  // After dispose(), nothing more is drawn, animated or announced: an animation in flight ends at its next frame.
+  let disposed = false;
+  const DISPOSED = Symbol('disposed');
+  const emit = (type, detail) => { if (disposed) return; try { onEvent(type, detail); } catch (error) { console.error('[board] event listener failed', error); } };
 
   // ---------- Static woodland ----------
   function tree(group, x, z, size, pine = false) {
@@ -276,11 +279,13 @@ export function createBoardScene(container, { reducedMotion = false, isOccluded 
 
   // ---------- Animation (demand-driven: frames render only while something moves) ----------
   function run(duration, frame, { minimumFrames = 0 } = {}) {
-    return new Promise((resolve) => {
+    return new Promise((resolve, reject) => {
+      if (disposed) { reject(DISPOSED); return; }
       if (reducedMotion || !renderer) { frame(1); draw(); resolve(); return; }
       const start = performance.now();
       let previous = null, elapsed = 0;
       const step = (now) => {
+        if (disposed) { reject(DISPOSED); return; }
         // A rare reward needs actual visible frames even if scene work delayed its
         // first callback. Normal bridge/walk timing keeps its existing wall clock.
         if (minimumFrames) { elapsed += previous === null ? 0 : Math.min(duration / minimumFrames, now - previous); previous = now; }
@@ -320,7 +325,7 @@ export function createBoardScene(container, { reducedMotion = false, isOccluded 
   }
 
   function draw() {
-    if (!renderer || !pipeline) return;
+    if (disposed || !renderer || !pipeline) return;
     // Measured per frame so the forest's cost stays visible in the test hooks.
     const start = performance.now(); renderer.info.reset();
     pipeline.render(scene, camera); frames++;
@@ -358,10 +363,10 @@ export function createBoardScene(container, { reducedMotion = false, isOccluded 
     // About 8 frames per second while idle; the pixel look hides the low rate and it stays cheap.
     ambientTimer = setInterval(() => {
       const now = performance.now();
-      if (isOccluded()) { coveredAt ??= now; return; }
-      // Keep the same ambient phase after a card closes, rather than jumping through the covered interval.
+      // A covering card or a hidden page pauses ambient life. Keep the same phase when it shows again, rather than
+      // jumping through the covered interval.
+      if (isOccluded() || document.hidden) { coveredAt ??= now; return; }
       if (coveredAt !== null) { start += now - coveredAt; coveredAt = null; }
-      if (document.hidden) return;
       ambientStep((now - start) / 1000);
       ambientFrames++;
       if (!animating && (view.focus || view.zoom>1.1 || ambientFrames%2===0)) draw();
@@ -607,9 +612,10 @@ export function createBoardScene(container, { reducedMotion = false, isOccluded 
   bindView();
 
   return {
-    /** Apply server state. Returns a promise that resolves when movement/upgrade animation ends. */
+    /** Apply server state. Returns a promise that resolves when movement/upgrade animation ends, or early once disposed. */
     update(next, { animate = true } = {}) {
       queue = queue.then(async () => {
+        if (disposed) return;
         const prev = state;
         state = { ...state, ...next, crest: { ...state.crest, ...(next.crest ?? {}) } };
         const crestChanged = prev.crest.field !== state.crest.field || prev.crest.charge !== state.crest.charge;
@@ -661,7 +667,7 @@ export function createBoardScene(container, { reducedMotion = false, isOccluded 
           animating = false;
           draw();
         }
-      });
+      }).catch((error) => { if (error !== DISPOSED) throw error; }); // disposal ends an update quietly
       return queue;
     },
     /** Buttons and keyboard: zoom, turn, pan or reset the view. Presentation only. */
@@ -728,7 +734,7 @@ export function createBoardScene(container, { reducedMotion = false, isOccluded 
       return { spaces, travelers: toScreen(t.x, t.y + 1.5, t.z), canvas: { left: rect.left, top: rect.top, width: rect.width, height: rect.height } };
     },
     debug: () => ({ region: REALM_SIZE, estateLevel: state.estateLevel, view: { ...view }, previewFeature: state.previewFeature, tier: state.builtTier, position: state.position, shownPosition, gardens: state.gardens, crest: { ...state.crest }, playMode: state.playMode, familyAvatars: householdParty().map((m, i) => ({ memberId: m.id, avatarId: memberAvatar(m, i).id, role: m.role })), animating, frames, ambient: Boolean(ambientTimer), ambientFrames, grazers: grazers.length, butterflies: flutterers.length, court: court.debug(), legends: REALM_LEGENDS.map(({id,x,z})=>({id,x,z})), districts: realm.districts.map(({id,open,status,greyPaint,drawMeshes,hues})=>({id,open,status,greyPaint,drawMeshes,hues})), bridges: realm.bridges.map(({id,open,panels,gate,river})=>({id,open,gate,river,raised:panels.some(p=>Math.abs(p.group.rotation.z)>.01)})), landscape: realm.landscape, sponsors: sponsors.debug(), tavern: realmModels.tavernDebug(), farm: realmModels.farmDebug(), folklore: realmModels.legendsDebug(), project: { ...project.debug(), ...projectMeshes() }, riverCurrent: realmModels.currentDebug(), fountains: fountains.debug(), surround: pipeline.cloudSurroundDebug(), atmosphere: atmosphereDebug(), render: { ...perf, averageMs: perf.draws ? perf.totalMs / perf.draws : 0, geometries: renderer.info.memory.geometries } }),
-    dispose() { for (const [name,fn,options] of interactions) renderer.domElement.removeEventListener(name,fn,options); clearInterval(ambientTimer); observer?.disconnect(); fountains?.dispose(); sponsors?.dispose(); court?.dispose(); for (const g of Object.values(groups)) disposeGroup(g); flutterGeo?.dispose(); builder?.dispose(); pipeline?.dispose(); renderer?.dispose(); },
+    dispose() { disposed = true; for (const [name,fn,options] of interactions) renderer.domElement.removeEventListener(name,fn,options); clearInterval(ambientTimer); ambientTimer = null; observer?.disconnect(); fountains?.dispose(); sponsors?.dispose(); court?.dispose(); for (const g of Object.values(groups)) disposeGroup(g); flutterGeo?.dispose(); builder?.dispose(); pipeline?.dispose(); renderer?.dispose(); },
   };
 
   function districtsOnScreen(){
