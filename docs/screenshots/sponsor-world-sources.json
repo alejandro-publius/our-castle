@@ -1,0 +1,130 @@
+{
+  "basedOn": "264d5c202443507011f4f46bb587a0fec0f4c9e5",
+  "captureDateUTC": "2026-11-07",
+  "captureDatePacific": "2026-11-06",
+  "environment": "Playwright Chromium, software WebGL; 1440x1000 desktop and emulated 390x844 touch phone; reduced motion",
+  "modes": "Example payments and planner; Merchant disconnected; no provider keys or requests",
+  "steps": [
+    "Fresh local example app on cloud-only port 3154; wait for all three local logo textures",
+    "Close journal; choose Day; inspect Market Town, Stone Keep and Starfall Observatory from Areas; Zoom in once",
+    "Phone: same inspection path at 390x844; existing responsive journal closes normally"
+  ],
+  "sources": {
+    "src/world/board-scene.js": "fc92ae3b8a2bd679e5f70e591cca69e884cc65744ac05e5c7c3d0c789f7f02ef",
+    "src/world/sponsor-signs.js": "a29d20d638c00529de29fec5c7a7df4f7ec8909caed642c01f250c6a01315446",
+    "assets/brand/sponsors/ag-grid.svg": "970654b7276c318f41a2b2ae4bf89d3921b4641b2071cad459f5be5073a269e4",
+    "assets/brand/sponsors/ag-grid.png": "8e3f4859094361b44edc94ccd125983ffaa4d94fcf01daca5ce962175405f17c",
+    "assets/brand/sponsors/channel3.svg": "0d5dcb888187ae85a11bfafb54223ba3b5b936ee07bb10d54769ed22901d0d67",
+    "assets/brand/sponsors/apimatic.svg": "0185ef794ec58f58dd553085ed62602a68915de448a8fbacab97e94078806f7e"
+  },
+  "screenshots": [
+    {
+      "path": "docs/screenshots/sponsor-world-market.png",
+      "sha256": "0faf13c97fbc20bcd0db2e92d065db55384951280d7fa4a621628c11bc3cb486",
+      "width": 1440,
+      "height": 1000,
+      "sourceCapture": "test-results/sponsor-world/desktop-market.png"
+    },
+    {
+      "path": "docs/screenshots/sponsor-world-treasury.png",
+      "sha256": "b5c85996bd5cc4aaf80997fa38a50d40bec5503114836eba6889a82e1b50fae5",
+      "width": 1440,
+      "height": 1000,
+      "sourceCapture": "test-results/sponsor-world/desktop-keep.png"
+    },
+    {
+      "path": "docs/screenshots/sponsor-world-observatory.png",
+      "sha256": "4e77270facf83ce4ddc63904661f4390b75de3da51565e739b4d88d01b175c7a",
+      "width": 1440,
+      "height": 1000,
+      "sourceCapture": "test-results/sponsor-world/desktop-wizard.png"
+    },
+    {
+      "path": "docs/screenshots/sponsor-world-phone.png",
+      "sha256": "03c3c6f09158a29d57a07711d10234b32b013ea706f68f4e62f5b72d267041fd",
+      "width": 390,
+      "height": 844,
+      "sourceCapture": "test-results/sponsor-world/phone-keep.png"
+    }
+  ],
+  "validation": [
+    {
+      "name": "desktop",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "signs": [
+        {
+          "id": "channel3",
+          "district": "market",
+          "loaded": true,
+          "failed": false,
+          "x": 53.35,
+          "z": 32.2,
+          "width": 6.45
+        },
+        {
+          "id": "ag-grid",
+          "district": "keep",
+          "loaded": true,
+          "failed": false,
+          "x": -24,
+          "z": -20,
+          "width": 8.25
+        },
+        {
+          "id": "apimatic",
+          "district": "wizard",
+          "loaded": true,
+          "failed": false,
+          "x": 101.4,
+          "z": 30.5,
+          "width": 8.15
+        }
+      ],
+      "errors": [],
+      "remote": [],
+      "writes": []
+    },
+    {
+      "name": "phone",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "signs": [
+        {
+          "id": "channel3",
+          "district": "market",
+          "loaded": true,
+          "failed": false,
+          "x": 53.35,
+          "z": 32.2,
+          "width": 6.45
+        },
+        {
+          "id": "ag-grid",
+          "district": "keep",
+          "loaded": true,
+          "failed": false,
+          "x": -24,
+          "z": -20,
+          "width": 8.25
+        },
+        {
+          "id": "apimatic",
+          "district": "wizard",
+          "loaded": true,
+          "failed": false,
+          "x": 101.4,
+          "z": 30.5,
+          "width": 8.15
+        }
+      ],
+      "errors": [],
+      "remote": [],
+      "writes": []
+    }
+  ]
+}
