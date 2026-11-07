@@ -13,6 +13,12 @@ import { reconcileOrder } from '../../server/steward/index.mjs';
 const owner = { householdId: DEMO_HOUSEHOLD_ID, goalId: DEMO_GOAL_ID };
 const progress = (env) => env.db.prepare('SELECT COALESCE(SUM(effect * amount_cents), 0) AS p FROM ledger_entries WHERE goal_id = ?').get(DEMO_GOAL_ID).p;
 const json = (body) => new Response(JSON.stringify(body), { status: 200, headers: { 'Content-Type': 'application/json' } });
+// A request that never answers. Like a real open connection, it keeps the event loop alive until it is aborted.
+// AbortSignal.timeout's timer does not, and Node 22's test runner cancels a test whose event loop has nothing left.
+const neverAnswers = (signal) => new Promise((_, reject) => {
+  const open = setInterval(() => {}, 1000);
+  signal.addEventListener('abort', () => { clearInterval(open); reject(signal.reason); }, { once: true });
+});
 
 async function captured(env, amountCents = 1500) {
   const { orderId } = await env.service.createPayPalOrder(contribution({ amountCents }));
@@ -57,7 +63,7 @@ test('a REST call that never answers is bounded, and a capture that times out be
   const fetch = (url, init) => {
     if (!/\/capture$/.test(new URL(url).pathname)) return env.fake.fetch(url, init);
     hung++;
-    return new Promise((_, reject) => init.signal.addEventListener('abort', () => reject(init.signal.reason)));
+    return neverAnswers(init.signal);
   };
   const paypal = createPayPalClient({ clientId: 'test-client-id', clientSecret: 'test-client-secret', fetch, timeoutMs: 25 });
   const service = createContributionService({ db: env.db, clock: env.clock, mode: 'sandbox', paypal, webhookId: 'WH-TEST' });
@@ -73,7 +79,7 @@ test('a REST call that never answers is bounded, and a capture that times out be
   assert.equal(progress(env), before);
 
   // The two no-answer cases are distinguishable but both lack an HTTP status, which is what "unknown outcome" keys on.
-  const timedOut = createPayPalClient({ clientId: 'a', clientSecret: 'b', timeoutMs: 5, fetch: (url, init) => new Promise((_, reject) => init.signal.addEventListener('abort', () => reject(init.signal.reason))) });
+  const timedOut = createPayPalClient({ clientId: 'a', clientSecret: 'b', timeoutMs: 5, fetch: (url, init) => neverAnswers(init.signal) });
   await assert.rejects(timedOut.getOrder('ORDER1'), (e) => e instanceof PayPalError && e.status === null && e.paypalName === 'TIMEOUT' && /did not answer in time/.test(e.message));
   const unreachable = createPayPalClient({ clientId: 'a', clientSecret: 'b', fetch: async () => { throw new TypeError('fetch failed'); } });
   await assert.rejects(unreachable.getOrder('ORDER1'), (e) => e instanceof PayPalError && e.status === null && e.paypalName === 'NETWORK_ERROR' && /Could not reach/.test(e.message));
