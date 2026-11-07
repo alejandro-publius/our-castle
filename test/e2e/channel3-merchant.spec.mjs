@@ -441,3 +441,54 @@ test('an expired price keeps the draft and returns to its search without a silen
   expect(after.goalItem).toBeNull();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });
+
+test('a newer catalog price rejects a draft open in Plan and recovers through explicit search and review', async ({ page }, info) => {
+  let amount = 189.5;
+  const current = () => fakeProduct({ offers: [{ ...fakeProduct().offers[0], price: { price: amount, currency: 'USD' } }] });
+  await open(page, { respondWith: (url) => url.includes('/products/') ? current() : fakeSearchResponse([current()]) });
+  const before = await stateOf(page);
+  await page.locator('#open-merchant').click();
+  await page.locator('#merchant-query').fill('family tent');
+  await page.locator('#merchant-budget').fill('300');
+  const answer = page.waitForResponse((r) => new URL(r.url()).pathname === '/api/merchant/search');
+  await page.locator('#merchant-search').click();
+  const found = await (await answer).json();
+  await page.locator('#merchant-results > li').first().getByRole('button', { name: 'Use as goal' }).click();
+  await expect(page.locator('#goal-target')).toHaveValue('189.50');
+  await page.locator('#goal-name-input').fill('Our family tent');
+
+  // A second request checks the same public offer while this page still holds its unsaved $189.50 draft.
+  amount = 249;
+  const checked = await page.request.post(`${s.base}/api/merchant/refresh`, { data: { goalId: found.goalId, referenceId: found.results[0].referenceId } });
+  expect(checked.status()).toBe(200);
+  await page.locator('#goal-draft-save').click();
+  await expect(page.locator('#plan-status')).toContainText('result has expired');
+  await expect(page.locator('#goal-draft-save')).toBeDisabled();
+  await expect(page.locator('#goal-name-input')).toHaveValue('Our family tent');
+  await expect(page.locator('#goal-target')).toHaveValue('189.50');
+  await expect(page.locator('#deed-dialog')).not.toBeVisible();
+  const refused = await stateOf(page);
+  expect(refused.goal).toEqual(before.goal);
+  expect(refused.ledger).toEqual(before.ledger);
+  expect(refused.contributions).toEqual(before.contributions);
+  expect(s.fake.calls).toHaveLength(2);
+  await page.locator('#goal-draft').scrollIntoViewIfNeeded();
+  await page.screenshot({ path: info.outputPath('catalog-change-review.png') });
+
+  await page.getByRole('button', { name: 'Search again', exact: true }).click();
+  await expect(page.locator('#merchant-query')).toHaveValue('family tent');
+  expect(s.fake.calls).toHaveLength(2, 'opening recovery does not call the provider');
+  await page.locator('#merchant-search').click();
+  await expect(page.locator('#merchant-results > li').first().locator('.merchant-item-meta')).toContainText('$249.00 USD');
+  await page.locator('#merchant-results > li').first().getByRole('button', { name: 'Use as goal' }).click();
+  await expect(page.locator('#goal-target')).toHaveValue('249.00');
+  await page.locator('#goal-draft-save').click();
+  await expect(page.locator('#plan-status')).toContainText('Goal saved:');
+  const saved = await stateOf(page);
+  expect(saved.goal.targetCents).toBe(24900);
+  expect(saved.goalItem.priceCents).toBe(24900);
+  expect(saved.progress.progressCents).toBe(before.progress.progressCents);
+  expect(saved.contributions).toEqual(before.contributions);
+  expect(s.fake.calls).toHaveLength(3);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+});
