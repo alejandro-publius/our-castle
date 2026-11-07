@@ -679,8 +679,18 @@ function districtCondition(district) {
   const required=Math.ceil(state.goal.targetCents*district.percent/100),remaining=Math.max(0,required-state.progress.progressCents);
   return remaining ? `${money(remaining)} to unlock` : `${district.percent}% milestone`;
 }
+// The map's buttons are rebuilt only when an area opens or closes or the Build choice changes. Any other update (a live
+// update from another member, say) leaves them, their places on the map and the keyboard on them exactly as they are.
+let realmNavigationKey = null;
 function renderRealmNavigation() {
   const regions = realmAccess({ builtTier: state.board.builtTier, estateLevel: state.board.estateLevel, gardens: state.board.gardens });
+  const key = JSON.stringify([regions.map((d) => [d.id, d.status]), projectKind(state.goal.projectKind).key]);
+  if (key === realmNavigationKey) return;
+  realmNavigationKey = key;
+  // A rebuilt button keeps its place, visibility and pressed state, and keeps the keyboard if it had it.
+  const buttons = () => $$('#realm-markers button, #realm-districts button');
+  const slot = (el) => `${el.parentElement?.id}:${el.dataset.district ?? el.dataset.legend ?? el.id}`;
+  const before = new Map(buttons().map((el) => [slot(el), { hidden: el.hidden, left: el.style.left, top: el.style.top, pressed: el.getAttribute('aria-pressed'), focused: el === document.activeElement }]));
   const lock = '<svg viewBox="0 0 12 14" width="12" height="14" fill="none" aria-hidden="true"><path d="M3 6V4a3 3 0 0 1 6 0v2" stroke="currentColor" stroke-width="1.5"/><rect x="1.5" y="6" width="9" height="6.5" rx=".5" fill="currentColor"/></svg>';
   $('#realm-districts').replaceChildren(...regions.map((d) => h('button', { type: 'button', class: 'realm-stop', 'data-district': d.id, 'data-status': d.status, 'aria-pressed': 'false' },
     h('strong', {}, d.name), h('small', {}, d.open ? 'Open district' : `Locked · ${d.percent === null ? 'bill habit' : `${d.percent}%`}`))));
@@ -691,7 +701,14 @@ function renderRealmNavigation() {
   // with its bell). Selecting it only moves the camera and names its stage.
   const kind = projectKind(state.goal.projectKind);
   $('#realm-markers').append(h('button', {type:'button',id:'project-marker',class:'realm-legend realm-project','data-legend':FAMILY_PROJECT_SITE.id,'data-kind':kind.key,'aria-label':`Visit the ${kind.name.toLowerCase()}`,'aria-pressed':'false',hidden:true},h('span',{'aria-hidden':'true',html:PROJECT_ICONS[kind.key]})));
-  $('#realm-focus-status').textContent = 'Select a district.';
+  for (const el of buttons()) {
+    const was = before.get(slot(el));
+    if (!was) continue;
+    el.hidden = was.hidden; el.style.left = was.left; el.style.top = was.top;
+    if (was.pressed) el.setAttribute('aria-pressed', was.pressed);
+    if (was.focused) el.focus({ preventScroll: true });
+  }
+  if (!before.size) $('#realm-focus-status').textContent = 'Select a district.';
 }
 function syncRealmMarkers({focus,points}){
   const map=$('.realm-map'),focused=focus?'true':'false';if(map.dataset.focused!==focused)map.dataset.focused=focused;
@@ -845,6 +862,11 @@ function deedClosed() {
   const visiting = d.visiting;
   Object.assign(d, { queue: [], index: 0, visiting: false });
   if (visiting) return;
+  // The close event can arrive late, behind busy frames, after the family has already moved on (pressed Visit your
+  // castle, say). Never take the keyboard back from where they went: place it only if it was left on the page or
+  // returned to the card's opener.
+  const active = document.activeElement;
+  if (active && active !== document.body && active !== d.origin && !$('#deed-dialog').contains(active)) return;
   let target = d.origin;
   if (!target?.isConnected || target.closest('[hidden], details:not([open])')) {
     const marker = $(`#realm-markers [data-district="${CSS.escape(id ?? '')}"]`);
