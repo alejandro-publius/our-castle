@@ -136,10 +136,12 @@ test('pending payments, refunds and re-crossing never create a deed; earned map 
 });
 
 test('several new areas queue one at a time, and Visit focuses the right district', async ({ page }) => {
+  test.setTimeout(150_000); // Several route hops and four deeds also run on software-rendered CI.
   const writes = trackWrites(page);
   await ready(page);
   await foundHouse(page);
   await pay(page, '135.00'); // $60 → $195: Manor, Market, Keep and Observatory
+  await settled(page, 60_000); // Deeds intentionally wait for the route animation, as in the completed-goal case below.
   await expect(dialog(page)).toHaveAttribute('open', '');
   await expect(page.locator('#deed-count')).toHaveText('1 / 4');
   await expect(page.locator('#deed-name')).toHaveText('Manor Gardens');
@@ -304,4 +306,36 @@ test('four journey tabs recover an old Rewards selection and a completed goal vi
   expect(writes.slice(beforeVisit)).toEqual([]);
   await expect(page.locator('#realm-focus-status')).toBeEmpty();
   await expect(page.locator('#view-deed')).toBeVisible();
+});
+
+test('a delayed deed close respects a later map or header focus choice', async ({ page, request }) => {
+  // A completed example goal prepares the navigation without another simulated contribution or a long route walk.
+  const state = await (await request.get('/api/state')).json();
+  expect((await request.post('/api/setup', { data: { name: 'House of Rivergate', playMode: 'family', crest: state.household.crest } })).ok()).toBe(true);
+  expect((await request.put('/api/goal', { data: {
+    name: state.goal.name, targetCents: state.goal.targetCents, startingCents: state.goal.targetCents,
+    weeklyBudgetCents: state.goal.weeklyBudgetCents, targetDate: state.goal.targetDate,
+  } })).ok()).toBe(true);
+  const writes = trackWrites(page);
+  await ready(page);
+  await chooseDistrict(page, 'castle');
+  const castle = page.locator('#realm-markers [data-district="castle"]');
+  for (const destination of ['castle', 'persona']) {
+    await page.locator('#view-deed').click();
+    await expect(dialog(page)).toHaveAttribute('open', '');
+    // Native close events are queued. Do both deliberate actions in the same task to reproduce a close event that
+    // arrives after navigation, independent of rendering speed. The original handlers still perform the actions.
+    await page.locator('#deed-close').evaluate((button, destination) => {
+      const closed = new Promise((resolve) => button.closest('dialog').addEventListener('close', resolve, { once: true }));
+      button.click();
+      const target = document.querySelector(destination === 'castle' ? '#next-step-go' : '#persona');
+      target.focus();
+      if (destination === 'castle') target.click();
+      return closed.then(() => undefined);
+    }, destination);
+    await expect(destination === 'castle' ? castle : page.locator('#persona')).toBeFocused();
+    await expect(dialog(page)).not.toHaveAttribute('open', '');
+  }
+  expect(writes).toEqual([]);
+  expect((await (await request.get('/api/state')).json()).contributions).toEqual([]);
 });

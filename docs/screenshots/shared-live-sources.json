@@ -15,19 +15,42 @@
       "shows": "Goal progress filter, 'simulated' search, amount sort and the selected $15.00 receipt kept (keyboard focus on the same record) while the new $5.00 row and the weekly Treasury arrived live"
     },
     "docs/screenshots/shared-live-reconnect.png": {
-      "sha256": "63da944ca0defd335a7f8b1c5829b0f51ce4a712ae8eba215b217444a0077e1c",
+      "sha256": "dc4ffdf3d8a284b89f27306f25b6ebbf1ad11da7253a52626b88fbe5592c7322",
       "capture": "dropped-connection case, desktop top bar, 8 s after the server cut the offline device's connections",
-      "shows": "the one compact connection state: 'Updates paused \u00b7 Reconnect' beside the signed-in member"
+      "shows": "the one compact connection state: 'Updates paused \u00b7 Reconnect' beside the signed-in member",
+      "followUpCapture": "Codex focused browser regression follow-up; synthetic family, same viewport and virtual authenticator as above."
     },
     "docs/screenshots/shared-live-phone-reconnect.png": {
-      "sha256": "a5dc6469b441beee7145339e9fdf1477e7cc094088f27310491dd88410efa59a",
+      "sha256": "514de7b740025e89c6f8d91065560ab693efba9e475e2c71d947da192d8896a8",
       "capture": "phone case, 390x844 touch phone (DPR 2), offline after a live update arrived",
-      "shows": "the Reconnect control fitting the top bar beside the signed-in name and Journal button; the world still leads"
+      "shows": "the Reconnect control fitting the top bar beside the signed-in name and Journal button; the world still leads",
+      "followUpCapture": "Codex focused browser regression follow-up; synthetic family, same viewport and virtual authenticator as above."
     },
     "docs/screenshots/shared-live-removed.png": {
       "sha256": "0f2308654a1e2988edeb1dd85590f02bafcdae271d1063b3795e62a13e320850",
       "capture": "three-members case, desktop, the child's open page when the owner removed access",
       "shows": "the sign-in card with 'Your access to this family was removed.', without any click or reload on the child's page"
     }
+  },
+  "followUp": {
+    "date": "2026-11-06",
+    "timezone": "America/Los_Angeles",
+    "baseCommit": "7bd4bd92712d1d7d5afda2cec334847b2715a4f5",
+    "sourceSha256": {
+      "src/app/main.js": "740366dcf111a6978ef84b08e18a9433603e01d53ab0fa7ebf157f47ff64bc8a",
+      "test/e2e/shared-live.spec.mjs": "8b90b6d45472274f3a36ba8e9cd42994a08195af3b87c9c5b6053fbb42b6adad",
+      "index.html": "b4fdf3b2078b4e6498cd823c366f530e17287268d9c12cac1be63a8d59e7e693",
+      "app.css": "67bce3e575b3608676832255218d426d1a43763f034812e38ed781ec12b8228d"
+    },
+    "refreshedCaptures": [
+      "docs/screenshots/shared-live-reconnect.png",
+      "docs/screenshots/shared-live-phone-reconnect.png"
+    ],
+    "retainedFromBase": [
+      "docs/screenshots/shared-live-owner-manor.png",
+      "docs/screenshots/shared-live-owner-ledger.png",
+      "docs/screenshots/shared-live-removed.png"
+    ],
+    "captureBoundary": "Only the two Reconnect captures were refreshed. The other three images and their original capture context are retained unchanged from the base commit, with hashes checked. The manual reconnect test holds stream responses until the click; its separate automatic recovery step is un-gated."
   }
 }
