@@ -1,5 +1,68 @@
 # Validation
 
+## Final assembly: PRs #25, #21 and #26 merged into PR #20 — November 6, 2026
+
+Three Codex PRs were reviewed and merged into `claude/shared-live-integration` one at a time. Each was a normal merge followed by focused checks. Nothing was merged into `main` or activated, and PR #24 was left as it is.
+
+| PR | Head | Merge | What it adds |
+| --- | --- | --- | --- |
+| #25 payment dispatch protection | `eaa2dd2` | `3c85af7` | Access is checked again after PayPal's OAuth token arrives, just before a capture or refund is sent ([notes](PAYMENT-DISPATCH-ACCESS.md)). |
+| #21 PayPal browser SDK loading | `4344e63` | `b3c711b` | The v6 SDK loader waits 60 s and accepts a loaded v6 SDK whose load event was missed ([notes](DEVELOPER-RESEARCH-20261106.md)). |
+| #26 sponsor landscape details | `2ba1f04` | `05b789c` | Three small signs carrying the official AG Grid, APIMatic and Channel3 marks ([notes](SPONSOR-WORLD-DETAILS.md)). |
+
+**PR #25 review.**
+- **The OAuth window is closed.** The REST client checks before and after awaiting its token.
+  - The official SDK (2.5.0) gets a controller for each call, whose request interceptor runs after the SDK's authentication and again on each retry.
+  - I confirmed this in the installed `@apimatic/core` 0.10.30. Its request builder adds the authentication and retry interceptors in its constructor, and `combineHttpInterceptors` runs interceptors in the order they were added, so a guard added later runs inside both.
+- **Nothing is sent after access ends.** Twenty dispatch cases cover the REST client and the SDK, capture and refund, under removal, idle expiry, sign-out, a renewed sign-in and an active control.
+  - When access has ended: 401, no request sent and nothing recorded.
+  - The owner's deliberate retry then sends exactly one request.
+- **A request already sent still records once:** the existing already-dispatched cases still pass.
+- **Separate guards:** the SDK transport case runs two callers on one client. The removed caller fails with its own access error, not a provider failure, and only the active caller's request is sent.
+- **Renewed sign-in:** a renewed sign-in during OAuth refuses the old request (401). The page handles that refusal with the `264d5c2` behaviour.
+- **Observation, no change: one in-flight capture per order.** The contribution service shares one in-flight capture for an order between its callers.
+  - A scratch check, not committed and using the fake PayPal: Ash and the owner capture the same order at once, and Ash is removed during OAuth. Both get 401 (the owner receives Ash's error) and nothing is sent. The owner's retry then captures once.
+  - The app's pages never start such a concurrent capture: only the approving page captures, once per attempt. It is safe.
+  - Even so, separate guards hold for each transport call, not across two callers of the same order. Left for Astra and Codex, since it is payment code.
+
+**PR #21 review.**
+- Only `loadSdk` changes. It now waits 60 s instead of 20 s.
+- At the deadline it accepts an available v6 namespace (`createInstance`), but not a v5 one.
+- A failed load is removed and forgotten, so only an explicit initialization retry loads again. Initialization never creates an order.
+- No server, family-access or approval code changed, and no other browser spec depends on the old timeout.
+
+**PR #26 review.**
+- **Provenance.** The three SVGs and the AG Grid PNG match their recorded SHA-256 hashes. The SVGs contain no scripts, external links, images or fonts; their only references are internal clip and mask ids. `board-scene.js` and `sponsor-signs.js` match the capture provenance.
+- **Code.** Each sign is built from palette boxes (wood, gold, dark, stone), with the mark as a texture loaded from `/assets/brand/sponsors/`. Signs are built once and redraw when an image loads; their geometry, textures and materials are disposed with the scene. `npm run check` (47 files, 90 colours) passes.
+- **Visual check.** A scratch Playwright script, not committed, ran its own example-mode server on a free port with an empty environment; screenshots only.
+  - **Desktop 1440×1000, each area focused and zoomed in once.** Channel3 sits above the Market Town stalls, AG Grid beside the Keep's outbuilding and APIMatic at the observatory's base. All three read by day and remain visible at night, with APIMatic lit by the tower's lamp.
+  - **390×844 phone.** All three load, but at the same framing they are small boards without readable marks. At maximum zoom the Channel3 mark is roughly readable, the AG Grid board leaves the frame (it needs a pan) and the APIMatic board sits at the bottom edge. This matches PR #26's stated scale, clearest when zoomed. The signs were not enlarged, to keep the woodland restrained.
+  - **Both viewports.** All three marks loaded, with no page error, no request leaving the server, no API write and no horizontal scroll. Goal, progress and achievements were unchanged.
+  - **Unrelated and already there.** At maximum phone zoom the observatory's floating name rises behind the Areas and View buttons.
+
+**Checks** (fake PayPal, scripted SDK and fake Channel3; no real order, paid call or provider request):
+- **After #25, unit:**
+
+  | File | Result |
+  | --- | --- |
+  | `payment-dispatch-access` | 20/20 |
+  | `paypal-sdk-transport` | 7/7 |
+  | `family-runtime-boundaries` | 9/9 |
+  | `paypal-sdk` | 4/4 |
+  | `payments` | 35 passed, 1 skip that was already there |
+  | `paypal-unknown-outcome` | 7/7 |
+  | `family-live` | 7/7 |
+  | `family-access` | 18/18 |
+  | `paypal-cancel-status` | 12/12 |
+  | `paypal-reconciliation` | 8/8 |
+  | `paypal-read-tools` | 5/5 |
+
+- **After #21:** `checkout-readiness` 20/20 (10 cases, desktop and phone) and `paypal-callbacks` 6/6.
+- **After #26:** `farm-life`, `tavern` and `cloud-overlap` 12/12, desktop and phone, including rebuilds without geometry growth. Also the visual check above and `npm run check`.
+- No failure called for a broader run, and the full browser suite was not rerun.
+
+**Carried forward.** The Merchant index-lag and variant caveats in the PR #23 entry below still apply. They are unverified, since no live Channel3 call was made.
+
 ## Merchant drafts after a catalog change (PR #23 merged into PR #20) — November 6, 2026
 
 Codex's PR #23 (`review/merchant-freshness`, head `dddb951`, based on `1de17ba`) was reviewed and merged into `claude/shared-live-integration` by a normal merge (`0f7dca5`).
