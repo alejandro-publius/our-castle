@@ -98,6 +98,7 @@ select,input,textarea,button { font:inherit; }
 .chip,.hud-menu>summary { min-width:44px; min-height:44px; padding:9px 13px; border:1px solid #71807b; border-radius:2px; color:var(--paper); background:var(--bg); cursor:pointer; font-size:14px; font-weight:500; }
 .chip:hover,.hud-menu>summary:hover { border-color:var(--brass); }
 .chip[aria-pressed='true'] { color:var(--ink); background:var(--paper); border-color:var(--paper); }
+.map-explore { display:inline-flex; align-items:center; justify-content:center; }
 .hud-menu { position:relative; }
 .hud-menu>summary { list-style:none; display:flex; align-items:center; justify-content:center; gap:7px; }
 .hud-menu>summary::-webkit-details-marker { display:none; }

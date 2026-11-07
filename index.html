@@ -60,6 +60,7 @@
               <span id="view-hint">Drag to turn. Shift-drag to pan. Scroll to zoom.</span>
             </div>
           </details>
+          <button type="button" class="chip map-explore" id="map-explore" aria-pressed="false" aria-label="Explore map" title="Explore map"><svg viewBox="0 0 20 20" width="19" height="19" fill="none" aria-hidden="true"><circle cx="10" cy="10" r="6.6" stroke="currentColor" stroke-width="1.3"/><path d="M10 1v2.2M10 16.8V19M1 10h2.2M16.8 10H19" stroke="currentColor" stroke-width="1.3"/><path d="M10 4.7 12.1 10H7.9Z" fill="currentColor"/><path d="M7.9 10h4.2L10 15.3Z" stroke="currentColor" stroke-width="1.1" stroke-linejoin="round"/></svg></button>
           <details id="world-settings" class="hud-menu settings-menu"><summary aria-label="World settings"><svg viewBox="0 0 20 20" width="19" height="19" fill="none" aria-hidden="true"><path d="m8 2-.5 2-1.5.9-2-.6-2 3.4 1.5 1.4v1.8L2 12.3l2 3.4 2-.6 1.5.9.5 2h4l.5-2 1.5-.9 2 .6 2-3.4-1.5-1.4V9.1L18 7.7l-2-3.4-2 .6-1.5-.9-.5-2H8Z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><circle cx="10" cy="10" r="3" stroke="currentColor" stroke-width="1.3"/></svg></summary>
             <div class="menu-panel settings-panel">
               <h3>World settings</h3>
@@ -265,8 +266,9 @@
             <div class="ledger-grid" id="ledger-goal" aria-label="House ledger records"></div>
           </section>
 
-          <section class="ledger-block" aria-labelledby="ledger-contrib-title">
+          <section class="ledger-block" id="ledger-selected-record" tabindex="-1" aria-labelledby="ledger-contrib-title" aria-describedby="steward-note">
             <h4 id="ledger-contrib-title" tabindex="-1">Selected record</h4>
+            <p class="fine" id="steward-note"></p>
             <ul class="contributions" id="ledger-contributions"></ul>
           </section>
 
@@ -289,10 +291,9 @@
             <ul class="keepsakes" id="achievements"></ul>
           </section>
 
-          <!-- The existing read-only steward and its server checks, unchanged; disclosed only when someone opens it. -->
+          <!-- Questions stay disclosed on request; the one read-only note is beside the selected receipt. -->
           <details class="ledger-block steward" id="steward-block">
             <summary><span id="steward-title">House steward</span></summary>
-            <p class="fine" id="steward-note"></p>
             <div class="quick-picks suggestions" id="steward-suggestions" role="group" aria-label="Suggested questions"></div>
             <form class="inline-form steward-form" id="steward-form" novalidate>
               <label class="field"><span>Your question</span><input name="question" type="text" maxlength="300" autocomplete="off" placeholder="Did PayPal confirm our last contribution?"></label>

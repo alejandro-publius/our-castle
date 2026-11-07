@@ -35,6 +35,8 @@ Contributing with Rachel? [Start here](START-HERE-RACHEL.md) for one small task,
 
 Searching does not buy an item. This is goal progress, not a bank balance. Reported savings, bills, gifts, simulated contributions and PayPal sandbox receipts retain their sources. Verified utility-bill rewards require a provider connection that is not present.
 
+The **compass beside View** lets you drag between homes at your current close-up scale; switch it off to turn the map again. After contributing, **Review the receipt** opens that contribution in Treasury, with its saved-check status and the single steward note. [Receipt walkthrough and desktop/phone captures](docs/RECEIPT-HANDOFF.md).
+
 The walkthrough captures use isolated test households and simulated contributions:
 
 | An area opens for the family | Treasury keeps the records |

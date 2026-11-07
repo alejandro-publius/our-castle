@@ -11,7 +11,7 @@ import { createGoldFountains } from './gold-fountain.js';
 import { createFamilyProject } from './family-project.js';
 import { createSponsorSigns } from './sponsor-signs.js';
 import { FAMILY_PROJECT_SITE, projectSite } from '../core/family-project.js';
-import { REALM_SIZE, REALM_BOUNDS, REALM_DISTRICTS, REALM_LEGENDS, REALM_BRIDGES, REALM_ROUTE, homeDistrict, districtById, legendById, viewLocation, journeyLeg, journeyPosition } from '../core/realm.js';
+import { REALM_INTERIOR, REALM_SIZE, REALM_BOUNDS, REALM_DISTRICTS, REALM_LEGENDS, REALM_BRIDGES, REALM_ROUTE, homeDistrict, districtById, legendById, viewLocation, journeyLeg, journeyPosition } from '../core/realm.js';
 import { MOUNTAIN_PEAKS } from '../core/realm-terrain.js';
 
 // The playable woodland board. It extends the original art-preview vocabulary (MiniBuilder,
@@ -94,8 +94,12 @@ export function createBoardScene(container, { reducedMotion = false, isOccluded 
   // Ambient life (Hollybrook-style principle: the world keeps living at a low, cheap frame rate).
   const grazers = [];
   const rotators = [];
-  const view = { angle: 0.66, zoom: 1, panX: 0, panY: 0, worldPerPixel: null, focus: null, crossing: null };
+  // `free` is an explorer's own frame (look target and scale) once the compass is used; `exploring` makes drags pan.
+  const view = { angle: 0.66, zoom: 1, panX: 0, panY: 0, worldPerPixel: null, focus: null, crossing: null, free: null, exploring: false };
+  // Explicit navigation (an area, a legend, Visit, Whole realm, Reset view, an unlock crossing) reframes and ends exploring.
+  const framed = { free: null, exploring: false };
   let viewRevision = 0;
+  let shownFrame = null; // the last frame drawn: the middle of the canvas in camera space, and its height at zoom 1
   const pointers = new Map();
   const interactions = [];
   const flutterers = [];
@@ -460,37 +464,78 @@ export function createBoardScene(container, { reducedMotion = false, isOccluded 
     if (!width || !height) return;
     const aspect = width / height; const narrow = width < 640;
     camera.updateMatrixWorld();
-    let minX = Infinity; let maxX = -Infinity; let minY = Infinity; let maxY = -Infinity;
-    const focused = locationOf(view.focus, state.project?.kind), bridge = REALM_BRIDGES.find((b) => b.id === view.crossing);
-    const framed = bridge ? [districtById(bridge.from), districtById(bridge.to)] : focused ? [focused] : [];
-    const frame = framed.length ? framed.flatMap((d) => [-1,1].flatMap(x=>[-1,1].flatMap(z=>[-2,d.height].map(y=>new THREE.Vector3(d.x+x*(d.width/2+2),y,d.z+z*(d.depth/2+2)))))) : FRAME_POINTS;
-    for (const point of frame) {
-      scratch.copy(point).applyMatrix4(camera.matrixWorldInverse);
-      minX = Math.min(minX, scratch.x); maxX = Math.max(maxX, scratch.x); minY = Math.min(minY, scratch.y); maxY = Math.max(maxY, scratch.y);
-    }
     // Fractions of the canvas covered by overlays (heading and controls at the top, caption at the bottom).
     const measured = insets?.() ?? null;
     const topInset = Math.min(0.45, measured?.top ?? (narrow ? 0.27 : 0.15));
     const bottomInset = Math.min(0.3, measured?.bottom ?? (narrow ? 0.03 : 0.11));
     const usable = 1 - topInset - bottomInset;
-    const viewHeight = Math.max((maxY - minY) / usable, (maxX - minX) / aspect) * 1.03 / view.zoom;
+    let viewHeight, cx, cy;
+    if (view.free) {
+      // Exploring: the scale the view had when exploring began (zoom still applies), centred on the explorer's target.
+      viewHeight = view.free.height / view.zoom; cx = 0; cy = 0;
+    } else {
+      let minX = Infinity; let maxX = -Infinity; let minY = Infinity; let maxY = -Infinity;
+      const focused = locationOf(view.focus, state.project?.kind), bridge = REALM_BRIDGES.find((b) => b.id === view.crossing);
+      const places = bridge ? [districtById(bridge.from), districtById(bridge.to)] : focused ? [focused] : [];
+      const frame = places.length ? places.flatMap((d) => [-1,1].flatMap(x=>[-1,1].flatMap(z=>[-2,d.height].map(y=>new THREE.Vector3(d.x+x*(d.width/2+2),y,d.z+z*(d.depth/2+2)))))) : FRAME_POINTS;
+      for (const point of frame) {
+        scratch.copy(point).applyMatrix4(camera.matrixWorldInverse);
+        minX = Math.min(minX, scratch.x); maxX = Math.max(maxX, scratch.x); minY = Math.min(minY, scratch.y); maxY = Math.max(maxY, scratch.y);
+      }
+      viewHeight = Math.max((maxY - minY) / usable, (maxX - minX) / aspect) * 1.03 / view.zoom;
+      cx = (minX + maxX) / 2 - view.panX; cy = (minY + maxY) / 2 - view.panY;
+    }
     const viewWidth = viewHeight * aspect;
-    const cx = (minX + maxX) / 2 - view.panX; const cy = (minY + maxY) / 2 - view.panY;
     camera.left = cx - viewWidth / 2; camera.right = cx + viewWidth / 2;
-    camera.top = cy + viewHeight * (topInset + usable / 2); camera.bottom = camera.top - viewHeight;
+    // An explorer's target stays at the middle of the canvas itself: overlays that appear or hide (the area row below
+    // the map, for one) must not move the world under a drag. Framed views keep centring in the uncovered part.
+    camera.top = view.free ? viewHeight / 2 : cy + viewHeight * (topInset + usable / 2); camera.bottom = camera.top - viewHeight;
     camera.updateProjectionMatrix();
+    // What is at the middle of the canvas, in camera space: where an explorer's target starts.
+    shownFrame = { cx: (camera.left + camera.right) / 2, cy: (camera.top + camera.bottom) / 2, height: viewHeight * view.zoom };
     view.worldPerPixel = viewHeight / height;
     renderer.setSize(width, height, false); pipeline.setSize(width, height); draw();
   }
-  function updateCamera() {
+  // What the camera looks at: the explorer's target, a crossing's bridge, the focused place or the middle of the realm.
+  function lookTarget() {
+    if (view.free) return { x: view.free.x, z: view.free.z };
     const focus = locationOf(view.focus, state.project?.kind), bridge = REALM_BRIDGES.find((b) => b.id === view.crossing);
     const from = bridge && districtById(bridge.from), to = bridge && districtById(bridge.to);
-    const x = bridge ? (from.x + to.x) / 2 : focus?.x ?? REALM_SIZE.centerX, z = bridge ? (from.z + to.z) / 2 : focus?.z ?? REALM_SIZE.centerZ;
+    return { x: bridge ? (from.x + to.x) / 2 : focus?.x ?? REALM_SIZE.centerX, z: bridge ? (from.z + to.z) / 2 : focus?.z ?? REALM_SIZE.centerZ };
+  }
+  function updateCamera() {
+    const { x, z } = lookTarget();
     camera.position.set(x+Math.sin(view.angle)*180,150,z+Math.cos(view.angle)*180);
     camera.lookAt(x,1.2,z);camera.updateMatrixWorld();
+    showCursor();
   }
+  function showCursor() {
+    const cursor = view.exploring ? (pointers.size ? 'grabbing' : 'grab') : '';
+    if (renderer && renderer.domElement.style.cursor !== cursor) renderer.domElement.style.cursor = cursor;
+  }
+  // A move in camera space (right, up) as a move of the look target across the ground, at the target's own height.
+  function groundShift(right, up) {
+    const e = camera.matrixWorld.elements, along = -(e[1] * right + e[5] * up) / e[9];
+    return { x: e[0] * right + e[4] * up + e[8] * along, z: e[2] * right + e[6] * up + e[10] * along };
+  }
+  // Include every playable place's footprint: the family project's west meadow extends beyond the older interior.
+  const explorePlaces = [...REALM_DISTRICTS, ...REALM_LEGENDS, FAMILY_PROJECT_SITE];
+  const exploreBounds = {
+    minX: Math.min(REALM_INTERIOR.centerX - REALM_INTERIOR.width / 2, ...explorePlaces.map((p) => p.x - p.width / 2)),
+    maxX: Math.max(REALM_INTERIOR.centerX + REALM_INTERIOR.width / 2, ...explorePlaces.map((p) => p.x + p.width / 2)),
+    minZ: Math.min(REALM_INTERIOR.centerZ - REALM_INTERIOR.depth / 2, ...explorePlaces.map((p) => p.z - p.depth / 2)),
+    maxZ: Math.max(REALM_INTERIOR.centerZ + REALM_INTERIOR.depth / 2, ...explorePlaces.map((p) => p.z + p.depth / 2)),
+  };
+  const keepInside = (x, z) => ({ x: Math.max(exploreBounds.minX, Math.min(exploreBounds.maxX, x)), z: Math.max(exploreBounds.minZ, Math.min(exploreBounds.maxZ, z)) });
   const clampZoom = (z) => Math.min(ZOOM.max, Math.max(ZOOM.min, z));
+  function wheelZoom(deltaY) { viewRevision++; view.zoom = clampZoom(view.zoom * Math.exp(-deltaY * 0.001)); resize(); }
   function pan(dxPixels, dyPixels) {
+    if (view.free) {
+      // The world follows the pointer: the target moves the opposite way, across the ground.
+      const shift = groundShift(-dxPixels * (view.worldPerPixel ?? 0.05), dyPixels * (view.worldPerPixel ?? 0.05));
+      Object.assign(view.free, keepInside(view.free.x + shift.x, view.free.z + shift.z));
+      return;
+    }
     // Keep at least the middle of the estate in view.
     const limit = view.focus ? 25 : 90;
     view.panX = Math.max(-limit, Math.min(limit, view.panX + dxPixels * (view.worldPerPixel ?? 0.05)));
@@ -503,7 +548,8 @@ export function createBoardScene(container, { reducedMotion = false, isOccluded 
     bind('contextmenu', (e) => e.preventDefault());
     bind('pointerdown', (e) => {
       canvas.setPointerCapture(e.pointerId);
-      pointers.set(e.pointerId, { x: e.clientX, y: e.clientY, panning: e.shiftKey || e.button === 2 || e.button === 1 });
+      pointers.set(e.pointerId, { x: e.clientX, y: e.clientY, panning: view.exploring || e.shiftKey || e.button === 2 || e.button === 1 });
+      showCursor();
     });
     bind('pointermove', (e) => {
       const prior = pointers.get(e.pointerId); if (!prior) return;
@@ -522,9 +568,9 @@ export function createBoardScene(container, { reducedMotion = false, isOccluded 
       pointers.set(e.pointerId, { ...prior, x: e.clientX, y: e.clientY });
       updateCamera(); resize();
     });
-    const release = (e) => pointers.delete(e.pointerId);
+    const release = (e) => { pointers.delete(e.pointerId); showCursor(); };
     bind('pointerup', release); bind('pointercancel', release); bind('lostpointercapture', release);
-    bind('wheel', (e) => { e.preventDefault(); viewRevision++; view.zoom = clampZoom(view.zoom * Math.exp(-e.deltaY * 0.001)); resize(); }, { passive: false });
+    bind('wheel', (e) => { e.preventDefault(); wheelZoom(e.deltaY); }, { passive: false });
   }
 
   // ---------- Setup ----------
@@ -588,7 +634,7 @@ export function createBoardScene(container, { reducedMotion = false, isOccluded 
             if (animate && opening.length) {
               openedBridge = opening.find((b) => b.to === homeDistrict(state.builtTier).id) ?? opening[0];
               for (const bridge of opening) for (const panel of bridge.panels) panel.group.rotation.z = panel.sign * 1.03;
-              Object.assign(view, { focus: null, crossing: openedBridge.id, zoom: 1, panX: 0, panY: 0 }); updateCamera(); resize();
+              Object.assign(view, framed, { focus: null, crossing: openedBridge.id, zoom: 1, panX: 0, panY: 0 }); updateCamera(); resize();
               emit('bridge:start', { id: openedBridge.id, district: openedBridge.to });
               await run(850, (t) => { for (const bridge of opening) for (const panel of bridge.panels) panel.group.rotation.z = panel.sign * 1.03 * (1 - easeInOut(t)); });
               emit('bridge:open', { id: openedBridge.id, district: openedBridge.to });
@@ -607,7 +653,7 @@ export function createBoardScene(container, { reducedMotion = false, isOccluded 
           if (crestChanged || prev.estateLevel !== state.estateLevel || prev.previewFeature !== state.previewFeature) buildEstate();
           if (crestChanged || prev.builtTier !== state.builtTier) buildCourt();
           if (openedBridge && viewRevision === cameraRevision) {
-            Object.assign(view, { crossing: null, focus: openedBridge.to, zoom: 1, panX: 0, panY: 0 }); updateCamera(); resize();
+            Object.assign(view, framed, { crossing: null, focus: openedBridge.to, zoom: 1, panX: 0, panY: 0 }); updateCamera(); resize();
           }
           if (animate && (tierUp || openedBridge)) await celebrateMilestone(openedBridge?.to, tierUp);
           if (openedBridge) emit('arrival', { district: openedBridge.to, tier: state.builtTier });
@@ -630,18 +676,38 @@ export function createBoardScene(container, { reducedMotion = false, isOccluded 
       if (action === 'pan-right') pan(-step, 0);
       if (action === 'pan-up') pan(0, step);
       if (action === 'pan-down') pan(0, -step);
-      if (action === 'reset' || action === 'overview') Object.assign(view, { angle: 0.66, zoom: 1, panX: 0, panY: 0, focus: null, crossing: null });
+      if (action === 'reset' || action === 'overview') Object.assign(view, framed, { angle: 0.66, zoom: 1, panX: 0, panY: 0, focus: null, crossing: null });
       updateCamera(); resize();
       return { ...view };
     },
     focusDistrict(id) {
       if(!districtById(id))return;
-      viewRevision++; Object.assign(view,{focus:id,crossing:null,zoom:1,panX:0,panY:0});updateCamera();resize();
+      viewRevision++; Object.assign(view,framed,{focus:id,crossing:null,zoom:1,panX:0,panY:0});updateCamera();resize();
     },
     focusLegend(id) {
       if(!legendById(id)&&id!==FAMILY_PROJECT_SITE.id)return;
-      viewRevision++; Object.assign(view,{focus:id,crossing:null,zoom:1,panX:0,panY:0});updateCamera();resize();
+      viewRevision++; Object.assign(view,framed,{focus:id,crossing:null,zoom:1,panX:0,panY:0});updateCamera();resize();
     },
+    /**
+     * The compass: while exploring, an ordinary drag (mouse or one finger) pans across the realm instead of turning it.
+     * Turning it on keeps exactly what is on screen: the ground point at the middle of the canvas becomes the camera's
+     * target, at the same scale, so nothing jumps, then or when overlays change. Turning it off keeps that view; drags turn again. Camera only.
+     */
+    explore(on) {
+      on = Boolean(on);
+      if (on === view.exploring) return { ...view };
+      viewRevision++;
+      if (on && !view.free && shownFrame) {
+        const target = lookTarget(), shift = groundShift(shownFrame.cx, shownFrame.cy);
+        view.free = { ...keepInside(target.x + shift.x, target.z + shift.z), height: shownFrame.height };
+        Object.assign(view, { focus: null, crossing: null, panX: 0, panY: 0 });
+      }
+      view.exploring = on;
+      updateCamera(); resize();
+      return { ...view };
+    },
+    /** Wheel zoom from anywhere over the map, its names and markers included. */
+    wheel(deltaY) { if (Number.isFinite(deltaY)) wheelZoom(deltaY); },
     setPixelMode(on) { pipeline.configure({ pixelMode: on }); draw(); },
     /** Cosmetic light and weather: period 'day' | 'afternoon' | 'night', weather 'clear' | 'rain' | 'overcast'. */
     setAtmosphere({ period = atmosphere.period, weather = atmosphere.weather } = {}) {
@@ -667,7 +733,7 @@ export function createBoardScene(container, { reducedMotion = false, isOccluded 
 
   function districtsOnScreen(){
     const rect=container.getBoundingClientRect();
-    return {focus:view.focus,points:[...REALM_DISTRICTS,...REALM_LEGENDS,projectSite(state.project?.kind)].map(d=>{
+    return {focus:view.focus,exploring:view.exploring,free:Boolean(view.free),points:[...REALM_DISTRICTS,...REALM_LEGENDS,projectSite(state.project?.kind)].map(d=>{
       const point=new THREE.Vector3(d.x,d.height+1,d.z).project(camera);
       return {id:d.id,x:(point.x+1)/2*rect.width,y:(1-point.y)/2*rect.height,width:rect.width,height:rect.height};
     })};

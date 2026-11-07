@@ -1,5 +1,89 @@
 # Validation
 
+## Direct receipt review and west-meadow exploration — November 7, 2026
+
+The existing **Review the receipt** action opens the matching Treasury record, including after the final goal contribution or after selecting an older record. One existing steward note is beside that record; its questions remain closed. The automatic focus on the Contribute confirmation no longer consumes the Treasury review step. No provider/check policy, approval, server endpoint, schema or dependency changes. [Behavior, design references and captures](RECEIPT-HANDOFF.md).
+
+The compass review found a separate concrete issue: the family project at x=−98 was outside the older interior bound of x=−82. Enabling Explore there clamped the target and moved the view; the new regression failed on desktop and phone (215 px horizontally on the phone). Bounds now include all playable-place footprints, preserving that close view and the first drag. The original compass captures below remain pinned to PR #30's `d7c87f7`; the receipt capture manifest records the new source hashes.
+
+| Check | Actual result |
+| --- | --- |
+| Journey domain/HTTP tests | 3 passed; the updated receipt-route assertion fails against the predecessor |
+| Returning/final-goal receipt paths and saved-check/recovery cases, desktop + 390px phone | 8 passed, using simulated payments/fake PayPal; opening/reviewing receipts makes no provider call |
+| Existing Studio framework case and its visible boundary note with questions closed, desktop + phone | 2 passed, fake model transport; no automatic ask |
+| House/Plan navigation and west-meadow compass regression, desktop + phone | 4 passed after the bounds fix; the meadow case fails on both before it |
+| Source/art/palette/syntax guard | Passed: 47 copied art/runtime files and the original 90-color palette |
+| Read-only receipt captures | Both layouts captured; zero browser writes, outside requests or page errors; all disposable application-table values unchanged after capture |
+
+An initial broader browser attempt exhausted its 90-second total budget in the existing House/Plan flow before reaching this change. That case was rerun with reduced motion and a 120-second total bound (expectation timeouts unchanged), passing on both layouts. Receipt/navigation cases use reduced motion; normal unlock animation retains its existing area-card coverage. The full browser suite was not repeated. These are automated Chromium/touch-emulation results, not a physical-phone or human-playtest claim.
+
+Ignored raw logs/capture script are in `test-results/receipt-handoff-20261107/`; meadow-before traces are in `test-results/compass-meadow-before/` and the final navigation run in `test-results/receipt-navigation-final/`. No owner household, credential, real order, paid model/provider call, recording, deployment or submission was used.
+
+## Compass: explore the map by dragging — November 7, 2026
+
+This is the owner-requested feature, built after an actual-input pass over the existing map gestures. It is camera only: no household, goal, approval, provider or payment change.
+
+**Control.** One original inline SVG compass button, **Explore map**, after View in the map toolbar.
+- It is a 44 px chip with the existing dark, ivory and brass styling.
+- It uses `aria-pressed` and the existing pressed and focus-visible treatments.
+- There is no new panel or text block. While exploring, the View menu's existing hint reads "Drag to pan. Scroll to zoom.", and otherwise it keeps its usual wording.
+
+**Behaviour** (`src/world/board-scene.js`, `src/app/main.js`):
+- **Turning it on** keeps what is on screen. The ground point at the middle of the canvas becomes the camera's target, at the same scale, with no snap to Whole realm. While exploring, that target stays at the middle of the canvas itself, so overlays appearing or hiding never move the world.
+- **While it is on,** a primary mouse drag or a one-finger drag pans across the realm, with a grab cursor.
+  - Shift, middle and right drags, two-finger pan and pinch, the wheel and the keyboard keep working.
+  - The target can travel the realm interior and the footprints of all playable places, including the west-meadow family project. The old ±25 limit around one home no longer traps an explorer. The footprint extension is checked in the follow-up above.
+- **Turning it off** keeps the view, and drags turn again around the same place.
+- **Explicit navigation** reframes as before and ends exploring, and the button follows. That covers Areas, a map name, a legend, Visit, Whole realm, Reset view and an unlock crossing. Starting or ending exploring counts as a user view change, so an unlock's automatic recentring does not override it.
+- **Names on a phone.** While exploring, the names of places in view stay, where the phone overview shows only the home's name. Overlapping names still hide.
+
+**Actual-input pass first.** Desktop used real Playwright mouse and wheel input; the phone used Chromium CDP touch emulation, which is not a physical device.
+- **Before the change, 25 of 26 checks passed:**
+  - **Mouse:** drag to turn; Shift, middle and right drags to pan, with the context menu prevented; a drag released outside the map and the window; no text selection during a drag.
+  - **Wheel:** zoom bounds 0.55–2.8, with no page scroll over the map.
+  - **Interrupted drags:** lost capture (a script release, then the browser's `lostpointercapture`) and a synthetic `pointercancel` each end a drag.
+  - **Overlays and scrolling:** pressing overlaid controls never drags the world; wheel and touch scrolling outside the map work.
+  - **Touch:** one-finger turn, pinch, two-finger pan, lifting one finger, the browser's `touchcancel`, and a finger lifted outside the map.
+- **The one failure, reproduced with browser wheel input:** a wheel over an area's name, which sits over the middle of the map, did nothing. Now a wheel over map names and markers zooms the map. After the change, all 26 checks pass.
+- **Probe limits.** Early runs misused CDP `touchEnd`, which lifts exactly the points it lists. They also touched points beside a name, which Chromium's touch adjustment retargets to the name. The final probe lifts the intended finger and keeps 12 px clear of names and controls.
+
+**Checks** (desktop and 390 px phone, reduced motion):
+- **New `map-explore.spec.mjs`:**
+  - Turning the compass on from a close Hearth Village view keeps the scale, and the village's name stays in place.
+  - Ordinary drags (mouse on desktop, one finger on the phone) reach Manor Gardens at the same scale without Areas, beyond the old limit and without turning.
+  - Zoom works while exploring: the wheel on desktop, a pinch on the phone.
+  - Turning it off keeps the view, and a drag turns again.
+  - Areas and a keyboard Visit campsite reframe, end exploring and land focus on the marker, and the hint follows.
+  - Space and Enter toggle the compass and keep focus on it.
+  - No writes, and no horizontal overflow.
+  - The wheel-over-name case failed on the code before the change (zoom stayed at 1) and passes now.
+- **Review finding, fixed.** Codex asked whether the first drag after turning the compass on could jump.
+  - **Reproduced.** Turning the compass on clears the area focus, so View deed hides below the map. The next resize measured that smaller bottom row, and the free frame was centred in the uncovered area, so it moved down by half the change.
+  - **Measured on a projected ground point,** the travelers. For a (+60, +40) pointer drag, the ground moved (+60, +69) on desktop and (+60, +67) on the phone.
+  - **Fix.** The free frame is centred on the canvas itself, and enabling starts from the ground point at the canvas centre. Afterwards the ground moved (+60, +40.1) on desktop and (+60, +39.9) on the phone.
+  - **Regression.** The compass journey now asserts this first drag within 1 px. On the pre-fix scene it failed by 29.0 px on desktop and 27.0 px on the phone.
+  - **Test correction.** The spec's terrain picker now keeps 24 px clear of every name and control box. A start point about 10 px from a name's corner was adjusted onto that name by Chromium's touch adjustment, which correctly did not drag the world.
+- **Related suites, before that fix:** 32 passed, 4 deliberate one-viewport skips, 0 failed (12.2 min).
+  - `map-explore` 4.
+  - `realm-focus` 8.
+  - `woodland-legends` 2.
+  - `area-cards` 18.
+- **After the narrowly isolated free-frame fix,** only the compass cases ran: `map-explore` 4 passed, 2 deliberate desktop-only skips on the phone, plus `npm run check`.
+- `npm run check` passed.
+
+Screenshots ([provenance](screenshots/map-explore-sources.json)): the compass on, on desktop and the phone; after exploring to Manor Gardens, on both; and the phone's View hint.
+
+The evidence is ignored and not committed, in `~/projects/our-castle-shared-live/test-results/map-explore-20261107/`:
+- the probe scripts and debug scripts (`input-probe.mjs`, `touch-debug.mjs`, `compass-probe.mjs`, `first-drag.mjs`, `manor-debug.mjs`);
+- the results (`input-before.json`, `input-after.json`, `compass-check.json`);
+- the logs, including `first-drag-spec-before.log`;
+- the captures.
+
+**Limits.**
+- Software-rendered Chromium and emulated touch only, with no physical phone or trackpad.
+- Explore mode's zoom range is relative to the scale it started from.
+- The scratch check's exact stay-put assertion during a pinch was too strict. The two-finger gesture pans by each finger's half-move, which drifts about 0.05 world units. The durable spec asserts only that zoom increases.
+
 ## Map views, panned and turned — November 7, 2026
 
 Inspected commit `f5e80bc`, run in example mode on a free local port with scratch data and an empty environment (no credentials). The page and map code are unchanged at `cbafbad`, so the results stand for current main.

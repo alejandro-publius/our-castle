@@ -1,0 +1,50 @@
+{
+  "date": "2026-11-07",
+  "basedOn": "d7c87f7e4fd006a24a2644e2095c5a10442398ef (original compass PR #30; captures precede the west-meadow bounds follow-up)",
+  "sources": {
+    "src/world/board-scene.js": "d3c2cb47c455440e2c095e7d9871fc04f9b3f06334723a43d4f65d614e516548",
+    "src/app/main.js": "5bacf4d95781ada8478ac80b4c2b103ba1de4ab488476adf0bafcf76d31cdfaa",
+    "index.html": "1f0951194a7fabb29745c9c9fec13673a6c5b8b067655c29a5bc5343f6b02d2f",
+    "app.css": "c56b5fa3751a1d8bebfb6c3c82aedfbff42f9cf8b5aceefac3067e85f1aac310",
+    "test/e2e/map-explore.spec.mjs": "0635a7ed8167889b17226b01dcf930f2dd1d5ac2d51eac79161bda3c5afda390"
+  },
+  "environment": "Playwright 1.64.1 Chromium, software WebGL (SwiftShader), reduced motion; desktop 1440x1000 and an emulated 390x844 touch phone (Chromium touch emulation, not a physical device)",
+  "mode": "Example mode on a free local port with scratch data and an empty environment: no credentials, no provider request, no write",
+  "steps": [
+    "Load, close the journal, Time of day: Day; View > Zoom in three times on Hearth Village",
+    "Press Explore map (click on desktop, tap on the phone); open View to read its hint, then close it",
+    "Drag from clear terrain toward Manor Gardens (mouse on desktop, one finger on the phone) until it is near the middle"
+  ],
+  "images": [
+    {
+      "path": "docs/screenshots/map-explore-desktop-on.png",
+      "sha256": "ad14e2e7203b480bc1b6f2e7dba4c191ab79fa007e40f587a828199808c4540a",
+      "viewport": "desktop 1440x1000",
+      "shows": "A close Hearth Village view (three steps in) right after turning Explore map on: the compass pressed, the view unchanged"
+    },
+    {
+      "path": "docs/screenshots/map-explore-desktop-manor.png",
+      "sha256": "f600b08d4979460c6d60ea85de97a3f1f72c02e0ad13f9c059b840d728fca8cf",
+      "viewport": "desktop 1440x1000",
+      "shows": "After three ordinary mouse drags with the compass on: across the river to Manor Gardens at the same scale, no Areas used"
+    },
+    {
+      "path": "docs/screenshots/map-explore-phone-on.png",
+      "sha256": "64a07b39b46fa19068053dccf47a24774d4627117bdde16e679827eb15ed1fe9",
+      "viewport": "phone 390x844 (device scale 2, touch)",
+      "shows": "The same close village view on the phone right after tapping Explore map; toolbar on one row, no overflow"
+    },
+    {
+      "path": "docs/screenshots/map-explore-phone-manor.png",
+      "sha256": "01772fbd22a366987f6e97564e9bb854581dd668082219512eb3419e3aeaf1be",
+      "viewport": "phone 390x844 (device scale 2, touch)",
+      "shows": "After one-finger drags (Chromium touch emulation) with the compass on: Manor Gardens named, the forest clear"
+    },
+    {
+      "path": "docs/screenshots/map-explore-phone-hint.png",
+      "sha256": "b71dd2a3ab1fa298065618e1f4bf161706ee7af31a78065a3da73933b57d22f6",
+      "viewport": "phone 390x844 (device scale 2, touch)",
+      "shows": "The existing View menu while exploring: its hint reads 'Drag to pan. Scroll to zoom.'"
+    }
+  ]
+}

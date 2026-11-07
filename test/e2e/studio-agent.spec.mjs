@@ -93,6 +93,14 @@ const ask = async (page) => {
 
 test('the real Studio framework runs the existing steward once and discards its temporary thread', async ({ page }, info) => {
   await start(page);
+  // The one existing boundary note is visible beside the selected record even when the question panel is closed.
+  await page.locator('#steward-block > summary').click();
+  await expect(page.locator('#steward-note')).toBeVisible();
+  await expect(page.locator('#steward-note')).toContainText('Cannot make payments.');
+  await expect(page.locator('#steward-note')).toHaveCount(1);
+  expect(s.aiRequests).toHaveLength(0);
+  expect(s.writes).toEqual([]);
+  await page.locator('#steward-block > summary').click();
   await page.locator('#ledger-goal').getByText(/starting progress/i).first().click();
   const before = s.finance();
   await ask(page);

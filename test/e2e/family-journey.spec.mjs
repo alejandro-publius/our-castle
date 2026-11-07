@@ -38,6 +38,8 @@ test.beforeEach(async ({ request }) => {
 });
 
 test('one next step leads from house to plan to contribution; opening a step never writes', async ({ page }, testInfo) => {
+  test.setTimeout(120_000);
+  await page.emulateMedia({ reducedMotion: 'reduce' });
   const writes = trackWrites(page);
   await ready(page);
   await expect(card(page)).toHaveAttribute('data-key', 'found-house');
@@ -94,7 +96,9 @@ test('one next step leads from house to plan to contribution; opening a step nev
   await expect(page.locator('#tab-plan')).not.toHaveClass(/\bdone\b/);
 });
 
-test('a returning family resumes, keeps its chosen tab and unsaved amount, and can reopen the saved payment record', async ({ page }) => {
+test('a returning family resumes, keeps its chosen tab and unsaved amount, and can reopen the saved payment record', async ({ page }, info) => {
+  // Navigation and receipt focus are under test; area-cards covers the normal unlock animation.
+  await page.emulateMedia({ reducedMotion: 'reduce' });
   const writes = trackWrites(page);
   await ready(page);
   await foundHouse(page);
@@ -130,15 +134,24 @@ test('a returning family resumes, keeps its chosen tab and unsaved amount, and c
   await page.getByRole('button', { name: 'Simulate PayPal completing it' }).click();
   await expect(card(page)).toHaveAttribute('data-key', 'receipt-ready');
   await expect(go(page)).toHaveText('Review the receipt');
-  await go(page).focus(); await page.keyboard.press('Enter');
-  await expect(page.locator('#receipt')).toBeFocused();
+  // Selecting an older record must not make the explicit review link open that older receipt.
+  await page.locator('#ledger-goal').getByText(/starting progress/i).first().click();
+  expect(await writesDuring(page, writes, async () => { await go(page).focus(); await page.keyboard.press('Enter'); })).toEqual([]);
+  await expect(selectedTab(page)).toHaveId('tab-ledger');
+  await expect(page.locator('#ledger-selected-record')).toBeFocused();
+  await expect(page.locator('#ledger-contributions')).toContainText('$12.34');
+  await expect(page.locator('#ledger-contributions')).toContainText('Completed — counted');
+  await expect(page.locator('#ledger-contributions')).toContainText('simulated');
+  await expect(page.locator('#steward-block')).not.toHaveAttribute('open', '');
+  await expect(page.locator('#steward-note')).toHaveText('Saved confirmations');
+  expect(await fullyVisible(page.locator('#steward-note'))).toBe(true);
   await expect(card(page)).toHaveAttribute('data-key', 'contribute-week');
-  await expect(page.locator('#receipt')).not.toContainText('null');
+  await page.screenshot({ path: info.outputPath('receipt-handoff.png') });
 
   // Refresh: the chosen tab is restored and the saved record is one GET-only link away.
   await page.reload();
   await page.waitForFunction(() => document.body.dataset.ready === 'true');
-  await expect(selectedTab(page)).toHaveId('tab-give');
+  await expect(selectedTab(page)).toHaveId('tab-ledger');
   await expect(page.locator('#next-step-record')).toBeHidden();
   await page.getByRole('tab', { name: /House/ }).click();
   await expect(page.locator('#next-step-record')).toContainText('$12.34 · Completed — counted · simulated');
@@ -148,6 +161,31 @@ test('a returning family resumes, keeps its chosen tab and unsaved amount, and c
   const row = page.locator('#ledger-contributions li[data-contribution]').first();
   await expect(row).toBeFocused();
   await expect(row).toContainText('Completed — counted');
+});
+
+test('the final contribution opens its Treasury receipt before the next action returns to the castle', async ({ page }, info) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  const writes = trackWrites(page);
+  await ready(page);
+  await foundHouse(page);
+  await page.locator('#tab-give').click();
+  await page.locator('#give-amount').fill('240.00');
+  await page.locator('#give-approve').check();
+  await page.getByRole('button', { name: 'Simulate approved payment', exact: true }).click();
+  await expect(page.locator('#progress-amount')).toHaveText('$300.00');
+  await expect(card(page)).toHaveAttribute('data-key', 'receipt-ready');
+  await expect(selectedTab(page)).toHaveId('tab-give');
+  expect(await writesDuring(page, writes, () => go(page).click())).toEqual([]);
+  await expect(selectedTab(page)).toHaveId('tab-ledger');
+  await expect(page.locator('#ledger-selected-record')).toBeFocused();
+  await expect(page.locator('#ledger-contributions')).toContainText('$240.00');
+  await expect(page.locator('#ledger-contributions')).toContainText('simulated');
+  await expect(page.locator('#ledger-contributions [data-check="match"]')).toHaveCount(0);
+  expect(await fullyVisible(page.locator('#steward-note'))).toBe(true);
+  await expect(card(page)).toHaveAttribute('data-key', 'goal-complete');
+  await page.screenshot({ path: info.outputPath('goal-complete-receipt.png') });
+  expect(await writesDuring(page, writes, () => go(page).click())).toEqual([]);
+  await expect(page.locator('#realm-markers [data-district="castle"]')).toBeFocused();
 });
 
 test('a new visit resumes at the next step, and a child persona is told an adult approves', async ({ page, context }) => {

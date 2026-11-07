@@ -583,6 +583,12 @@ function openNextStep(e) {
     if (id && scene) visitDistrict(id, e);
     return;
   }
+  // Review follows the contribution that just completed, even if another record was selected meanwhile.
+  if (next.key === 'receipt-ready') {
+    const record = ledgerRows().find((r) => r.contribution?.id === ui.receipt?.contribution.id);
+    if (record) ui.ledgerRecord = record.id;
+    ui.refundArm = null;
+  }
   selectTab(next.step, { focus: false });
   let target = $(next.target);
   if (!target || target.hidden || target.closest('[hidden]')) target = $(`#panel-${next.step} h3`);
@@ -724,13 +730,19 @@ function renderRealmNavigation() {
   }
   if (!before.size) $('#realm-focus-status').textContent = 'Select a district.';
 }
-function syncRealmMarkers({focus,points}){
+// The View menu's hint (index.html) says what a drag does now; exploring with the compass makes it pan.
+const VIEW_HINT = { turning: 'Drag to turn. Shift-drag to pan. Scroll to zoom.', exploring: 'Drag to pan. Scroll to zoom.' };
+function syncRealmMarkers({focus,points,exploring=false,free=false}){
   const map=$('.realm-map'),focused=focus?'true':'false';if(map.dataset.focused!==focused)map.dataset.focused=focused;
+  // The compass shows whether drags explore; the scene ends exploring on any explicit navigation, and this follows it.
+  const compass=$('#map-explore'),pressed=String(Boolean(exploring));if(compass&&compass.getAttribute('aria-pressed')!==pressed)compass.setAttribute('aria-pressed',pressed);
+  const hint=$('#view-hint'),words=exploring?VIEW_HINT.exploring:VIEW_HINT.turning;if(hint&&hint.textContent!==words)hint.textContent=words;
   const board=map.closest('.board-shell'),menuHeight=Math.max(120,Math.floor(map.clientHeight-110))+'px';
   if(board.style.getPropertyValue('--world-menu-height')!==menuHeight)board.style.setProperty('--world-menu-height',menuHeight);
   // On a phone, full property plaques would cover the overview. Keep the current home named;
   // all districts stay available in Areas and a focused district always gets its full plaque.
-  const compactOverview = !focus && map.clientWidth < 640;
+  // Exploring close up is not the overview: the places in view keep their names (overlaps still hide).
+  const compactOverview = !focus && !free && map.clientWidth < 640;
   const home = homeDistrict(state?.board?.builtTier ?? 0).id;
   const occupied=[];
   // The toolbar (Areas, Whole realm, View, settings) and the area row along the bottom are laid over the map, above its
@@ -1916,6 +1928,15 @@ function bindEvents() {
     e.currentTarget.textContent = on ? 'Sound on' : 'Sound off';
   });
   for (const button of $$('[data-view]')) button.addEventListener('click', () => scene?.adjustView(button.dataset.view));
+  // The compass: drag to move across the realm instead of turning it (camera only; nothing is saved).
+  $('#map-explore').addEventListener('click', (e) => {
+    if (!scene) return;
+    const on = e.currentTarget.getAttribute('aria-pressed') !== 'true';
+    e.currentTarget.setAttribute('aria-pressed', String(on));
+    scene.explore(on);
+  });
+  // A wheel over a name or marker on the map zooms the map, as it does over the terrain beside it.
+  $('#realm-markers').addEventListener('wheel', (e) => { if (!scene) return; e.preventDefault(); scene.wheel(e.deltaY); }, { passive: false });
   // Arrow keys pan the view while the view controls have focus (handy after zooming in).
   $('.world-navigation').addEventListener('keydown', (e) => {
     const action = { ArrowLeft: 'pan-left', ArrowRight: 'pan-right', ArrowUp: 'pan-up', ArrowDown: 'pan-down' }[e.key];
@@ -1939,7 +1960,14 @@ function bindEvents() {
   $('#deed-close').addEventListener('click', () => $('#deed-dialog').close());
   $('#deed-dialog').addEventListener('close', deedClosed);
   $('#next-step-record-go').addEventListener('click', openPaymentRecord);
-  $('#receipt').addEventListener('focus', () => { if (ui.receipt && ui.receiptReviewed !== receiptKey()) { ui.receiptReviewed = receiptKey(); renderNextStep(); } });
+  // The immediate Contribute confirmation is not the Treasury review. Mark the selected receipt reviewed only when
+  // the family reaches it, including through an existing saved-record link or one of its actions.
+  $('#ledger-selected-record').addEventListener('focusin', () => {
+    const contribution = ledgerRows().find((r) => r.id === ui.ledgerRecord)?.contribution;
+    if (ui.receipt && contribution?.id === ui.receipt.contribution.id && ui.receiptReviewed !== receiptKey()) {
+      ui.receiptReviewed = receiptKey(); renderNextStep();
+    }
+  });
 
   // House
   $('#panel-house').addEventListener('change', (e) => {
