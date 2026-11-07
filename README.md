@@ -6,7 +6,7 @@ A living pixel woodland turns shared progress into new places to explore. Keep t
 
 ![The connected woodland realm and mountain border](docs/screenshots/mountain-border-day.png)
 
-The reviewed source is **public on GitHub main**. The owner's updated Mac app runs at http://localhost:3010 with its existing records preserved. [Release status and remaining video/submission steps](docs/RELEASE-READINESS.md). For an independent code review, use the [source map and evidence guide](docs/JUDGE-HANDOFF.md#6-for-source-reviewers).
+The reviewed source is **public on GitHub main**, including the scene and Treasury recovery fixes in PRs #34–#37 and the release checks in [PR #38](https://github.com/alejandro-publius/our-castle/pull/38). The preserved Mac apps still run the compass/receipt release `4082df5` at http://localhost:3010 and http://localhost:3021, with their existing records. [Release status and remaining video/submission steps](docs/RELEASE-READINESS.md). For an independent code review, use the [source map and evidence guide](docs/JUDGE-HANDOFF.md#6-for-source-reviewers).
 
 ## Try it locally
 
@@ -55,6 +55,7 @@ PayPal JavaScript SDK v6 handles the browser session; Server SDK Orders v2/Payme
 
 ## What is verified
 
+- **Hosted release checks:** [the final PR #38 run](https://github.com/alejandro-publius/our-castle/actions/runs/42408146283) passed the source guard and 361 unit tests with one existing skip on each of Node 22.16.0, 24 and 26, plus 19 desktop/phone browser checks with one designed skip. The workflow runs on pull requests and main pushes using isolated data and fake providers; this is separate from the live evidence below. [Commands and limits](docs/VALIDATION.md#release-checks-workflow--november-7-2026)
 - **Historical live sandbox:** hosted buyer approval, $15 capture, single credit, replay/mismatch checks, matching PayPal order and refund. [Original report](docs/LIVE-VERIFICATION.md)
 - **Historical live AI:** feasible and impossible plans, ledger reading and PayPal transaction listing. [Original report](docs/LIVE-VERIFICATION-AI.md)
 - **Current local checks:** family flow, merchant goal confirmation, world unlocks, Treasury and actual Studio framework on Chromium and Linux WebKit, with fake providers/simulated payments. [Exact runs](docs/VALIDATION.md)
