@@ -1,5 +1,45 @@
 # Validation
 
+## Release candidate: the scene lifecycle and Treasury loading fixes, with two stale checks corrected — November 7, 2026
+
+This candidate combines two reviewed fixes for integration review. It is not merged into main, and the owner apps were not changed.
+
+**Source.** Branch `claude/release-candidate`, from main `01fb478` (implementation `4082df5`). Two normal merges:
+- PR #34 at reviewed head `4cca30b`, merged as `62a1b07`;
+- PR #35 at reviewed head `737f5df`, merged as `8c2f8b8`.
+
+Both remote heads were unchanged when fetched, and neither was already on main. Their code and test files are byte-identical to the reviewed heads. The PR branches and the PRs themselves are unchanged.
+
+**Conflict.** The only conflict was in this file, where both PRs added a top section. Both sections are kept whole, each with its own closing line: Treasury loading (the later task) first, then scene lifecycle. At the merge commit, compared with each reviewed head, the file only adds the other PR's section.
+
+**Two stale checks corrected.** Tests only; the product is unchanged. Both failed on main on desktop and phone, as recorded in `test-results/scene-lifecycle-20261107/preexisting-on-main.log` (SHA-256 `44910faa…`). That baseline was not rerun.
+- **`area-cards.spec.mjs:276`.** The journey still expected "Visit your castle" straight after the completed goal. Since the receipt route (`4c8bc79`), the final contribution first offers "Review the receipt". The journey now follows that step by keyboard and checks:
+  - the Ledger tab is selected, and focus is on the selected-record section;
+  - the receipt is the $240 completed simulated contribution, matched by its id, and the grid's one selected row shows $240.00;
+  - the step makes no writes.
+
+  The original castle checks then run unchanged: focus and pressed state, the Journal hidden, the view's focus, no writes, the empty status and the visible deed. The test title now names the receipt step.
+- **`atmosphere.spec.mjs:44`.** The expected night light pools change from 135 to 150. The realm has 30 light spots of five rings each:
+  - 9 district doors, the only spots with point lights, so the point-light capacity stays 9;
+  - 18 bridge gates;
+  - the 2 royal stables, added in `c0921ed`;
+  - the tavern patio, added in `a542b06`.
+
+  Those two November 4 commits added spots without updating either spec. `89b5a91` updated `palace.spec.mjs` to 150 but not this one. Pools are built from the fixed realm layout, so the reset example household doesn't change the count. The point-light, rain, refresh, access and no-write checks are unchanged.
+
+| Check, on the combined candidate | Actual result |
+| --- | --- |
+| The two corrected cases, desktop and 390 px phone | 4 passed |
+| Scene lifecycle spec; the held-search Treasury regression; compass `map-explore.spec.mjs:97` and `:200`; receipt `family-journey.spec.mjs:99` and `:166`; desktop and phone | 12 passed, 2 skipped (scene lifecycle on the phone, by design) |
+| Source/art/palette/syntax guard (`npm run check`) | Passed: 47 copied art/runtime files, the original 90-color palette, the renderer wiring and JavaScript syntax |
+| `git diff --check` | Clean |
+
+**Limits.** This is a focused selection, not a full-suite run; no other new failure appeared, so the selection was not broadened. Everything ran in software-rendered Chromium, with the phone as an emulated 390 px viewport, not a physical device. Payments were simulated and providers fake.
+
+Raw evidence is ignored and stays local in `test-results/release-candidate-20261107/`: `corrected-cases.log`, `combined-regressions.log` and `check.log`.
+
+No owner household, credential, real order, paid model or provider call, recording, deployment or submission was used.
+
 ## Treasury loading: a search typed while the records load — November 7, 2026
 
 This pass tested what happens while the Ledger's self-hosted AG Grid and the Treasury's AG Studio bundles are slow or fail, on main `01fb478` (implementation `4082df5`). Deterministic request gates held the two bundles; each was then released, answered with a 503, or recovered by a reload.
