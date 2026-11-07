@@ -1,0 +1,33 @@
+{
+  "date": "2026-11-06",
+  "source": "test/e2e/shared-live.spec.mjs at the commit that adds this file's final hashes, Playwright 1.64.1 Chromium headless with SwiftShader, reduced motion; the run that produced them passed all four cases on desktop and phone",
+  "mode": "family access on in-process servers bound to 127.0.0.1 with in-memory databases (and the real family runner for the restart case), live limits with a 1 s session re-check, empty provider keys, simulated payments and a FAKE Channel3 transport (invented products); each person a separate browser context with its own Chromium virtual authenticator; every request leaving the server origin refused and recorded (none were), with Channel3's image CDN answered by a drawn stand-in",
+  "limits": "Test captures of synthetic people and households (Rowan, Ash, Wren, Fern), not real family use. The dropped connection is Chromium offline emulation plus the server closing its connections, not real network loss; the virtual authenticator is not a real device. No image shows an invitation link or token.",
+  "images": {
+    "docs/screenshots/shared-live-owner-manor.png": {
+      "sha256": "8866c506a21b5017b3d2386d740973bd1f427e2ee1ab0f1c5465a44e4f03a75b",
+      "capture": "three-members case, desktop 1440x1000, the owner's own page right after the adult paid on another device",
+      "shows": "the Manor Gardens deed arriving on the owner's page from another member's simulated $15 contribution; the Ledger's Treasury already at $15.00 of $24.00, and the gifts logged on other pages shown as not savings; the family footer notice"
+    },
+    "docs/screenshots/shared-live-owner-ledger.png": {
+      "sha256": "c3399179a2f3eef87d0d0921de96fbfecacd327ba7c02aef9764d0526de73742",
+      "capture": "three-members case, desktop, the owner's Ledger panel after a second contribution made on another device",
+      "shows": "Goal progress filter, 'simulated' search, amount sort and the selected $15.00 receipt kept (keyboard focus on the same record) while the new $5.00 row and the weekly Treasury arrived live"
+    },
+    "docs/screenshots/shared-live-reconnect.png": {
+      "sha256": "63da944ca0defd335a7f8b1c5829b0f51ce4a712ae8eba215b217444a0077e1c",
+      "capture": "dropped-connection case, desktop top bar, 8 s after the server cut the offline device's connections",
+      "shows": "the one compact connection state: 'Updates paused \u00b7 Reconnect' beside the signed-in member"
+    },
+    "docs/screenshots/shared-live-phone-reconnect.png": {
+      "sha256": "a5dc6469b441beee7145339e9fdf1477e7cc094088f27310491dd88410efa59a",
+      "capture": "phone case, 390x844 touch phone (DPR 2), offline after a live update arrived",
+      "shows": "the Reconnect control fitting the top bar beside the signed-in name and Journal button; the world still leads"
+    },
+    "docs/screenshots/shared-live-removed.png": {
+      "sha256": "0f2308654a1e2988edeb1dd85590f02bafcdae271d1063b3795e62a13e320850",
+      "capture": "three-members case, desktop, the child's open page when the owner removed access",
+      "shows": "the sign-in card with 'Your access to this family was removed.', without any click or reload on the child's page"
+    }
+  }
+}

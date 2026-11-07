@@ -12,6 +12,7 @@
 export const ROUTE_POLICIES = Object.freeze([
   ['GET', '/api/status', 'public'],
   ['GET', '/api/session', 'public'],
+  ['GET', '/api/events', 'member'],
   ['POST', '/api/auth/family/options', 'public'],
   ['POST', '/api/auth/family/verify', 'public'],
   ['POST', '/api/auth/signin/options', 'public'],
@@ -38,6 +39,8 @@ export const ROUTE_POLICIES = Object.freeze([
   ['POST', /^\/api\/plans\/([\w-]+)\/accept$/, 'adult'],
   ['POST', '/api/merchant/search', 'adult'],
   ['POST', '/api/merchant/goal', 'adult'],
+  ['POST', '/api/merchant/refresh', 'adult'],
+  ['POST', '/api/merchant/alternatives', 'adult'],
   ['POST', '/api/steward', 'adult'],
   ['POST', '/api/entries', 'adult'],
   ['GET', '/api/paypal/config', 'adult'],

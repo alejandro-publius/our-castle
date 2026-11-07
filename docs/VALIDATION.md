@@ -1,5 +1,64 @@
 # Validation
 
+## Shared families, live: one integrated build and dependable cross-device updates — November 6, 2026
+
+Claude branch `claude/shared-live-integration` from `main` `86c8287` (PR #20; not merged or activated). Normal merges of #19 (with #16) and #17, then live updates for shared families. See [FAMILY-ACCESS.md](FAMILY-ACCESS.md#live-updates).
+
+- **Integration.** One migration sequence: main's four SQL steps, then checked steps `goal-project-kind` (5), `merchant-selection` (6) and `family-access` (7). Branch-only schemas 5 and 6 are named and re-checked from step 5; a newer schema is refused. Exact pins kept: `@simplewebauthn/server` 14.0.3, `@simplewebauthn/browser` 14.0.0, `ag-grid-community` 36.3.0, `ag-studio` 3.1.0. Merchant refresh and alternatives have explicit adult rules, use the request's scope, and accept a shown result only from the household it was shown to, before any provider call.
+- **Live updates.** `GET /api/events` (members only) carries only an event name and a household revision; pages re-read `/api/state`. Revisions order every state answer; streams and background reads never extend a session; streams end at once on sign-out, removed access, a renewed sign-in and expiry; connections are bounded; reconnects back off and check the session; one compact Reconnect control.
+- **Work in progress.** Unsaved Plan fields, trials, Merchant drafts, avatar and invitation fields stay; an approval is cleared once if its goal or sign-in changed, and kept through unrelated updates and reconnects; the Ledger keeps filter, search, sort, selection and keyboard position; a focused map marker keeps the keyboard.
+- **Keyboard fix that also affects example mode.** A deed's late `close` event no longer takes focus back from where the family has gone (see the area-cards note below).
+
+**Upgrade check against the real branches.** Each source branch's own `openDatabase` (main, goal-projects, sponsor-depth, shared-family-access, extracted by `git cat-file`) wrote a throwaway file at its schema (4, 5, 5, 6); the integrated build opened each: all reached schema 7 with exactly a fresh database's schema, rows kept, reopening idempotent, and the explicit warning for 5 and 6. Not committed (it needs the branch sources); `test/unit/migration-integration.test.mjs` rebuilds the same schemas from the identical statements.
+
+**Unit: 291 cases, 290 passed, 1 pre-existing skip.**
+- New `family-live` (7): the changed household only, a bare revision, ordered answers; quiet reads, calculations, look-ups and access refusals; a fake Channel3 goal; one contribution, one credit, one notice per page; access removal, renewal, sign-out and idle expiry ending streams, with no session extension; bounds and release of every stream and the timer; a verified fake-PayPal webhook telling only its household; a real restart; example mode.
+- New `family-sponsor` (1): a child and another family refused on every Merchant route and the steward before the fake Channel3 or fake Anthropic transport is reached; the adult's refresh, cheaper alternatives, save and steward answer stay in their household.
+- New `migration-integration` (3): every earlier schema to the fresh one; a newer schema refused and untouched.
+- Changed: the family HTTP helpers moved to `test/helpers/family-http.mjs`.
+
+**Browser.** New `shared-live.spec.mjs` (4 cases, desktop 1440×1000 and emulated 390×844 touch phone), each person a separate context with a virtual passkey; requests leaving the server origin refused and recorded (none were):
+- three members and a separate family through goal, Build, trials, avatar, invitation, an unrelated change that moves nothing being edited and keeps a given approval, a goal change that clears it, two contributions (one credit each; Manor Gardens deed on every family page), the keyboard kept on a visited map marker through live updates with and without a marker rebuild, Ledger and weekly Treasury, the Treasury record link, a fake Channel3 product after Review latest goal, child limits, access removal and cleanup;
+- a connection cut while offline, the Reconnect control (clicked while still offline, so it never races the automatic reconnect), catching up when the network returns and by itself after a second drop, and idle expiry during the connection;
+- a real restart of `scripts/family.mjs` with both pages reconnecting in the same document, and an approval given before it kept (same session) and paid once after it;
+- two 390 px phones and the Reconnect control's fit.
+
+`family-access.spec.mjs` now expects changes live (no focus nudge) and the removed-access reason.
+
+**Focused regressions (18 related suites, desktop and phone, 42.4 min): 157 passed, 15 deliberate viewport skips, 10 failed.**
+- Eight failures (`channel3-merchant` ×2, `connected-journey` and `area-cards`, each on both projects) came from an intermediate version of this branch that held a newly opened area's deed while focus was in a text field. After "Save as our goal" the page focuses the goal name, so the family's own deed waited. That deferral was removed; deeds show at once, as on main.
+- The other two are `journey.spec.mjs` "cancel, decline and pending outcomes…" on both projects. It expected "Nothing was charged", text that `origin/main`'s app has not rendered since `1dd3952`, so it fails on main as well. The test is now corrected (see below).
+
+**After removing the deferral and keeping approvals across reconnects** (`shared-live`, `family-access`, `channel3-merchant`, `connected-journey`, `area-cards`; desktop and phone, 20.6 min): 44 passed, 10 deliberate viewport skips, 2 failed on desktop. Both were diagnosed and fixed:
+- `area-cards` "four journey tabs … visits the castle" was not caused by the live work.
+  - It also fails on `origin/main` (2 of 2 repeats) and at `944457f` (3 of 3; one earlier pass there ran under heavy load).
+  - After **Close all**, the browser returns focus at once, but the dialog's `close` event can wait behind busy software-rendered frames.
+  - When that event arrived after **Visit your castle** had hidden the journal, `deedClosed()` fell back to the Journal button and took the keyboard from the castle marker. A focus log caught it: castle in, then castle out to `#journal-toggle` in the same millisecond.
+  - The handler now never takes focus back from where the family went. With the fix, 3 of 3 repeats passed.
+- `shared-live` "a dropped connection …" was a race in the test.
+  - Its Reconnect click, made just after the device came back online, raced the page's own reconnect. When the page won, the control was correctly gone and the click waited until the test timed out.
+  - The click now happens while the device is still offline and checks that a new stream attempt leaves at once. Every earlier assertion is kept.
+- With the same fixes, live updates no longer rebuild the map's buttons unless an area opens or closes or the Build choice changes, and a rebuilt button keeps its place and the keyboard. The three-member journey now checks both cases.
+
+**Final affected run** (`area-cards`, `shared-live`, plus `realm-focus`, `realm` and `goal-projects`, which exercise the map buttons; desktop and phone, 13.7 min): **37 passed, 9 deliberate viewport skips, 0 failed.** `family-access` was not rerun: no authentication code changed after its last pass in the run above. Unit: 291 cases, 290 passed, 1 pre-existing skip. `npm run check` passed.
+
+**Journey status case corrected.** Only the `journey.spec.mjs` change from PR #24 (`a82079b`) was applied, plus one added check. PR #24's other changes (its focus fix, `area-cards` and `shared-live` checks, screenshots and notes) were not; this branch's own fixes for those failures are in `9e764fc` and `dcbe2db`, and its captures and provenance are unchanged.
+- It uses the current labels: **Checkout window closed.** after a closed checkout, and **Checkout closed** in the Ledger.
+- After each canceled, declined and pending attempt, the page's state still has $60.00 of progress, those three statuses and no credited capture. Completing the pending one credits exactly one capture ($75.00), and the count is still one after the failed records are selected.
+- The failed-record selection checks are kept: the closed and declined rows read "No — not counted", and selecting each shows only its receipt, with no completion or refund action, and leaves the total at $75.00.
+- Only this case runs with reduced motion. Normal route animation and deed timing stay covered by the other journey cases and `area-cards.spec.mjs`.
+- Before, on this branch at `dcbe2db`: 2 failed (desktop and phone) at the first check, which expected "Nothing was charged" and received "Checkout window closed. Check the contribution record before trying again."
+- After: **2 passed** (desktop 17.1 s, 390 px phone 14.7 s). Repeated three times on each project: **6 of 6 passed**. It ran in example mode with simulated payments and no credentials (every step, completion included, goes to `/api/example/…`); no PayPal order or provider call.
+
+Captures: `docs/screenshots/shared-live-*.png` with [provenance](screenshots/shared-live-sources.json).
+
+**Limits.**
+- One server process and one SQLite file, as before; live state (revisions, streams) is in memory and restarts with the server. Several server processes would need a shared notifier.
+- The dropped connection is Chromium offline emulation plus the server closing its connections, not real network loss; the virtual authenticator is not a real device; the browser checks ran in headless Chromium only.
+- Fake Channel3, PayPal and Anthropic transports only: no provider, payment, order or model call. PayPal sandbox through the browser in family mode was not exercised.
+- The full browser suite was not rerun; only the suites and the journey case listed above.
+- Owner apps on 3010 and 3021, their `.env`, checkout and databases were not touched; no deployment, video or submission. Rachel's real family playtests remain open.
+
 ## Shared families: passkeys, invitations and permissions — November 6, 2026
 
 Claude branch `claude/shared-family-access`, stacked on `claude/goal-projects`; not merged or activated. See [FAMILY-ACCESS.md](FAMILY-ACCESS.md).

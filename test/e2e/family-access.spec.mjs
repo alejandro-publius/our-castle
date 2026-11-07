@@ -1,99 +1,18 @@
-import http from 'node:http';
-import net from 'node:net';
-import { spawn } from 'node:child_process';
 import { mkdirSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { test, expect } from '@playwright/test';
-import { createApp } from '../../server/app.mjs';
-import { loadConfig } from '../../server/config.mjs';
-import { openDatabase } from '../../server/db.mjs';
-import { createClock } from '../../server/household.mjs';
+import { accept, createFamily, csrfFetch, familyRunner, familyServer, freePort, invite, isLive, mutableClock, openTab, person, settled } from './support/family.mjs';
 
 // Shared families with real passkeys: Chromium's virtual authenticator (WebAuthn over CDP) creates and uses credentials
 // that the server verifies with the pinned @simplewebauthn/server. Each person is an independent browser context with its
 // own authenticator. Servers run in family mode on their own ports with in-memory or temporary data; no provider keys.
-// The virtual authenticator is not a real device, platform biometric or Face ID test.
-const root = fileURLToPath(new URL('../../', import.meta.url));
+// The virtual authenticator is not a real device, platform biometric or Face ID test. Open pages receive each other's
+// changes through the live-update stream (shared-live.spec.mjs tests that stream in depth).
 const evidence = fileURLToPath(new URL('../../test-results/family-access/', import.meta.url));
 mkdirSync(evidence, { recursive: true });
 test.use({ reducedMotion: 'reduce' });
-
-function mutableClock() {
-  let offset = 0;
-  const base = createClock();
-  return { now: () => new Date(Date.now() + offset), iso() { return this.now().toISOString(); }, today() { const d = this.now(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; }, advance(ms) { offset += ms; }, base };
-}
-async function familyServer({ clock = createClock() } = {}) {
-  const db = openDatabase(':memory:');
-  let app;
-  const server = http.createServer((req, res) => app.handler(req, res));
-  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
-  const origin = `http://localhost:${server.address().port}`;
-  app = createApp({ config: loadConfig({ OUR_CASTLE_ACCESS: 'family', OUR_CASTLE_ORIGIN: origin }, { root }), db, clock, root });
-  return { origin, db, clock, close: () => new Promise((resolve) => { server.closeAllConnections(); server.close(() => { db.close(); resolve(); }); }) };
-}
-async function person(browser, info, name) {
-  const { viewport, isMobile, hasTouch, deviceScaleFactor } = info.project.use;
-  const context = await browser.newContext({ viewport, isMobile, hasTouch, deviceScaleFactor, reducedMotion: 'reduce' });
-  const page = await context.newPage();
-  const errors = [];
-  page.on('pageerror', (e) => errors.push(e.message));
-  const cdp = await context.newCDPSession(page);
-  await cdp.send('WebAuthn.enable');
-  const { authenticatorId } = await cdp.send('WebAuthn.addVirtualAuthenticator', { options: { protocol: 'ctap2', transport: 'internal', hasResidentKey: true, hasUserVerification: true, isUserVerified: true, automaticPresenceSimulation: true } });
-  return { name, context, page, cdp, authenticatorId, errors };
-}
-const settled = (page, expected = true) => expect.poll(async () => {
-  try { return await page.evaluate(() => document.body.dataset.ready === 'true' && Boolean(window.__ourCastle?.state?.access)); } catch { return false; }
-}, { timeout: 30_000 }).toBe(expected);
-async function openTab(page, tab) {
-  if (await page.locator('#journey').isHidden()) await page.locator('#journal-toggle').click();
-  await page.locator(`#tab-${tab}`).click();
-  await expect(page.locator(`#panel-${tab}`)).toBeVisible();
-}
-async function createFamily(p, origin, name) {
-  await p.page.goto(origin + '/');
-  await expect(p.page.locator('#access-dialog')).toBeVisible();
-  await p.page.getByRole('button', { name: 'Start a new family' }).click();
-  await p.page.getByLabel('Your name').fill(name);
-  await p.page.getByRole('button', { name: 'Create passkey and family' }).click();
-  await settled(p.page);
-}
-async function invite(owner, name, role) {
-  await openTab(owner.page, 'house');
-  await owner.page.locator('#invite-name').fill(name);
-  await owner.page.locator('#invite-role').selectOption(role);
-  await owner.page.getByRole('button', { name: 'Create invitation' }).click();
-  // Wait for this invitation's own link (a previous one stays on screen until the new one arrives).
-  await expect(owner.page.locator('#invite-result')).toContainText(`Send this link to ${name} yourself.`);
-  const link = owner.page.locator('#invite-link');
-  await expect(link).toHaveAttribute('aria-label', `Invitation link for ${name}`);
-  await expect(link).toHaveValue(/#invite=[A-Za-z0-9_-]{43}$/);
-  return link.inputValue();
-}
-async function accept(p, link) {
-  await p.page.goto(link);
-  await expect(p.page.getByRole('button', { name: 'Create passkey and join' })).toBeVisible();
-  expect(new URL(p.page.url()).hash).toBe(''); // the token left the address bar at once
-  await p.page.getByRole('button', { name: 'Create passkey and join' }).click();
-  await settled(p.page);
-}
-// Collaborators' pages read fresh state on focus or visibility (at most every 5 s), never by reloading.
-async function refresh(page) {
-  await page.waitForTimeout(5_200);
-  const before = await page.evaluate(() => window.__ourCastle.family().refreshes);
-  await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
-  await expect.poll(() => page.evaluate(() => window.__ourCastle.family().refreshes)).toBeGreaterThan(before);
-}
-// The same nudge when the read is expected to fail (an ended session): no success to wait for.
-async function poke(page) { await page.waitForTimeout(5_200); await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange'))); }
-const csrfFetch = (page, method, url, body) => page.evaluate(async ({ method, url, body }) => {
-  const { csrfToken } = await (await fetch('/api/session')).json();
-  const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken }, body: JSON.stringify(body) });
-  return { status: res.status, body: await res.json() };
-}, { method, url, body });
 
 test('a family with passkeys: owner, adult and child in their own browsers; a separate family stays apart', async ({ browser }, info) => {
   test.skip(info.project.name === 'phone', 'The full journey runs on desktop; the phone fit has its own case.');
@@ -126,7 +45,8 @@ test('a family with passkeys: owner, adult and child in their own browsers; a se
     await expect(wren.page.locator('#signed-in')).toHaveText('Wren · Child');
     for (const p of [ash, wren]) expect(await p.page.evaluate(() => window.__ourCastle.state.household.name)).toBe('House of Alder');
 
-    // The owner chooses the goal and what it builds; Ash's open page picks it up on focus, without a reload.
+    // The owner chooses the goal and what it builds; Ash's open page picks it up as it happens, without a reload.
+    for (const p of [owner, ash, wren]) await isLive(p.page);
     await openTab(owner.page, 'plan');
     await owner.page.locator('#goal-name-input').fill('Garden shed');
     await owner.page.locator('#goal-target').fill('300.00');
@@ -134,7 +54,6 @@ test('a family with passkeys: owner, adult and child in their own browsers; a se
     await owner.page.getByRole('combobox', { name: 'Build', exact: true }).selectOption('garden');
     await owner.page.locator('#ask-planner').click();
     await expect(owner.page.locator('#plan-status')).toContainText('Plan ready.');
-    await refresh(ash.page);
     await expect(ash.page.locator('#goal-name')).toHaveText('Garden shed');
     expect((await ash.page.evaluate(() => window.__ourCastle.scene())).project.stage.kind).toBe('garden');
 
@@ -162,7 +81,6 @@ test('a family with passkeys: owner, adult and child in their own browsers; a se
     await owner.page.locator('#simulate-pay').click();
     await expect(owner.page.locator('#receipt')).toBeVisible();
     for (const p of [ash, wren]) {
-      await refresh(p.page);
       await expect.poll(() => p.page.evaluate(() => [window.__ourCastle.state.contributions.length, window.__ourCastle.state.progress.progressCents])).toEqual([1, 1500]);
     }
 
@@ -192,15 +110,14 @@ test('a family with passkeys: owner, adult and child in their own browsers; a se
     const spoof = await csrfFetch(fern.page, 'POST', '/api/example/contributions', { householdId: firstHousehold, amountCents: 1500, approvalConfirmed: true, requestId: 'fern-spoof-0000001' });
     expect(spoof.status).toBe(403); expect(spoof.body.error.code).toBe('scope_mismatch');
 
-    // The owner removes Wren's access: Wren's next read ends the session, and the passkey no longer signs in.
+    // The owner removes Wren's access: Wren's open page ends its session at once, and the passkey no longer signs in.
     await openTab(owner.page, 'house');
     await owner.page.getByRole('button', { name: 'Remove Wren\'s access' }).click();
     await expect(owner.page.locator('#family-access li[data-member]').filter({ hasText: 'Wren' })).toContainText('no access');
     await expect(owner.page.locator('#invite-result')).toBeHidden(); // both invitations used: no link (or token) on screen
     await owner.page.locator('#panel-house').screenshot({ path: `${evidence}desktop-owner-access.png` });
-    await poke(wren.page);
     await expect(wren.page.locator('#access-dialog')).toBeVisible();
-    await expect(wren.page.locator('#access-status')).toContainText('Your session ended');
+    await expect(wren.page.locator('#access-status')).toContainText('Your access to this family was removed.');
     await wren.page.getByRole('button', { name: 'Sign in with a passkey' }).click();
     await expect(wren.page.locator('#access-status')).toContainText('no longer has access');
     await wren.page.locator('#access-dialog').screenshot({ path: `${evidence}desktop-revoked-child.png` });
@@ -226,7 +143,7 @@ test('an expired session returns to sign-in cleanly; expired, withdrawn and brok
   test.skip(info.project.name === 'phone', 'Viewport-independent.');
   test.setTimeout(150_000);
   const clock = mutableClock();
-  const s = await familyServer({ clock });
+  const s = await familyServer({ clock, live: { recheckMs: 1_000 } });
   const people = [];
   try {
     const owner = await person(browser, info, 'Rowan'); people.push(owner);
@@ -235,9 +152,9 @@ test('an expired session returns to sign-in cleanly; expired, withdrawn and brok
     const withdrawn = await invite(owner, 'Fern', 'adult');
     await owner.page.getByRole('button', { name: 'Withdraw the invitation for Fern' }).click();
     await expect(owner.page.locator('#family-access li[data-status="revoked"]')).toContainText('Fern');
-    // 31 idle minutes on the server's clock: the next quiet refresh finds the session over and asks for the passkey.
+    // 31 idle minutes on the server's clock: the open page's live stream finds the session over and asks for the passkey.
+    await isLive(owner.page);
     clock.advance(31 * 60_000);
-    await poke(owner.page);
     await expect(owner.page.locator('#access-dialog')).toBeVisible();
     await expect(owner.page.locator('#access-status')).toContainText('Your session ended');
     await owner.page.getByRole('button', { name: 'Sign in with a passkey' }).click();
@@ -263,16 +180,9 @@ test('an expired session returns to sign-in cleanly; expired, withdrawn and brok
 test('a real restart of the family runner keeps the family and the signed-in session', async ({ browser }, info) => {
   test.skip(info.project.name === 'phone', 'Viewport-independent.');
   test.setTimeout(120_000);
-  const port = await new Promise((resolve) => { const probe = net.createServer().listen(0, '127.0.0.1', () => { const p = probe.address().port; probe.close(() => resolve(p)); }); });
+  const port = await freePort();
   const data = mkdtempSync(path.join(tmpdir(), 'our-castle-family-runner-'));
-  const start = () => new Promise((resolve, reject) => {
-    const child = spawn(process.execPath, ['scripts/family.mjs', '--port', String(port), '--data', data], { cwd: root, env: { PATH: process.env.PATH, OUR_CASTLE_ENV_FILE: 'none' }, stdio: ['ignore', 'pipe', 'pipe'] });
-    let out = '';
-    child.stdout.on('data', (d) => { out += d; if (out.includes('Press Ctrl+C')) resolve(child); });
-    child.on('exit', (code) => reject(new Error(`family runner exited ${code}: ${out}`)));
-  });
-  const stop = (child) => new Promise((resolve) => { child.removeAllListeners('exit'); child.once('exit', resolve); child.kill('SIGTERM'); });
-  const origin = `http://localhost:${port}`;
+  const { start, stop, origin } = familyRunner({ port, data });
   let runner = await start();
   const owner = await person(browser, info, 'Rowan');
   try {

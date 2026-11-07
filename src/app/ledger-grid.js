@@ -163,7 +163,14 @@ export function createLedgerGrid(container, { formatMoney, onSelect = () => {} }
       const grid = await ensure();
       if (grid) {
         const delta = rowChanges(appliedRows, rows);
-        if (hasChanges(delta)) grid.applyTransaction({ ...delta, remove: delta.remove.map((id) => ({ id })) });
+        if (hasChanges(delta)) {
+          // Rows arriving above the keyboard's cell (another member's new record, say) must not move it to another record.
+          const focused = grid.getFocusedCell();
+          const focusedId = focused && !focused.rowPinned ? grid.getDisplayedRowAtIndex(focused.rowIndex)?.id : null;
+          grid.applyTransaction({ ...delta, remove: delta.remove.map((id) => ({ id })) });
+          const node = focusedId ? grid.getRowNode(focusedId) : null;
+          if (node && node.rowIndex != null && node.rowIndex !== focused.rowIndex && container.contains(document.activeElement)) grid.setFocusedCell(node.rowIndex, focused.column);
+        }
         appliedRows = rows;
         grid.setGridOption('pinnedBottomRowData', [total]);
       } else fallback();

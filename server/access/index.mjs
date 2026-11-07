@@ -20,7 +20,8 @@ const TOKEN = /^[A-Za-z0-9_-]{20,100}$/;
 export class AccessError extends DomainError {}
 const denied = (status, code, message) => new AccessError(status, code, message);
 
-export function createAccess({ db, clock, config }) {
+export function createAccess({ db, clock, config, events = {} }) {
+  // Live-update hooks (server/live.mjs): a session ended, a member lost access, a household's membership changed.
   const nowMs = () => clock.now().getTime();
   const iso = (ms = nowMs()) => new Date(ms).toISOString();
   const SESSION = cookieName('oc_session', config.secure);
@@ -55,10 +56,11 @@ export function createAccess({ db, clock, config }) {
 
   function revokeSession(id, reason) {
     db.prepare('UPDATE sessions SET revoked_at = ?, revoke_reason = ? WHERE id = ? AND revoked_at IS NULL').run(iso(), reason, id);
+    events.sessionEnded?.(id, reason);
   }
 
   /** The signed-in member behind this request's session cookie, or why there is none. */
-  function readSession(req) {
+  function readSession(req, { activity = true } = {}) {
     const token = cookie(req, SESSION);
     if (!token) return { session: null, reason: parseCookies(req.headers.cookie)[SESSION] ? 'invalid' : 'none' };
     const row = db.prepare('SELECT * FROM sessions WHERE token_hash = ?').get(hashToken(token));
@@ -69,7 +71,7 @@ export function createAccess({ db, clock, config }) {
     const member = db.prepare(`SELECT ms.is_owner, ms.access, m.role, m.display_name FROM memberships ms JOIN members m ON m.id = ms.member_id
       WHERE ms.member_id = ? AND ms.household_id = ? AND ms.account_id = ?`).get(row.member_id, row.household_id, row.account_id);
     if (!member || member.access !== 'active') { revokeSession(row.id, 'access_revoked'); return { session: null, reason: 'revoked' }; }
-    if (t - Date.parse(row.last_seen_at) > 60_000) db.prepare('UPDATE sessions SET last_seen_at = ? WHERE id = ?').run(iso(t), row.id);
+    if (activity && t - Date.parse(row.last_seen_at) > 60_000) db.prepare('UPDATE sessions SET last_seen_at = ? WHERE id = ?').run(iso(t), row.id);
     return { session: { ...row, token, role: member.role, owner: member.is_owner === 1, name: member.display_name }, reason: null };
   }
 
@@ -160,6 +162,20 @@ export function createAccess({ db, clock, config }) {
     sessionCookieName: SESSION,
     readSession,
     clearSessionCookie,
+    /**
+     * Whether a session (by id) may still receive live updates: null if so, otherwise why not. Unlike a request this is
+     * not activity, so an open page never keeps an idle session alive; it ends the session when it has expired.
+     */
+    sessionEndReason(sessionId) {
+      const row = db.prepare('SELECT * FROM sessions WHERE id = ?').get(sessionId);
+      if (!row || row.revoked_at) return row?.revoke_reason === 'signed_out' ? 'signed_out' : row?.revoke_reason === 'access_revoked' ? 'access_revoked' : 'expired';
+      const t = nowMs();
+      if (Date.parse(row.expires_at) <= t) { revokeSession(row.id, 'expired'); return 'expired'; }
+      if (t - Date.parse(row.last_seen_at) > config.sessionIdleMs) { revokeSession(row.id, 'idle'); return 'expired'; }
+      const member = db.prepare('SELECT access FROM memberships WHERE member_id = ? AND household_id = ? AND account_id = ?').get(row.member_id, row.household_id, row.account_id);
+      if (!member || member.access !== 'active') { revokeSession(row.id, 'access_revoked'); return 'access_revoked'; }
+      return null;
+    },
     csrfOk(req, session) {
       const sent = req.headers['x-csrf-token'];
       return typeof sent === 'string' && sent.length < 100 && sameHash(hashToken(sent), session.csrf_hash);
@@ -283,6 +299,7 @@ export function createAccess({ db, clock, config }) {
       });
       startSession(req, res, ids);
       audit({ ...ids, action: 'session.signed_in' });
+      events.householdChanged?.(ids.householdId); // the family's open pages show the new member
       return { signedIn: true };
     },
 
@@ -344,6 +361,7 @@ export function createAccess({ db, clock, config }) {
         db.prepare("UPDATE sessions SET revoked_at = ?, revoke_reason = 'access_revoked' WHERE member_id = ? AND revoked_at IS NULL").run(iso(), memberId);
         audit({ householdId: scope.householdId, accountId: scope.accountId, memberId: scope.memberId, action: 'member.access_revoked', subject: memberId });
       });
+      events.memberRevoked?.(memberId);
       return { revoked: true };
     },
 

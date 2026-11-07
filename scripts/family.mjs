@@ -27,7 +27,7 @@ export async function startFamily({ port = 3200, dataDir = resolve(root, 'data/f
   return {
     url: origin, file,
     close() {
-      closing ??= new Promise((done) => { server.close(() => { db.close(); done(); }); server.closeAllConnections(); });
+      closing ??= new Promise((done) => { app.live?.close(); server.close(() => { db.close(); done(); }); server.closeAllConnections(); });
       return closing;
     },
   };

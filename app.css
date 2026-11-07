@@ -628,6 +628,10 @@ body[data-signed-in='false'] .shell { visibility:hidden; }
 .access-status { margin:10px 4px 0; min-height:1.3em; font-size:15px; }
 .access-status[data-kind='error'] { color:var(--warn); }
 .access-card :focus-visible { outline:3px solid #7a4f12; outline-offset:2px; }
+.live-status { display:inline-flex; align-items:center; gap:6px; margin:0; min-height:44px; color:var(--ivory); font-size:14px; white-space:nowrap; }
+.live-status[hidden] { display:none; }
+.live-status .live-dot { width:8px; height:8px; border-radius:50%; background:var(--gold); box-shadow:0 0 0 2px rgba(0,0,0,.25); }
+.live-status .link-button { min-height:44px; padding:0 4px; color:var(--ivory); }
 .signed-in { display:inline-flex; align-items:center; min-height:44px; padding:0 4px; color:var(--ivory); font-size:15px; border-bottom:1px solid var(--rule); white-space:nowrap; max-width:200px; overflow:hidden; text-overflow:ellipsis; }
 .family-access { margin:4px 0 14px; }
 .family-access h4 { margin:12px 0 6px; font-size:16px; }
@@ -642,4 +646,5 @@ body[data-signed-in='false'] .shell { visibility:hidden; }
 .access-list li[data-status='expired'], .access-list li[data-status='revoked'], .access-list li[data-access='revoked'] { color:var(--ink-muted); }
 .access-list .link-button, .family-access .actions .link-button { min-height:44px; }
 .access-me { margin:10px 0 0; font-size:15px; color:var(--ink-muted); }
+@media(max-width:400px) { .live-status .live-text { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); } .live-status { font-size:13px; } }
 @media(max-width:400px) { .signed-in { max-width:110px; font-size:13px; } .invite-form { grid-template-columns:1fr; } }
