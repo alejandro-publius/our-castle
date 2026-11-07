@@ -4,6 +4,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { test, expect } from '@playwright/test';
 import { accept, createFamily, csrfFetch, familyRunner, familyServer, freePort, invite, isLive, mutableClock, openTab, person, settled } from './support/family.mjs';
+import { buildPlanText, rulesAmounts } from '../../server/planner/basis.mjs';
 
 // Shared families with real passkeys: Chromium's virtual authenticator (WebAuthn over CDP) creates and uses credentials
 // that the server verifies with the pinned @simplewebauthn/server. Each person is an independent browser context with its
@@ -173,6 +174,74 @@ test('an expired session returns to sign-in cleanly; expired, withdrawn and brok
     expect(s.db.prepare('SELECT COUNT(*) AS n FROM memberships').get().n).toBe(1);
   } finally {
     for (const p of people) await p.context.close();
+    await s.close();
+  }
+});
+
+test('an answer refused after this browser signed in again in another tab keeps the page and saves nothing', async ({ browser }, info) => {
+  test.skip(info.project.name === 'phone', 'Viewport-independent.');
+  test.setTimeout(120_000);
+  // A plan request waits on a gated fake planner (no model is called). Meanwhile a second tab of the same browser, opened
+  // while signed out, signs in with the owner's own passkey, copied to that tab's virtual authenticator, so the server
+  // rotates the session. The old request's answer is refused and its plan is not saved; the first tab keeps the newer
+  // session instead of asking for the passkey again.
+  const gate = () => { let release; const promise = new Promise((resolve) => { release = resolve; }); return { promise, release }; };
+  const entered = gate(), finish = gate();
+  let asks = 0;
+  const aiProvider = {
+    provider: 'anthropic', model: 'fake-planner',
+    async proposePlan(basis) {
+      if (++asks === 1) { entered.release(); await finish.promise; }
+      return { output: buildPlanText(basis, rulesAmounts(basis)), model: 'fake-planner', requestId: `fake-plan-${asks}` };
+    },
+  };
+  const s = await familyServer({ aiProvider });
+  const owner = await person(browser, info, 'Rowan', { origin: s.origin });
+  try {
+    const second = await owner.context.newPage();
+    const secondErrors = [];
+    second.on('pageerror', (e) => secondErrors.push(e.message));
+    const cdp = await owner.context.newCDPSession(second);
+    await cdp.send('WebAuthn.enable');
+    const { authenticatorId } = await cdp.send('WebAuthn.addVirtualAuthenticator', { options: { protocol: 'ctap2', transport: 'internal', hasResidentKey: true, hasUserVerification: true, isUserVerified: true, automaticPresenceSimulation: true } });
+    await second.goto(s.origin + '/');
+    await expect(second.getByRole('button', { name: 'Sign in with a passkey' })).toBeVisible();
+
+    await createFamily(owner, s.origin, 'Rowan');
+    await openTab(owner.page, 'house');
+    await owner.page.locator('#house-name').fill('House of Alder');
+    await owner.page.getByRole('button', { name: 'Raise our banner' }).click();
+    await expect(owner.page.locator('#house-status')).toContainText('House of Alder is founded');
+    await isLive(owner.page);
+    const { credentials } = await owner.cdp.send('WebAuthn.getCredentials', { authenticatorId: owner.authenticatorId });
+    expect(credentials).toHaveLength(1);
+    await cdp.send('WebAuthn.addCredential', { authenticatorId, credential: credentials[0] });
+
+    await openTab(owner.page, 'plan');
+    await owner.page.locator('#goal-name-input').fill('Garden shed');
+    await owner.page.locator('#goal-target').fill('300.00');
+    await owner.page.locator('#goal-weekly').fill('30.00');
+    await owner.page.locator('#ask-planner').click();
+    await entered.promise;
+    await second.getByRole('button', { name: 'Sign in with a passkey' }).click();
+    await settled(second);
+    await expect(second.locator('#signed-in')).toHaveText('Rowan · Adult');
+    finish.release();
+
+    await expect(owner.page.locator('#plan-status')).toContainText('This browser signed in again while this was in progress.');
+    await expect(owner.page.locator('#access-dialog')).toBeHidden();
+    expect(await owner.page.evaluate(() => document.body.dataset.signedIn)).not.toBe('false');
+    expect(s.db.prepare('SELECT COUNT(*) AS n FROM plans').get().n).toBe(0);
+    // The kept page goes on with the newer session and its CSRF token: the same request now succeeds.
+    await owner.page.locator('#ask-planner').click();
+    await expect(owner.page.locator('#plan-status')).toContainText('The AI plan passed every server check.');
+    expect(s.db.prepare('SELECT COUNT(*) AS n FROM plans').get().n).toBe(1);
+    expect(owner.errors).toEqual([]);
+    expect(secondErrors).toEqual([]);
+    expect(owner.outside).toEqual([]);
+  } finally {
+    finish.release();
+    await owner.context.close();
     await s.close();
   }
 });

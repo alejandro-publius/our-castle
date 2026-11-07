@@ -1,5 +1,45 @@
 # Validation
 
+## Shared families, live: access re-checked during waits (PR #22 merged into PR #20) — November 6, 2026
+
+Codex's PR #22 (`review/family-revocation`, head `f91a0d3`, which already contained PR #20 through `f6535f8`) was reviewed and merged into `claude/shared-live-integration` by a normal merge (`40b65ee`). Nothing was merged into `main` or activated. Codex's notes are in [FAMILY-ACCESS-RACE-REVIEW.md](FAMILY-ACCESS-RACE-REVIEW.md), and the behaviour is in [FAMILY-ACCESS.md](FAMILY-ACCESS.md).
+
+**Review, behaviour by behaviour.** All five behaviours hold on the merge. One page-level defect was found and fixed (below).
+- **Removed or expired members.** A family write is authorized again after its body arrives and before anything runs. The planner checks again after its model wait and before validating or storing a plan; this also covers invalid and failed answers. Every private answer, success or error, is checked again when it is sent. An ended request gets the normal 401, with no receipt, plan or state.
+- **Steward.** It checks before and after each model turn and before each tool. An access error passes through `mapAnthropicError` unchanged, so it is never turned into a provider answer or fed into another model turn.
+- **Re-checks.** They read the session without counting as activity and never clear a cookie. The active controls keep `last_seen_at` unchanged, and after a renewed sign-in the newer cookie keeps working. Only the first check on arrival clears a dead cookie, as before.
+- **Already-dispatched money.** Capture, refund and order creation go to PayPal straight after the re-check. Their results are recorded once (same request ids, the in-flight guard and settled-status checks are unchanged) before the reply is withheld. The owner recovers a capture without a second one.
+- **Still working.** Sign-out is exempt from the response check because it ends its own session. The webhook stays a machine route, streams return before the response check, and live notices still go out in the handler's `finally`.
+- **Observations, no change.**
+  - The `goalId` comparison cannot fire in family mode, because goals are created with the household and only updated in place, so `409 scope_changed` is defensive.
+  - A Merchant look-up already sent can still fill that household's own short-lived result cache, as PR #22's notes say.
+  - One narrow window remains before a capture or refund is sent. When the PayPal client has no cached OAuth token, it fetches one first. If access ends during that fetch, the capture or refund still goes out, though it is then recorded once and its reply withheld. A check after the token fetch would belong in Astra's payment code, so it is left for Astra and Codex.
+
+**Defect found and fixed: a refused answer ended the page after a renewed sign-in.**
+- **Cause.** The server now refuses (401) a request that was under way when the same browser signed in again as the same member in another tab. The newer cookie survives. But the page treated every 401 as the end of its session, so it asked for the passkey even though the browser was signed in.
+- **Reproduced** in a new `family-access.spec.mjs` case.
+  - A plan request waits on a gated fake planner.
+  - A second tab, opened while signed out, signs in with the owner's passkey (copied to that tab's virtual authenticator).
+  - The planner is then released. Before the fix, the first tab showed the sign-in dialog with "Your session ended. Sign in again with your passkey." while the second tab was signed in as Rowan.
+- **Fix** (`src/app/api.js`, `src/app/main.js`).
+  - On such a 401 the page checks `/api/session` first.
+  - If this browser is still signed in as the same member of the same household, it keeps the page with the newer CSRF token. The renewal still clears an earlier approval.
+  - The request then reports "This browser signed in again while this was in progress. Check the latest records before trying again." It is not retried.
+  - Anything else ends the page as before. The stream's own session endings and a state for another member also end it at once. Example mode is unchanged.
+- **After the fix,** the case passes 3 of 3. The first tab stays signed in, no plan is saved from the refused answer, and the same request then succeeds with the newer session.
+
+**Checks** (fake planner, fake model transport, fake PayPal; no real order, provider or model call):
+- **Unit:** `family-access` 18/18, `family-runtime-boundaries` 9/9, `family-live` 7/7. That is 34 passed, 0 failed, both on the merge and on the final tree.
+- **Browser on the merge as is** (`family-access`, `shared-live`; desktop and 390 px phone): 8 passed, 8 deliberate one-viewport skips, 0 failed (4.6 min).
+- **The new case:** 1 failed before the fix (as above), then 1 passed, then 3 of 3 repeats.
+- **Browser on the final tree** (`family-access`, `shared-live`; desktop and 390 px phone): **9 passed, 9 deliberate one-viewport skips, 0 failed** (4.9 min), the new case included.
+- `npm run check` passed, and `git diff --check` is clean.
+
+**Limits.**
+- The renewal is a second tab in one Chromium context with a copied virtual credential, not a real device.
+- The new browser case runs on desktop only, like the other viewport-independent family-access cases.
+- The full browser suite was not rerun. Only `family-access` and `shared-live` ran, since this change touches only family-mode session handling.
+
 ## Shared families, live: one integrated build and dependable cross-device updates — November 6, 2026
 
 Claude branch `claude/shared-live-integration` from `main` `86c8287` (PR #20; not merged or activated). Normal merges of #19 (with #16) and #17, then live updates for shared families. See [FAMILY-ACCESS.md](FAMILY-ACCESS.md#live-updates).

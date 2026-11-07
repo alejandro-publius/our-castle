@@ -279,7 +279,7 @@ async function boot() {
       document.body.dataset.ready = 'true';
       return;
     }
-    setSession({ csrf: session.csrfToken, lost: sessionLost });
+    setSession({ csrf: session.csrfToken, lost: requestRefused });
     family.csrf = session.csrfToken;
     // This page belongs to one member of one household for its whole life; a state for anyone else is never shown here.
     family.householdId = session.household.id;
@@ -350,6 +350,20 @@ function takeInvitationFromUrl() {
   history.replaceState(null, '', location.pathname + location.search);
   return /^[A-Za-z0-9_-]{20,100}$/.test(token) ? token : 'invalid';
 }
+// A request was refused because its session had ended. So has this page's, unless this browser has since signed in again
+// as the same member (in another tab): a request sent before that renewal is refused, but the page keeps the newer
+// session and its CSRF token (a renewal still clears an earlier approval). Refusals at the same moment share one check.
+let confirmingLoss = null;
+function requestRefused(error) {
+  if (family.lost) return Promise.resolve('ended');
+  confirmingLoss ??= checkFamilySession().then((now) => {
+    confirmingLoss = null;
+    if (now === 'signed-in' && !family.lost) return 'kept';
+    sessionLost(error);
+    return 'ended';
+  });
+  return confirmingLoss;
+}
 // The session ended (expired, signed out elsewhere or access removed): stop refreshing and ask for the passkey again.
 // The household stays behind the dialog's backdrop; signing in reloads the page for whoever signs in.
 function sessionLost(error) {
@@ -393,7 +407,7 @@ async function checkFamilySession() {
   if (session.csrfToken !== family.csrf) {
     family.csrf = session.csrfToken;
     family.epoch++;
-    setSession({ csrf: session.csrfToken, lost: sessionLost });
+    setSession({ csrf: session.csrfToken, lost: requestRefused });
   }
   return 'signed-in';
 }
