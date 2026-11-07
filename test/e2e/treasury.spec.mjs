@@ -118,6 +118,31 @@ test('Ledger: one next area from AG Studio, records and receipts on tap; no ques
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });
 
+test('a search typed while the records are still loading applies to them when the grid appears', async ({ page }) => {
+  await open(page);
+  const state = await page.evaluate(() => window.__ourCastle.state);
+  await s.post('/api/example/contributions', { householdId: state.household.id, goalId: state.goal.id, amountCents: 500, approverId: 'm_rowan', approvalConfirmed: true, requestId: 'treasury-held-search-0001', outcome: 'completed' });
+  let releaseGrid;
+  const gridGate = new Promise((resolve) => { releaseGrid = resolve; });
+  await page.route('**/vendor/ag-grid/ag-grid-community.min.js', async (route) => { await gridGate; await route.continue(); });
+  await page.reload();
+  await page.waitForFunction(() => window.__ourCastle?.state && window.__ourCastle.scene());
+  if (await page.locator('#journey').isHidden()) await page.locator('#journal-toggle').click();
+  await page.locator('#tab-ledger').click();
+  await page.locator('#ledger-search').fill('reported');
+  await expect(page.locator('#ledger-goal')).not.toHaveAttribute('data-grid'); // the grid script is still held
+  releaseGrid();
+  await expect(page.locator('#ledger-goal')).toHaveAttribute('data-grid', 'ag-grid');
+  const records = page.locator('#ledger-goal .ag-row:not(.ag-row-pinned)');
+  await expect(records).toHaveCount(1);
+  await expect(records).toContainText('Example starting progress');
+  await expect(page.locator('#ledger-search')).toHaveValue('reported');
+  // Both records, the contribution made before the reload included, once the search is cleared.
+  await page.locator('#ledger-search').fill('');
+  await expect(records).toHaveCount(2);
+  expect(writes.get(page)).toEqual([]);
+});
+
 test('a completed contribution opens the Manor once; the Treasury moves on, survives reload, and pending or refunds behave', async ({ page }, info) => {
   await open(page, { plannedWeek: true });
   // The ordinary Contribute flow with adult approval (simulated example payment). The world shows the Manor deed.

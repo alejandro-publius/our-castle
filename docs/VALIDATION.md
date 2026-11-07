@@ -1,5 +1,51 @@
 # Validation
 
+## Treasury loading: a search typed while the records load — November 7, 2026
+
+This pass tested what happens while the Ledger's self-hosted AG Grid and the Treasury's AG Studio bundles are slow or fail, on main `01fb478` (implementation `4082df5`). Deterministic request gates held the two bundles; each was then released, answered with a 503, or recovered by a reload.
+- **Isolation:** each case ran the real app in-process, with a fresh in-memory example database and an empty environment. That means example payments and planner, and no licence or credentials.
+- **Steward cases:** these used the studio-agent spec's scripted fake model transport.
+
+**One defect, now fixed** (`src/app/ledger-grid.js`):
+- **The bug.** A search typed while the Grid bundle was still loading was stored but never given to the grid when it mounted. The later re-application then skipped it as unchanged.
+- **Reproduction.** There were three records. Typing "reported" while the bundle was held left all three in the grid, while the box still read "reported". Typed after the grid mounts, the same search shows two. The next edit of the search corrected it.
+- **The fix.** The grid now starts with the stored search.
+
+**Held, then released: already correct.**
+- **A filter chosen while held** (Bills) applied when the grid appeared, and the selection moved to a visible record.
+- **A record selected while held,** from the Treasury's week, was the selected row once the grid appeared. Its receipt was shown in the meantime.
+- **A household update while both bundles were held,** an explicit bill and a goal change, appeared once they were released. The grid showed the latest records, and the milestone read $60.00 of $100.00.
+- **Closing the Journal while both were held,** releasing them while it was hidden, then reopening it, showed one grid and one Studio root. The rows were laid out, with entry cells 148 px wide, and the milestone container fitted its 252 px content.
+- **The steward asked while Studio was held** waited with its existing "reading the ledger" status. There was no model request or POST while held, and exactly one run after release: one `POST /api/steward` and one fake conversation.
+- **A member change during that wait** made it refuse with "The records changed. Check the current record again.", with no request.
+
+**Failed and recovered: already correct.** Both bundles were answered with a 503 after a filter and a search were chosen.
+- The plain table showed the filtered, searched record, and the milestone was drawn from the same server data, with the error recorded.
+- Reopening the Ledger is not a retry.
+- Once the bundles were available again, a reload mounted AG Grid and Studio.
+
+Every case had one grid and at most one Studio root, and no page errors. There was no outside, provider or steward request apart from the one explicit steward ask, and no write apart from the explicit bill.
+
+| Check | Actual result |
+| --- | --- |
+| New treasury case "a search typed while the records are still loading applies to them when the grid appears", desktop and 390 px phone | 2 passed. On main's `ledger-grid.js` both fail: 2 records shown, 1 expected |
+| Probe, 9 cases, before and after the fix | Only the held search changed: 3 records before, 2 after, the same as a search typed after mount |
+| Related suites, desktop and phone: treasury, earned-realm, treasury-status, shared-live, studio-agent | 41 passed, 5 designed project skips, 0 failed |
+| Source/art/palette/syntax guard | Passed: 47 copied art/runtime files and the original 90-color palette |
+
+**Limits.**
+- **Emulated failures.** Holds and failures are emulated with Playwright route gates and a 503, not real network faults.
+- **Empty areas while held.** While a bundle is held, its records grid or milestone area stays empty, with no loading text. A request that never answers has no timeout. This was not changed: there is no new retry, timeout or loading UI.
+- **Family live updates** take the same update path as the explicit example updates checked here, and the existing shared-live spec passed. No physical device was used.
+
+Raw evidence is ignored and stays local in `test-results/treasury-loading-20261107/`:
+- the probe script, `probe.mjs`, with its results `result-before.json` and `result-after.json`;
+- the spec logs `spec-before-fix.log` and `spec-after-fix.log`;
+- the suite and guard logs `related-suites.log` and `check.log`;
+- `ledger-grid.main.js` and `ledger-grid.final.js`, the exact files tested.
+
+No owner household, credential, real order, paid model or provider call, recording, deployment or submission was used.
+
 ## Scene lifecycle: disposal and hidden-page recovery — November 7, 2026
 
 This checks the board scene's lifecycle through its public API, on main `01fb478` (implementation `4082df5`). The probe used a standalone render fixture: art states only, with no ledger, payment or household state. Playwright's fake clock drove `performance.now`, the ambient interval and animation frames. The page counted GL draw and allocation calls, host view callbacks and scene events. Two defects were reproduced and fixed in `src/world/board-scene.js`. Appearance, the compass, controls, art, palette and payment behaviour are unchanged.
