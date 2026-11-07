@@ -105,3 +105,60 @@ test('a hidden page and a covering card both resume ambient life where it paused
   await page.clock.runFor(250);
   expect(await clock()).toBe(2.5);
 });
+
+test('unchanged scene inputs reuse the rendered realm without GL work', { tag: ['@state-reuse', '@release'] }, async ({ page }) => {
+  const result = await page.evaluate(async () => {
+    window.s = window.make({ reducedMotion: true });
+    const input = {
+      builtTier: 0, position: 4, crest: { field: 'cobalt', charge: 'stag' },
+      gardens: 0, estateLevel: 0, previewFeature: null, playMode: 'family',
+      members: [{ id: 'example-adult', role: 'adult', avatarId: 'ranger' }],
+      milestoneSpaces: [5, 12, 20],
+      project: { index: 0, key: 'planned', detail: 'A shared campsite', kind: 'campsite' },
+    };
+    await window.s.scene.update(input, { animate: false });
+    window.s.scene.explore(true);
+    const before = window.counts(window.s), view = window.s.scene.debug().view;
+    for (const animate of [false, true, false]) {
+      await window.s.scene.update(structuredClone(input), { animate });
+    }
+    const after = window.counts(window.s), debug = window.s.scene.debug();
+    const added = Object.fromEntries(Object.keys(before).map((k) => [k, after[k] - before[k]]));
+    window.s.scene.dispose();
+    return { added, viewBefore: view, viewAfter: debug.view, position: debug.shownPosition, animating: debug.animating };
+  });
+  expect(result.added).toEqual({ views: 0, events: 0, draws: 0, allocations: 0 });
+  expect(result.viewAfter).toEqual(result.viewBefore);
+  expect(result.position).toBe(4);
+  expect(result.animating).toBe(false);
+});
+
+test('an unchanged update queued behind a walk waits for that walk without repeating its render', { tag: ['@state-reuse', '@release'] }, async ({ page }) => {
+  await page.evaluate(async () => {
+    window.s = window.make();
+    await window.s.scene.update({ position: 0 }, { animate: false });
+    window.finished = [];
+    window.s.scene.update({ position: 1 }, { animate: true }).then(() => {
+      window.finished.push('walk');
+      window.afterWalk = window.counts(window.s);
+    });
+    window.s.scene.update({ position: 1 }, { animate: true }).then(() => {
+      window.finished.push('repeat');
+      const now = window.counts(window.s);
+      window.repeatWork = Object.fromEntries(Object.keys(now).map((k) => [k, now[k] - window.afterWalk[k]]));
+    });
+  });
+  await page.clock.runFor(700);
+  const result = await page.evaluate(() => {
+    const debug = window.s.scene.debug();
+    const result = { finished: window.finished, position: debug.shownPosition, animating: debug.animating,
+      events: window.s.log.events, repeatWork: window.repeatWork };
+    window.s.scene.dispose();
+    return result;
+  });
+  expect(result.finished).toEqual(['walk', 'repeat']);
+  expect(result.position).toBe(1);
+  expect(result.animating).toBe(false);
+  expect(result.events).toEqual(['hop']);
+  expect(result.repeatWork).toEqual({ views: 0, events: 0, draws: 0, allocations: 0 });
+});
