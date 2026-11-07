@@ -1,5 +1,30 @@
 # Validation
 
+## Map views, panned and turned — November 7, 2026
+
+Inspected commit `f5e80bc`, run in example mode on a free local port with scratch data and an empty environment (no credentials). The page and map code are unchanged at `cbafbad`, so the results stand for current main.
+
+- **Camera views: 405 per viewport,** desktop 1440×1000 and a 390×844 touch phone.
+  - **Views covered:** nine areas × three turns (none, right ×2, left ×4) × three zooms (default, +3, closest). Each was checked centred and after three 90 px keyboard pan steps up, down, left and right.
+  - **Result:** no area name or legend marker sat under a map control or outside the map, and every visible control stayed topmost. That covers 245 name and marker placements on the phone and 374 on desktop.
+- **Label/legend checks: 270 more views,** 135 per viewport. These are Stone Keep, the garden and Hearth Village, where a name and a legend marker can show together. They never overlapped each other or the controls.
+- **Keyboard focus after Visit.** Each Visit started from a turned view at the closest zoom, panned away, on both viewports, with motion on and reduced. Focus landed on the visible marker, inside the map and clear of the controls, for:
+  - the map deed's Visit;
+  - the Treasury's "View Manor Gardens on the map";
+  - Plan's "Visit campsite".
+
+  The starting Ledger record shows no Visit link, since it opens no area. Per-record Visit links use the same handler as the Treasury button.
+- **No page errors, requests leaving the server or writes.**
+- **Measurement correction.** The first sweep flagged every view because the probe counted two screen-reader-only elements as covered controls: `#board-status` and `#tier-track`, each a clipped 1×1 px box. They are not visible controls, so they were excluded from the results. The label/legend run used the corrected probe, which counts only controls larger than 2 px. No app change was needed.
+
+Evidence, ignored and not committed, is in `~/projects/our-castle-shared-live/test-results/map-views-pass-20261107/`:
+- `views-probe.mjs`;
+- `camera-views.json`, `label-legend.json` and `visit-focus.json`;
+- the run logs;
+- 648 bulk captures of the views the measurement mistake had flagged.
+
+**Limits.** Software-rendered Chromium and an emulated phone only. Panning used keyboard steps, not drag or pinch.
+
 ## Merchant selected configuration stock — November 6 PST, 2026
 
 Current Channel3 public product/variant documentation exposed a missed case: listing stock can be **InStock** while the effective selected size is explicitly out of stock or absent. The old adapter failed both real-HTTP reproductions by returning a usable goal draft. [Contract, fix and boundaries](MERCHANT-VARIANT-REVIEW.md).
