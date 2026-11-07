@@ -30,4 +30,12 @@ node --test test/unit/shared-capture-access.test.mjs test/unit/passkey-enrollmen
 
 The existing SDK controller-substitution OAuth-cache case is the only skip. Actual SDK auth/cache behavior remains covered by transport tests. `npm run check` and `git diff --check` pass; original art/palette/runtime source remains unchanged. Ignored logs: `test-results/shared-capture/{before,after,passkey-before,focused,check}.txt`.
 
+## Assembled-candidate check
+
+One complete unit pass on `f63c2d9` passed **358 cases with 1 pre-existing skip and 0 failures** (`npm run test:unit`, 22.1 seconds). This includes the unified migration paths, planner, sponsor, household isolation, payment integrity and the two new fixes on the same source tree. The full browser suite was not repeated.
+
+Three focused browser cases passed (with three deliberate opposite-viewport skips): the desktop owner/adult/child family journey and isolation, a renewed sign-in while an older answer is pending, and sign-in/family controls at 390 px. This used Playwright Chromium, virtual authenticators, isolated data and fake providers (3.4 minutes). Logs: `test-results/shared-capture/{candidate-unit,family-browser}.txt`.
+
+On the owner's Mac, a separate source worktree installed the exact lockfile successfully and served the app, three logo textures, Studio/Grid bundles and WebAuthn helper over a temporary local example-mode server. That server was then stopped. Separately, consistent **private copies** of the owner and preserved rehearsal databases each upgraded from schema 4 to 7 with every original column/value checksum unchanged across all 12 existing tables. The actual databases and listeners were untouched during those checks. Private preparation evidence remains under the Mac's ignored `test-results/final-integration-20261106/` directory.
+
 No owner app, household record, credential, real PayPal order, paid model/search call, recording or deployment was used. These tests use isolated in-memory households, software passkeys and fake PayPal transports. No physical-device checkout or production-scale concurrency is claimed. Already-dispatched provider work cannot be recalled; provider verification and idempotency still determine settlement. The existing app does not normally initiate concurrent captures; this handles overlapping authorized HTTP callers safely.
