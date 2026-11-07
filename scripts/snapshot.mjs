@@ -76,7 +76,9 @@ export async function snapshotDatabase({ source, destination, timeoutMs = 5000, 
     temporary = path.join(folder, `.${path.basename(target)}.${randomBytes(6).toString('hex')}.partial`);
     fs.closeSync(fs.openSync(temporary, 'wx', 0o600)); // private, and created by this run alone
     onTemporary?.(temporary);
-    try { await backup(db, temporary, { rate: -1 }); } // one step: a consistent copy even while the app writes
+    // Every page in one step, so the copy is consistent even while the app writes. 2**31 - 1 is the largest rate each
+    // supported Node accepts; newer releases (26.13) refuse -1.
+    try { await backup(db, temporary, { rate: 2 ** 31 - 1 }); }
     catch (error) { throw new SnapshotError(`The copy did not complete: ${error.message}. Nothing was published.`); }
     const summary = validate(temporary, version, schema);
     summary.sha256 = createHash('sha256').update(fs.readFileSync(temporary)).digest('hex');

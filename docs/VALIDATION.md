@@ -29,12 +29,19 @@ The details and limits are in the [runbook](RUNBOOK.md#household-snapshots).
 
 | Check | Actual result |
 | --- | --- |
-| New `test/unit/household-snapshot.test.mjs`, 6 tests, on Node 22.16.0 and 26.0.0 | 6 passed on each |
-| Deliberate mutations of the tool, each restored with a matching hash: copying the main file instead of the backup; an overwriting rename instead of the hard link; no validation | 3, 1 and 1 tests fail respectively |
-| The new tests with `migration-integration`, `ledger`, `payments` (both PayPal adapters) and `paypal-reconciliation`, on Node 22.16.0 and 26.0.0 | 59 tests: 58 passed, 1 existing designed skip, 0 failed on each |
+| New `test/unit/household-snapshot.test.mjs`, 6 tests, on Node 22.16.0, 26.0.0 and 26.13.0 | 6 passed on each |
+| Deliberate mutations of the tool, each restored with a matching hash: copying the main file instead of the backup; an overwriting rename instead of the hard link; no validation. Repeated on the corrected tool | 3, 1 and 1 tests fail respectively, both times |
+| The new tests with `migration-integration`, `ledger`, `payments` (both PayPal adapters) and `paypal-reconciliation`, on Node 22.16.0, 26.0.0 and 26.13.0 | 59 tests: 58 passed, 1 existing designed skip, 0 failed on each |
 | Command run on a disposable example file | Written at `0600`; an existing destination refused with exit 1; no paths gives usage and exit 2 |
 | `npm run check` | Passed: 47 copied art/runtime files, the original 90-color palette, the renderer wiring and JavaScript syntax |
 | `git diff --check` | Clean |
+
+**A portability defect found by the first hosted run, and its correction.** Run [42411119299](https://github.com/alejandro-publius/our-castle/actions/runs/42411119299) tested `0186ef7`:
+- **Node 22.16.0:** 367 unit tests passed, with 1 skip.
+- **Browser selection:** 19 passed, with 1 designed skip.
+- **Node 24.22.2 and 26.13.0:** 5 of the 6 new tests failed, all of those that reach the copy. The command asked `backup()` for `rate: -1`, which those releases refuse as "must be a positive integer"; Node 22.16.0 and 26.0.0 accept it.
+
+This was reproduced locally on checksum-verified Node 26.13.0, which bundles SQLite 3.54.0. The command now passes `2**31 - 1`, the largest rate that every tested release accepts, and still copies every page in one step. The hosted result for the corrected head is on the PR.
 
 **What the six tests show:**
 1. **WAL content:** with the app's writer open and a committed contribution in its WAL, a main-file copy reads $60.00. The snapshot reopens at $75.00 with the same simulated labels. The source's rows, main-file bytes and WAL size are unchanged, and the snapshot has mode `0600`. Repeating the request on the reopened copy returns `already_processed`.
@@ -74,7 +81,8 @@ Raw evidence is ignored and stays local in `test-results/household-snapshots-202
 - the reproduction scripts and their JSON results: `repro*.mjs`, `repro-node22.16.0.json`, `repro-node26.json`, `repro-overwrite.json`, `repro-rate-lock.json` and `repro-corrupt.json`;
 - the test logs `new-tests-*.log`, `mutation-*.log` and `focused-unit-*.log`;
 - `check.log`;
-- `snapshot.original.mjs`, the exact file the mutations were restored from.
+- `snapshot.original.mjs` and `snapshot.corrected.mjs`, the exact files the mutations were restored from;
+- the downloaded log of hosted run 42411119299 and `repro-rate.json`, which records the rates each tested Node accepts.
 
 No owner household, credential, real order, paid model or provider call, recording, deployment or submission was used. No database file is committed.
 

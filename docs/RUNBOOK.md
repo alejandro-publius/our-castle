@@ -150,7 +150,7 @@ node --test test/unit/household-snapshot.test.mjs   # the recovery checks, on fr
 - **No restore:** nothing replaces a database in place or starts an app on a snapshot. To rehearse recovery, open a snapshot as a new file in a temporary folder, as the test above does.
 - **Runtime SQLite:** the summary prints the version in use.
   - **Node 22.16.0** bundles SQLite 3.49.1. That is inside the range affected by the [WAL-reset bug](https://www.sqlite.org/wal.html#the_wal_reset_bug): 3.7.0–3.51.2, fixed in 3.51.3. The bug is rare and needs two connections writing or checkpointing at the same instant. This command's connection only reads and never checkpoints.
-  - **Node 26.0.0** bundles SQLite 3.53.4, which has the fix.
+  - **Node 26.0.0** bundles SQLite 3.53.4, and **Node 26.13.0**, used by the hosted release checks, bundles 3.54.0. Both have the fix.
 - **Local tool only:** it is not a production or disaster-recovery guarantee. There is no schedule or off-site copy, and no testing of hardware failure or disk durability.
 - **Hard links needed:** the destination must be on a file system that supports them; otherwise it refuses.
 
