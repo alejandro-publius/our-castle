@@ -19,6 +19,19 @@ const TENT_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><r
 
 const stateOf = (p, pick) => p.page.evaluate((pick) => { const s = window.__ourCastle.state; return new Function('s', `return ${pick}`)(s); }, pick);
 const family = (p) => p.page.evaluate(() => window.__ourCastle.family());
+// Every live-update stream request the page makes (an EventSource reconnect included).
+function streamAttempts(p) {
+  const attempts = [];
+  p.page.on('request', (r) => { if (new URL(r.url()).pathname === '/api/events') attempts.push(r.url()); });
+  return attempts;
+}
+// Another adult's Build choice, saved through the same route and revision check as the Plan form uses.
+const saveBuild = (p, projectKind) => p.page.evaluate(async (projectKind) => {
+  const s = await (await fetch('/api/state')).json();
+  const { csrfToken } = await (await fetch('/api/session')).json();
+  const body = { name: s.goal.name, targetCents: s.goal.targetCents, startingCents: s.progress.startingCents, weeklyBudgetCents: s.goal.weeklyBudgetCents, targetDate: s.goal.targetDate, projectKind, expectedGoalRevision: s.merchantGoalRevision };
+  return (await fetch('/api/goal', { method: 'PUT', headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken }, body: JSON.stringify(body) })).status;
+}, projectKind);
 async function foundHouse(owner) {
   await openTab(owner.page, 'house');
   await owner.page.locator('#house-name').fill('House of Alder');
@@ -143,7 +156,20 @@ test('three members on their own devices and a separate family: changes arrive a
       await expect(p.page.locator('#deed-dialog[open] #deed-name')).toHaveText('Manor Gardens');
     }
     await owner.page.screenshot({ path: `${evidence}desktop-owner-manor-from-ash.png` });
-    await closeDeed(owner, 'Manor Gardens'); await closeDeed(wren, 'Manor Gardens');
+    await closeDeed(wren, 'Manor Gardens');
+    // The owner visits it from the deed: the keyboard lands on its marker and stays there through live updates, both
+    // when the map's buttons are untouched (a gift) and when they are rebuilt (another adult changes the Build choice).
+    await owner.page.getByRole('button', { name: 'Visit Manor Gardens' }).click();
+    const manor = owner.page.locator('#realm-markers [data-district="manor"]');
+    await expect(manor).toBeFocused();
+    const visited = await family(owner);
+    expect((await csrfFetch(ash.page, 'POST', '/api/entries', { kind: 'gift_sent', amountCents: 800, label: 'Garden gloves' })).status).toBe(200);
+    await expect.poll(async () => (await family(owner)).refreshes).toBeGreaterThan(visited.refreshes);
+    await expect(manor).toBeFocused();
+    expect(await saveBuild(ash, 'schoolhouse')).toBe(200);
+    await expect(owner.page.locator('#project-marker')).toHaveAttribute('data-kind', 'schoolhouse');
+    await expect(manor).toBeFocused();
+    await expect(manor).toHaveAttribute('aria-pressed', 'true');
     expect(s.db.prepare('SELECT COUNT(*) AS n FROM payment_orders').get().n).toBe(1);
 
     // 5. The owner's Ledger keeps its filter, search, sort and selected receipt while Ash pays again; the weekly
@@ -259,9 +285,13 @@ test('a dropped connection shows one Reconnect control and catches up; an idle s
     // Meanwhile the owner saves a goal; Ash's page cannot know yet.
     await saveGoal(owner, { 'goal-name-input': 'Rope swing', 'goal-target': '40.00' });
     await expect(ash.page.locator('#goal-name')).not.toHaveText('Rope swing');
+    // Reconnect tries again at once rather than after the backoff; while the device is still offline, the control stays.
+    const attempts = streamAttempts(ash);
+    await ash.page.locator('#live-retry').click();
+    await expect.poll(() => attempts.length).toBeGreaterThan(0);
+    await expect(ash.page.locator('#live-status')).toBeVisible();
     // Back online: the stream returns, and the page reads what changed while it was away.
     await ash.context.setOffline(false);
-    await ash.page.locator('#live-retry').click();
     await isLive(ash.page);
     await expect(ash.page.locator('#goal-name')).toHaveText('Rope swing');
     await expect(ash.page.locator('#live-status')).toBeHidden();
@@ -366,8 +396,10 @@ test('two 390 px phones: a change arrives live and the Reconnect control fits wi
       expect(b.x + b.width, sel).toBeLessThanOrEqual(390);
     }
     await ash.page.screenshot({ path: `${evidence}phone-reconnect.png` });
-    await ash.context.setOffline(false);
+    const attempts = streamAttempts(ash);
     await ash.page.locator('#live-retry').tap();
+    await expect.poll(() => attempts.length).toBeGreaterThan(0);
+    await ash.context.setOffline(false);
     await isLive(ash.page);
     await expect(ash.page.locator('#live-status')).toBeHidden();
     for (const p of people) { expect(p.errors, p.name).toEqual([]); expect(p.outside, p.name).toEqual([]); }
