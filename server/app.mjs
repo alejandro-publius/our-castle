@@ -266,8 +266,8 @@ export function createApp({ config, db, clock, paypal = null, aiProvider = null,
       const created = await contributions.createPayPalOrder(contributionInput(body, scope));
       return { orderId: created.orderId, approveUrl: created.approveUrl, contribution: created.contribution };
     }],
-    ['POST', /^\/api\/paypal\/orders\/([\w-]+)\/capture$/, async ({ body, params, scope }) => {
-      const result = await contributions.capturePayPalOrder({ providerOrderId: params[0], ...owner(body, scope) });
+    ['POST', /^\/api\/paypal\/orders\/([\w-]+)\/capture$/, async ({ body, params, scope, assertAccess }) => {
+      const result = await contributions.capturePayPalOrder({ providerOrderId: params[0], ...owner(body, scope), assertAccess });
       return { ...result, state: state(scope) };
     }],
     ['POST', /^\/api\/paypal\/orders\/([\w-]+)\/refresh$/, async ({ body, params, scope }) => {
@@ -278,8 +278,8 @@ export function createApp({ config, db, clock, paypal = null, aiProvider = null,
       const result = contributions.cancelPayPalOrder({ providerOrderId: params[0], ...owner(body, scope) });
       return { ...result, state: state(scope) };
     }],
-    ['POST', /^\/api\/paypal\/captures\/([\w-]+)\/refund$/, async ({ body, params, scope }) => {
-      const result = await contributions.refundPayPalCapture({ captureId: params[0], householdId: owner(body, scope).householdId, approverId: actingMember(body.approverId, scope), approvalConfirmed: body.approvalConfirmed });
+    ['POST', /^\/api\/paypal\/captures\/([\w-]+)\/refund$/, async ({ body, params, scope, assertAccess }) => {
+      const result = await contributions.refundPayPalCapture({ captureId: params[0], householdId: owner(body, scope).householdId, approverId: actingMember(body.approverId, scope), approvalConfirmed: body.approvalConfirmed, assertAccess });
       return { ...result, state: state(scope) };
     }],
     ['POST', '/api/paypal/webhook', async ({ req, rawBody }) => {

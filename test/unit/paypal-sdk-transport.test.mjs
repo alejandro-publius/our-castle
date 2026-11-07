@@ -19,6 +19,7 @@ function harness(reply = () => ({ body: completed }), options = {}) {
     assert.equal(url.origin, 'https://api-m.sandbox.paypal.com', 'even the token request must stay in sandbox');
     assert.ok(['/v1/oauth2/token', '/v2/checkout/orders', `/v2/checkout/orders/${ORDER}`, `/v2/checkout/orders/${ORDER}/capture`, `/v2/payments/captures/${CAPTURE}`, `/v2/payments/captures/${CAPTURE}/refund`].includes(url.pathname), `unexpected SDK endpoint: ${url.pathname}`);
     calls.push(config);
+    if (url.pathname === '/v1/oauth2/token') await options.beforeToken?.();
     const result = url.pathname === '/v1/oauth2/token' && !options.authError
       ? { body: { access_token: 'fake-contract-token', token_type: 'Bearer', expires_in: 3600 } }
       : await reply(config);
@@ -91,6 +92,27 @@ test('OAuth rejection stops before an order operation is attempted', async () =>
   const { client, calls, operations } = harness(() => ({ status: 401, body: { error: 'invalid_client', error_description: 'fixture' } }), { authError: true });
   await assert.rejects(client.getOrder(ORDER));
   assert.equal(calls.length, 1); assert.equal(operations().length, 0);
+});
+
+test('concurrent SDK calls keep their own access guards on one shared client', async () => {
+  let entered, release;
+  const tokenStarted = new Promise(resolve => { entered = resolve; });
+  const tokenReady = new Promise(resolve => { release = resolve; });
+  const { client, calls, operations } = harness(undefined, { beforeToken: async () => { entered(); await tokenReady; } });
+  let removed = false;
+  const ended = new Error('Fixture access ended');
+  const denied = client.captureOrder(ORDER, { requestId: 'removed-caller', assertAccess: () => { if (removed) throw ended; } });
+  const refused = assert.rejects(denied, error => error === ended, 'access errors stay authorization errors, not provider failures');
+  const allowed = client.captureOrder(ORDER, { requestId: 'active-caller', assertAccess: () => {} });
+  try {
+    await tokenStarted;
+    removed = true; release();
+    await refused;
+    assert.equal((await allowed).data.id, ORDER);
+    assert.equal(calls.filter(c => c.url.endsWith('/v1/oauth2/token')).length, 2, 'SDK 2.5.0 does not coalesce simultaneous cold-token requests');
+    assert.equal(operations().length, 1);
+    assert.equal(headers(operations()[0])['paypal-request-id'], 'active-caller');
+  } finally { release(); }
 });
 
 test('malformed or wrong-shaped SDK responses cannot become a successful receipt', async () => {
