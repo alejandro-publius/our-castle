@@ -1,5 +1,62 @@
 # Validation
 
+## Scene lifecycle: disposal and hidden-page recovery — November 7, 2026
+
+This checks the board scene's lifecycle through its public API, on main `01fb478` (implementation `4082df5`). The probe used a standalone render fixture: art states only, with no ledger, payment or household state. Playwright's fake clock drove `performance.now`, the ambient interval and animation frames. The page counted GL draw and allocation calls, host view callbacks and scene events. Two defects were reproduced and fixed in `src/world/board-scene.js`. Appearance, the compass, controls, art, palette and payment behaviour are unchanged.
+
+**Already sound.**
+- **Disposing an idle scene cleans up.** It removes all ten canvas listeners: pointer, wheel and context menu, plus three.js's WebGL context listeners. Window and document listeners are unchanged. It clears the ambient interval and disconnects the resize observer. No draw, allocation, callback or event followed in the next 2.5 s, including after a container resize.
+- **Sponsor texture callbacks** were already guarded.
+- **A covering dialog** already paused ambient life and resumed it in phase.
+- **Existing specs already cover** frames pausing behind cards (area-cards), hidden rain frames (atmosphere), and the farm and tavern hidden clocks. Those checks were not repeated.
+
+**Disposal did not stop queued animation.** This is reachable through the public API: call `update(next, { animate: true })`, then `dispose()` before it resolves. The app itself never disposes its scene.
+- **Before:** the animation-frame chain and the update queue kept running against the disposed renderer.
+  - **Mid-walk:** 108 GL draws, 34 GL allocations, 98 view callbacks and 4 `hop` events after `dispose()`.
+  - **Mid-unlock:** 4,951 draws, 87 allocations and 167 callbacks. `bridge:open`, `hop`, `rise`, `fountain:start`, `fountain:end` and `arrival` were still announced.
+  - **An `update()` sent after `dispose()`:** 86,755 draws and 818 allocations, re-uploading the realm.
+  - **`debug().ambient`** stayed `true` although the timer had been cleared.
+- **Now:**
+  - An animation in flight ends at its next frame without drawing.
+  - Nothing more is drawn, announced or reported to the host.
+  - Pending and later updates resolve without doing any work.
+  - `ambient` reads `false`.
+  - Every case counts zero after `dispose()`.
+
+**A hidden page made part of ambient life jump forward.** The ambient clock was compensated for a covering dialog but not for a hidden page. The measured sequence was 10 s hidden, then 0.25 s visible again.
+- **Before:**
+  - The court guests' clock advanced 10.25 s. It was recovered exactly from the twenty guests' poses.
+  - The fairy moved 2.66 units, against 0.90 behind a dialog.
+  - By code reading, the deer, butterflies, waterwheel, windmill sails and rain use the same clock.
+  - The farm, tavern, river and clouds clamp each step, and advanced 0.375 s.
+- **Now:** a hidden page pauses exactly as a covering card does. The court advances 0.25 s, the same as behind a dialog. The clamped clocks also advance 0.25 s.
+
+| Check | Actual result |
+| --- | --- |
+| New `scene-lifecycle.spec.mjs`, desktop. The phone project skips it, since lifecycle does not depend on the viewport | 2 passed. Both fail on main's scene: disposal left 10,036 draws, 107 allocations, 280 callbacks, 10 events and `ambient: true`, and the court clock read 12.25 s instead of 2.25 s |
+| Probe, 6 cases, before and after | Before, as above. After, zero draws, allocations, callbacks and events following `dispose()` in every case; hidden and covered both advance 0.25 s |
+| Related suites, desktop and 390 px phone: farm-life, tavern, atmosphere, area-cards, gold-fountain, earned-realm and the new spec | 55 passed, 7 designed project or viewport skips, 4 failed. The 4 are two tests that fail identically on main's unchanged scene, listed below |
+| Journey "the world keeps living, and board events drive synthesized sound", desktop and phone | 2 passed |
+| Source/art/palette/syntax guard | Passed: 47 copied art/runtime files and the original 90-color palette |
+
+**Already failing on main, not changed here.** Both reproduce with main's `board-scene.js` on both projects:
+- **`area-cards.spec.mjs:276`** expects the next step after a completed goal to be "Visit your castle". Since the receipt route (`4c8bc79`), "Review the receipt" comes first.
+- **`atmosphere.spec.mjs:44`** expects 135 night light pools, from 27 light spots. The current realm has 150, from 30 spots.
+
+**Limits.**
+- **Hidden pages are emulated** by overriding `document.hidden`, as the existing specs do. A real background tab throttles timers to about once a second, so the pause starts at the first throttled tick, up to about a second late. A page the browser freezes outright fires no tick while hidden, and this change does not cover it.
+- **The canvas stays after `dispose()`,** together with its WebGL context: three.js leaves the canvas to its host. The app never disposes its scene, so this was not changed.
+- **Software-rendered Chromium only.** There is no performance or physical-device claim.
+
+Raw evidence is ignored and stays local in `test-results/scene-lifecycle-20261107/`:
+- the probe script, `probe.mjs`, with its results `result-before.json` and `result-after.json`;
+- the spec logs `spec-before-fix.log`, `spec-after-fix.log` and `spec-final.log`;
+- the related-suite logs `related-suites.log`, `journey-world-living.log` and `preexisting-on-main.log`;
+- the guard log `check-final.log`;
+- `board-scene.main.js` and `board-scene.final.js`, the exact scene files tested.
+
+No owner household, credential, real order, paid model or provider call, recording, deployment or submission was used.
+
 ## Direct receipt review and west-meadow exploration — November 7, 2026
 
 The existing **Review the receipt** action opens the matching Treasury record, including after the final goal contribution or after selecting an older record. One existing steward note is beside that record; its questions remain closed. The automatic focus on the Contribute confirmation no longer consumes the Treasury review step. No provider/check policy, approval, server endpoint, schema or dependency changes. [Behavior, design references and captures](RECEIPT-HANDOFF.md).
