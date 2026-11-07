@@ -840,11 +840,15 @@ function visitDeed(e) {
 // Closing (button or Escape) returns focus to its map button, or the district if that button became hidden.
 // A close event that arrives after the dialog was opened again belongs to the earlier deed and is ignored.
 function deedClosed() {
-  if ($('#deed-dialog').open) return;
+  const dialog = $('#deed-dialog');
+  if (dialog.open) return;
   const d = ui.deeds, id = d.queue[d.index];
-  const visiting = d.visiting;
+  const visiting = d.visiting, active = document.activeElement;
   Object.assign(d, { queue: [], index: 0, visiting: false });
   if (visiting) return;
+  // Closing restores focus in a later event. If the family has already chosen another control (for example, Visit
+  // your castle), respect that choice rather than pulling focus back to the card's old origin.
+  if (active !== document.body && active !== d.origin && !dialog.contains(active)) return;
   let target = d.origin;
   if (!target?.isConnected || target.closest('[hidden], details:not([open])')) {
     const marker = $(`#realm-markers [data-district="${CSS.escape(id ?? '')}"]`);

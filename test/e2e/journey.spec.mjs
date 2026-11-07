@@ -224,17 +224,27 @@ test('bills and gifts are logged separately, grow a garden, and never move the t
 });
 
 test('cancel, decline and pending outcomes leave progress unchanged until completion', async ({ page }) => {
+  // Test the money/status transitions without ambient rendering consuming the software browser's action budget.
+  // Normal route animations and deed timing are covered separately in area-cards.spec.mjs.
+  await page.emulateMedia({ reducedMotion: 'reduce' });
   await ready(page);
   await foundHouse(page);
   await acceptExamplePlan(page);
+  const paymentState = () => page.evaluate(() => {
+    const s = window.__ourCastle.state;
+    return { progress: s.progress.progressCents, statuses: s.contributions.map((c) => c.status).sort(), credited: s.contributions.flatMap((c) => c.captures).filter((c) => c.credited).length };
+  });
   await contribute(page, 'Simulate cancel');
-  await expect(page.locator('#give-status')).toContainText('Nothing was charged');
+  await expect(page.locator('#give-status')).toContainText('Checkout window closed.');
+  expect(await paymentState()).toEqual({ progress: 6000, statuses: ['approval_canceled'], credited: 0 });
   await contribute(page, 'Simulate decline');
   await expect(page.locator('#give-status')).toContainText('Declined');
+  expect(await paymentState()).toEqual({ progress: 6000, statuses: ['approval_canceled', 'declined'], credited: 0 });
   await contribute(page, 'Simulate pending');
   await expect(page.locator('#give-status')).toContainText('Pending');
   await expect(page.locator('#receipt')).toContainText('Pending — not counted');
   await expect(page.locator('#progress-amount')).toHaveText('$60.00');
+  expect(await paymentState()).toEqual({ progress: 6000, statuses: ['approval_canceled', 'declined', 'pending'], credited: 0 });
   await page.getByRole('tab', { name: /Ledger/ }).click();
   await page.getByRole('button', { name: 'Simulate PayPal completing it' }).click();
   await expect(page.locator('#progress-amount')).toHaveText('$75.00');
@@ -242,7 +252,7 @@ test('cancel, decline and pending outcomes leave progress unchanged until comple
   // selecting them must not change the total or bring back completion/refund actions.
   const receipt = page.locator('#ledger-contributions');
   await expect(receipt).toContainText('Completed — counted');
-  for (const status of ['Canceled — nothing charged', 'Declined — not counted']) {
+  for (const status of ['Checkout closed', 'Declined — not counted']) {
     const row = page.locator('#ledger-goal').getByRole('row').filter({ hasText: status });
     await expect(row).toContainText('No — not counted');
     await row.getByText(status, { exact: true }).click();

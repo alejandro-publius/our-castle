@@ -237,6 +237,7 @@ test('a dropped connection shows one Reconnect control and catches up; an idle s
   const clock = mutableClock();
   const s = await familyServer({ clock, live: { recheckMs: 1_000 } });
   const people = [];
+  let releaseManualReconnect = () => {};
   try {
     const owner = await person(browser, info, 'Rowan', { origin: s.origin }); people.push(owner);
     await createFamily(owner, s.origin, 'Rowan');
@@ -244,6 +245,13 @@ test('a dropped connection shows one Reconnect control and catches up; an idle s
     const ash = await person(browser, info, 'Ash', { origin: s.origin }); people.push(ash);
     await accept(ash, await invite(owner, 'Ash', 'adult'));
     for (const p of people) await isLive(p.page);
+
+    // Keep the stream unavailable until the manual click has happened. Otherwise automatic recovery can hide the
+    // button between setOffline(false) and click(), making the test wait for a control that correctly disappeared.
+    // The second drop below tests automatic recovery separately, without this gate.
+    const manualReconnect = new Promise((resolve) => { releaseManualReconnect = resolve; });
+    const holdStream = async (route) => { await manualReconnect; await route.fallback(); };
+    await ash.page.route('**/api/events', holdStream);
 
     // Ash's device loses the network: its open connections drop and new ones fail. (Chromium's offline emulation stops
     // new requests only, so the server also closes every open connection; the owner's page reconnects by itself.)
@@ -262,7 +270,9 @@ test('a dropped connection shows one Reconnect control and catches up; an idle s
     // Back online: the stream returns, and the page reads what changed while it was away.
     await ash.context.setOffline(false);
     await ash.page.locator('#live-retry').click();
+    releaseManualReconnect();
     await isLive(ash.page);
+    await ash.page.unroute('**/api/events', holdStream);
     await expect(ash.page.locator('#goal-name')).toHaveText('Rope swing');
     await expect(ash.page.locator('#live-status')).toBeHidden();
 
@@ -287,6 +297,7 @@ test('a dropped connection shows one Reconnect control and catches up; an idle s
     await expect(ash.page.locator('#goal-name')).toHaveText('Rope swing');
     for (const p of people) { expect(p.errors, p.name).toEqual([]); expect(p.outside, p.name).toEqual([]); }
   } finally {
+    releaseManualReconnect();
     for (const p of people) await p.context.close();
     await s.close();
   }
