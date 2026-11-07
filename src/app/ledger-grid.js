@@ -136,6 +136,7 @@ export function createLedgerGrid(container, { formatMoney, onSelect = () => {} }
         defaultColDef: { sortable: true, resizable: true, suppressMovable: true },
         isExternalFilterPresent: () => filter !== 'all',
         doesExternalFilterPass: (node) => node.data?.category === filter,
+        quickFilterText: search, // a search typed while the grid was still loading applies from the first draw
         getRowId: (p) => String(p.data.id),
         rowSelection: { mode: 'singleRow', checkboxes: false, enableClickSelection: true, isRowSelectable: (node) => !node.rowPinned },
         onSelectionChanged: (event) => { const row = event.api.getSelectedRows()[0]; if (row) choose(row); },
