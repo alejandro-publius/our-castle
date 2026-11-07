@@ -13,11 +13,13 @@ import { chooseDistrict } from './support/game-controls.mjs';
 // The real app and browser flow, with a FAKE Channel3 transport (documented response shape, invented products) on its
 // own port and an in-memory example database. This proves the UI/route behaviour, not a live Channel3 answer.
 const root = fileURLToPath(new URL('../../', import.meta.url));
+test.use({ reducedMotion: 'reduce' }); // test merchant state, not software-renderer animation duration
 const evidence = fileURLToPath(new URL('../../test-results/channel3-merchant/evidence/', import.meta.url));
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const TENT_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" fill="#fff"/><path d="M6 52 32 12l26 40Z" fill="#527557"/><path d="M32 12v40" stroke="#2c3b2e" stroke-width="2"/><path d="M26 52l6-14 6 14Z" fill="#2c3b2e"/></svg>';
 
 function respond(_url, init) {
+  if (new URL(_url).pathname.startsWith('/v1/products/')) return fakeProduct();
   const { query, filters } = JSON.parse(init.body);
   if (query.startsWith('slow')) return sleep(1500).then(() => fakeSearchResponse([fakeProduct({ id: 'fakeLantern', title: 'Test fixture: Slow lantern' })]));
   if (query === 'nothing') return { products: [], next_page_token: null };
@@ -32,15 +34,15 @@ function respond(_url, init) {
   ]);
 }
 
-async function startServer({ withKey = true } = {}) {
+async function startServer({ withKey = true, respondWith = respond } = {}) {
   const db = openDatabase(':memory:');
   const clock = createClock();
-  const fake = createFakeChannel3(respond);
+  const fake = createFakeChannel3(respondWith);
   const merchant = withKey ? createMerchant({ apiKey: 'fake-e2e-key-not-real', fetch: fake.fetch, clock }) : null;
   const app = createApp({ config: loadConfig({}, { root }), db, clock, merchant, root });
   const server = http.createServer(app.handler);
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
-  return { base: `http://localhost:${server.address().port}`, fake, db, clock, close: () => new Promise((r) => { server.close(r); db.close(); }) };
+  return { base: `http://localhost:${server.address().port}`, fake, db, clock, close: () => new Promise((r) => { server.close(() => { db.close(); r(); }); server.closeAllConnections(); }) };
 }
 
 let s;
@@ -48,8 +50,8 @@ const issues = new WeakMap();
 const searches = new WeakMap();
 test.afterEach(async ({ page }) => { expect(issues.get(page)).toEqual([]); await s?.close(); s = null; });
 
-async function open(page, { withKey = true } = {}) {
-  s = await startServer({ withKey });
+async function open(page, { withKey = true, respondWith } = {}) {
+  s = await startServer({ withKey, respondWith });
   const list = [], posted = [];
   issues.set(page, list); searches.set(page, posted);
   page.on('pageerror', (e) => list.push(e.message));
@@ -58,7 +60,7 @@ async function open(page, { withKey = true } = {}) {
     if (url.origin === s.base) {
       if (r.method() !== 'GET') {
         posted.push(`${r.method()} ${url.pathname}`);
-        if (!['/api/merchant/search', '/api/merchant/goal'].includes(url.pathname)) list.push(`unexpected write ${url.pathname}`);
+        if (!['/api/merchant/search', '/api/merchant/goal', '/api/merchant/refresh', '/api/merchant/alternatives'].includes(url.pathname)) list.push(`unexpected write ${url.pathname}`);
       }
       return route.continue();
     }
@@ -105,13 +107,13 @@ test('Market Town merchant: explicit search, at most three honest rows, a draft 
   await expect(bag.locator('.merchant-item-meta')).toContainText('No price returned');
   await expect(bag.getByRole('button', { name: 'Use as goal' })).toBeDisabled();
   await expect(stove.locator('.merchant-item-meta')).toHaveText('$260.00 USD · example-stoves.com · Out of stock');
-  await expect(stove.locator('.merchant-item-note')).toHaveText('Over your budget');
-  // The retailer link is secondary, safe and disclosed once near the links.
+  await expect(stove.locator('.merchant-item-note')).toHaveText('Over your budget · This item is out of stock.');
+  await expect(stove.getByRole('button', { name: 'Use as goal' })).toBeDisabled();
+  // Retailer visits refresh first; no stale offer URL is left as a clickable link.
   await tent.locator('summary').click();
-  const link = tent.getByRole('link', { name: /View at example-outfitter\.com/ });
-  await expect(link).toHaveAttribute('href', 'https://buy.trychannel3.com/fake/tent-a');
-  await expect(link).toHaveAttribute('rel', 'noopener noreferrer nofollow');
-  await expect(page.locator('#merchant-source')).toContainText('tax and shipping not included. We may earn a commission when you buy through links on this page.');
+  await expect(tent.getByRole('button', { name: /Visit example-outfitter\.com/ })).toBeVisible();
+  await expect(tent.locator('a[href]')).toHaveCount(0);
+  await expect(page.locator('#merchant-source')).toContainText('retailer price and stock may differ. Tax/shipping extra. We may earn a commission from these links.');
   await expect(page.locator('#merchant-status')).toContainText('Budget $200.00');
   expect(await dialog.evaluate((d) => d.getBoundingClientRect().right <= innerWidth && d.scrollWidth <= d.clientWidth + 1)).toBe(true);
   mkdirSync(evidence, { recursive: true });
@@ -150,7 +152,7 @@ test('Market Town merchant: explicit search, at most three honest rows, a draft 
   await expect(page.locator('#deed-dialog')).toBeHidden();
   await expect(page.locator('#goal-name')).toHaveText('Test fixture: Four-person dome tent');
   await expect(page.locator('#goal-draft')).toBeHidden();
-  await expect(page.locator('#goal-item')).toContainText('Goal item: Test fixture: Four-person dome tent · $189.50 at example-outfitter.com, Channel3 price checked');
+  await expect(page.locator('#goal-item')).toContainText('Test fixture: Four-person dome tent · $189.50 saved price.');
   await expect(page.locator('#ask-planner')).toBeEnabled();
 
   const after = await stateOf(page);
@@ -173,7 +175,7 @@ test('Market Town merchant: explicit search, at most three honest rows, a draft 
   await page.locator('#tab-plan').click();
   await expect(page.locator('#goal-name')).toHaveText('Test fixture: Four-person dome tent');
   await expect(page.locator('#goal-target')).toHaveValue('189.50');
-  await expect(page.locator('#goal-item')).toContainText('$189.50 at example-outfitter.com');
+  await expect(page.locator('#goal-item')).toContainText('$189.50 saved price.');
   await page.waitForTimeout(1500);
   await expect(page.locator('#deed-dialog')).toBeHidden();
   expect(await stateOf(page)).toEqual(after);
@@ -251,6 +253,108 @@ test('without a Channel3 key the merchant says so plainly and searches nothing',
   await expect(page.locator('#open-merchant')).toBeFocused();
   expect(searches.get(page)).toEqual([]);
   expect(s.fake.calls).toEqual([]);
+});
+
+test('saved item refresh, three cheaper options and a deliberate goal update; no purchase or credit', async ({ page }, info) => {
+  let currentPrice = 189.5, inStock = true;
+  const product = () => fakeProduct({ variants: { selected: [{ name: 'Size', label: '4 person' }] }, offers: [{ ...fakeProduct().offers[0], price: { price: currentPrice, currency: 'USD' }, availability: inStock ? 'InStock' : 'OutOfStock', url: 'https://buy.trychannel3.com/fake/refreshed' }] });
+  await open(page, { respondWith: (url) => {
+    if (url.includes('/products/')) return product();
+    if (url.endsWith('/similar')) return fakeSearchResponse([120, 135, 150].map((p, i) => fakeProduct({ id: `cheaper-${i}`, title: `Test fixture: Family tent ${i + 1}`, offers: [{ ...fakeProduct().offers[0], price: { price: p, currency: 'USD' } }] })));
+    return fakeSearchResponse([product()]);
+  } });
+  await page.locator('#open-merchant').click();
+  await page.locator('#merchant-query').fill('tent'); await page.locator('#merchant-search').click();
+  await page.locator('#merchant-results').getByRole('button', { name: 'Use as goal' }).click();
+  await page.locator('#goal-draft-save').click();
+  await expect(page.locator('#deed-dialog')).toBeVisible(); await page.locator('#deed-close').click();
+  const saved = await stateOf(page);
+  await page.reload(); await page.waitForFunction(() => window.__ourCastle?.state);
+  if (await page.locator('#journey').isHidden()) await page.locator('#journal-toggle').click();
+  await page.locator('#tab-plan').click();
+  expect(s.fake.calls).toHaveLength(1, 'reloading never calls Channel3');
+  currentPrice = 169;
+  await page.locator('#goal-item').getByRole('button', { name: 'Check item' }).click();
+  await expect(page.locator('#merchant-status')).toContainText('Price changed: $189.50 → $169.00 USD. Your goal is unchanged.');
+  expect(await stateOf(page)).toEqual(saved);
+  const rows = page.locator('#merchant-results > li');
+  await rows.first().getByRole('button', { name: 'Cheaper options' }).click();
+  await expect(rows).toHaveCount(3);
+  await expect(page.locator('#merchant-status')).toHaveText('Cheaper options · Up to $168.99');
+  expect(s.fake.calls.at(-1).body.filters.price.max_price).toBe(168.99);
+  expect(await stateOf(page)).toEqual(saved);
+  mkdirSync(evidence, { recursive: true });
+  await page.screenshot({ path: `${evidence}${info.project.name}-cheaper-options.png` });
+  await rows.first().getByRole('button', { name: 'Use as goal' }).click();
+  await expect(page.locator('#goal-target')).toHaveValue('120.00');
+  expect(await stateOf(page)).toEqual(saved);
+  await page.locator('#goal-draft-discard').click();
+  await page.locator('#goal-item').getByRole('button', { name: 'Check item' }).click();
+  await expect(rows).toHaveCount(1);
+  inStock = false;
+  await rows.first().locator('summary').click();
+  await rows.first().getByRole('button', { name: 'Check price & stock' }).click();
+  await expect(page.locator('#merchant-status')).toContainText('out of stock');
+  await expect(rows.first().getByRole('button', { name: 'Use as goal' })).toBeDisabled();
+  expect(await stateOf(page)).toEqual(saved);
+  expect(saved.contributions).toEqual([]);
+  expect(saved.progress.progressCents).toBe(6000);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+});
+
+test('retailer visit refreshes the short-lived link and asks for review when the offer changes', async ({ page }) => {
+  let currentPrice = 189.5;
+  await open(page, { respondWith: (url) => {
+    if (url.includes('/products/')) return fakeProduct({ offers: [{ ...fakeProduct().offers[0], price: { price: currentPrice, currency: 'USD' }, url: 'https://buy.trychannel3.com/fake/current-link' }] });
+    return fakeSearchResponse([fakeProduct()]);
+  } });
+  const before = await stateOf(page);
+  const visited = [];
+  await page.context().route('https://buy.trychannel3.com/**', (route) => {
+    visited.push(route.request().url());
+    return route.fulfill({ contentType: 'text/html', body: '<title>Fixture retailer</title><p>Test fixture only.</p>' });
+  });
+  await page.locator('#open-merchant').click(); await page.locator('#merchant-query').fill('tent'); await page.locator('#merchant-search').click();
+  const item = page.locator('#merchant-results > li').first();
+  await item.locator('summary').click();
+  currentPrice = 169;
+  await item.getByRole('button', { name: /Visit example-outfitter/ }).click();
+  await expect(page.locator('#merchant-status')).toHaveText('The offer changed. Review it before visiting the retailer.');
+  expect(visited).toEqual([]);
+  await expect.poll(() => page.context().pages().length, { message: 'unused reserved tab closes' }).toBe(1);
+  await item.locator('summary').click();
+  const opened = page.waitForEvent('popup');
+  await item.getByRole('button', { name: /Visit example-outfitter/ }).click();
+  const popup = await opened;
+  await expect(popup).toHaveURL('https://buy.trychannel3.com/fake/current-link');
+  expect(await popup.evaluate(() => window.opener === null)).toBe(true);
+  await popup.close();
+  expect(visited).toEqual(['https://buy.trychannel3.com/fake/current-link']);
+  expect(s.fake.calls.filter((c) => c.method === 'GET')).toHaveLength(2);
+  expect(await stateOf(page)).toEqual(before);
+});
+
+test('a deleted catalog item closes the waiting tab and never opens its old retailer link', async ({ page }) => {
+  await open(page, { respondWith: (url) => url.includes('/products/')
+    ? new Response('{"detail":"Product not found"}', { status: 404 }) : fakeSearchResponse([fakeProduct()]) });
+  // A missing CDN image keeps a neutral thumbnail rather than a broken image or a provider retry.
+  await page.route('https://cdn.trychannel3.com/**', (route) => route.fulfill({ status: 404, body: 'Fixture image missing' }));
+  const visited = [];
+  await page.context().route('https://buy.trychannel3.com/**', (route) => { visited.push(route.request().url()); return route.abort(); });
+  const before = await stateOf(page);
+  await page.locator('#open-merchant').click(); await page.locator('#merchant-query').fill('tent'); await page.locator('#merchant-search').click();
+  const item = page.locator('#merchant-results > li').first();
+  await expect(item.locator('.merchant-item-image.empty')).toHaveCount(1);
+  await item.locator('summary').click();
+  await item.getByRole('button', { name: /Visit example-outfitter/ }).click();
+  await expect(page.locator('#merchant-status')).toHaveText('This item is no longer in the catalog. Search for another item.');
+  await expect(page.locator('#merchant-results > li')).toHaveCount(0);
+  await expect(page.locator('#merchant-source')).toBeHidden();
+  await expect.poll(() => page.context().pages().length).toBe(1);
+  expect(visited).toEqual([]);
+  expect(s.fake.calls.map((c) => c.method)).toEqual(['POST', 'GET']);
+  expect(await stateOf(page)).toEqual(before);
+  await expect(page.locator('#merchant-query')).toHaveValue('tent');
 });
 
 test('a changed family goal keeps the chosen product for explicit review and confirmation', async ({ page }, info) => {
@@ -335,5 +439,56 @@ test('an expired price keeps the draft and returns to its search without a silen
   expect(after.ledger).toEqual(before.ledger);
   expect(after.contributions).toEqual(before.contributions);
   expect(after.goalItem).toBeNull();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+});
+
+test('a newer catalog price rejects a draft open in Plan and recovers through explicit search and review', async ({ page }, info) => {
+  let amount = 189.5;
+  const current = () => fakeProduct({ offers: [{ ...fakeProduct().offers[0], price: { price: amount, currency: 'USD' } }] });
+  await open(page, { respondWith: (url) => url.includes('/products/') ? current() : fakeSearchResponse([current()]) });
+  const before = await stateOf(page);
+  await page.locator('#open-merchant').click();
+  await page.locator('#merchant-query').fill('family tent');
+  await page.locator('#merchant-budget').fill('300');
+  const answer = page.waitForResponse((r) => new URL(r.url()).pathname === '/api/merchant/search');
+  await page.locator('#merchant-search').click();
+  const found = await (await answer).json();
+  await page.locator('#merchant-results > li').first().getByRole('button', { name: 'Use as goal' }).click();
+  await expect(page.locator('#goal-target')).toHaveValue('189.50');
+  await page.locator('#goal-name-input').fill('Our family tent');
+
+  // A second request checks the same public offer while this page still holds its unsaved $189.50 draft.
+  amount = 249;
+  const checked = await page.request.post(`${s.base}/api/merchant/refresh`, { data: { goalId: found.goalId, referenceId: found.results[0].referenceId } });
+  expect(checked.status()).toBe(200);
+  await page.locator('#goal-draft-save').click();
+  await expect(page.locator('#plan-status')).toContainText('result has expired');
+  await expect(page.locator('#goal-draft-save')).toBeDisabled();
+  await expect(page.locator('#goal-name-input')).toHaveValue('Our family tent');
+  await expect(page.locator('#goal-target')).toHaveValue('189.50');
+  await expect(page.locator('#deed-dialog')).not.toBeVisible();
+  const refused = await stateOf(page);
+  expect(refused.goal).toEqual(before.goal);
+  expect(refused.ledger).toEqual(before.ledger);
+  expect(refused.contributions).toEqual(before.contributions);
+  expect(s.fake.calls).toHaveLength(2);
+  await page.locator('#goal-draft').scrollIntoViewIfNeeded();
+  await page.screenshot({ path: info.outputPath('catalog-change-review.png') });
+
+  await page.getByRole('button', { name: 'Search again', exact: true }).click();
+  await expect(page.locator('#merchant-query')).toHaveValue('family tent');
+  expect(s.fake.calls).toHaveLength(2, 'opening recovery does not call the provider');
+  await page.locator('#merchant-search').click();
+  await expect(page.locator('#merchant-results > li').first().locator('.merchant-item-meta')).toContainText('$249.00 USD');
+  await page.locator('#merchant-results > li').first().getByRole('button', { name: 'Use as goal' }).click();
+  await expect(page.locator('#goal-target')).toHaveValue('249.00');
+  await page.locator('#goal-draft-save').click();
+  await expect(page.locator('#plan-status')).toContainText('Goal saved:');
+  const saved = await stateOf(page);
+  expect(saved.goal.targetCents).toBe(24900);
+  expect(saved.goalItem.priceCents).toBe(24900);
+  expect(saved.progress.progressCents).toBe(before.progress.progressCents);
+  expect(saved.contributions).toEqual(before.contributions);
+  expect(s.fake.calls).toHaveLength(3);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });

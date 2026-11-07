@@ -1,5 +1,304 @@
 # Validation
 
+## Final integrated review — November 6 PST / November 7 UTC, 2026
+
+Codex reviewed the assembled integration, including the phone-marker fix at `e52f95a`, and closed the shared-capture and late-passkey-enrollment races. [Reproductions, boundaries and exact commands](FAMILY-REQUEST-COMPLETION.md).
+
+- **Complete unit run:** 358 passed, 1 pre-existing skip, 0 failures on `f63c2d9`; subsequent source changes are the independently checked marker placement and the test correction below.
+- **Family browser checks:** 3 passed, with 3 deliberate opposite-viewport skips: desktop household isolation and renewed-sign-in recovery, plus 390 px family controls.
+- **Phone/map review:** the `e52f95a` run below passed 28 cases with 2 deliberate viewport skips; its only two failures were the stale palace lighting expectation.
+- **Palace correction:** the existing scene has 150 light-pool rings (nine doors, two stables, the tavern and eighteen bridge gates, five rings each), while the test still expected 135. Only that expected count changed. The full palace exploration → simulated contribution → deeds → crossing/focus case then passed on **desktop and phone, 2/2** in 1.7 minutes. No lighting or payment code changed for this correction.
+- **Mac preparation:** the exact lockfile installed in a separate release worktree; local startup and bundled sponsor/Studio/Grid/WebAuthn resources served successfully. Private copies of both existing databases migrated 4→7 with every original-column checksum unchanged across all 12 old tables. Full app startup/state reads on those copies preserved all 19 resulting tables and the separate $60/$75 progress.
+
+All new payment/model/search checks used fake providers. No physical phone or new provider result is implied. Activation details, when completed, belong in [release readiness](RELEASE-READINESS.md); the earlier failed-run records below remain historical evidence.
+
+## Map names clear of the map controls on a phone — November 6, 2026
+
+On a 390×844 phone at close zoom, an area's name could slide under the map's toolbar (Areas, Whole realm, View), which is drawn above the names. It was reported for Starfall Observatory at the closest zoom.
+
+**Reproduced.** A scratch probe, not committed, ran its own example-mode server with an empty environment.
+- **Method.** It chose each of the nine areas from Areas and stepped View → Zoom in to the closest zoom, on the phone and on desktop. At each step it measured every visible name and legend marker against the actual boxes of the toolbar and of the area row along the bottom.
+- **Before the fix,** something sat under a control in 8 of 64 phone views and 2 of 64 desktop views:
+
+  | Viewport | What was hidden | Under | Views |
+  | --- | --- | --- | --- |
+  | Phone | Starfall Observatory's name | Whole realm and View | +4 steps to the closest zoom |
+  | Phone | Rapunzel's Tower's name | Whole realm and View | +3 to +5 |
+  | Phone | Sword in the Stone glint | Whole realm | Stone Keep, +2 and +3 |
+  | Desktop | Family-project tent marker | Whole realm | Starting Hearth Village view |
+  | Desktop | Family-project tent marker | Areas | One step closer |
+
+**Fix** (`syncRealmMarkers` in `src/app/main.js`).
+- **Measurement.** Each placement measures the toolbar's controls, using a menu's summary rather than its open panel, and the area row, both in the map's coordinates.
+- **Movement.** A name or marker that would overlap one of them moves just clear of it: above the area row, then below the toolbar. The toolbar wins if the map is too short for both. Anything that doesn't overlap stays exactly where it was.
+- **Unchanged.** The camera, the projection, the controls (still drawn on top) and keyboard focus are untouched, and the sponsor signs keep their size.
+
+**Placement after the fix,** in the same views:
+- No view on either viewport has an overlap.
+- **Desktop:** 71 of 73 placements are identical. The two changes are the tent marker at the starting view and one step closer, each moved straight down below the toolbar. Every area name is unchanged.
+- **Phone:** 61 of 69 are identical. The 8 changes are exactly the overlapping cases, each moved straight down.
+- The same markers are shown in every view.
+
+**Regression** (`realm-focus.spec.mjs`, "no district name or legend marker slides under the map controls…").
+- **Coverage.** The starting view, the overview and all nine areas at every zoom step. It also checks that the controls are still the topmost elements at the closest observatory zoom.
+- **Result.** On the code before the fix it failed on both projects, listing 17 overlaps (3 desktop, 14 phone). After the fix it passes on both.
+
+**Checks** (desktop and phone; `npm run check` passed):
+- **`realm-focus`:** 8/8, all four cases including the new regression.
+- **`woodland-legends`:** 2/2, the sword glint.
+- **`area-cards`:** 18 passed, plus 2 deliberate desktop skips of its phone deed layouts.
+- **`palace` fails on both projects, as it already does on `main`.**
+  - It fails at its night-and-rain check (`pools` 150, expected 135), before it reaches its marker step.
+  - It fails identically on an exact copy of `main` at `86c8287`. The light spots it counts (9 doors, 2 stables, the tavern and 18 bridge gates, 5 rings each) are unchanged since then.
+  - So the expectation was already stale on `main`. It is left for its owner.
+
+**Screenshots** ([provenance](screenshots/map-controls-sources.json)): the phone observatory [before](screenshots/map-controls-phone-observatory-before.png) and [after](screenshots/map-controls-phone-observatory.png), the [sword glint](screenshots/map-controls-phone-sword.png), [Rapunzel's Tower](screenshots/map-controls-phone-rapunzel.png) and the [desktop starting village](screenshots/map-controls-desktop-village.png).
+
+**Limits.** Software-rendered Chromium on an emulated phone, with no physical device. Only the focused views above were measured; panned or turned views use the same rule but were not swept.
+
+## Final assembly: PRs #25, #21 and #26 merged into PR #20 — November 6, 2026
+
+Three Codex PRs were reviewed and merged into `claude/shared-live-integration` one at a time. Each was a normal merge followed by focused checks. Nothing was merged into `main` or activated, and PR #24 was left as it is.
+
+| PR | Head | Merge | What it adds |
+| --- | --- | --- | --- |
+| #25 payment dispatch protection | `eaa2dd2` | `3c85af7` | Access is checked again after PayPal's OAuth token arrives, just before a capture or refund is sent ([notes](PAYMENT-DISPATCH-ACCESS.md)). |
+| #21 PayPal browser SDK loading | `4344e63` | `b3c711b` | The v6 SDK loader waits 60 s and accepts a loaded v6 SDK whose load event was missed ([notes](DEVELOPER-RESEARCH-20261106.md)). |
+| #26 sponsor landscape details | `2ba1f04` | `05b789c` | Three small signs carrying the official AG Grid, APIMatic and Channel3 marks ([notes](SPONSOR-WORLD-DETAILS.md)). |
+
+**PR #25 review.**
+- **The OAuth window is closed.** The REST client checks before and after awaiting its token.
+  - The official SDK (2.5.0) gets a controller for each call, whose request interceptor runs after the SDK's authentication and again on each retry.
+  - I confirmed this in the installed `@apimatic/core` 0.10.30. Its request builder adds the authentication and retry interceptors in its constructor, and `combineHttpInterceptors` runs interceptors in the order they were added, so a guard added later runs inside both.
+- **Nothing is sent after access ends.** Twenty dispatch cases cover the REST client and the SDK, capture and refund, under removal, idle expiry, sign-out, a renewed sign-in and an active control.
+  - When access has ended: 401, no request sent and nothing recorded.
+  - The owner's deliberate retry then sends exactly one request.
+- **A request already sent still records once:** the existing already-dispatched cases still pass.
+- **Separate guards:** the SDK transport case runs two callers on one client. The removed caller fails with its own access error, not a provider failure, and only the active caller's request is sent.
+- **Renewed sign-in:** a renewed sign-in during OAuth refuses the old request (401). The page handles that refusal with the `264d5c2` behaviour.
+- **Observation, no change: one in-flight capture per order.** The contribution service shares one in-flight capture for an order between its callers.
+  - A scratch check, not committed and using the fake PayPal: Ash and the owner capture the same order at once, and Ash is removed during OAuth. Both get 401 (the owner receives Ash's error) and nothing is sent. The owner's retry then captures once.
+  - The app's pages never start such a concurrent capture: only the approving page captures, once per attempt. It is safe.
+  - Even so, separate guards hold for each transport call, not across two callers of the same order. Left for Astra and Codex, since it is payment code.
+
+**PR #21 review.**
+- Only `loadSdk` changes. It now waits 60 s instead of 20 s.
+- At the deadline it accepts an available v6 namespace (`createInstance`), but not a v5 one.
+- A failed load is removed and forgotten, so only an explicit initialization retry loads again. Initialization never creates an order.
+- No server, family-access or approval code changed, and no other browser spec depends on the old timeout.
+
+**PR #26 review.**
+- **Provenance.** The three SVGs and the AG Grid PNG match their recorded SHA-256 hashes. The SVGs contain no scripts, external links, images or fonts; their only references are internal clip and mask ids. `board-scene.js` and `sponsor-signs.js` match the capture provenance.
+- **Code.** Each sign is built from palette boxes (wood, gold, dark, stone), with the mark as a texture loaded from `/assets/brand/sponsors/`. Signs are built once and redraw when an image loads; their geometry, textures and materials are disposed with the scene. `npm run check` (47 files, 90 colours) passes.
+- **Visual check.** A scratch Playwright script, not committed, ran its own example-mode server on a free port with an empty environment; screenshots only.
+  - **Desktop 1440×1000, each area focused and zoomed in once.** Channel3 sits above the Market Town stalls, AG Grid beside the Keep's outbuilding and APIMatic at the observatory's base. All three read by day and remain visible at night, with APIMatic lit by the tower's lamp.
+  - **390×844 phone.** All three load, but at the same framing they are small boards without readable marks. At maximum zoom the Channel3 mark is roughly readable, the AG Grid board leaves the frame (it needs a pan) and the APIMatic board sits at the bottom edge. This matches PR #26's stated scale, clearest when zoomed. The signs were not enlarged, to keep the woodland restrained.
+  - **Both viewports.** All three marks loaded, with no page error, no request leaving the server, no API write and no horizontal scroll. Goal, progress and achievements were unchanged.
+  - **Unrelated and already there.** At maximum phone zoom the observatory's floating name rises behind the Areas and View buttons.
+
+**Checks** (fake PayPal, scripted SDK and fake Channel3; no real order, paid call or provider request):
+- **After #25, unit:**
+
+  | File | Result |
+  | --- | --- |
+  | `payment-dispatch-access` | 20/20 |
+  | `paypal-sdk-transport` | 7/7 |
+  | `family-runtime-boundaries` | 9/9 |
+  | `paypal-sdk` | 4/4 |
+  | `payments` | 35 passed, 1 skip that was already there |
+  | `paypal-unknown-outcome` | 7/7 |
+  | `family-live` | 7/7 |
+  | `family-access` | 18/18 |
+  | `paypal-cancel-status` | 12/12 |
+  | `paypal-reconciliation` | 8/8 |
+  | `paypal-read-tools` | 5/5 |
+
+- **After #21:** `checkout-readiness` 20/20 (10 cases, desktop and phone) and `paypal-callbacks` 6/6.
+- **After #26:** `farm-life`, `tavern` and `cloud-overlap` 12/12, desktop and phone, including rebuilds without geometry growth. Also the visual check above and `npm run check`.
+- No failure called for a broader run, and the full browser suite was not rerun.
+
+**Carried forward.** The Merchant index-lag and variant caveats in the PR #23 entry below still apply. They are unverified, since no live Channel3 call was made.
+
+## Merchant drafts after a catalog change (PR #23 merged into PR #20) — November 6, 2026
+
+Codex's PR #23 (`review/merchant-freshness`, head `dddb951`, based on `1de17ba`) was reviewed and merged into `claude/shared-live-integration` by a normal merge (`0f7dca5`).
+- The change is confined to `server/merchant/channel3.mjs` plus tests. No file it touches had changed on this branch since `1de17ba`, so the merge was clean.
+- Nothing was merged into `main` or activated.
+- Codex's notes are in [MERCHANT-FRESHNESS-REVIEW.md](MERCHANT-FRESHNESS-REVIEW.md), and the behaviour is in [CHANNEL3-MERCHANT.md](CHANNEL3-MERCHANT.md#freshness-and-cheaper-alternatives--november-6).
+
+**Review, behaviour by behaviour.** All five behaviours hold, and family mode is preserved.
+- **Changed price, stock or a missing item.** Each lookup records an offer's facts under its identity.
+  - The identity is product, retailer, condition and selected variant. The facts are price, currency, stock, condition, variant and whether it can be used.
+  - A newer answer that contradicts them deletes older drafts for that offer at once, and so does a catalog 404.
+  - Unit cases cover a higher price, out of stock and a 404. In the higher-price case the stale save is refused with nothing changed, and the fresh draft then saves at $249.
+- **Cached lists and late answers.** A cached search list that points at an expired draft is dropped. Each lookup is numbered when it starts, and an older answer that contradicts a newer one is refused (410) before it creates drafts or fills the cache. Unit cases cover a slow older search after a newer refresh, and a slow older refresh after a newer search.
+- **What stays usable.** Equal facts keep their drafts and the cache, where only a link, title or photo changed. Other retailers, conditions and sizes keep theirs. A timeout, failure or malformed answer invalidates nothing, and identical refreshes still share one call.
+- **Budget.** Unchanged, and still enforced on the server.
+  - Budgets outside $1–$100,000 are refused.
+  - Cheaper options keep the stricter ceiling and the local stock, currency and price filters.
+  - Budget is not one of an offer's facts, so a search with another budget never expires a draft.
+- **No purchase or silent goal change.** Expiry only edits in-memory maps: no provider call and no database write. The family goal changes only through **Save as our goal**. The new browser case checks that goal, ledger and contributions are unchanged after the refused save, and that edits stay.
+- **Family mode, preserved.**
+  - Merchant routes keep their adult rules and household checks.
+  - PR #22's re-checks and the renewed-sign-in fix (`264d5c2`) are intact.
+  - Search, refresh and cheaper options still announce nothing on the live stream.
+
+**Observations, no change.**
+- **Ordering.** Lookups are ordered by when they start on this server, not by when the retailer updated its data, as PR #23 notes. If Channel3's search index lagged its product details, a newer search could bring back a price that a refresh had replaced.
+- **Variants.** A refresh compares the selected variant too. If real product details report a default variant that search results leave out, a refresh would expire an unchanged search draft and ask for review. The fake catalog has no variants by default and no real Channel3 response is recorded in the repository, so this is unverified. No live call was made.
+- **Shared facts.** The record of offer facts is shared by all families, since it holds public offer facts only. One family's refresh can expire another family's out-of-date draft for the same offer, which then asks for a fresh search. It grants no access: household checks still decide who may use a shown result.
+
+**Checks** (fake Channel3 and fake PayPal; no real order or paid call):
+- **Unit:** `channel3-merchant` 19/19, `merchant-freshness` 9/9 (new), `family-sponsor` 1/1.
+- **Browser, desktop and 390 px phone:** **27 passed, 1 deliberate one-viewport skip, 0 failed.**
+  - All nine `channel3-merchant` cases, including PR #23's new one, and both `connected-journey` Merchant cases: 22 passed (6.7 min).
+  - `plan-check`'s two market-draft cases: 4 passed.
+  - `shared-live`'s three-member case, which saves a fake Channel3 product in family mode only after **Review latest goal**: passed on desktop, skipped by design on the phone.
+- `npm run check` passed.
+
+**Limits.** The catalog is fake throughout: no live Channel3 search, refresh or cheaper-options call. Only the Merchant browser cases listed ran; the full browser suite was not rerun.
+
+## Shared families, live: access re-checked during waits (PR #22 merged into PR #20) — November 6, 2026
+
+Codex's PR #22 (`review/family-revocation`, head `f91a0d3`, which already contained PR #20 through `f6535f8`) was reviewed and merged into `claude/shared-live-integration` by a normal merge (`40b65ee`). Nothing was merged into `main` or activated. Codex's notes are in [FAMILY-ACCESS-RACE-REVIEW.md](FAMILY-ACCESS-RACE-REVIEW.md), and the behaviour is in [FAMILY-ACCESS.md](FAMILY-ACCESS.md).
+
+**Review, behaviour by behaviour.** All five behaviours hold on the merge. One page-level defect was found and fixed (below).
+- **Removed or expired members.** A family write is authorized again after its body arrives and before anything runs. The planner checks again after its model wait and before validating or storing a plan; this also covers invalid and failed answers. Every private answer, success or error, is checked again when it is sent. An ended request gets the normal 401, with no receipt, plan or state.
+- **Steward.** It checks before and after each model turn and before each tool. An access error passes through `mapAnthropicError` unchanged, so it is never turned into a provider answer or fed into another model turn.
+- **Re-checks.** They read the session without counting as activity and never clear a cookie. The active controls keep `last_seen_at` unchanged, and after a renewed sign-in the newer cookie keeps working. Only the first check on arrival clears a dead cookie, as before.
+- **Already-dispatched money.** Capture, refund and order creation go to PayPal straight after the re-check. Their results are recorded once (same request ids, the in-flight guard and settled-status checks are unchanged) before the reply is withheld. The owner recovers a capture without a second one.
+- **Still working.** Sign-out is exempt from the response check because it ends its own session. The webhook stays a machine route, streams return before the response check, and live notices still go out in the handler's `finally`.
+- **Observations, no change.**
+  - The `goalId` comparison cannot fire in family mode, because goals are created with the household and only updated in place, so `409 scope_changed` is defensive.
+  - A Merchant look-up already sent can still fill that household's own short-lived result cache, as PR #22's notes say.
+  - One narrow window remains before a capture or refund is sent. When the PayPal client has no cached OAuth token, it fetches one first. If access ends during that fetch, the capture or refund still goes out, though it is then recorded once and its reply withheld. A check after the token fetch would belong in Astra's payment code, so it is left for Astra and Codex.
+
+**Defect found and fixed: a refused answer ended the page after a renewed sign-in.**
+- **Cause.** The server now refuses (401) a request that was under way when the same browser signed in again as the same member in another tab. The newer cookie survives. But the page treated every 401 as the end of its session, so it asked for the passkey even though the browser was signed in.
+- **Reproduced** in a new `family-access.spec.mjs` case.
+  - A plan request waits on a gated fake planner.
+  - A second tab, opened while signed out, signs in with the owner's passkey (copied to that tab's virtual authenticator).
+  - The planner is then released. Before the fix, the first tab showed the sign-in dialog with "Your session ended. Sign in again with your passkey." while the second tab was signed in as Rowan.
+- **Fix** (`src/app/api.js`, `src/app/main.js`).
+  - On such a 401 the page checks `/api/session` first.
+  - If this browser is still signed in as the same member of the same household, it keeps the page with the newer CSRF token. The renewal still clears an earlier approval.
+  - The request then reports "This browser signed in again while this was in progress. Check the latest records before trying again." It is not retried.
+  - Anything else ends the page as before. The stream's own session endings and a state for another member also end it at once. Example mode is unchanged.
+- **After the fix,** the case passes 3 of 3. The first tab stays signed in, no plan is saved from the refused answer, and the same request then succeeds with the newer session.
+
+**Checks** (fake planner, fake model transport, fake PayPal; no real order, provider or model call):
+- **Unit:** `family-access` 18/18, `family-runtime-boundaries` 9/9, `family-live` 7/7. That is 34 passed, 0 failed, both on the merge and on the final tree.
+- **Browser on the merge as is** (`family-access`, `shared-live`; desktop and 390 px phone): 8 passed, 8 deliberate one-viewport skips, 0 failed (4.6 min).
+- **The new case:** 1 failed before the fix (as above), then 1 passed, then 3 of 3 repeats.
+- **Browser on the final tree** (`family-access`, `shared-live`; desktop and 390 px phone): **9 passed, 9 deliberate one-viewport skips, 0 failed** (4.9 min), the new case included.
+- `npm run check` passed, and `git diff --check` is clean.
+
+**Limits.**
+- The renewal is a second tab in one Chromium context with a copied virtual credential, not a real device.
+- The new browser case runs on desktop only, like the other viewport-independent family-access cases.
+- The full browser suite was not rerun. Only `family-access` and `shared-live` ran, since this change touches only family-mode session handling.
+
+## Shared families, live: one integrated build and dependable cross-device updates — November 6, 2026
+
+Claude branch `claude/shared-live-integration` from `main` `86c8287` (PR #20; not merged or activated). Normal merges of #19 (with #16) and #17, then live updates for shared families. See [FAMILY-ACCESS.md](FAMILY-ACCESS.md#live-updates).
+
+- **Integration.** One migration sequence: main's four SQL steps, then checked steps `goal-project-kind` (5), `merchant-selection` (6) and `family-access` (7). Branch-only schemas 5 and 6 are named and re-checked from step 5; a newer schema is refused. Exact pins kept: `@simplewebauthn/server` 14.0.3, `@simplewebauthn/browser` 14.0.0, `ag-grid-community` 36.3.0, `ag-studio` 3.1.0. Merchant refresh and alternatives have explicit adult rules, use the request's scope, and accept a shown result only from the household it was shown to, before any provider call.
+- **Live updates.** `GET /api/events` (members only) carries only an event name and a household revision; pages re-read `/api/state`. Revisions order every state answer; streams and background reads never extend a session; streams end at once on sign-out, removed access, a renewed sign-in and expiry; connections are bounded; reconnects back off and check the session; one compact Reconnect control.
+- **Work in progress.** Unsaved Plan fields, trials, Merchant drafts, avatar and invitation fields stay; an approval is cleared once if its goal or sign-in changed, and kept through unrelated updates and reconnects; the Ledger keeps filter, search, sort, selection and keyboard position; a focused map marker keeps the keyboard.
+- **Keyboard fix that also affects example mode.** A deed's late `close` event no longer takes focus back from where the family has gone (see the area-cards note below).
+
+**Upgrade check against the real branches.** Each source branch's own `openDatabase` (main, goal-projects, sponsor-depth, shared-family-access, extracted by `git cat-file`) wrote a throwaway file at its schema (4, 5, 5, 6); the integrated build opened each: all reached schema 7 with exactly a fresh database's schema, rows kept, reopening idempotent, and the explicit warning for 5 and 6. Not committed (it needs the branch sources); `test/unit/migration-integration.test.mjs` rebuilds the same schemas from the identical statements.
+
+**Unit: 291 cases, 290 passed, 1 pre-existing skip.**
+- New `family-live` (7): the changed household only, a bare revision, ordered answers; quiet reads, calculations, look-ups and access refusals; a fake Channel3 goal; one contribution, one credit, one notice per page; access removal, renewal, sign-out and idle expiry ending streams, with no session extension; bounds and release of every stream and the timer; a verified fake-PayPal webhook telling only its household; a real restart; example mode.
+- New `family-sponsor` (1): a child and another family refused on every Merchant route and the steward before the fake Channel3 or fake Anthropic transport is reached; the adult's refresh, cheaper alternatives, save and steward answer stay in their household.
+- New `migration-integration` (3): every earlier schema to the fresh one; a newer schema refused and untouched.
+- Changed: the family HTTP helpers moved to `test/helpers/family-http.mjs`.
+
+**Browser.** New `shared-live.spec.mjs` (4 cases, desktop 1440×1000 and emulated 390×844 touch phone), each person a separate context with a virtual passkey; requests leaving the server origin refused and recorded (none were):
+- three members and a separate family through goal, Build, trials, avatar, invitation, an unrelated change that moves nothing being edited and keeps a given approval, a goal change that clears it, two contributions (one credit each; Manor Gardens deed on every family page), the keyboard kept on a visited map marker through live updates with and without a marker rebuild, Ledger and weekly Treasury, the Treasury record link, a fake Channel3 product after Review latest goal, child limits, access removal and cleanup;
+- a connection cut while offline, the Reconnect control (clicked while still offline, so it never races the automatic reconnect), catching up when the network returns and by itself after a second drop, and idle expiry during the connection;
+- a real restart of `scripts/family.mjs` with both pages reconnecting in the same document, and an approval given before it kept (same session) and paid once after it;
+- two 390 px phones and the Reconnect control's fit.
+
+`family-access.spec.mjs` now expects changes live (no focus nudge) and the removed-access reason.
+
+**Focused regressions (18 related suites, desktop and phone, 42.4 min): 157 passed, 15 deliberate viewport skips, 10 failed.**
+- Eight failures (`channel3-merchant` ×2, `connected-journey` and `area-cards`, each on both projects) came from an intermediate version of this branch that held a newly opened area's deed while focus was in a text field. After "Save as our goal" the page focuses the goal name, so the family's own deed waited. That deferral was removed; deeds show at once, as on main.
+- The other two are `journey.spec.mjs` "cancel, decline and pending outcomes…" on both projects. It expected "Nothing was charged", text that `origin/main`'s app has not rendered since `1dd3952`, so it fails on main as well. The test is now corrected (see below).
+
+**After removing the deferral and keeping approvals across reconnects** (`shared-live`, `family-access`, `channel3-merchant`, `connected-journey`, `area-cards`; desktop and phone, 20.6 min): 44 passed, 10 deliberate viewport skips, 2 failed on desktop. Both were diagnosed and fixed:
+- `area-cards` "four journey tabs … visits the castle" was not caused by the live work.
+  - It also fails on `origin/main` (2 of 2 repeats) and at `944457f` (3 of 3; one earlier pass there ran under heavy load).
+  - After **Close all**, the browser returns focus at once, but the dialog's `close` event can wait behind busy software-rendered frames.
+  - When that event arrived after **Visit your castle** had hidden the journal, `deedClosed()` fell back to the Journal button and took the keyboard from the castle marker. A focus log caught it: castle in, then castle out to `#journal-toggle` in the same millisecond.
+  - The handler now never takes focus back from where the family went. With the fix, 3 of 3 repeats passed.
+- `shared-live` "a dropped connection …" was a race in the test.
+  - Its Reconnect click, made just after the device came back online, raced the page's own reconnect. When the page won, the control was correctly gone and the click waited until the test timed out.
+  - The click now happens while the device is still offline and checks that a new stream attempt leaves at once. Every earlier assertion is kept.
+- With the same fixes, live updates no longer rebuild the map's buttons unless an area opens or closes or the Build choice changes, and a rebuilt button keeps its place and the keyboard. The three-member journey now checks both cases.
+
+**Final affected run** (`area-cards`, `shared-live`, plus `realm-focus`, `realm` and `goal-projects`, which exercise the map buttons; desktop and phone, 13.7 min): **37 passed, 9 deliberate viewport skips, 0 failed.** `family-access` was not rerun: no authentication code changed after its last pass in the run above. Unit: 291 cases, 290 passed, 1 pre-existing skip. `npm run check` passed.
+
+**Journey status case corrected.** Only the `journey.spec.mjs` change from PR #24 (`a82079b`) was applied, plus one added check. PR #24's other changes (its focus fix, `area-cards` and `shared-live` checks, screenshots and notes) were not; this branch's own fixes for those failures are in `9e764fc` and `dcbe2db`, and its captures and provenance are unchanged.
+- It uses the current labels: **Checkout window closed.** after a closed checkout, and **Checkout closed** in the Ledger.
+- After each canceled, declined and pending attempt, the page's state still has $60.00 of progress, those three statuses and no credited capture. Completing the pending one credits exactly one capture ($75.00), and the count is still one after the failed records are selected.
+- The failed-record selection checks are kept: the closed and declined rows read "No — not counted", and selecting each shows only its receipt, with no completion or refund action, and leaves the total at $75.00.
+- Only this case runs with reduced motion. Normal route animation and deed timing stay covered by the other journey cases and `area-cards.spec.mjs`.
+- Before, on this branch at `dcbe2db`: 2 failed (desktop and phone) at the first check, which expected "Nothing was charged" and received "Checkout window closed. Check the contribution record before trying again."
+- After: **2 passed** (desktop 17.1 s, 390 px phone 14.7 s). Repeated three times on each project: **6 of 6 passed**. It ran in example mode with simulated payments and no credentials (every step, completion included, goes to `/api/example/…`); no PayPal order or provider call.
+
+Captures: `docs/screenshots/shared-live-*.png` with [provenance](screenshots/shared-live-sources.json).
+
+**Limits.**
+- One server process and one SQLite file, as before; live state (revisions, streams) is in memory and restarts with the server. Several server processes would need a shared notifier.
+- The dropped connection is Chromium offline emulation plus the server closing its connections, not real network loss; the virtual authenticator is not a real device; the browser checks ran in headless Chromium only.
+- Fake Channel3, PayPal and Anthropic transports only: no provider, payment, order or model call. PayPal sandbox through the browser in family mode was not exercised.
+- The full browser suite was not rerun; only the suites and the journey case listed above.
+- Owner apps on 3010 and 3021, their `.env`, checkout and databases were not touched; no deployment, video or submission. Rachel's real family playtests remain open.
+
+## Shared families: passkeys, invitations and permissions — November 6, 2026
+
+Claude branch `claude/shared-family-access`, stacked on `claude/goal-projects`; not merged or activated. See [FAMILY-ACCESS.md](FAMILY-ACCESS.md).
+
+- **Mode and data.** This is an opt-in family access mode (`npm run family`, or `OUR_CASTLE_ACCESS=family` plus an exact `OUR_CASTLE_ORIGIN`). It uses its own database file. Migration 6 adds new tables only.
+- **Library.** WebAuthn uses `@simplewebauthn/server` 14.0.3 and `@simplewebauthn/browser` 14.0.0, pinned exactly.
+- **Unchanged.** Example mode and the example household are unchanged.
+
+**Unit: 268 cases, 267 passed, 1 pre-existing skip.**
+- New: 10 family-access cases over real HTTP. A test-only software authenticator produces genuinely signed responses, so the pinned library's real verification runs. Coverage is listed in FAMILY-ACCESS.md.
+- Changed: three older migration fixtures now pin version 6, and the goal-project upgrade test starts from the schema before `project_kind`.
+
+**Browser, `family-access.spec.mjs`: 4 cases.** Chromium's virtual authenticator, one per person, in independent contexts:
+- an owner, an adult, a child and a separate family, the whole journey on desktop;
+- session expiry and invitation link states;
+- a real restart of the runner process;
+- a 390 px phone fit.
+
+Related suites rerun together with it: `family-journey`, `plan-check`, `goal-projects`, `channel3-merchant` (fake Channel3 transport) and `paypal-callbacks` (fake PayPal sandbox transport), on desktop and phone.
+- Result: **59 passed, 11 deliberate viewport skips, 0 failed** (10.7 min).
+- `family-access` was then rerun on the final code: 4 passed.
+- `npm run check` passed.
+
+Captures: `docs/screenshots/family-access-*.png` with [provenance](screenshots/family-access-sources.json). Images showing invitation links were deliberately not committed.
+
+**Limits.**
+- The virtual and software authenticators are not real phones, Touch ID, Face ID or security keys.
+- Rate limits are in memory.
+- The family runner uses simulated payments and the built-in planner. PayPal sandbox in family mode was not exercised; only the fake-transport regression ran.
+- No public hosting, security certification or real family use is claimed. Rachel's playtests remain open.
+
+## What the family builds: campsite, garden or schoolhouse — November 6, 2026
+
+Claude branch `claude/goal-projects` (from `e7afafc`; not merged or activated). Plan → **Build** chooses what the goal builds in the west meadow; see [FAMILY-PROJECT.md](FAMILY-PROJECT.md#what-the-family-builds). The choice is saved only with the goal's normal save, stored in the additive `goals.project_kind` (migration 5, default `campsite`) and changes only the picture.
+
+- **Unit: 258 cases, 257 passed, 1 pre-existing skip.** New: the three listed choices and nothing else (look-alikes, free text, objects); identical stage/threshold/detail arithmetic for every choice across three targets; the same site with per-place frame heights; an upgrade from a version-4 file on a temporary path (only the new column, set to `campsite`; a goal named "Garden shed fund" stays a campsite; the database refuses other values; reopening runs nothing twice); a kind-only change leaves figures, every plan including the accepted one, achievements, ledger, goal items and orders identical; an unsupported value beside valid new figures writes nothing; a confirmed market item saves the choice with its provenance and never derives it from the item; the Plan save over HTTP keeps the plan in use and survives a restart; a fake planner provider receives byte-identical input for all three choices. Three existing migration fixtures now also drop the new column when they model older schemas, and expect version 5.
+- **Model (no WebGL): 2 cases, 4 passes (desktop and phone projects).** Every place builds every stage with finite geometry and its named parts (frame → rafters → glazed glasshouse; frame with the bell on its cradle → belfry with the bell hung); only the campsite has live parts, and rebuilding another place leaves none. Separately, the campsite model emits exactly the same parts and transforms as `origin/main` at all eight stage/detail combinations (scripted comparison, not committed).
+- **Browser, new `goal-projects.spec.mjs`: 5 passes, 3 deliberate phone skips** (desktop 1440 px and emulated 390 px touch phone for the Plan case; three viewport-independent cases on desktop only). Choosing writes nothing and previews nothing; Make a plan sends the choice once with the unchanged figures; progress, achievements, contributions and the plan in use are unchanged; the choice survives reload; keyboard order and 44 px target; Visit lands on the garden's marker; a schoolhouse through 20/25/40/60/100 %, a refund and a larger goal; switching places at the same progress rebuilds only the project (travelers, tier, districts, bridges, court and view unchanged; no leftover campfire smoke; identical garden meshes after a round trip); night lights the school's windows and the glasshouse door with nothing moving under reduced motion; an untouched Build never reverts another member's newer choice; a tampered unlisted value is refused with the goal, plans and picture unchanged.
+- **Related existing suites, rerun unchanged: 38 passed** (19 cases on desktop and phone): `family-project` (campsite stages, night, Visit campsite), `plan-check` and `channel3-merchant` (fake Channel3 transport). `npm run check`: the 47 copied files, the 90-colour palette, renderer wiring and syntax verified.
+
+Captures and provenance: `docs/screenshots/goal-projects-*.png`, [goal-projects-sources.json](screenshots/goal-projects-sources.json). Isolated example servers only (3171 for review captures, 3111 for the browser suites), empty keys, temporary data; no provider, model, merchant or payment call, no 3010/3021 use, no recording. Not checked: physical phones, non-Chromium browsers, GPU rendering or performance, and real family use — Rachel's playtests remain open.
+
 ## Complete mountain slopes and wider terrain — November 6, 2026
 
 The board adds another 32 world units on every side, from 292×196 to **356×260**, keeping its centre and the original property coordinates. Existing mountain footprints are broader and fully contained, so slopes descend before the board edge. All six river channels continue through the new row to the rim. Homes, nine district/bridge access rules, the PayPal sign and original renderer/palette retain their existing roles. [Reference lock and geography](MOUNTAIN-BORDER.md#extra-mountain-room--november-6).
@@ -7,6 +306,34 @@ The board adds another 32 world units on every side, from 292×196 to **356×260
 The realm and terrain unit files passed, including complete mountain-foot containment, level edges, river outlets, dry existing plots, flat frontier clearings and unchanged routes/access. **Six distinct Chromium checks passed** across desktop (1440×1000) and emulated touch-phone (390×844): the new overview/rotation/home/night-rain case, locked exploration without writes, and the simulated Manor unlock retaining the village. The scenery case checks unchanged application state, no external requests, no writes/page errors and no horizontal overflow. The original 47-file/90-colour/renderer/syntax guard passed. No full suite, live provider, payment, paid AI or video was run. Initial unit expectations were updated from the previous board dimensions; the final unit run passed.
 
 Ignored evidence: `test-results/mountain-room/{unit.log,browser.log,check.log}` and browser artifacts. Actual captures and the local activation result are recorded with the mountain follow-up; historical images remain intact.
+
+## Treasury column review and amount sorting — November 6, 2026
+
+Reviewing the current column configuration against AG Grid's column/state/type references exposed an Amount sort error: an uncredited $15 or $40 attempt displayed its actual amount but sorted as zero. The new browser case reproduced that error before correction. The column now uses a numeric value getter for the displayed amount; signed refunds, each row's counted status and canonical goal progress retain their existing values. [Capability inventory and remaining gaps](TREASURY.md#column-and-capability-review--november-6).
+
+**Four focused Chromium cases passed:** the new sorting case and the existing stable-update case on desktop (1440×1000) and emulated touch phone (390×844). Isolated example fixtures include a $5 contribution and refund, pending $15, declined $40 and $60 reported starting progress. Both sort directions are correct, pending/declined receipts remain uncounted, progress remains $60/$300, and filtering/selection/sorting survive ordinary updates. Sorting and receipt selection make no writes or external requests and leave application state unchanged. The original 47-file/palette/renderer/syntax guard and diff check passed. The first harness attempt used an obsolete grid-container selector; it was corrected for the installed 36.3 DOM before reproducing the product bug.
+
+Ignored evidence: `test-results/treasury-columns/{before.log,reproduced.log,after.log,check.log}` and their artifact directories. Existing screenshots and capture-source hashes predate this sorting-only follow-up and were not regenerated. No full suite, paid/provider call, payment, owner-data change, local Mac activation or recording was performed.
+
+## Channel3 staff availability guidance — November 6, 2026
+
+The existing Merchant source note now distinguishes a Channel3 catalog read from retailer stock verification. A failed CDN image falls back to the existing neutral thumbnail. [Staff guidance and scope](CHANNEL3-MERCHANT.md#staff-availability-guidance-applied--november-6).
+
+**Six focused Chromium checks passed** across desktop and 390 px touch-phone: the existing search/draft/save journey, saved-item refresh/three alternatives/explicit confirmation, and a new deleted-product case at each size. The new case also checks the broken-image fallback. A catalog 404 closes the reserved retailer tab, removes the stale result, retains the query, never opens the old offer link, makes no automatic retry, and leaves all application state unchanged. Merchant captures below were refreshed from these actual fixture renders. No paid search, live catalog call, payment, owner data or full-suite rerun was involved.
+
+## Sponsor freshness, live Treasury data and SDK contracts — November 6 UTC, 2026
+
+`feature/sponsor-depth`, based on `e7afafc`, adds explicit saved-item refresh and cheaper alternatives to the existing Merchant; Studio 3.1 live transactions, original area artwork and a compact weekly comparison to Treasury; and six tests of the real PayPal SDK 2.5.0 transport contracts. The world, payment rules and approved 3021 evidence are preserved. [Merchant contract/source notes](CHANNEL3-MERCHANT.md#freshness-and-cheaper-alternatives--november-6) · [Treasury behavior](TREASURY.md#sponsor-depth-behavior-november-6) · [APIMatic method](APIMATIC-CODEX.md#actual-sdk-transport-contracts--november-6).
+
+**49 distinct unit cases passed across focused runs:** Channel3 merchant (19), Treasury (4), actual SDK transport (6), existing SDK adapter (4), unknown-outcome recovery (7), avatar/migration (3), and stored receipt checks (6). The new coverage exercises product-detail locale/retailer/variant requests, changed price/stock/link, missing products, strict similar-item budget/stock/currency filters, forged or wrong-goal references, coalescing, timeout and unchanged financial rows. Concurrent lookups preserve each caller's own previous-price comparison. Weekly calculations separate accepted-plan dates from net contribution/refund events, with UTC boundaries, no-plan versus zero-due, negative net refunds and no starting-report or pending-payment credit. The SDK's actual auth/controllers/serialization run against fake axios transport; raw capture fields, request IDs, sandbox paths, timeout configuration, provider errors and no hidden retries are checked.
+
+**34 distinct Chromium browser cases passed across focused desktop (1440×1000) and emulated touch-phone (390×844) runs:** seven Merchant, four Treasury and six Studio-framework scenarios, each at both sizes. This covers saved-item reload without a provider call; refresh and three alternatives without auto-saving; explicit Plan confirmation; a renewed retailer link with review required after offer changes; existing stale-goal/expired-draft/error paths; real Studio queries/live transactions and stable grid sorting, filtering, selection and instance; record links to the selected receipt; and scoped agent cleanup, failure/retry and fallback. A real built-in rules plan is accepted in the isolated fixture before its clock advances one week: **$30 planned / $15 simulated** renders correctly, with a single credit, reload and refund checks. A forced live-data transaction failure leaves the milestone and the next explicit steward request usable through the existing fallback, without an automatic paid request.
+
+An initial record-link check found a receipt focus selector that omitted contribution rows; it was fixed and rechecked on both sizes. The software-renderer harness uses reduced motion. Other failed harness attempts were corrected for the final compact heading, the SDK's read-only export namespace, and dismissal of the ordinary earned deed before the next interaction. No unresolved failure remains in the targeted checks. The original 47-file/90-colour/renderer/syntax guard and final diff check passed; no full suite was repeated.
+
+**Actual captures, copied unchanged:** [Merchant desktop](screenshots/sponsor-merchant-desktop.png), [Merchant phone](screenshots/sponsor-merchant-phone.png), [Treasury desktop](screenshots/sponsor-treasury-desktop.png), [Treasury phone](screenshots/sponsor-treasury-phone.png). [Source hashes and fixture provenance](screenshots/sponsor-depth-sources.json). Images show invented products and a simulated contribution, not the owner's payment. UI tests checked page errors and overflow; unlicensed Studio trial console notices are expected.
+
+**Limits:** no live Channel3 detail/similar request, owner-key trial validation, new PayPal order/refund, paid model call, physical-phone test, video, deployment or submission. Historical November 5 search and in-app payment evidence are unchanged. Owner 3010/3021, their `.env` and records were not touched. Migration 5 adds item variant/condition provenance on temporary databases only; coordinate its numbering with the separate garden/schoolhouse and family-access branches before activation. See [release integration note](RELEASE-READINESS.md#sponsor-extension-awaiting-integration--november-6).
 
 ## Winner research and checkout readiness — November 6 PST, 2026
 

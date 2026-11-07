@@ -9,7 +9,8 @@ import { createEstateCourt } from './court.js';
 import { createRealmModels } from './realm-models.js';
 import { createGoldFountains } from './gold-fountain.js';
 import { createFamilyProject } from './family-project.js';
-import { FAMILY_PROJECT_SITE } from '../core/family-project.js';
+import { createSponsorSigns } from './sponsor-signs.js';
+import { FAMILY_PROJECT_SITE, projectSite } from '../core/family-project.js';
 import { REALM_SIZE, REALM_BOUNDS, REALM_DISTRICTS, REALM_LEGENDS, REALM_BRIDGES, REALM_ROUTE, homeDistrict, districtById, legendById, viewLocation, journeyLeg, journeyPosition } from '../core/realm.js';
 import { MOUNTAIN_PEAKS } from '../core/realm-terrain.js';
 
@@ -73,8 +74,9 @@ const disposeGroup = (group) => {
   group.traverse((o) => { if (o.userData.ownedGeometry) o.geometry.dispose(); if (o.userData.ownedMaterial) o.material.dispose(); if (o.isInstancedMesh) o.dispose?.(); });
   group.clear();
 };
-// Camera targets: districts, discoveries and the family campsite (a meadow, not a district).
-const locationOf = (id) => viewLocation(id) ?? (id === FAMILY_PROJECT_SITE.id ? FAMILY_PROJECT_SITE : undefined);
+// Camera targets: districts, discoveries and the family project (a meadow, not a district). The project's frame is the
+// chosen place's own height, so the camera and its marker clear the schoolhouse's bell tower.
+const locationOf = (id, kind) => viewLocation(id) ?? (id === FAMILY_PROJECT_SITE.id ? projectSite(kind) : undefined);
 const easeInOut = (t) => (t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2);
 const easeOutBack = (t) => 1 + 2.2 * (t - 1) ** 3 + 1.2 * (t - 1) ** 2;
 
@@ -82,7 +84,7 @@ export function createBoardScene(container, { reducedMotion = false, isOccluded 
   let renderer; let pipeline; let scene; let camera; let builder; let observer; let models; let court;
   const part = (...args) => builder.part(...args);
   const groups = {};
-  let realmModels; let fountains; let project; let realm = { districts: [], bridges: [], landscape: null };
+  let realmModels; let fountains; let project; let sponsors; let realm = { districts: [], bridges: [], landscape: null };
   const perf = { lastMs: 0, maxMs: 0, totalMs: 0, draws: 0, calls: 0, triangles: 0 };
   let state = { builtTier: 0, position: 0, crest: { field: 'cobalt', charge: 'stag' }, gardens: 0, playMode: 'family', milestoneSpaces: [5, 12, 20], reached: [], estateLevel: 0, previewFeature: null };
   let shownPosition = 0;
@@ -198,12 +200,19 @@ export function createBoardScene(container, { reducedMotion = false, isOccluded 
     builder.flush();
   }
 
-  // ---------- The family project: one campsite whose stage is the server's current progress ----------
-  // Only this group is rebuilt when the stage or crest changes; the landscape, districts and bridges stay as they are.
+  // ---------- The family project: the chosen place (campsite, garden or schoolhouse) at the server's current stage ----------
+  // Only this group is rebuilt when the stage, the choice or the crest changes; the landscape, districts, bridges, homes and
+  // travelers stay as they are.
   function buildProject() {
     disposeGroup(groups.project); project.reset();
     if (state.project) project.build(groups.project, state.project, crestColour(state.crest.field));
     builder.flush(); realmModels.finish(groups.project);
+  }
+  // What the project group holds now (debug and tests): rebuilding replaces it, so these never accumulate.
+  function projectMeshes() {
+    let meshes = 0, instances = 0, live = 0;
+    groups.project.traverse((o) => { if (o.isInstancedMesh) { meshes++; instances += o.count; } if (o.userData.live) live++; });
+    return { meshes, instances, live, objects: groups.project.children.length };
   }
 
   // ---------- Home tiers (cottage → manor → keep → castle) ----------
@@ -452,7 +461,7 @@ export function createBoardScene(container, { reducedMotion = false, isOccluded 
     const aspect = width / height; const narrow = width < 640;
     camera.updateMatrixWorld();
     let minX = Infinity; let maxX = -Infinity; let minY = Infinity; let maxY = -Infinity;
-    const focused = locationOf(view.focus), bridge = REALM_BRIDGES.find((b) => b.id === view.crossing);
+    const focused = locationOf(view.focus, state.project?.kind), bridge = REALM_BRIDGES.find((b) => b.id === view.crossing);
     const framed = bridge ? [districtById(bridge.from), districtById(bridge.to)] : focused ? [focused] : [];
     const frame = framed.length ? framed.flatMap((d) => [-1,1].flatMap(x=>[-1,1].flatMap(z=>[-2,d.height].map(y=>new THREE.Vector3(d.x+x*(d.width/2+2),y,d.z+z*(d.depth/2+2)))))) : FRAME_POINTS;
     for (const point of frame) {
@@ -474,7 +483,7 @@ export function createBoardScene(container, { reducedMotion = false, isOccluded 
     renderer.setSize(width, height, false); pipeline.setSize(width, height); draw();
   }
   function updateCamera() {
-    const focus = locationOf(view.focus), bridge = REALM_BRIDGES.find((b) => b.id === view.crossing);
+    const focus = locationOf(view.focus, state.project?.kind), bridge = REALM_BRIDGES.find((b) => b.id === view.crossing);
     const from = bridge && districtById(bridge.from), to = bridge && districtById(bridge.to);
     const x = bridge ? (from.x + to.x) / 2 : focus?.x ?? REALM_SIZE.centerX, z = bridge ? (from.z + to.z) / 2 : focus?.z ?? REALM_SIZE.centerZ;
     camera.position.set(x+Math.sin(view.angle)*180,150,z+Math.cos(view.angle)*180);
@@ -543,6 +552,7 @@ export function createBoardScene(container, { reducedMotion = false, isOccluded 
   court = createEstateCourt(groups.court, builder, colours);
   groups.castle = new THREE.Group(); scene.add(groups.castle);
   const scenery=realmModels.woodland(groups.woodland),hillSign=scenery.frontier.hillsideSign;
+  sponsors = createSponsorSigns(groups.woodland, { part, builder, colours, onReady: () => draw() });
   FRAME_POINTS.push(new THREE.Vector3(hillSign.x,hillSign.top,hillSign.z));
   buildAtmosphere();
   buildLandscape();buildRoute(); buildGardens(); buildCastle(); buildEstate(); buildToken(); buildCourt(); buildProject();
@@ -559,8 +569,12 @@ export function createBoardScene(container, { reducedMotion = false, isOccluded 
         const crestChanged = prev.crest.field !== state.crest.field || prev.crest.charge !== state.crest.charge;
         if (crestChanged || prev.playMode !== state.playMode || JSON.stringify(prev.members) !== JSON.stringify(state.members)) buildToken();
         if (prev.gardens !== state.gardens) buildGardens();
-        // The campsite follows the stage the app derived from server progress; new parts take the current light and wetness.
-        if (crestChanged || JSON.stringify(prev.project ?? null) !== JSON.stringify(state.project ?? null)) { buildProject(); applyAtmosphere(); }
+        // The project follows the stage the app derived from server progress and the family's saved choice; new parts take
+        // the current light and wetness. A different place is framed at its own height if the camera is on it.
+        if (crestChanged || JSON.stringify(prev.project ?? null) !== JSON.stringify(state.project ?? null)) {
+          buildProject(); applyAtmosphere();
+          if (view.focus === FAMILY_PROJECT_SITE.id && prev.project?.kind !== state.project?.kind) resize();
+        }
         const tierUp = state.builtTier > prev.builtTier;
         const cameraRevision = viewRevision;
         let openedBridge = null;
@@ -647,13 +661,13 @@ export function createBoardScene(container, { reducedMotion = false, isOccluded 
       const t = groups.token.position;
       return { spaces, travelers: toScreen(t.x, t.y + 1.5, t.z), canvas: { left: rect.left, top: rect.top, width: rect.width, height: rect.height } };
     },
-    debug: () => ({ region: REALM_SIZE, estateLevel: state.estateLevel, view: { ...view }, previewFeature: state.previewFeature, tier: state.builtTier, position: state.position, shownPosition, gardens: state.gardens, crest: { ...state.crest }, playMode: state.playMode, familyAvatars: householdParty().map((m, i) => ({ memberId: m.id, avatarId: memberAvatar(m, i).id, role: m.role })), animating, frames, ambient: Boolean(ambientTimer), ambientFrames, grazers: grazers.length, butterflies: flutterers.length, court: court.debug(), legends: REALM_LEGENDS.map(({id,x,z})=>({id,x,z})), districts: realm.districts.map(({id,open,status,greyPaint,drawMeshes,hues})=>({id,open,status,greyPaint,drawMeshes,hues})), bridges: realm.bridges.map(({id,open,panels,gate,river})=>({id,open,gate,river,raised:panels.some(p=>Math.abs(p.group.rotation.z)>.01)})), landscape: realm.landscape, tavern: realmModels.tavernDebug(), farm: realmModels.farmDebug(), folklore: realmModels.legendsDebug(), project: project.debug(), riverCurrent: realmModels.currentDebug(), fountains: fountains.debug(), surround: pipeline.cloudSurroundDebug(), atmosphere: atmosphereDebug(), render: { ...perf, averageMs: perf.draws ? perf.totalMs / perf.draws : 0, geometries: renderer.info.memory.geometries } }),
-    dispose() { for (const [name,fn,options] of interactions) renderer.domElement.removeEventListener(name,fn,options); clearInterval(ambientTimer); observer?.disconnect(); fountains?.dispose(); court?.dispose(); for (const g of Object.values(groups)) disposeGroup(g); flutterGeo?.dispose(); builder?.dispose(); pipeline?.dispose(); renderer?.dispose(); },
+    debug: () => ({ region: REALM_SIZE, estateLevel: state.estateLevel, view: { ...view }, previewFeature: state.previewFeature, tier: state.builtTier, position: state.position, shownPosition, gardens: state.gardens, crest: { ...state.crest }, playMode: state.playMode, familyAvatars: householdParty().map((m, i) => ({ memberId: m.id, avatarId: memberAvatar(m, i).id, role: m.role })), animating, frames, ambient: Boolean(ambientTimer), ambientFrames, grazers: grazers.length, butterflies: flutterers.length, court: court.debug(), legends: REALM_LEGENDS.map(({id,x,z})=>({id,x,z})), districts: realm.districts.map(({id,open,status,greyPaint,drawMeshes,hues})=>({id,open,status,greyPaint,drawMeshes,hues})), bridges: realm.bridges.map(({id,open,panels,gate,river})=>({id,open,gate,river,raised:panels.some(p=>Math.abs(p.group.rotation.z)>.01)})), landscape: realm.landscape, sponsors: sponsors.debug(), tavern: realmModels.tavernDebug(), farm: realmModels.farmDebug(), folklore: realmModels.legendsDebug(), project: { ...project.debug(), ...projectMeshes() }, riverCurrent: realmModels.currentDebug(), fountains: fountains.debug(), surround: pipeline.cloudSurroundDebug(), atmosphere: atmosphereDebug(), render: { ...perf, averageMs: perf.draws ? perf.totalMs / perf.draws : 0, geometries: renderer.info.memory.geometries } }),
+    dispose() { for (const [name,fn,options] of interactions) renderer.domElement.removeEventListener(name,fn,options); clearInterval(ambientTimer); observer?.disconnect(); fountains?.dispose(); sponsors?.dispose(); court?.dispose(); for (const g of Object.values(groups)) disposeGroup(g); flutterGeo?.dispose(); builder?.dispose(); pipeline?.dispose(); renderer?.dispose(); },
   };
 
   function districtsOnScreen(){
     const rect=container.getBoundingClientRect();
-    return {focus:view.focus,points:[...REALM_DISTRICTS,...REALM_LEGENDS,FAMILY_PROJECT_SITE].map(d=>{
+    return {focus:view.focus,points:[...REALM_DISTRICTS,...REALM_LEGENDS,projectSite(state.project?.kind)].map(d=>{
       const point=new THREE.Vector3(d.x,d.height+1,d.z).project(camera);
       return {id:d.id,x:(point.x+1)/2*rect.width,y:(1-point.y)/2*rect.height,width:rect.width,height:rect.height};
     })};

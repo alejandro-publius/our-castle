@@ -6,7 +6,7 @@ import { createApp } from '../../server/app.mjs';
 import { loadConfig } from '../../server/config.mjs';
 import { openDatabase } from '../../server/db.mjs';
 import { createClock } from '../../server/household.mjs';
-import { treasuryFor } from '../../server/treasury.mjs';
+import { treasuryFor, treasuryWeek } from '../../server/treasury.mjs';
 import { FIXED_NOW } from '../helpers/setup.mjs';
 
 // The Treasury's next-area milestone, derived from real example-mode server states produced by the same API the browser
@@ -76,6 +76,27 @@ test('the next area follows server progress: pending, duplicate and refunded pay
     assert.equal(state.treasury.nextArea, null);
     assert.ok(state.treasury.areas.every((a) => a.open && a.remainingCents === 0));
   } finally { await s.close(); }
+});
+
+test('This week compares accepted dated plans with net recorded contributions, never starting reports or pending money', () => {
+  const entry = (id, kind, amountCents, effect, createdAt, source = 'paypal-sandbox') => ({ id, kind, amountCents, effect, createdAt, source });
+  const state = { goal: { targetCents: 30000 }, progress: { startingCents: 6000 }, contributions: [{ id: 'pending', status: 'pending', captures: [], createdAt: '2026-11-06T12:00:00Z' }], ledger: { bills: [], gifts: [], goalEntries: [
+    entry(1, 'starting_progress', 6000, 1, '2026-11-02T00:00:00Z', 'user-reported'),
+    entry(2, 'contribution', 1500, 1, '2026-11-02T00:00:00Z'),
+    entry(3, 'simulated_contribution', 500, 1, '2026-11-06T12:00:00Z', 'simulated'),
+    entry(4, 'refund', 3000, -1, '2026-11-08T23:59:59Z'),
+    entry(5, 'contribution', 9900, 1, '2026-11-09T00:00:00Z'),
+    entry(6, 'contribution', 7700, 1, '2026-11-01T23:59:59Z'),
+  ] } };
+  const plan = { status: 'accepted', contributions: [{ date: '2026-11-01', amountCents: 900 }, { date: '2026-11-02', amountCents: 2000 }, { date: '2026-11-08', amountCents: 1000 }, { date: '2026-11-09', amountCents: 7000 }] };
+  const week = treasuryWeek(state, '2026-11-08T23:59:59Z', plan);
+  assert.equal(week.start, '2026-11-02'); assert.equal(week.end, '2026-11-09');
+  assert.equal(week.plannedCents, 3000); assert.equal(week.receivedCents, 2000); assert.equal(week.refundedCents, 3000); assert.equal(week.netCents, -1000);
+  assert.equal(week.startingCents, 6000); assert.deepEqual(week.records.map((r) => r.id), ['2', '3', '4']);
+  assert.deepEqual(week.sources, ['paypal-sandbox', 'simulated']);
+  assert.equal(treasuryWeek(state, '2026-11-06T00:00:00Z', { ...plan, status: 'proposed' }).plannedCents, null);
+  assert.equal(treasuryWeek(state, '2026-11-16T00:00:00Z', plan).plannedCents, 0, 'zero due is distinct from no plan');
+  assert.equal(treasuryWeek(state, '2026-11-16T00:00:00Z', plan).netCents, 0);
 });
 
 test('a changed goal uses its own thresholds; the treasury is derived, never a second entitlement policy', async () => {

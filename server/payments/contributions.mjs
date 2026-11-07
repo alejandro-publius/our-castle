@@ -394,38 +394,58 @@ export function createContributionService({ db, clock, mode, paypal = null, webh
     },
 
     /** Called after the buyer approves in PayPal. The capture result, not the callback, decides. */
-    async capturePayPalOrder({ providerOrderId, householdId, goalId }) {
+    async capturePayPalOrder({ providerOrderId, householdId, goalId, assertAccess = () => {} }) {
       requireMode('sandbox');
       const row = ownedOrder(providerOrderId, householdId, goalId);
+      assertAccess();
       if (SETTLED.has(row.status)) return result(row, 'already_completed');
-      if (inflight.has(row.id)) return inflight.get(row.id);
-      const work = (async () => {
-        let order;
-        try {
-          ({ data: order } = await paypal.captureOrder(providerOrderId, { requestId: `capture-${row.id}` }));
-        } catch (error) {
-          if (!(error instanceof PayPalError)) throw error;
-          if (error.hasIssue('ORDER_ALREADY_CAPTURED')) ({ data: order } = await paypal.getOrder(providerOrderId));
-          else if (error.hasIssue('INSTRUMENT_DECLINED')) {
-            setStatus(row, 'declined', 'The payment method was declined in PayPal sandbox. Try another sandbox funding source.');
-            return result(row, 'declined');
-          } else if (error.hasIssue('ORDER_NOT_APPROVED')) {
-            setStatus(row, 'created', 'PayPal has not recorded an approval for this order yet.');
-            return result(row, 'not_approved');
-          } else if (outcomeUnknown(error)) {
-            // The capture may have happened. Mark it unresolved, then settle from what PayPal holds for this same order;
-            // never report it as failed. (2) A webhook may settle the order while we wait: canonical state is re-read.
-            markUnresolved(row);
-            try { ({ data: order } = await paypal.getOrder(providerOrderId)); } catch (readError) {
-              if (!(readError instanceof PayPalError)) throw readError;
-              return result(row, SETTLED.has(orderById(row.id).status) ? 'already_completed' : 'unknown');
-            }
-          } else throw paypalFailure(row, error, 'PayPal sandbox could not capture this order.');
-        }
-        return applyOrder(row, order);
-      })();
-      inflight.set(row.id, work);
-      try { return await work; } finally { inflight.delete(row.id); }
+      const caller = { assertAccess };
+      let flight = inflight.get(row.id);
+      if (!flight) {
+        flight = { callers: new Set([caller]), work: null };
+        inflight.set(row.id, flight);
+        // Every caller already requested this same owned order. A still-authorized caller may keep the single
+        // capture alive during OAuth; no new request, approval or retry is invented on another person's behalf.
+        const assertDispatchAccess = () => {
+          let refusal;
+          for (const waiting of flight.callers) {
+            try { waiting.assertAccess(); return; } catch (error) { refusal = error; }
+          }
+          throw refusal ?? new DomainError(409, 'capture_interrupted', 'This capture no longer has an active request. Check the contribution before trying again.');
+        };
+        flight.work = (async () => {
+          let order;
+          try {
+            ({ data: order } = await paypal.captureOrder(providerOrderId, { requestId: `capture-${row.id}`, assertAccess: assertDispatchAccess }));
+          } catch (error) {
+            if (!(error instanceof PayPalError)) throw error;
+            if (error.hasIssue('ORDER_ALREADY_CAPTURED')) ({ data: order } = await paypal.getOrder(providerOrderId));
+            else if (error.hasIssue('INSTRUMENT_DECLINED')) {
+              setStatus(row, 'declined', 'The payment method was declined in PayPal sandbox. Try another sandbox funding source.');
+              return result(row, 'declined');
+            } else if (error.hasIssue('ORDER_NOT_APPROVED')) {
+              setStatus(row, 'created', 'PayPal has not recorded an approval for this order yet.');
+              return result(row, 'not_approved');
+            } else if (outcomeUnknown(error)) {
+              // The capture may have happened. Mark it unresolved, then settle from what PayPal holds for this same order;
+              // never report it as failed. (2) A webhook may settle the order while we wait: canonical state is re-read.
+              markUnresolved(row);
+              try { ({ data: order } = await paypal.getOrder(providerOrderId)); } catch (readError) {
+                if (!(readError instanceof PayPalError)) throw readError;
+                return result(row, SETTLED.has(orderById(row.id).status) ? 'already_completed' : 'unknown');
+              }
+            } else throw paypalFailure(row, error, 'PayPal sandbox could not capture this order.');
+          }
+          return applyOrder(row, order);
+        })().finally(() => { inflight.delete(row.id); });
+      } else flight.callers.add(caller);
+      try {
+        let value;
+        try { value = await flight.work; } catch (error) { assertAccess(); throw error; }
+        // Shared provider truth never shares permission: each caller must still be allowed their own response.
+        assertAccess();
+        return value;
+      } finally { flight.callers.delete(caller); }
     },
 
     /** Re-check an order (e.g. a pending capture) directly with PayPal. */
@@ -461,10 +481,11 @@ export function createContributionService({ db, clock, mode, paypal = null, webh
     async refundPayPalCapture(input) {
       requireMode('sandbox');
       const { cap, refundable } = refundPreconditions(input, 'paypal-sandbox');
+      input.assertAccess?.();
       const count = db.prepare('SELECT COUNT(*) AS n FROM payment_refunds WHERE capture_id = ?').get(cap.capture_id).n;
       let data;
       try {
-        ({ data } = await paypal.refundCapture(cap.capture_id, { amountCents: refundable, currency: cap.currency, requestId: `refund-${cap.capture_id}-${count + 1}` }));
+        ({ data } = await paypal.refundCapture(cap.capture_id, { amountCents: refundable, currency: cap.currency, requestId: `refund-${cap.capture_id}-${count + 1}`, assertAccess: input.assertAccess }));
       } catch (error) {
         if (error instanceof PayPalError && outcomeUnknown(error)) {
           // The refund may have happened. Nothing is recorded here. A retry keeps the same PayPal-Request-Id, but PayPal

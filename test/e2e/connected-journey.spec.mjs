@@ -114,7 +114,7 @@ test('fresh family -> merchant goal -> reviewed plan -> example contribution -> 
   await page.locator('#tab-ledger').click();
   await expect.poll(async () => (await page.evaluate(() => window.__ourCastle.treasury()))?.next?.id).toBe('keep');
   const milestone = page.locator('#treasury-next .next-area');
-  await expect(milestone.locator('.next-area-name')).toHaveText('Next area Stone Keep & Starfall Observatory 60% milestone');
+  await expect(milestone.locator('.next-area-name')).toHaveText('Next area · 60% Stone Keep & Starfall Observatory');
   await expect(milestone.locator('.next-area-meta')).toHaveText('$80.00 of $113.70 · $33.70 to go');
   // Mixed sources stay distinct: reported starting progress and the simulated contribution.
   const grid = page.locator('#ledger-goal');

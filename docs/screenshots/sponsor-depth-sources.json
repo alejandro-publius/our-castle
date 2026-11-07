@@ -1,0 +1,54 @@
+{
+  "date": "2026-11-06",
+  "branch": "feature/sponsor-depth",
+  "base": "e7afafce92a2a547408dfc07df694767f2dad348",
+  "method": "Actual Chromium renders from the repository Playwright fixtures; desktop 1440x1000 and emulated touch phone 390x844 at 2x. Reduced motion and software WebGL. Images copied unchanged; no compositing.",
+  "data": "Invented Channel3 product fixtures. Treasury: isolated example household, accepted built-in rules plan made October 30 and fixture clock advanced to November 6; $30 planned, one simulated $15 contribution, $60 self-reported starting progress. No owner database or live provider evidence.",
+  "versions": {
+    "ag-studio": "3.1.0",
+    "ag-grid-community": "36.3.0",
+    "paypal-server-sdk": "2.5.0"
+  },
+  "images": [
+    {
+      "path": "docs/screenshots/sponsor-merchant-desktop.png",
+      "source_capture": "test-results/channel3-merchant/evidence/desktop-cheaper-options.png",
+      "sha256": "33c694700ea5464b00542f5e61eff0ed9ea84288997f4f0794825bdac924c0ae"
+    },
+    {
+      "path": "docs/screenshots/sponsor-merchant-phone.png",
+      "source_capture": "test-results/channel3-merchant/evidence/phone-cheaper-options.png",
+      "sha256": "08ef0b016d570bc6c64d5945643231c5ccfdde7415e796007a78a9861f9b6fd2"
+    },
+    {
+      "path": "docs/screenshots/sponsor-treasury-desktop.png",
+      "source_capture": "test-results/treasury/evidence/desktop-week.png",
+      "sha256": "eb3c5eb0275bb8c32b5fbe801c92c187f63112e933e498ad4189355c70effdfa"
+    },
+    {
+      "path": "docs/screenshots/sponsor-treasury-phone.png",
+      "source_capture": "test-results/treasury/evidence/phone-week.png",
+      "sha256": "9c1f75cef49f9830f13d86a64e013cd3f8807d448818e8465f205b7f9b4dff57"
+    }
+  ],
+  "source_sha256": {
+    "src/app/merchant.js": "5fd8b3c99ba53eb568404943a16cab9a5d144bde98164cf7b7f1dcc8b3fddecc",
+    "src/app/treasury.js": "38e7c388e614b896e5ac930fe8afc54a5032c43bf03c4244141a47df5eea467f",
+    "src/app/ledger-grid.js": "44076dbd80216d34a70c9c30ab5424ff0560226b0269098eac7ae67ebf0320db",
+    "src/app/main.js": "156d3d3358e72fedc103d48abf49bf09d69b0ac783ac83bae94d99358a14dabf",
+    "src/core/row-updates.js": "74fb83a390372d34344bedf9974ec183ce0e1e41ecc8c9bc5081b67182b6c74d",
+    "server/merchant/channel3.mjs": "c98ec6309386c9ff689821e350dff5bc8865bb7b2c15c7408c7c80d67aa9c81c",
+    "server/merchant/goal-item.mjs": "d1d60351bc300b5a0e49e6e7d040e1dd30daca2a4da222fbd49d85e2e42804b1",
+    "server/treasury.mjs": "7eacf6e820f79a2c8f83650c7e2d415fa4231900c55a5d60ad4c4bb93796a8cb",
+    "server/app.mjs": "8877872e95a9d73d3caa70979e868690bfdd579fea04f10d169f93075fb5da82",
+    "server/db.mjs": "0acfd650acc7b0fbaf9270db3705a3d0a25edbc948911ba27b5da60340369354",
+    "server/payments/paypal-sdk-client.mjs": "4abca244f446d5943965cc85a199b569017dc2977ac7a98fa72425e2b424247b",
+    "app.css": "eebf4bd26633c1f865fa0d42566d4f03eab2f4ec1068ba716720a5e2eb91badc",
+    "package-lock.json": "9c53f40b951dbd30b78300dbff536a71a214ca6f5999c85e0e7dc0852511b1bc",
+    "test/e2e/channel3-merchant.spec.mjs": "dc8c3f7e13c77465501c48eac5732cd7affc8359391f2e6eaec3b6d1979bc0db",
+    "test/e2e/treasury.spec.mjs": "5462e03e638818eea1bfe1e749afca59364a95ba2efd612c5b494efc4c0e3bc1",
+    "test/e2e/studio-agent.spec.mjs": "b3d3d82f49b0706bcc93912f839722d853315d846917f35d6c7db204217e871b",
+    "test/unit/paypal-sdk-transport.test.mjs": "e7f4f2e066383601015612439ee1833ec420693e39bf3db442a4fb11bf31e4c4"
+  },
+  "merchant_followup": "November 6: existing single catalog note clarifies retailer price/stock limits; refreshed captures follow six passing focused browser checks, including deleted-product and broken-CDN cases. No live provider call."
+}

@@ -193,9 +193,13 @@ button { font: inherit; }
 .goal-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .goal-heading label { font-weight: 500; font-size: 15px; }
 .goal-heading .link-button { min-height: 44px; padding: 4px 0; white-space: nowrap; }
-/* The campsite line at the top of Plan: its stage on the left, one quiet link to it on the right. */
+/* The family project line at the top of Plan: its stage on the left, one quiet link to it on the right. */
 .plan-project { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 0 0 10px; font-size: 15px; color: var(--ink-muted); }
 .plan-project .link-button { min-height: 44px; padding: 4px 0; white-space: nowrap; }
+/* What the goal builds: one compact native select beside its short label, styled like the bill frequency select. */
+.project-choice { grid-template-columns: auto minmax(0, max-content); align-items: center; justify-content: start; column-gap: 14px; }
+.project-choice select { min-width: 10.5em; min-height: 44px; padding: 8px 10px; border: 1px solid var(--ink-line); border-radius: 3px; background: var(--paper-3); color: var(--ink); }
+.project-choice select:focus { border-color: #7a4f12; }
 .actions { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-top: 8px; }
 
 .form-status { margin: 10px 0 0; font-size: 15px; }
@@ -452,8 +456,9 @@ button { font: inherit; }
 .merchant-item-name { margin:0; font:700 16px/1.25 Alegreya, Arial, sans-serif; overflow-wrap:anywhere; }
 .merchant-item-meta { margin:3px 0 0; font-size:15px; font-variant-numeric:tabular-nums; }
 .merchant-item-note { margin:2px 0 0; font-size:14px; color:var(--warn); }
-.merchant-item-more { margin-top:2px; font-size:14px; color:var(--ink-muted); }
-.merchant-item-more summary { min-height:32px; display:inline-flex; align-items:center; cursor:pointer; color:var(--ink); text-decoration:underline; text-underline-offset:3px; }
+.merchant-item-more { font-size:14px; color:var(--ink-muted); }
+.merchant-item-more[open] { flex-basis:100%; }
+.merchant-item-more summary { min-height:44px; display:inline-flex; align-items:center; cursor:pointer; color:var(--ink); text-decoration:underline; text-underline-offset:3px; }
 .merchant-item-more p { margin:0 0 4px; overflow-wrap:anywhere; }
 .merchant-item-more a { color:#6e4a12; }
 .merchant-use { align-self:center; padding:8px 12px; font-size:15px; }
@@ -566,12 +571,26 @@ button { font: inherit; }
 /* Studio's root frame and canvas padding are removed here only, so the widget is one parchment row, not a box in a box. */
 .treasury-next .ag-studio-root-inner { background: transparent; border: 0; }
 .treasury-next .ag-studio-layout { padding: 0; }
-.next-area { display: flex; align-items: center; gap: 12px; padding: 10px 12px; background: var(--paper-3); border: 1px solid var(--ink-line); color: var(--ink); font: 15px/1.35 Alegreya, Arial, sans-serif; box-sizing: border-box; }
+.next-area { display: flex; flex-direction: column; gap: 14px; padding: 12px; background: var(--paper-3); border: 1px solid var(--ink-line); color: var(--ink); font: 15px/1.35 Alegreya, Arial, sans-serif; box-sizing: border-box; }
+.next-area-main { display: flex; align-items: center; gap: 12px; width: 100%; }
+.next-area-art { width: 88px; height: 64px; object-fit: cover; image-rendering: pixelated; border: 1px solid var(--ink-line); }
+.treasury-week { width: 100%; padding-top: 10px; border-top: 1px solid var(--ink-line); }
+.treasury-week-head { display: flex; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+.treasury-week-head > span { color: var(--ink-muted); font-size: 13px; }
+.treasury-week-row { display: grid; grid-template-columns: 64px minmax(24px,1fr) 70px; align-items: center; gap: 8px; font-size: 14px; margin: 5px 0; }
+.treasury-week-row > strong { text-align: right; font-variant-numeric: tabular-nums; }
+.treasury-week-track { height: 7px; background: var(--paper-2); }
+.treasury-week-track > span { display: block; height: 100%; background: #927341; }
+.treasury-week-row.recorded .treasury-week-track > span { background: #557454; }
+.treasury-week summary { cursor: pointer; color: var(--ink-muted); min-height: 36px; line-height: 36px; font-size: 14px; }
+.treasury-week-records { margin: 0; padding: 0; list-style: none; }
+.treasury-week-records button { min-height: 44px; text-align: left; }
+.merchant-item-actions { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 0 16px; }
+.merchant-item-actions button, .merchant-item-more button { min-height: 44px; text-align: left; }
 .next-area-text { flex: 1; min-width: 0; }
 .next-area-name { margin: 0; overflow-wrap: anywhere; }
-.next-area-label { font-size: 13px; text-transform: uppercase; letter-spacing: .6px; color: var(--brass-dark); }
-.next-area-name strong { font-size: 16px; }
-.next-area-percent { font-size: 13px; color: var(--ink-muted); }
+.next-area-label { display: block; font-size: 13px; text-transform: uppercase; letter-spacing: .6px; color: var(--brass-dark); }
+.next-area-name strong { display: block; font-size: 16px; }
 .next-area-bar { height: 6px; margin: 6px 0 4px; background: var(--paper-2); border: 1px solid var(--ink-line); }
 .next-area-bar span { display: block; height: 100%; background: var(--brass); }
 .next-area-meta { margin: 0; font-size: 14px; color: var(--ink-muted); font-variant-numeric: tabular-nums; }
@@ -580,6 +599,52 @@ button { font: inherit; }
 details.steward > summary { min-height: 44px; display: flex; align-items: center; cursor: pointer; font: 700 16px Alegreya, Arial, sans-serif; color: var(--ink); }
 details.steward:not([open]) > summary { color: var(--ink-muted); font-weight: 500; }
 @media (max-width: 480px) {
-  .next-area { flex-wrap: wrap; gap: 0 12px; }
+  .next-area-main { display: grid; grid-template-columns: 64px minmax(0,1fr); gap: 8px; }
+  .next-area-art { width: 64px; height: 64px; }
+  .next-area-visit { grid-column: 2; justify-self: start; }
   .next-area-visit { min-height: 40px; }
 }
+
+/* Nobody signed in to a shared family: the page shows only the sign-in dialog, never a household behind it. */
+body[data-signed-in='false'] .shell { visibility:hidden; }
+/* Family access (shared families with passkeys): one sign-in card in the deed style, the signed-in name in the top bar,
+   and a compact family section in House. No dashboard or permanent notice. */
+.access-dialog { padding:0; border:0; background:transparent; width:min(420px, calc(100vw - 20px)); max-width:none; max-height:calc(100dvh - 20px); overflow:auto; overscroll-behavior:contain; color:var(--ink); }
+.access-dialog::backdrop { background:rgb(8 18 22 / .86); }
+.access-paper { padding:14px 16px 16px; }
+.access-head { margin:4px 4px 12px; }
+.access-banner { display:block; width:100%; height:58px; object-fit:cover; object-position:center 40%; image-rendering:pixelated; border:3px solid var(--ink); background:var(--board); }
+.access-head h2 { margin:10px 2px 0; font-size:25px; line-height:1.1; color:var(--ink); }
+.access-head h2:focus { outline:none; }
+.access-body { margin:0 4px; font-size:16px; }
+.access-body p { margin:0 0 10px; }
+.access-body .actions { margin-top:12px; }
+.access-body button.primary, .access-body button:not(.link-button) { min-height:44px; padding:9px 16px; border-radius:3px; border:1px solid #8a6f45; background:var(--paper-3); color:var(--ink); font-weight:500; cursor:pointer; }
+.access-body button.primary { background:var(--brass); border-color:var(--brass-dark); font-weight:700; }
+.access-body button:disabled { opacity:.55; cursor:not-allowed; }
+.access-body .link-button { min-height:44px; }
+.access-body .field input { width:100%; min-height:44px; border:1px solid var(--ink-line); border-radius:2px; background:var(--paper-3); color:var(--ink); padding:8px 10px; }
+.access-body .field input[aria-invalid='true'] { border-color:var(--warn); box-shadow:0 0 0 1px var(--warn); }
+.access-status { margin:10px 4px 0; min-height:1.3em; font-size:15px; }
+.access-status[data-kind='error'] { color:var(--warn); }
+.access-card :focus-visible { outline:3px solid #7a4f12; outline-offset:2px; }
+.live-status { display:inline-flex; align-items:center; gap:6px; margin:0; min-height:44px; color:var(--ivory); font-size:14px; white-space:nowrap; }
+.live-status[hidden] { display:none; }
+.live-status .live-dot { width:8px; height:8px; border-radius:50%; background:var(--gold); box-shadow:0 0 0 2px rgba(0,0,0,.25); }
+.live-status .link-button { min-height:44px; padding:0 4px; color:var(--ivory); }
+.signed-in { display:inline-flex; align-items:center; min-height:44px; padding:0 4px; color:var(--ivory); font-size:15px; border-bottom:1px solid var(--rule); white-space:nowrap; max-width:200px; overflow:hidden; text-overflow:ellipsis; }
+.family-access { margin:4px 0 14px; }
+.family-access h4 { margin:12px 0 6px; font-size:16px; }
+.invite-form { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:0 10px; align-items:end; }
+.invite-form .actions { grid-column:1 / -1; margin-top:0; }
+.invite-form select { min-height:44px; padding:8px 10px; border:1px solid var(--ink-line); border-radius:3px; background:var(--paper-3); color:var(--ink); }
+.invite-result { margin:4px 0 10px; }
+.invite-result p { margin:0 0 6px; font-size:15px; }
+.invite-result input { width:100%; min-height:44px; padding:8px 10px; border:1px solid var(--ink-line); border-radius:2px; background:var(--paper-2); color:var(--ink); font-size:14px; }
+.access-list { list-style:none; margin:6px 0; padding:0; }
+.access-list li { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:4px 12px; padding:2px 0; border-bottom:1px solid var(--ink-line); font-size:15px; }
+.access-list li[data-status='expired'], .access-list li[data-status='revoked'], .access-list li[data-access='revoked'] { color:var(--ink-muted); }
+.access-list .link-button, .family-access .actions .link-button { min-height:44px; }
+.access-me { margin:10px 0 0; font-size:15px; color:var(--ink-muted); }
+@media(max-width:400px) { .live-status .live-text { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); } .live-status { font-size:13px; } }
+@media(max-width:400px) { .signed-in { max-width:110px; font-size:13px; } .invite-form { grid-template-columns:1fr; } }

@@ -4,7 +4,7 @@
 // `query`, `limit`, `filters.price.max_price` (dollars, offer-level) and `config.{country,currency,language}`.
 // Response used: `products[].{id,title,brands,images,offers[].{url,domain,price.{price,currency},availability,condition}}`.
 //
-// Only the words the family typed, an optional budget and the goal currency leave this server: never household names,
+// Only search words/budget, public product/retailer/variant references and locale leave this server: never household names,
 // members, ledger, bills, other credentials or a user id. Searching is discovery only; nothing here buys, credits
 // money, changes a goal or unlocks an area.
 
@@ -12,6 +12,7 @@ import { randomBytes } from 'node:crypto';
 import { DomainError } from '../household.mjs';
 
 export const CHANNEL3_SEARCH_URL = 'https://api.trychannel3.com/v1/search';
+const CHANNEL3_BASE = 'https://api.trychannel3.com/v1';
 export const MERCHANT_CURRENCY = 'USD'; // The household goal is kept in USD, so searches ask Channel3 for US/USD offers.
 export const MAX_RESULTS = 3;
 export const QUERY_LIMITS = Object.freeze({ min: 2, max: 80 });
@@ -122,6 +123,7 @@ function pickImage(images, title) {
 function usability(offer) {
   if (!offer || offer.priceCents === null) return { usable: false, reason: 'No price was returned for this item.' };
   if (offer.currency !== MERCHANT_CURRENCY) return { usable: false, reason: `Priced in ${offer.currency}; the goal is kept in ${MERCHANT_CURRENCY}.` };
+  if (offer.availability === 'OutOfStock') return { usable: false, reason: 'This item is out of stock.' };
   if (offer.priceCents < BUDGET_LIMITS.minCents || offer.priceCents > BUDGET_LIMITS.maxCents) return { usable: false, reason: 'This price is outside the goal range ($1.00 to $100,000.00).' };
   return { usable: true, reason: null };
 }
@@ -141,6 +143,7 @@ export function normalizeSearch(json, { budgetCents = null } = {}) {
     const productId = typeof product.id === 'string' && PRODUCT_ID.test(product.id) ? product.id : null;
     const title = cleanText(product.title, 90);
     if (!productId || title.length < 2) continue;
+    if (results.some((r) => r.productId === productId)) continue;
     const offers = Array.isArray(product.offers) ? product.offers.slice(0, 50).map(readOffer).filter(Boolean) : [];
     const offer = offers.length ? [...offers].sort((a, b) => compare(rankOffer(a, budgetCents), rankOffer(b, budgetCents)))[0] : null;
     const brand = Array.isArray(product.brands) ? cleanText(product.brands.find((b) => typeof b?.name === 'string')?.name, 60) : '';
@@ -156,6 +159,7 @@ export function normalizeSearch(json, { budgetCents = null } = {}) {
       currency: offer?.currency ?? null,
       availability: offer?.availability ?? null,
       condition: offer?.condition ?? null,
+      selection: readSelection(product.variants?.selected),
       otherOffers: Math.max(0, offers.length - 1),
       overBudget: Boolean(budgetCents !== null && offer?.priceCents !== null && offer?.currency === MERCHANT_CURRENCY && offer.priceCents > budgetCents),
       usable,
@@ -165,6 +169,37 @@ export function normalizeSearch(json, { budgetCents = null } = {}) {
   return results;
 }
 
+// Persist only the selected labels, never provider HTML or an arbitrary lookup URL. A changed/relaxed variant cannot
+// silently stand in for the one the family selected. Older saved items have no selection and require fresh review.
+function readSelection(value) {
+  if (!Array.isArray(value)) return [];
+  return value.slice(0, 8).flatMap((v) => {
+    const name = cleanText(v?.name, 60), label = cleanText(v?.label, 100);
+    return name && label ? [{ name, label }] : [];
+  }).sort((a, b) => a.name.localeCompare(b.name));
+}
+
+// Public offer identity, never a family identifier. Another retailer/condition/variant remains a separate choice.
+const offerKey = (item) => JSON.stringify([item.productId, item.merchant, item.condition ?? null, readSelection(item.selection)]);
+const offerFacts = (item) => item === null ? null : JSON.stringify([
+  item.merchant, item.priceCents, item.currency, item.availability, item.condition ?? null, readSelection(item.selection), item.usable,
+]);
+const expiredDraft = () => fail(410, 'merchant_draft_expired', 'That merchant result has expired. Search again for a fresh price before saving.');
+
+export function normalizeProduct(json, reference) {
+  if (json?.id !== reference.productId) throw fail(502, 'merchant_malformed', 'Channel3 returned a different item. Nothing was changed.');
+  const offers = Array.isArray(json.offers) ? json.offers.filter((o) => {
+    const offer = readOffer(o);
+    return offer?.merchant === reference.merchant && (!reference.condition || offer.condition === reference.condition);
+  }) : [];
+  const row = normalizeSearch({ products: [{ ...json, offers }] })[0];
+  if (!row) throw fail(502, 'merchant_malformed', 'Channel3 sent an item this app could not read.');
+  const wanted = readSelection(reference.selection);
+  const changed = wanted.some((v) => !row.selection.some((r) => r.name === v.name && r.label === v.label));
+  if (changed) Object.assign(row, { usable: false, url: null, unusableReason: 'The selected size or colour is no longer available. Choose another item.' });
+  return { ...row, refreshed: true, previousPriceCents: reference.priceCents, selectionChanged: changed };
+}
+
 async function providerError(response) {
   let detail = '';
   try { const body = await response.json(); detail = typeof body?.detail === 'string' ? body.detail : ''; } catch { /* not JSON */ }
@@ -172,6 +207,7 @@ async function providerError(response) {
   if (s === 401 || s === 403) return fail(502, 'merchant_auth', 'Channel3 did not accept this app’s search key, so no search was made.');
   if (s === 402) return fail(502, 'merchant_credits', 'Channel3 reports no search credits left for this key. No search was made.');
   if (s === 429) return fail(503, 'merchant_rate_limited', 'Channel3 is limiting searches right now. Wait a few seconds, then search again.');
+  if (s === 404) return fail(404, 'merchant_item_missing', 'This item is no longer in the catalog. Search for another item.');
   if (s === 400 || s === 422) return fail(502, 'merchant_rejected', `Channel3 could not run that search${detail ? `: ${cleanText(detail, 160)}` : '.'}`);
   return fail(502, 'merchant_unavailable', `Channel3 did not answer properly (HTTP ${s}). Try again later.`);
 }
@@ -182,16 +218,15 @@ async function providerError(response) {
  */
 export function createChannel3Client({ apiKey, fetch = globalThis.fetch, timeoutMs = DEFAULTS.timeoutMs }) {
   if (!apiKey) throw new Error('createChannel3Client needs an API key');
-  return {
-    async search(input) {
+  async function request(url, body) {
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), timeoutMs);
       let response;
       try {
-        response = await fetch(CHANNEL3_SEARCH_URL, {
-          method: 'POST',
+        response = await fetch(url, {
+          method: body ? 'POST' : 'GET',
           headers: { 'x-api-key': apiKey, 'Content-Type': 'application/json', Accept: 'application/json' },
-          body: JSON.stringify(searchRequestBody(input)),
+          ...(body ? { body: JSON.stringify(body) } : {}),
           signal: controller.signal,
           redirect: 'error',
         });
@@ -207,6 +242,20 @@ export function createChannel3Client({ apiKey, fetch = globalThis.fetch, timeout
           throw fail(502, 'merchant_malformed', 'Channel3 sent a response this app could not read. Nothing was saved.');
         }
       } finally { clearTimeout(timer); }
+  }
+  return {
+    search: (input) => request(CHANNEL3_SEARCH_URL, searchRequestBody(input)),
+    similar: (productId, budgetCents) => request(`${CHANNEL3_BASE}/similar`, {
+      product_id: productId, limit: MAX_RESULTS,
+      filters: { price: { max_price: budgetCents / 100 } },
+      config: { country: 'US', currency: MERCHANT_CURRENCY, language: 'en' },
+    }),
+    product: (reference) => {
+      if (!PRODUCT_ID.test(reference.productId)) throw fail(400, 'invalid_product', 'Choose an item returned by the merchant.');
+      const url = new URL(`${CHANNEL3_BASE}/products/${encodeURIComponent(reference.productId)}`);
+      for (const [k, v] of Object.entries({ country: 'US', currency: MERCHANT_CURRENCY, language: 'en', website_ids: reference.merchant })) if (v) url.searchParams.set(k, v);
+      for (const { name, label } of readSelection(reference.selection)) url.searchParams.set(`option_${name}`, label);
+      return request(url.href);
     },
   };
 }
@@ -221,7 +270,9 @@ export function createMerchant({ apiKey = null, fetch, clock, ...options } = {})
   const client = apiKey ? createChannel3Client({ apiKey, fetch, timeoutMs: opts.timeoutMs }) : null;
   const cache = new Map(); // key -> { at, value }
   const inflight = new Map(); // key -> Promise
-  const drafts = new Map(); // draftId -> { expiresAt, item }
+  const drafts = new Map(); // draftId -> { expiresAt, item, offerKey, facts }
+  const observations = new Map(); // offerKey -> { version, facts, at }; bounded catalog knowledge, not search history
+  let readVersion = 0; // Start order, so an older slow response cannot revive an offer a newer lookup contradicted.
   let recent = []; // timestamps of provider calls in the last minute
 
   const connected = Boolean(client);
@@ -234,9 +285,83 @@ export function createMerchant({ apiKey = null, fetch, clock, ...options } = {})
   function prune(at) {
     for (const [key, entry] of cache) if (at - entry.at > opts.cacheTtlMs) cache.delete(key);
     for (const [id, entry] of drafts) if (at > entry.expiresAt) drafts.delete(id);
+    for (const [key, entry] of observations) if (at - entry.at > opts.draftTtlMs) observations.delete(key);
     while (cache.size > opts.maxCacheEntries) cache.delete(cache.keys().next().value);
     while (drafts.size > opts.maxDrafts) drafts.delete(drafts.keys().next().value);
+    while (observations.size > opts.maxDrafts * 2) observations.delete(observations.keys().next().value);
     recent = recent.filter((t) => at - t < 60_000);
+  }
+
+  function observe(reference, row, version) {
+    const key = offerKey(reference), facts = offerFacts(row);
+    const latest = observations.get(key);
+    if (latest && latest.version > version) {
+      if (latest.facts !== facts) throw expiredDraft();
+      return; // Same offer facts; retain the later read's ordering.
+    }
+    observations.delete(key);
+    observations.set(key, { version, facts, at: now() });
+    // A draft is not a reserved price. Once the catalog contradicts it, the family must review another result.
+    // Keep equal offers usable: a new tracking URL or a title/image change alone does not invalidate consent.
+    for (const [id, entry] of drafts) if (entry.offerKey === key && entry.facts !== facts) drafts.delete(id);
+    // Cached results carry the same short-lived references. Never return a list whose references just expired.
+    for (const [query, entry] of cache) if (entry.value.results.some((r) => !drafts.has(r.referenceId))) cache.delete(query);
+    prune(now());
+  }
+
+  function remember(row, checkedAt, query = '') {
+    // Every shown product has a bounded reference for explicit refresh/similar; only usable products have goal drafts.
+    const referenceId = `c3d_${randomBytes(12).toString('hex')}`;
+    drafts.set(referenceId, { expiresAt: now() + opts.draftTtlMs, item: { ...row, checkedAt, query }, offerKey: offerKey(row), facts: offerFacts(row) });
+    prune(now());
+    return { ...row, draftId: row.usable ? referenceId : null, referenceId, checkedAt };
+  }
+
+  async function bounded(key, run) {
+    if (!client) throw fail(503, 'merchant_not_connected', 'Product search is not connected.');
+    prune(now());
+    if (inflight.has(key)) return inflight.get(key);
+    if (recent.length >= opts.maxSearchesPerMinute) throw fail(429, 'merchant_busy', 'That is a lot of searches in one minute. Wait a moment, then try again.');
+    recent.push(now());
+    const pending = run();
+    inflight.set(key, pending);
+    try { return await pending; } finally { inflight.delete(key); }
+  }
+
+  async function refresh(reference) {
+    const key = `product:${reference.productId}:${reference.merchant}:${reference.condition}:${JSON.stringify(readSelection(reference.selection))}`;
+    const result = await bounded(key, async () => {
+      const version = ++readVersion;
+      let json;
+      try { json = await client.product(reference); } catch (error) {
+        // A missing catalog item is evidence; a timeout, transport failure or malformed response is not.
+        if (error.code === 'merchant_item_missing') observe(reference, null, version);
+        throw error;
+      }
+      const row = normalizeProduct(json, reference);
+      observe(reference, row, version);
+      if (!row.selectionChanged && row.merchant && offerKey(row) !== offerKey(reference)) observe(row, row, version);
+      const checkedAt = new Date(now()).toISOString();
+      return { status: 'ok', provider: 'Channel3', checkedAt, results: [remember(row, checkedAt, reference.query)] };
+    });
+    // A saved item and a newer search can share the lookup but have different comparison prices.
+    return { ...result, results: result.results.map((row) => ({ ...row, previousPriceCents: reference.priceCents })) };
+  }
+
+  async function alternatives(reference, budgetCents) {
+    const budget = validateSearch({ query: 'similar item', budgetCents }).budgetCents;
+    if (reference.currency !== MERCHANT_CURRENCY || !Number.isSafeInteger(reference.priceCents)) throw fail(400, 'merchant_price_unusable', 'Choose a priced USD item to compare.');
+    const ceiling = Math.min(budget ?? reference.priceCents, reference.priceCents - 1);
+    if (ceiling < BUDGET_LIMITS.minCents) return { status: 'ok', provider: 'Channel3', results: [], budgetCents: ceiling, checkedAt: new Date(now()).toISOString() };
+    return bounded(`similar:${reference.productId}:${ceiling}`, async () => {
+      const version = ++readVersion;
+      const json = await client.similar(reference.productId, ceiling);
+      // Provider filters are not a guarantee: enforce the budget, stock, currency and source exclusion locally too.
+      const rows = normalizeSearch(json, { budgetCents: ceiling }).filter((r) => r.productId !== reference.productId && r.usable && r.availability === 'InStock' && r.priceCents <= ceiling);
+      for (const row of rows) observe(row, row, version);
+      const checkedAt = new Date(now()).toISOString();
+      return { status: 'ok', provider: 'Channel3', budgetCents: ceiling, checkedAt, results: rows.map((r) => remember(r, checkedAt, reference.query)) };
+    });
   }
 
   async function search(input) {
@@ -251,15 +376,13 @@ export function createMerchant({ apiKey = null, fetch, clock, ...options } = {})
     if (recent.length >= opts.maxSearchesPerMinute) throw fail(429, 'merchant_busy', 'That is a lot of searches in one minute. Wait a moment, then search again.');
     recent.push(at);
     const pending = (async () => {
+      const version = ++readVersion;
       const json = await client.search(request);
       const rows = normalizeSearch(json, { budgetCents: request.budgetCents });
+      for (const row of rows) observe(row, row, version);
       at = now();
       const checkedAt = new Date(at).toISOString();
-      const results = rows.map((row) => {
-        const draftId = row.usable ? `c3d_${randomBytes(12).toString('hex')}` : null;
-        if (draftId) drafts.set(draftId, { expiresAt: at + opts.draftTtlMs, item: { ...row, checkedAt, query: request.query } });
-        return { ...row, draftId, checkedAt };
-      });
+      const results = rows.map((row) => remember(row, checkedAt, request.query));
       const value = { status: 'ok', provider: 'Channel3', checkedAt, query: request.query, budgetCents: request.budgetCents, currency: MERCHANT_CURRENCY, results };
       cache.set(key, { at, value });
       prune(at);
@@ -273,9 +396,9 @@ export function createMerchant({ apiKey = null, fetch, clock, ...options } = {})
   function draft(draftId) {
     prune(now());
     const entry = typeof draftId === 'string' ? drafts.get(draftId) : null;
-    if (!entry) throw fail(410, 'merchant_draft_expired', 'That merchant result has expired. Search again for a fresh price before saving.');
+    if (!entry) throw expiredDraft();
     return entry.item;
   }
 
-  return { connected, status, search, draft };
+  return { connected, status, search, draft, refresh, alternatives };
 }

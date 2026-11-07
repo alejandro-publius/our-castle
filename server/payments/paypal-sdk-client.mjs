@@ -53,23 +53,41 @@ function toPayPalError(error) {
   return error;
 }
 
-export function createPayPalSdkClient({ clientId, clientSecret, controllers = null, restFetch, timeoutMs = 30_000 }) {
+export function createPayPalSdkClient({ clientId, clientSecret, controllers = null, restFetch, timeoutMs = 30_000, httpAdapter }) {
   if (!clientId || !clientSecret) throw new Error('PayPal sandbox credentials are required');
   let orders;
   let payments;
+  let client;
   if (controllers) ({ orders, payments } = controllers);
   else {
-    const client = new Client({
+    client = new Client({
       clientCredentialsAuthCredentials: { oAuthClientId: clientId, oAuthClientSecret: clientSecret },
       environment: Environment.Sandbox,
       timeout: timeoutMs,
+      // Internal test seam: runs the real generated auth/controllers/serializers without any provider traffic.
+      // Never populated from HTTP input or environment; pinned SDK 2.5.0 exposes this axios adapter override.
+      ...(httpAdapter ? { unstable_httpClientOptions: { adapter: httpAdapter } } : {}),
     });
     orders = new OrdersController(client);
     payments = new PaymentsController(client);
   }
   const rest = createRestClient({ clientId, clientSecret, ...(restFetch ? { fetch: restFetch } : {}) });
 
-  async function call(run) {
+  // SDK 2.5.0's public builder interceptor runs after its OAuth/authentication interceptor and inside its retry
+  // pipeline (@apimatic/core requestBuilder.ts). Bind the guard to one controller call, not global client state:
+  // concurrent adults share the long-lived SDK/token cache without sharing each other's authorization callback.
+  function guardedController(Controller, fallback, assertAccess) {
+    if (!client || !assertAccess) return fallback; // injected controllers are a unit-test seam, without SDK OAuth
+    const factory = client.getRequestBuilderFactory();
+    return new Controller({ getRequestBuilderFactory: () => (...args) => {
+      const request = factory(...args);
+      request.interceptRequest(req => { assertAccess(); return req; });
+      return request;
+    } });
+  }
+
+  async function call(run, assertAccess) {
+    assertAccess?.();
     let response;
     try { response = await run(); } catch (error) { throw toPayPalError(error); }
     return { data: rawJson(response.body), debugId: header(response.headers, 'paypal-debug-id'), status: response.statusCode };
@@ -105,8 +123,8 @@ export function createPayPalSdkClient({ clientId, clientSecret, controllers = nu
       }));
     },
 
-    captureOrder(orderId, { requestId }) {
-      return call(() => orders.captureOrder({ id: orderId, paypalRequestId: requestId, prefer: 'return=representation' }));
+    captureOrder(orderId, { requestId, assertAccess }) {
+      return call(() => guardedController(OrdersController, orders, assertAccess).captureOrder({ id: orderId, paypalRequestId: requestId, prefer: 'return=representation' }), assertAccess);
     },
 
     getOrder(orderId) {
@@ -117,8 +135,8 @@ export function createPayPalSdkClient({ clientId, clientSecret, controllers = nu
       return call(() => payments.getCapturedPayment({ captureId }));
     },
 
-    refundCapture(captureId, { amountCents, currency, requestId, note }) {
-      return call(() => payments.refundCapturedPayment({
+    refundCapture(captureId, { amountCents, currency, requestId, note, assertAccess }) {
+      return call(() => guardedController(PaymentsController, payments, assertAccess).refundCapturedPayment({
         captureId,
         paypalRequestId: requestId,
         prefer: 'return=representation',
@@ -126,7 +144,7 @@ export function createPayPalSdkClient({ clientId, clientSecret, controllers = nu
           amount: { currencyCode: currency, value: centsToDecimalString(amountCents) },
           noteToPayer: (note ?? 'Our Castle sandbox refund').slice(0, 255),
         },
-      }));
+      }), assertAccess);
     },
 
     verifyWebhookSignature: (args) => rest.verifyWebhookSignature(args),

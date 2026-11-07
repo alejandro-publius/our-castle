@@ -1,7 +1,9 @@
 import { createBoardScene } from '../world/board-scene.js';
 import { createFamilyAvatars } from './family-avatars.js';
 import { memberAvatar, avatarImage } from '../core/avatars.js';
-import { api, newRequestId } from './api.js';
+import { api, newRequestId, setSession } from './api.js';
+import { createAccessDialog, renderFamilyAccess } from './family-access.js';
+import { createFamilyLive } from './family-live.js';
 import { bus } from './bus.js';
 import { chargeIcon, crestChoices, crestSvg } from './crest.js';
 import { TIERS, formatCents, formatPercent, parseAmountToCents, ROUTE_LENGTH } from '../core/rules.js';
@@ -18,7 +20,7 @@ import { REALM_DISTRICTS, REALM_LEGENDS, realmAccess, districtById, homeDistrict
 import { ledgerTrail } from '../core/ledger.js';
 import { createMerchantDialog, resultFacts } from './merchant.js';
 import { createTreasury } from './treasury.js';
-import { FAMILY_PROJECT_SITE, projectLabel, projectStage } from '../core/family-project.js';
+import { FAMILY_PROJECT_SITE, PROJECT_KINDS, projectKind, projectLabel, projectStage } from '../core/family-project.js';
 import { CONFIRMATION_HISTORY_QUESTION, NEEDS_CHECK_QUESTION, isLocalQuestion, isNeedsCheckQuestion } from '../core/steward-questions.js';
 import { checkStatus } from '../core/check-status.js';
 import { createPlanCheck } from './plan-check.js';
@@ -45,6 +47,15 @@ const dateLabel = (iso) => {
   return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
 };
 const timeLabel = (iso) => new Date(iso).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+// The family project's stage, read from the server's progress and goal, drawn as the goal's saved Build choice.
+const currentProject = () => projectStage(state.progress.progressCents, state.goal.targetCents, state.goal.projectKind);
+// Its map marker, in the quiet gold-and-ink glint style: a tent, a sprout in its bed, or a schoolhouse with its bell.
+const PROJECT_ICON_STROKE = 'stroke="#3b2a12" stroke-width="1.6" stroke-linejoin="round"';
+const PROJECT_ICONS = {
+  campsite: `<svg viewBox="0 0 28 28" width="28" height="28" fill="none" aria-hidden="true"><path d="M14 4 2.5 24h23L14 4Z" fill="currentColor" ${PROJECT_ICON_STROKE}/><path d="M14 11.5 9 24h10l-5-12.5Z" fill="#3b2a12"/><path d="M14 1v3" stroke="#3b2a12" stroke-width="1.6" stroke-linecap="round"/></svg>`,
+  garden: `<svg viewBox="0 0 28 28" width="28" height="28" fill="none" aria-hidden="true"><path d="M14 19.5V10" stroke="#3b2a12" stroke-width="1.8" stroke-linecap="round"/><path d="M13.6 14.2C8.4 14.6 5.2 11.6 5 6.6c5.1-.3 8.4 2.6 8.6 7.6Z" fill="currentColor" ${PROJECT_ICON_STROKE}/><path d="M14.4 11.2c.2-5 3.5-7.9 8.6-7.6-.2 5-3.4 8-8.6 7.6Z" fill="currentColor" ${PROJECT_ICON_STROKE}/><path d="M3 25h22l-2.4-5.6H5.4L3 25Z" fill="currentColor" ${PROJECT_ICON_STROKE}/></svg>`,
+  schoolhouse: `<svg viewBox="0 0 28 28" width="28" height="28" fill="none" aria-hidden="true"><path d="M10.6 9.5V4.2h6.8v5.3" fill="currentColor" ${PROJECT_ICON_STROKE}/><path d="M9.4 4.4 14 1.3l4.6 3.1H9.4Z" fill="#3b2a12"/><circle cx="14" cy="6.6" r="1.35" fill="#3b2a12"/><path d="M3.5 15.4 14 8.6l10.5 6.8v9.4h-21v-9.4Z" fill="currentColor" ${PROJECT_ICON_STROKE}/><path d="M12 24.8v-5.4h4v5.4" fill="#3b2a12"/></svg>`,
+};
 const pref = {
   get(key) { try { return localStorage.getItem(`our-castle:${key}`); } catch { return null; } },
   set(key, value) { try { localStorage.setItem(`our-castle:${key}`, value); } catch { /* private mode: fine */ } },
@@ -86,6 +97,7 @@ const ui = {
   planFormDirty: false,
   planGoalId: null,
   planGoalRevision: null,
+  planProjectKind: null, // the saved Build choice the Plan form last loaded; only a change from it is sent
   scheduleDirty: false,
   schedulePlanId: null,
   commitments: [{ label: 'Internet bill', amount: '60.00', cadence: 'monthly' }],
@@ -245,6 +257,36 @@ function bindAtmosphere() {
 }
 
 async function boot() {
+  // The server says whether this is the example household or shared families, and who (if anyone) is signed in. A
+  // shared family's page shows nothing of the realm until a passkey signs someone in: no world, journal or records.
+  let session = { mode: 'example' };
+  try { session = await api.get('/api/session'); } catch { /* the household read below reports an unreachable server */ }
+  const invite = takeInvitationFromUrl();
+  if (session.mode === 'family') {
+    family.on = true;
+    document.body.dataset.access = 'family';
+    family.dialog = createAccessDialog({ signedIn: session.signedIn });
+    // An invitation link opened in a tab that is already open changes only the fragment; take it the same way.
+    window.addEventListener('hashchange', () => {
+      const token = takeInvitationFromUrl();
+      if (token) family.dialog.open({ invite: token, signedIn: Boolean(state) && !family.lost });
+    });
+    if (!session.signedIn) {
+      document.body.dataset.signedIn = 'false';
+      $('#world').setAttribute('aria-busy', 'false');
+      await family.dialog.open({ invite });
+      exposeDebug();
+      document.body.dataset.ready = 'true';
+      return;
+    }
+    setSession({ csrf: session.csrfToken, lost: requestRefused });
+    family.csrf = session.csrfToken;
+    // This page belongs to one member of one household for its whole life; a state for anyone else is never shown here.
+    family.householdId = session.household.id;
+    family.memberId = session.member.id;
+    ui.personaId = session.member.id;
+    ui.commitments = []; // a real family reports its own bills; the example bill row is example data
+  }
   try {
     // The board announces hops and tier rises on the bus; sound (and tests) listen. Nothing calls audio directly.
     scene = createBoardScene($('#world'), {
@@ -266,18 +308,166 @@ async function boot() {
   applySky();
   loadLocalWeather();
   buildCrestPickers();
+  buildProjectChoices();
   bindEvents();
   try {
+    if (family.on && invite) family.dialog.open({ invite, signedIn: true });
     applyState(await api.get('/api/state'), { animate: false });
     selectTab(resumeTab(), { focus: false, remember: false, open: false });
     setJournalOpen(pref.get('journal') !== 'closed', { remember: false });
     scene?.focusDistrict(homeDistrict(state.board.builtTier).id);
+    if (family.on) startFamilyLive();
   } catch (error) {
     $('#honesty').textContent = `Could not load the household: ${error.message}`;
   }
+  exposeDebug();
   document.body.dataset.ready = 'true';
-  window.__ourCastle = { get state() { return state; }, scene: () => scene?.debug() ?? null, treasury: () => treasury?.status() ?? null, sky: () => ({ time: sky.time, weather: sky.weather, place: sky.place, loading: sky.loading, error: sky.error, result: sky.result && { kind: sky.result.kind, label: sky.result.label, expiresAt: sky.result.expiresAt }, resolved: sky.resolved }), route: () => scene?.routeOnScreen() ?? null, bus, sound: () => ({ enabled: sound.enabled, played: sound.played() }) };
   window.__booted = true;
+}
+function exposeDebug() {
+  window.__ourCastle = { get state() { return state; }, scene: () => scene?.debug() ?? null, treasury: () => treasury?.status() ?? null, sky: () => ({ time: sky.time, weather: sky.weather, place: sky.place, loading: sky.loading, error: sky.error, result: sky.result && { kind: sky.result.kind, label: sky.result.label, expiresAt: sky.result.expiresAt }, resolved: sky.resolved }), route: () => scene?.routeOnScreen() ?? null, bus, sound: () => ({ enabled: sound.enabled, played: sound.played() }), family: () => ({ on: family.on, refreshes: family.refreshes, lost: family.lost, live: family.status, revision: family.revision, discarded: family.discarded, stream: family.live?.status() ?? null }) };
+}
+
+// ---------- Family access (shared families with passkeys; absent in example mode) ----------
+const family = {
+  on: false, dialog: null, lost: false, householdId: null, memberId: null,
+  // Live updates: the stream, its state ('off', 'live', 'down', 'polling'), and the one state read allowed at a time.
+  live: null, status: 'off', statusTimer: null, timer: null, lastRefresh: 0, refreshes: 0, reading: null, again: false, stale: false,
+  // The newest household revision this page shows, the server starts it has seen (in order), answers set aside as older,
+  // the session's CSRF token, and how many times it was renewed (a renewed session clears an approval given before it).
+  revision: null, boots: [], discarded: 0, csrf: null, epoch: 0, retryTimer: null,
+};
+const SESSION_ENDED = {
+  expired: 'Your session ended. Sign in again with your passkey.',
+  signed_out: 'You signed out in this browser. Sign in again to continue.',
+  access_revoked: 'Your access to this family was removed.',
+};
+// An invitation arrives in the link's fragment, which is never sent to the server by the browser. Take it out of the
+// address bar and history at once; it is used only through a checked same-origin request.
+function takeInvitationFromUrl() {
+  if (!location.hash.startsWith('#invite=')) return null;
+  const token = location.hash.slice('#invite='.length);
+  history.replaceState(null, '', location.pathname + location.search);
+  return /^[A-Za-z0-9_-]{20,100}$/.test(token) ? token : 'invalid';
+}
+// A request was refused because its session had ended. So has this page's, unless this browser has since signed in again
+// as the same member (in another tab): a request sent before that renewal is refused, but the page keeps the newer
+// session and its CSRF token (a renewal still clears an earlier approval). Refusals at the same moment share one check.
+let confirmingLoss = null;
+function requestRefused(error) {
+  if (family.lost) return Promise.resolve('ended');
+  confirmingLoss ??= checkFamilySession().then((now) => {
+    confirmingLoss = null;
+    if (now === 'signed-in' && !family.lost) return 'kept';
+    sessionLost(error);
+    return 'ended';
+  });
+  return confirmingLoss;
+}
+// The session ended (expired, signed out elsewhere or access removed): stop refreshing and ask for the passkey again.
+// The household stays behind the dialog's backdrop; signing in reloads the page for whoever signs in.
+function sessionLost(error) {
+  if (family.lost) return;
+  family.lost = true;
+  family.live?.stop();
+  clearInterval(family.timer); clearTimeout(family.statusTimer); clearTimeout(family.retryTimer);
+  showLiveStatus(false);
+  setSession({});
+  document.body.dataset.signedIn = 'false'; // nothing of this household stays visible behind the sign-in dialog
+  family.dialog.open({ message: error.message, signedIn: false });
+}
+// Collaborators see each other's saved changes as they happen. The live stream says only that the household changed;
+// the page then re-reads its own state, one read at a time, and keeps the newest answer. Without a stream (a dropped
+// connection, a restarting server, or another tab of this browser holding it) the page re-reads when shown or focused
+// and at most every 45 seconds while visible. Reads only: unsaved edits are kept by the existing dirty-form guards.
+function startFamilyLive() {
+  const streaming = () => family.status === 'live';
+  family.live = createFamilyLive({
+    onChange: (kind, revision) => { if (!revision || revision !== family.revision) readFamilyState({ background: true }); },
+    onEnded: (reason) => sessionLost({ message: SESSION_ENDED[reason] ?? SESSION_ENDED.expired }),
+    onStatus: setLiveStatus,
+    checkSession: checkFamilySession,
+  });
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState !== 'visible' || family.lost) return;
+    if (family.live.status().replaced) family.live.retryNow();
+    if (family.stale || !streaming()) readFamilyState({ throttle: true });
+  });
+  window.addEventListener('focus', () => { if (!family.lost && (family.stale || !streaming())) readFamilyState({ throttle: true }); });
+  family.timer = setInterval(() => { if (!streaming() && document.visibilityState === 'visible') readFamilyState({ background: true, throttle: true }); }, 45_000);
+  $('#live-retry').addEventListener('click', () => { family.live?.retryNow(); readFamilyState(); });
+}
+// Is this browser still signed in as this page's member? The same session (a dropped connection, a server restart)
+// changes nothing. A renewed session (signed in again in another tab) keeps the page with its new CSRF token, and
+// counts as a new session for approvals; anyone else, or no one, sends it to sign-in.
+async function checkFamilySession() {
+  let session;
+  try { session = await api.get('/api/session', { background: true }); } catch { return 'unreachable'; }
+  if (!session.signedIn || session.member?.id !== family.memberId || session.household?.id !== family.householdId) return 'signed-out';
+  if (session.csrfToken !== family.csrf) {
+    family.csrf = session.csrfToken;
+    family.epoch++;
+    setSession({ csrf: session.csrfToken, lost: requestRefused });
+  }
+  return 'signed-in';
+}
+// One state read at a time. A change announced while one is under way reads once more after it; a hidden tab waits
+// until it is shown. A failed read (the server is restarting or unreachable) tries again once, a few seconds later.
+async function readFamilyState({ background = false, throttle = false } = {}) {
+  if (family.lost) return;
+  if (document.visibilityState !== 'visible') { family.stale = true; return; }
+  if (throttle && Date.now() - family.lastRefresh < 5_000) return;
+  if (family.reading) { family.again = true; return family.reading; }
+  family.reading = (async () => {
+    do {
+      family.again = false; family.stale = false; family.lastRefresh = Date.now();
+      try {
+        const next = await api.get('/api/state', { background });
+        if (!family.lost && applyState(next)) family.refreshes++;
+      } catch (error) {
+        if (family.lost || error.status) break; // an ended session opens sign-in; other refusals wait for the next change
+        family.stale = true;
+        clearTimeout(family.retryTimer);
+        family.retryTimer = setTimeout(() => readFamilyState({ background: true }), 5_000);
+        break;
+      }
+    } while (family.again && !family.lost);
+  })().finally(() => { family.reading = null; });
+  return family.reading;
+}
+// The one connection state: shown only when live updates have been away for a while, with the action that helps.
+function setLiveStatus(status) {
+  const was = family.status;
+  family.status = status;
+  if (status === 'down') {
+    // Timed from the first failure: the browser's own retries every few seconds do not restart the wait.
+    if (was !== 'down') family.statusTimer = setTimeout(() => showLiveStatus(!family.lost && family.status === 'down'), 8_000);
+    return;
+  }
+  clearTimeout(family.statusTimer);
+  showLiveStatus(false);
+}
+function showLiveStatus(show) {
+  const box = $('#live-status');
+  if (box) box.hidden = !show;
+}
+// Accept a state for this page only if it is this member's household and no older than the one shown. Revisions are
+// "<server start>.<count>": a later count, or a newer server start, is newer.
+function acceptFamilyState(next) {
+  if (next?.household?.id !== family.householdId || (next.access && next.access.me.memberId !== family.memberId)) {
+    sessionLost({ message: 'This browser is now signed in as someone else. Sign in again to continue here.' });
+    return false;
+  }
+  const [boot, count] = String(next.revision ?? '').split('.');
+  if (!boot) return true;
+  const [shownBoot, shownCount] = String(family.revision ?? '').split('.');
+  if (shownBoot) {
+    const older = family.boots.indexOf(boot) !== -1 && family.boots.indexOf(boot) < family.boots.indexOf(shownBoot);
+    if (older || (boot === shownBoot && Number(count) < Number(shownCount))) { family.discarded++; return false; }
+  }
+  if (!family.boots.includes(boot)) family.boots.push(boot);
+  family.revision = next.revision;
+  return true;
 }
 
 // A returning family lands on the tab they last chose in this browser tab; otherwise on the tab holding their next step.
@@ -291,13 +481,24 @@ function resumeTab() {
 // Announce only additions earned between two authoritative server states for the same goal (see rewards.js).
 const newlyEarned = (previous, next) => (previous?.goal?.id === next?.goal?.id ? newlyEarnedEstate(previous?.rewards, next?.rewards) : []);
 
-function applyState(next, { animate = true, result = null } = {}) {
+function applyState(next, options = {}) {
+  if (family.on && !acceptFamilyState(next)) {
+    // An older answer arrived after a newer one: keep the newer records, and still draw what this action changed on the
+    // page around them (a receipt, a status).
+    if (state && !family.lost) drawState(state, { animate: false });
+    return false;
+  }
+  drawState(next, options);
+  return true;
+}
+function drawState(next, { animate = true, result = null } = {}) {
   const added = newlyEarned(state, next);
   // Areas the server newly opened for this household and goal (never on a first load, reload or replay).
   const opened = newlyOpenedDistricts(state, next);
   const scope = { householdId: next.household.id, goalId: next.goal.id };
   state = next;
-  if (!persona()) ui.personaId = state.members.find((m) => m.role === 'adult')?.id ?? state.members[0]?.id;
+  if (state.access) ui.personaId = state.access.me.memberId; // a signed-in member is always themselves
+  else if (!persona()) ui.personaId = state.members.find((m) => m.role === 'adult')?.id ?? state.members[0]?.id;
   renderHeader();
   renderQuest();
   renderNextStep();
@@ -405,6 +606,9 @@ function renderHeader() {
       modes.ai.mode === 'live' ? 'AI planner' : 'Built-in planner'),
   );
   const select = $('#persona');
+  select.closest('.persona').hidden = Boolean(state.access);
+  $('#signed-in').hidden = !state.access;
+  if (state.access) { const me = members.find((m) => m.id === state.access.me.memberId); $('#signed-in').textContent = `${me?.name ?? ''} · ${state.access.me.role === 'adult' ? 'Adult' : 'Child'}`; return; }
   select.replaceChildren(...members.map((m) => h('option', { value: m.id, selected: m.id === ui.personaId }, `${m.name} · ${m.role === 'adult' ? 'Adult' : 'Child'}`)));
 }
 
@@ -464,8 +668,9 @@ function renderBoard({ animate, result, added = [], hasNewDistrict = false }) {
     playMode: household.playMode,
     members: state.members,
     milestoneSpaces: board.milestoneSpaces.map((m) => m.space),
-    // The campsite's stage is read from the server's progress and goal through the existing milestone rules.
-    project: (({ index, key, detail }) => ({ index, key, detail }))(projectStage(state.progress.progressCents, state.goal.targetCents)),
+    // The project's stage is read from the server's progress and goal through the existing milestone rules; what it
+    // builds is the family's saved choice, never an unsaved Plan field.
+    project: (({ index, key, detail, kind }) => ({ index, key, detail, kind }))(currentProject()),
   }, { animate }).then(() => {
     if (!hasNewDistrict && (result?.awarded?.length || added.length)) celebrate(result?.awarded ?? [], added);
   });
@@ -488,18 +693,36 @@ function districtCondition(district) {
   const required=Math.ceil(state.goal.targetCents*district.percent/100),remaining=Math.max(0,required-state.progress.progressCents);
   return remaining ? `${money(remaining)} to unlock` : `${district.percent}% milestone`;
 }
+// The map's buttons are rebuilt only when an area opens or closes or the Build choice changes. Any other update (a live
+// update from another member, say) leaves them, their places on the map and the keyboard on them exactly as they are.
+let realmNavigationKey = null;
 function renderRealmNavigation() {
   const regions = realmAccess({ builtTier: state.board.builtTier, estateLevel: state.board.estateLevel, gardens: state.board.gardens });
+  const key = JSON.stringify([regions.map((d) => [d.id, d.status]), projectKind(state.goal.projectKind).key]);
+  if (key === realmNavigationKey) return;
+  realmNavigationKey = key;
+  // A rebuilt button keeps its place, visibility and pressed state, and keeps the keyboard if it had it.
+  const buttons = () => $$('#realm-markers button, #realm-districts button');
+  const slot = (el) => `${el.parentElement?.id}:${el.dataset.district ?? el.dataset.legend ?? el.id}`;
+  const before = new Map(buttons().map((el) => [slot(el), { hidden: el.hidden, left: el.style.left, top: el.style.top, pressed: el.getAttribute('aria-pressed'), focused: el === document.activeElement }]));
   const lock = '<svg viewBox="0 0 12 14" width="12" height="14" fill="none" aria-hidden="true"><path d="M3 6V4a3 3 0 0 1 6 0v2" stroke="currentColor" stroke-width="1.5"/><rect x="1.5" y="6" width="9" height="6.5" rx=".5" fill="currentColor"/></svg>';
   $('#realm-districts').replaceChildren(...regions.map((d) => h('button', { type: 'button', class: 'realm-stop', 'data-district': d.id, 'data-status': d.status, 'aria-pressed': 'false' },
     h('strong', {}, d.name), h('small', {}, d.open ? 'Open district' : `Locked · ${d.percent === null ? 'bill habit' : `${d.percent}%`}`))));
   $('#realm-markers').replaceChildren(...regions.map((d) => h('button', { type: 'button', class: 'realm-marker', 'data-district': d.id, 'data-status': d.status, 'aria-label': `Inspect ${d.name} on the map`, hidden: true },
     !d.open && h('span', { class: 'realm-lock', 'aria-hidden': 'true', html: lock }), h('strong', {}, d.name))));
   $('#realm-markers').append(h('button', {type:'button',id:'sword-glint',class:'realm-legend','data-legend':'sword-stone','aria-label':'Investigate the glint in the trees','aria-pressed':'false',hidden:true},h('span',{'aria-hidden':'true'},'✦')));
-  // The family campsite: a small tent marker in the west meadow. Selecting it only moves the camera and names its stage.
-  const tent = '<svg viewBox="0 0 28 28" width="28" height="28" fill="none" aria-hidden="true"><path d="M14 4 2.5 24h23L14 4Z" fill="currentColor" stroke="#3b2a12" stroke-width="1.6" stroke-linejoin="round"/><path d="M14 11.5 9 24h10l-5-12.5Z" fill="#3b2a12"/><path d="M14 1v3" stroke="#3b2a12" stroke-width="1.6" stroke-linecap="round"/></svg>';
-  $('#realm-markers').append(h('button', {type:'button',id:'project-marker',class:'realm-legend realm-project','data-legend':FAMILY_PROJECT_SITE.id,'aria-label':`Visit the ${FAMILY_PROJECT_SITE.name.toLowerCase()}`,'aria-pressed':'false',hidden:true},h('span',{'aria-hidden':'true',html:tent})));
-  $('#realm-focus-status').textContent = 'Select a district.';
+  // The family project: a small marker in the west meadow drawn as the chosen place (a tent, a sprout or a schoolhouse
+  // with its bell). Selecting it only moves the camera and names its stage.
+  const kind = projectKind(state.goal.projectKind);
+  $('#realm-markers').append(h('button', {type:'button',id:'project-marker',class:'realm-legend realm-project','data-legend':FAMILY_PROJECT_SITE.id,'data-kind':kind.key,'aria-label':`Visit the ${kind.name.toLowerCase()}`,'aria-pressed':'false',hidden:true},h('span',{'aria-hidden':'true',html:PROJECT_ICONS[kind.key]})));
+  for (const el of buttons()) {
+    const was = before.get(slot(el));
+    if (!was) continue;
+    el.hidden = was.hidden; el.style.left = was.left; el.style.top = was.top;
+    if (was.pressed) el.setAttribute('aria-pressed', was.pressed);
+    if (was.focused) el.focus({ preventScroll: true });
+  }
+  if (!before.size) $('#realm-focus-status').textContent = 'Select a district.';
 }
 function syncRealmMarkers({focus,points}){
   const map=$('.realm-map'),focused=focus?'true':'false';if(map.dataset.focused!==focused)map.dataset.focused=focused;
@@ -510,6 +733,13 @@ function syncRealmMarkers({focus,points}){
   const compactOverview = !focus && map.clientWidth < 640;
   const home = homeDistrict(state?.board?.builtTier ?? 0).id;
   const occupied=[];
+  // The toolbar (Areas, Whole realm, View, settings) and the area row along the bottom are laid over the map, above its
+  // names. Their actual boxes, in the map's coordinates (a details menu by its summary, not its open panel):
+  const frame=map.getBoundingClientRect();
+  const controls=[...board.querySelectorAll('.world-hud > *, .board-foot > *')].flatMap((el)=>{
+    const r=(el.matches('details')?el.querySelector(':scope > summary'):el)?.getBoundingClientRect();
+    return r&&r.width&&r.height?[{left:r.left-frame.left,right:r.right-frame.left,top:r.top-frame.top,bottom:r.bottom-frame.top,toolbar:Boolean(el.closest('.world-hud'))}]:[];
+  });
   const priority=(p)=>document.activeElement?.dataset?.district===p.id?3:p.id===home?2:0;
   for(const point of [...points].sort((a,b)=>priority(b)-priority(a))){
     const legend = point.id === 'sword-stone' || point.id === FAMILY_PROJECT_SITE.id;
@@ -520,7 +750,14 @@ function syncRealmMarkers({focus,points}){
     el.hidden = !visible;
     if (visible) {
       const px=Math.max(el.offsetWidth/2+8,Math.min(point.width-el.offsetWidth/2-8,point.x));
-      const py=Math.max(el.offsetHeight+8,Math.min(point.height-8,point.y));
+      let py=Math.max(el.offsetHeight+8,Math.min(point.height-8,point.y));
+      // A name or marker that would sit under one of those controls moves just clear of it: above the area row, then
+      // below the toolbar, which wins when the map is too short for both. Anything not overlapping stays where it was.
+      const across=controls.filter(c=>px-el.offsetWidth/2<c.right&&px+el.offsetWidth/2>c.left);
+      const rowTop=Math.min(Infinity,...across.filter(c=>!c.toolbar).map(c=>c.top));
+      const toolbarBottom=Math.max(-Infinity,...across.filter(c=>c.toolbar).map(c=>c.bottom));
+      if(py>rowTop)py=rowTop-6;
+      if(py-el.offsetHeight<toolbarBottom)py=toolbarBottom+6+el.offsetHeight;
       const bounds={left:px-el.offsetWidth/2,right:px+el.offsetWidth/2,top:py-el.offsetHeight,bottom:py};
       if(!legend&&!focus){
         if(el!==document.activeElement&&occupied.some(b=>bounds.left<b.right+6&&bounds.right>b.left-6&&bounds.top<b.bottom+6&&bounds.bottom>b.top-6)){el.hidden=true;continue;}
@@ -544,7 +781,7 @@ function syncRealmMarkers({focus,points}){
     deedButton.setAttribute('aria-label', `View deed for ${d.name}`);
   } else delete deedButton.dataset.district;
   const secret = REALM_LEGENDS.find(d=>d.id===focus);
-  const message=focus===FAMILY_PROJECT_SITE.id ? projectLabel(projectStage(state.progress.progressCents, state.goal.targetCents)) : secret ? secret.name : d && !d.open ? `${d.name} · ${districtCondition(d)}` : '';
+  const message=focus===FAMILY_PROJECT_SITE.id ? projectLabel(currentProject()) : secret ? secret.name : d && !d.open ? `${d.name} · ${districtCondition(d)}` : '';
   if($('#realm-focus-status').textContent!==message)$('#realm-focus-status').textContent=message;
 }
 
@@ -653,6 +890,11 @@ function deedClosed() {
   const visiting = d.visiting;
   Object.assign(d, { queue: [], index: 0, visiting: false });
   if (visiting) return;
+  // The close event can arrive late, behind busy frames, after the family has already moved on (pressed Visit your
+  // castle, say). Never take the keyboard back from where they went: place it only if it was left on the page or
+  // returned to the card's opener.
+  const active = document.activeElement;
+  if (active && active !== document.body && active !== d.origin && !$('#deed-dialog').contains(active)) return;
   let target = d.origin;
   if (!target?.isConnected || target.closest('[hidden], details:not([open])')) {
     const marker = $(`#realm-markers [data-district="${CSS.escape(id ?? '')}"]`);
@@ -669,6 +911,10 @@ function buildCrestPickers() {
   $('#crest-charges').append(...crestChoices.charges.map((c) => h('label', { class: 'charge' },
     h('input', { type: 'radio', name: 'crestCharge', value: c.key, 'aria-label': c.label }),
     h('span', { html: `${chargeIcon(c.key)}<span>${c.label}</span>` }))));
+}
+// The Plan form's "Build" choice: the listed places only. Its value is saved with the goal, never on change.
+function buildProjectChoices() {
+  $('#goal-project').replaceChildren(...PROJECT_KINDS.map((k) => h('option', { value: k.key }, k.label)));
 }
 
 function houseDraft() {
@@ -694,11 +940,18 @@ function renderHouse() {
   for (const input of $$('input[name="crestCharge"]')) input.checked = input.value === draft.crest.charge;
   $('#crest-preview').innerHTML = crestSvg(draft.crest, { title: `${draft.name || 'Your house'} crest` });
   $('#save-house').textContent = setup ? 'Save house and crest' : 'Raise our banner';
+  // Shared families: members are the people who enrolled; only the owner names the house; each member edits their own avatar.
+  const access = state.access, owner = !access || access.me.owner;
+  $('#play-mode').hidden = Boolean(access);
+  nameInput.disabled = !owner;
+  for (const input of $$('input[name="crestField"], input[name="crestCharge"]')) input.disabled = !owner;
+  $('#save-house').hidden = !owner;
   if (!familyAvatars) familyAvatars = createFamilyAvatars($('#family-avatars'), { save: async (memberId, avatarId) => {
     const res = await api.put('/api/members/' + encodeURIComponent(memberId) + '/avatar', { avatarId });
     applyState(res.state, { animate: false });
-  } });
-  familyAvatars.update(state.members);
+  }, canEdit: (member) => !state.access || member.id === state.access.me.memberId });
+  familyAvatars.update(access ? state.members.filter((m) => access.members.some((a) => a.id === m.id && a.access === 'active')) : state.members);
+  renderFamilyAccess(state, { onState: (next) => applyState(next, { animate: false }), onStatus: (kind, message) => setStatus('#house-status', kind, message) });
 }
 
 async function saveHouse() {
@@ -727,16 +980,29 @@ async function saveHouse() {
 }
 
 // ---------- 2. Plan ----------
-function renderPlan() {
+function renderPlan() { renderPlanForm(); lockPlanForChildren(); }
+// A child in a shared family sees the goal and plan and may try a weekly amount or date with the read-only check, but
+// changes neither; the server refuses those requests anyway.
+function lockPlanForChildren() {
+  if (!state.access || state.access.me.role === 'adult') return;
+  for (const el of $$('#plan-form input:not(#goal-weekly):not(#goal-date), #plan-form select, #plan-form button:not(#check-schedule), #plan-schedule input, #save-edits, #accept-plan, #goal-draft button')) el.disabled = true;
+  $('#planner-lede').textContent = 'Adults in the family change the goal and the plan.';
+  $('#planner-lede').hidden = false;
+}
+function renderPlanForm() {
   const { goal, progress, modes, plan } = state;
   $('#planner-lede').textContent = '';
   $('#planner-lede').hidden = true;
-  $('#plan-project-stage').textContent = projectLabel(projectStage(progress.progressCents, goal.targetCents));
+  $('#plan-project-stage').textContent = projectLabel(currentProject());
+  $('#visit-campsite').textContent = `Visit ${projectKind(goal.projectKind).label.toLowerCase()}`;
   $('#ask-planner').textContent = modes.ai.mode === 'live' ? 'Ask the AI planner' : 'Make an example plan';
   renderGoalDraft();
   if (!ui.planFormDirty) {
     ui.planGoalId = goal.id;
     ui.planGoalRevision = state.merchantGoalRevision;
+    ui.planProjectKind = goal.projectKind;
+    ui.planBaseline = planFieldValues(state); // what the form shows; a live update can move the state on past it
+    $('#goal-project').value = goal.projectKind;
     $('#goal-name-input').value = goal.name;
     $('#goal-target').value = centsToInput(goal.targetCents);
     $('#goal-starting').value = centsToInput(progress.startingCents);
@@ -745,7 +1011,7 @@ function renderPlan() {
     if (plan?.inputs?.commitments) ui.commitments = plan.inputs.commitments.map((c) => ({ label: c.label, amount: centsToInput(c.amountCents), cadence: c.cadence }));
     renderCommitments();
   }
-  planCheck ??= createPlanCheck({ getState: () => state, isBlocked: () => Boolean(ui.goalDraft), refreshGoal: refreshPlanGoal });
+  planCheck ??= createPlanCheck({ getState: () => state, isBlocked: () => Boolean(ui.goalDraft), isStale: planFormStale, refreshGoal: refreshPlanGoal });
   planCheck.update();
   const result = $('#plan-result');
   if (!plan) { result.hidden = true; return; }
@@ -797,9 +1063,12 @@ function renderPlan() {
   accept.textContent = accepted ? 'Plan in use ✓' : 'Use this plan';
 }
 
+const planFieldValues = (s) => ({ 'goal-name-input': s.goal.name, 'goal-target': centsToInput(s.goal.targetCents), 'goal-starting': centsToInput(s.progress.startingCents), 'goal-weekly': centsToInput(s.goal.weeklyBudgetCents), 'goal-date': s.goal.targetDate, 'goal-project': s.goal.projectKind });
+// The Plan form's goal is older than the household's (another member saved a newer one while this form was being edited).
+const planFormStale = () => Boolean(state && ui.planFormDirty && ui.planGoalRevision && ui.planGoalRevision !== state.merchantGoalRevision);
 async function refreshPlanGoal() {
-  const goalValues = (s) => ({ 'goal-name-input': s.goal.name, 'goal-target': centsToInput(s.goal.targetCents), 'goal-starting': centsToInput(s.progress.startingCents), 'goal-weekly': centsToInput(s.goal.weeklyBudgetCents), 'goal-date': s.goal.targetDate });
-  const saved = goalValues(state), fields = Object.keys(saved);
+  // Fields still showing what the form was filled with are the family's untouched fields; any other value is an edit.
+  const shown = ui.planBaseline ?? planFieldValues(state), fields = Object.keys(shown);
   const before = Object.fromEntries(fields.map(id => [id, $(`#${id}`).value]));
   const latest = await api.get('/api/state');
   // Keep current trial inputs and optional bill rows, including edits made while this local read was pending.
@@ -807,10 +1076,12 @@ async function refreshPlanGoal() {
   ui.planFormDirty = true;
   applyState(latest);
   if (ui.goalDraft) return false;
-  const values = goalValues(latest);
-  for (const id of fields) if (before[id] === saved[id] && $(`#${id}`).value === before[id]) $(`#${id}`).value = values[id];
-  ui.planGoalId = latest.goal.id;
-  ui.planGoalRevision = latest.merchantGoalRevision;
+  const values = planFieldValues(state); // the newest state shown: this answer, or a newer live one
+  for (const id of fields) if (before[id] === shown[id] && $(`#${id}`).value === before[id]) $(`#${id}`).value = values[id];
+  ui.planBaseline = values;
+  ui.planGoalId = state.goal.id;
+  ui.planGoalRevision = state.merchantGoalRevision;
+  ui.planProjectKind = state.goal.projectKind; // a Build choice the family made still differs from it and is sent
   return true;
 }
 
@@ -820,6 +1091,16 @@ async function showPlanError(error) {
     try { applyState(await api.get('/api/state')); } catch { /* retain the original actionable error */ }
     setStatus('#plan-status', state.planReview?.factsChanged ? '' : 'error', state.planReview?.factsChanged ? '' : 'Goal or progress changed. Make a new plan using the latest figures.');
     $('#ask-planner').focus();
+    return;
+  }
+  if (error.code === 'goal_changed' && !ui.goalDraft) {
+    // Another member saved a newer goal. Nothing was overwritten; keep this family member's edits and offer the newer goal.
+    setStatus('#plan-status', 'error', error.message, { action: h('button', { type: 'button', onclick: async (e) => {
+      e.currentTarget.disabled = true;
+      try {
+        if (await refreshPlanGoal()) setStatus('#plan-status', 'info', 'Latest goal loaded. Fields you changed are kept; review them, then save again.');
+      } catch (err) { setStatus('#plan-status', 'error', err.message); }
+    } }, 'Load latest goal') });
     return;
   }
   setStatus('#plan-status', 'error', error.message, { issues: error.code === 'invalid_edit' ? [] : error.issues });
@@ -846,8 +1127,8 @@ function renderGoalDraft() {
   const line = $('#goal-item');
   line.hidden = Boolean(draft) || !item;
   if (item && !draft) {
-    line.replaceChildren(`Goal item: ${item.title} · ${formatCents(item.priceCents, item.currency)} at ${item.merchant}, Channel3 price checked ${timeLabel(item.checkedAt)}. `,
-      h('a', { href: item.url, target: '_blank', rel: 'noopener noreferrer nofollow' }, 'Retailer page', h('span', { class: 'sr-only' }, ' (opens a retailer site in a new tab)')));
+    line.replaceChildren(`${item.title} · ${formatCents(item.priceCents, item.currency)} saved price. `,
+      h('button', { type: 'button', class: 'link-button', onclick: (e) => merchant.openSaved(e.currentTarget) }, 'Check item'));
   }
   if (!draft) return;
   const image = $('#goal-draft-image');
@@ -950,6 +1231,9 @@ function readGoalFields() {
   }
   if (goal.name.length < 2) errors.push('Name the goal.');
   if (!goal.targetDate) errors.push('Choose a target date.');
+  // The Build choice travels only when the family changed it, so an untouched form never reverts a newer saved choice.
+  const project = $('#goal-project').value;
+  if (project && project !== ui.planProjectKind) goal.projectKind = project;
   return { goal, errors };
 }
 
@@ -974,7 +1258,7 @@ async function askPlanner(event) {
   button.disabled = true;
   setStatus('#plan-status', 'working', state.modes.ai.mode === 'live' ? 'The AI planner is writing your plan. This can take up to a minute…' : 'Working out the example plan…');
   try {
-    const res = await api.post('/api/plans', { goal, commitments });
+    const res = await api.post('/api/plans', { goal, commitments, expectedGoalRevision: ui.planGoalRevision });
     ui.planFormDirty = false;
     if (res.status === 'ok') {
       ui.scheduleDirty = false;
@@ -1000,7 +1284,7 @@ async function askPlanner(event) {
 
 async function useRulesPlan(goal, commitments) {
   try {
-    const res = await api.post('/api/plans/rules', { goal, commitments, afterAiFailure: true });
+    const res = await api.post('/api/plans/rules', { goal, commitments, afterAiFailure: true, expectedGoalRevision: ui.planGoalRevision });
     applyState(res.state);
     setStatus('#plan-status', 'info', 'Showing the example rules plan, clearly labeled. It was not written by AI.');
   } catch (error) {
@@ -1076,11 +1360,18 @@ function renderGive() {
   const approve = $('#give-approve');
   const row = $('#give-approve-row');
   const amountText = check.cents !== null && !check.error ? money(check.cents) : 'this';
+  // An approval covers one amount, for one goal, by one adult, in one session. If any of them changed since the box was
+  // ticked (another member saved a new goal, say), the tick is cleared and asked for again.
+  if (approve.checked && ui.approvalBasis !== approvalBasis()) {
+    approve.checked = false;
+    ui.approvalBasis = null;
+    setStatus('#give-status', 'info', 'Approval cleared because the goal or sign-in changed. Check the amount, then approve again.');
+  }
   if (!who || who.role !== 'adult') {
     approve.checked = false;
     approve.disabled = true;
     row.classList.add('blocked');
-    $('#give-approve-text').textContent = 'Switch to an adult to contribute.';
+    $('#give-approve-text').textContent = state.access ? 'An adult in the family approves contributions.' : 'Switch to an adult to contribute.';
   } else {
     approve.disabled = !setup || done || Boolean(check.error);
     row.classList.remove('blocked');
@@ -1131,6 +1422,11 @@ function renderGiveAction(ready) {
     );
   }
   for (const b of $$('button', box)) b.disabled = !ready;
+}
+
+function approvalBasis() {
+  const { household, goal, modes } = state;
+  return JSON.stringify([household.id, goal.id, goal.name, goal.targetCents, goal.currency, modes.payments.mode, persona()?.id ?? null, amountCheck().cents, family.epoch]);
 }
 
 function readyToPay() {
@@ -1209,7 +1505,7 @@ function renderReceipt() {
     h('dl', {},
       h('dt', {}, 'Status'), h('dd', {}, receiptStatus(c)),
       h('dt', {}, 'Toward'), h('dd', {}, state.goal.name),
-      h('dt', {}, 'Approved by'), h('dd', {}, approver ? `${approver.name} (adult, example persona)` : c.approvedBy),
+      h('dt', {}, 'Approved by'), h('dd', {}, approver ? `${approver.name} (adult${state.access ? '' : ', example persona'})` : c.approvedBy),
       h('dt', {}, c.simulated ? 'Simulated order' : 'PayPal order'), h('dd', {}, c.providerOrderId ?? '—'),
       h('dt', {}, c.simulated ? 'Simulated capture' : 'PayPal capture'), h('dd', {}, capture?.captureId ?? 'none yet'),
       h('dt', {}, 'Recorded'), h('dd', {}, timeLabel(c.updatedAt)),
@@ -1217,7 +1513,7 @@ function renderReceipt() {
       ...(r.awarded.filter((a) => typeof a === 'number').length ? [h('dt', {}, 'Milestone'), h('dd', {}, r.awarded.filter((a) => typeof a === 'number').map((t) => `${TIERS[t].name} raised`).join(', '))] : []),
     ),
     // replaceChildren would print a null as the text "null", so the optional action is spread in only when present.
-    ...(!c.simulated && c.providerOrderId && state.steward.paypalTools
+    ...(!c.simulated && c.providerOrderId && state.steward.paypalTools && mayAskSteward()
       ? [h('div', { class: 'actions' }, h('button', { type: 'button', onclick: () => askSteward(`Did PayPal confirm the ${money(c.amountCents)} contribution?`, c.providerOrderId) }, 'Ask the steward to verify with PayPal'))]
       : []),
   );
@@ -1309,7 +1605,8 @@ function visitDistrict(id, e) {
   const marker = $(`#realm-markers [data-district="${CSS.escape(id)}"]`);
   marker?.focus({ preventScroll: true }); revealRealm(marker, { instant: e?.detail === 0 });
 }
-// The same journey as "Visit <district>", to the campsite: close the journal, focus the meadow, land on its marker.
+// The same journey as "Visit <district>", to the family project (campsite, garden or schoolhouse): close the journal,
+// focus the meadow, land on its marker.
 function visitCampsite(e) {
   setJournalOpen(false); scene?.focusLegend(FAMILY_PROJECT_SITE.id); $('.realm-map').dataset.focused = 'true';
   const marker = $('#project-marker');
@@ -1326,9 +1623,14 @@ function recordImpact(row) {
 function renderTreasury() {
   if (ui.tab !== 'ledger') return;
   treasury ??= createTreasury($('#treasury-next'), { formatMoney: money, onVisit: visitDistrict,
+    onRecord: (id) => {
+      ui.ledgerRecord = id; ui.refundArm = null;
+      ledgerGrid?.selectRecord(id); renderLedgerRecord();
+      revealInLedger(() => $('#ledger-contributions li'), true);
+    },
     requestSteward: (payload, options) => api.post('/api/steward', payload, options),
     getStewardScope: () => JSON.stringify([state.household.id, state.household.name, state.goal, state.progress, state.plan?.id, state.acceptedPlanId,
-      state.contributions.map((c) => [c.id, c.status, c.updatedAt]), persona()?.id, ui.ledgerRecord]),
+      state.contributions.map((c) => [c.id, c.status, c.updatedAt]), persona()?.id, ui.ledgerRecord, family.epoch]),
     getLicence: () => api.get('/api/treasury/studio').then((r) => r.licenseKey ?? null) });
   treasury.update(state);
 }
@@ -1359,7 +1661,7 @@ function renderLedgerRecord() {
     const checkButton = !c.simulated && c.providerOrderId && (check.needsCheck || ['pending', 'completed', 'partially_refunded'].includes(c.status))
       ? h('button', { type: 'button', onclick: () => refreshOrder(c.providerOrderId) }, 'Check with PayPal') : null;
     if (checkButton && !check.needsCheck) actions.push(checkButton);
-    if (!c.simulated && c.providerOrderId && state.steward.paypalTools) {
+    if (!c.simulated && c.providerOrderId && state.steward.paypalTools && mayAskSteward()) {
       actions.push(h('button', { type: 'button', onclick: () => askSteward(`Did PayPal confirm the ${money(c.amountCents)} contribution?`, c.providerOrderId) }, 'Ask the steward to verify'));
     }
     if (refundable && adult) {
@@ -1393,9 +1695,11 @@ function renderLedgerRecord() {
 // ---------- House steward (AI, read-only) ----------
 const STEWARD_SUGGESTIONS = ['Did PayPal confirm our last contribution?', 'How close are we to the next milestone?', 'Is anything still pending?'];
 
+// In a shared family only adults ask the steward (the server refuses anyone else before any model or PayPal call).
+const mayAskSteward = () => !state.access || state.access.me.role === 'adult';
 function renderSteward() {
-  const { steward } = state;
-  $('#steward-note').textContent = !steward.available ? (steward.localHistory ? 'Saved confirmations' : 'Steward unavailable.') : steward.paypalTools ? 'Reads PayPal and household records. Cannot make payments.' : 'Reads household records. Cannot make payments.';
+  const steward = mayAskSteward() ? state.steward : { ...state.steward, available: false, localHistory: false, paypalTools: false };
+  $('#steward-note').textContent = !mayAskSteward() ? 'An adult in the family can ask the steward.' : !steward.available ? (steward.localHistory ? 'Saved confirmations' : 'Steward unavailable.') : steward.paypalTools ? 'Reads PayPal and household records. Cannot make payments.' : 'Reads household records. Cannot make payments.';
   const suggestions = $('#steward-suggestions');
   if (!suggestions.childElementCount) {
     suggestions.append(h('button', { type: 'button', 'data-question': STEWARD_SUGGESTIONS[0], 'aria-label': STEWARD_SUGGESTIONS[0] }, h('span', {}, 'Check last payment')));
@@ -1414,7 +1718,7 @@ function renderSteward() {
 
 async function askSteward(question, focusOrderId = null) {
   const local = state.steward.localHistory && isLocalQuestion(question);
-  if ((!state.steward.available && !local) || ui.stewardBusy) return;
+  if ((!state.steward.available && !local) || ui.stewardBusy || !mayAskSteward()) return;
   if (focusOrderId) ui.ledgerRecord = ledgerRows().find((r) => r.contribution?.providerOrderId === focusOrderId)?.id ?? ui.ledgerRecord;
   if (ui.tab !== 'ledger') selectTab('ledger', { focus: false });
   $('#steward-block').open = true; // the steward is disclosed on request; a verification asked from a receipt opens it
@@ -1563,8 +1867,11 @@ function renderTabs() {
 }
 function renderFooter() {
   const { modes } = state;
-  const mode = modes.payments.mode === 'sandbox' ? 'PayPal sandbox · test money only.' : 'Demo mode · simulated payments.';
-  $('#honesty').textContent = `${mode} Demo profiles, not sign-in. Reported savings and bills are unverified; progress is not a bank balance.`;
+  const sandbox = modes.payments.mode === 'sandbox';
+  // A shared family signs in with passkeys; the example household's members are demo profiles.
+  const mode = sandbox ? 'PayPal sandbox · test money only.' : state.access ? 'Simulated payments.' : 'Demo mode · simulated payments.';
+  const people = state.access ? 'Each member signs in with their own passkey.' : 'Demo profiles, not sign-in.';
+  $('#honesty').textContent = `${mode} ${people} Reported savings and bills are unverified; progress is not a bank balance.`;
 }
 
 function bindEvents() {
@@ -1625,7 +1932,7 @@ function bindEvents() {
     e.currentTarget.textContent = on ? 'Pixel art' : 'Raw 3D';
     scene?.setPixelMode(on);
   });
-  $('#persona').addEventListener('change', (e) => { ui.personaId = e.target.value; pref.set('persona', ui.personaId); ui.refundArm = null; renderGive(); renderLedger(); renderNextStep(); });
+  $('#persona').addEventListener('change', (e) => { ui.personaId = e.target.value; pref.set('persona', ui.personaId); ui.refundArm = null; $('#give-approve').checked = false; ui.approvalBasis = null; renderGive(); renderLedger(); renderNextStep(); });
   $('#next-step-go').addEventListener('click', openNextStep);
   $('#deed-visit').addEventListener('click', visitDeed);
   $('#deed-next').addEventListener('click', () => { ui.deeds.index++; renderDeed(); $('#deed-name').focus(); });
@@ -1677,8 +1984,13 @@ function bindEvents() {
   $('#accept-plan').addEventListener('click', acceptPlan);
 
   // Contribute
-  $('#give-amount').addEventListener('input', () => { ui.amountTouched = true; $('#give-approve').checked = false; renderGive(); });
-  $('#give-approve').addEventListener('change', () => { setStatus('#give-status', '', ''); renderGive(); });
+  $('#give-amount').addEventListener('input', () => { ui.amountTouched = true; $('#give-approve').checked = false; ui.approvalBasis = null; renderGive(); });
+  $('#give-approve').addEventListener('change', (e) => {
+    // Ticking approves the amount shown now: a later suggestion never replaces it.
+    ui.approvalBasis = e.target.checked ? approvalBasis() : null;
+    if (e.target.checked) ui.amountTouched = true;
+    setStatus('#give-status', '', ''); renderGive();
+  });
 
   // Ledger
   $('#ledger-search').addEventListener('input', (e) => { ui.ledgerSearch = e.target.value; ledgerGrid?.setSearch(ui.ledgerSearch); });

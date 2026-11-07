@@ -89,3 +89,63 @@ test('the starting home is larger, parchment names stay inside the map, and over
   }
   expect(writes).toEqual([]);
 });
+
+// The toolbar (Areas, Whole realm, View, settings) and the area status row are laid over the map, above its names. A
+// district name or legend marker (the sword's glint, the family project) that slid under them would be hidden.
+const underControls = (page) => page.evaluate(() => {
+  const controls = [...document.querySelectorAll('.world-hud > *, .board-foot > *')]
+    .map((el) => (el.matches('details') ? el.querySelector(':scope > summary') : el))
+    .filter((el) => el && el.getClientRects().length && el.getBoundingClientRect().width && el.getBoundingClientRect().height);
+  const hidden = [];
+  for (const marker of document.querySelectorAll('#realm-markers button:not([hidden])')) {
+    const r = marker.getBoundingClientRect();
+    for (const control of controls) {
+      const c = control.getBoundingClientRect();
+      if (r.left < c.right && r.right > c.left && r.top < c.bottom && r.bottom > c.top) hidden.push(`${marker.dataset.district ?? marker.dataset.legend} under ${control.closest('details')?.id ?? (control.id || control.textContent.trim())}`);
+    }
+  }
+  return hidden;
+});
+
+test.describe('names on the map and the controls laid over it', () => {
+  test.use({ reducedMotion: 'reduce' });
+  test('no district name or legend marker slides under the map controls at any zoom, and the controls stay on top', async ({ page }, info) => {
+    test.setTimeout(240_000);
+    const writes = trackWrites(page);
+    await ready(page);
+    await page.evaluate(() => document.fonts.ready);
+    if (await page.locator('#journey').isVisible()) await page.locator('#journal-toggle').click();
+    const hidden = [];
+    const check = async (where) => { for (const found of await underControls(page)) hidden.push(`${where}: ${found}`); };
+    await check('start');
+    await page.getByRole('button', { name: 'Whole realm', exact: true }).click();
+    await settle(page);
+    await check('overview');
+    for (const district of await page.locator('#realm-districts [data-district]').evaluateAll((els) => els.map((el) => el.dataset.district))) {
+      await chooseDistrict(page, district);
+      await closeMenu(page, 'district-menu');
+      await settle(page);
+      await check(district);
+      // Each step is 1.2×; the sixth reaches the closest zoom (2.8×).
+      for (let zoom = 1; zoom <= 6; zoom++) {
+        await clickView(page, 'Zoom in');
+        await settle(page);
+        await check(`${district} +${zoom}`);
+      }
+      await clickView(page, 'Reset view');
+      await settle(page);
+    }
+    expect(hidden).toEqual([]);
+    // At the closest zoom on the observatory the controls are still the topmost elements, so each stays reachable. On the
+    // phone the observatory's name is shown there, now below the toolbar; on desktop its anchor has left the map.
+    await chooseDistrict(page, 'wizard');
+    await closeMenu(page, 'district-menu');
+    for (let zoom = 1; zoom <= 6; zoom++) await clickView(page, 'Zoom in');
+    await settle(page);
+    if (info.project.name === 'phone') await expect(page.locator('#realm-markers [data-district="wizard"]')).toBeVisible();
+    expect(await page.evaluate(() => [...document.querySelectorAll('.world-hud > *')]
+      .map((el) => (el.matches('details') ? el.querySelector(':scope > summary') : el))
+      .every((el) => { const r = el.getBoundingClientRect(), hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2); return el === hit || el.contains(hit); }))).toBe(true);
+    expect(writes).toEqual([]);
+  });
+});
