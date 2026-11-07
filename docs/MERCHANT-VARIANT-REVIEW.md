@@ -32,3 +32,7 @@ Ignored logs: `test-results/merchant-variants/{before,focused,browser,check}.txt
 The [OpenAPI document](https://channel3.ai/docs/openapi/openapi.json) read for this pass has SHA-256 `b563d5579441a72bc9f129ac53b8a8e9292db69aa97078380a60ee0b5f4ad76d`. It specifies `Price.price` and the public `InStock`/`OutOfStock` availability enum; some narrative examples show a different price key or broader status list. This fix keeps the formal schema and the earlier actual-response evidence, rather than guessing additional fields or stock states.
 
 Provider facts are still catalog evidence, not retailer confirmation. Local lookup start order cannot establish retailer update time, and the search-versus-detail default-selection caveat remains. No live product lookup, subscription, paid call, checkout or owner-data change was made. The earlier single real search remains separate evidence. Claude's camera work is outside this change.
+
+## Local activation
+
+PR #28 merged as `5d8fdcd` and activated at **2026-11-07 07:47 UTC**. Both local apps use the new separate reviewed release folder with the unchanged dependency lock. Schema 7, all 19 application tables, core state, runtime modes/model and `.env` metadata match before/after. Consistent backups and exact PIDs are recorded in [release readiness](RELEASE-READINESS.md). The existing $15 sandbox order/credit remains intact. Activation performed only local state/resource reads, with no provider lookup.
