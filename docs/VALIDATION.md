@@ -1,5 +1,71 @@
 # Validation
 
+## Release checks workflow — November 7, 2026
+
+Stacked on PR #37 (`claude/treasury-stall-fallback` at `2cd641d`), which is itself stacked on PR #36 (`a3f262d`, from main `01fb478`). The reviewed candidate had extensive unit and Playwright tests but no committed workflow. `.github/workflows/release-checks.yml` now runs the existing scripts and tests on every pull request, stacked ones included, and on pushes to main.
+- **Permissions and data:** read-only contents permission and no secrets. It has no `pull_request_target`, deployment or report publishing, and it does not print the environment.
+- **Bounds:** superseded runs for the same pull request are cancelled. Each job has a time limit, and the browser run also has a global timeout.
+- **Pinning:** dependencies install with `npm ci` from the lockfile. The actions are pinned to full commit SHAs (`checkout` v7.0.1, `setup-node` v7.1.0, `upload-artifact` v7.0.2), with dependency caching off.
+
+| Job | What it runs |
+| --- | --- |
+| Guard and unit tests, Node 22.16.0, 24 and 26 | `npm ci`, `npm run check` (original art, palette, renderer and syntax) and `npm run test:unit` (every unit test). 22.16.0 is the documented minimum in `engines` and the README; 26 is the README's verified version |
+| Browser release selection, Node 26 | `npx playwright install --with-deps chromium`, as [Playwright's CI guide](https://playwright.dev/docs/ci-intro) documents, then `npx playwright test --grep @release` on the desktop and 390 px phone projects. On failure, it keeps `test-results/artifacts/` traces for 7 days. They come from fake data only |
+
+The `@release` tag marks ten existing tests and changes none of their steps or assertions. On two projects that makes 20 runs; the shared-family case is desktop-only by design, so 19 execute:
+- the connected journey: fake Channel3 merchant goal, reviewed plan, simulated contribution, world, then the Treasury and a reload;
+- checkout safety: no PayPal on the world or Plan, with retry keeping the amount; one approval, capture and credit under rapid clicks; no capture for a mismatched order;
+- receipt safety: the final contribution's receipt route, and a late SDK error that cannot claim nothing was recorded;
+- one shared-family boundary: passkey members, a child's refused requests, another family's refused spoof and revoked access;
+- the three stalled-script Treasury and steward cases from PR #37.
+
+**Local results**, on macOS arm64 (not the hosted Linux runner):
+
+| Check | Actual result |
+| --- | --- |
+| Unit job on a clean `git archive` of `b8064c2`, official checksum-verified Node 22.16.0 (npm 10.9.2) | `npm ci` exited 0; the guard passed; 362 tests: 361 passed, 1 designed skip, 0 failed, 0 cancelled |
+| The same, Node 26.0.0 (npm 11.12.1) | `npm ci` exited 0; the guard passed; 362 tests: 361 passed, 1 designed skip, 0 failed |
+| `paypal-reconciliation.test.mjs` on `8e1c31e`, before the fake correction below | Node 22.16.0: 1 passed, 7 cancelled. Node 26: 8 passed |
+| The same file after the correction | 8 passed on both versions |
+| The browser selection command on Node 26, with the same test sources as `b8064c2` | 19 passed, 1 designed skip, 0 failed, in 5.4 min |
+| The connected journey with its 180 s budget (`24cc37b`), desktop and phone | 2 passed: desktop in 1.5 min, phone in 1.0 min |
+| The same with the final budget and deed waits (`06eaffa`) | 2 passed: desktop in 1.2 min, phone in 59 s |
+| `git diff --check` | Clean |
+
+**Corrections found while validating.** Each comes from an actual failure, and none changes an assertion or product code:
+1. **Unit tests cancelled on Node 22.16.0.** On the documented minimum, `paypal-reconciliation.test.mjs` reported 1 passed and 7 cancelled, with "Promise resolution is still pending but the event loop has already resolved"; Node 26 passed all 8.
+   - **Cause:** the first test's two fake requests never answer and wait only for the client's `AbortSignal.timeout`, whose timer does not keep the process alive. Node 22's test runner then finds an empty event loop and cancels the rest of the file. A three-line test reproduced this on both versions.
+   - **Fix:** the fakes now hold one interval timer until they are aborted, as a real open connection would.
+2. **The desktop connected journey on hosted runners.**
+   - **Run 1:** it hit the 90 s default test timeout at an evidence screenshot.
+   - **Run 2:** on a slower runner, the default 15 s wait for the second deed ran out. That deed opens only after the unlock animation.
+   - **What the traces show:** the page's main thread was blocked for 25.7 s and 50.8 s around plan creation and acceptance, against 2.7 s in a local trace. The phone variant passed both times.
+   - **Fix:** the test now has a 300 s budget, and each deed waits up to 60 s, as the area-cards journey already waits 60 s for the world. Steps and full motion are unchanged.
+
+**Hosted Actions result.** These are three `pull_request` runs on PR #38, on GitHub's `ubuntu-24.04` runners. They are separate from the local evidence above:
+
+| Run | Head | Guard and unit tests, Node 22.16.0, 24 and 26 | Browser selection |
+| --- | --- | --- | --- |
+| [42403539430](https://github.com/alejandro-publius/our-castle/actions/runs/42403539430) | `b8064c2` | 3 jobs passed | Failed: 18 passed, 1 designed skip, 1 failed (desktop connected journey, 90 s test timeout) |
+| [42404780117](https://github.com/alejandro-publius/our-castle/actions/runs/42404780117) | `24cc37b` | 3 jobs passed. Each ran 362 tests: 361 passed, 1 skip, 0 failed; Node 22.16.0 also 0 cancelled | Failed: 18 passed, 1 skip, 1 failed (the same journey's 15 s deed wait), 10.1 min |
+| [42406140784](https://github.com/alejandro-publius/our-castle/actions/runs/42406140784) | `06eaffa` | 3 jobs passed, with the same counts | **Passed:** 19 passed, 1 designed skip, 0 failed, 6.9 min. The desktop journey took 2.3 min and the phone journey 1.3 min |
+
+The last run is one successful run on the corrected head. Reliability across many runs is not yet established, and the commit that adds this note runs the workflow again.
+
+**Limits.**
+- **Selection, not the full suite:** a bounded selection runs on every change; the exhaustive Playwright suite is not run in CI.
+- **Software rendering:** the browser runs use software WebGL with an emulated phone viewport and fake providers or simulated payments. They are not physical-device, live-provider or performance evidence.
+- **No merge protection or badge:** no branch protection or required check was configured, and no status badge was added. A passing run does not mean main is protected.
+- **No new product behaviour:** no product, payment, provider or dependency change.
+
+Raw evidence is ignored and stays local in `test-results/release-checks-20261107/`:
+- the clean-tree unit job logs `clean-b8064c2-node22.16.0.log` and `clean-b8064c2-node26.log`;
+- the reconciliation logs, before and after, for each version;
+- `browser-selection-local.log` and the connected-journey reruns;
+- each hosted run's log, with the downloaded failure traces and their unpacked timelines.
+
+No owner household, credential, real order, paid model or provider call, recording, deployment or submission was used.
+
 ## Treasury records when an optional bundle stalls — November 7, 2026
 
 Stacked on the reviewed release candidate, PR #36 (`claude/release-candidate` at `a3f262d`, from main `01fb478`, implementation `4082df5`). It is not merged, and the owner apps were not changed.
