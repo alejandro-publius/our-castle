@@ -17,7 +17,7 @@ test.use({ reducedMotion: 'reduce' });
 test.afterEach(async () => { await s?.close(); s = null; });
 
 const message = (content, stop_reason = 'end_turn') => ({ id: 'msg_fake_studio', type: 'message', role: 'assistant', model: 'claude-opus-5-5', stop_reason, content, usage: { input_tokens: 5, output_tokens: 5 } });
-async function start(page, { studio = true, hold = false, sandbox = false, failUpdate = false } = {}) {
+async function start(page, { studio = true, hold = false, sandbox = false, failUpdate = false, stall = false } = {}) {
   const domain = sandbox ? setupDomain({ mode: 'sandbox' }) : null;
   const db = domain?.db ?? openDatabase(':memory:');
   let orderId = null;
@@ -25,8 +25,9 @@ async function start(page, { studio = true, hold = false, sandbox = false, failU
     ({ orderId } = await domain.service.createPayPalOrder(contribution({ amountCents: 1500 })));
     await domain.service.capturePayPalOrder({ providerOrderId: orderId, householdId: domain.householdId, goalId: domain.goalId });
   }
-  let release;
+  let release, releaseStudio;
   const gate = new Promise((resolve) => { release = resolve; });
+  const studioGate = new Promise((resolve) => { releaseStudio = resolve; }); // `stall`: the Studio script goes unanswered
   const aiRequests = [], writes = [], issues = [];
   const stewardFetch = async (url, init) => {
     expect(new URL(url).origin).toBe('https://api.anthropic.com');
@@ -48,9 +49,9 @@ async function start(page, { studio = true, hold = false, sandbox = false, failU
     const res = await fetch(base + path, { method: 'POST', headers: { 'Content-Type': 'application/json', Origin: base }, body: JSON.stringify(data) });
     expect(res.ok).toBe(true); return res.json();
   };
-  s = { base, db, writes, issues, aiRequests, release, orderId,
+  s = { base, db, writes, issues, aiRequests, release, releaseStudio, orderId,
     finance: () => JSON.stringify(['payment_orders', 'ledger_entries', 'plans'].map((t) => db.prepare(`SELECT * FROM ${t}`).all())),
-    close: () => { release(); return new Promise((r) => { server.close(() => { db.close(); r(); }); server.closeAllConnections(); }); } };
+    close: () => { release(); releaseStudio(); return new Promise((r) => { server.close(() => { db.close(); r(); }); server.closeAllConnections(); }); } };
   await post('/api/setup', { playMode: 'family', name: 'House of Alder', crest: { field: 'cobalt', charge: 'stag' } });
   await post('/api/entries', { kind: 'gift_sent', label: 'Test fixture gift', amountCents: 500, memberId: 'm_rowan' });
   page.on('pageerror', (e) => issues.push(e.message));
@@ -59,6 +60,7 @@ async function start(page, { studio = true, hold = false, sandbox = false, failU
     // This case seeds a fake server order. It does not exercise or claim buyer approval.
     if (domain && url.hostname === 'www.sandbox.paypal.com' && url.pathname === '/web-sdk/v6/core') return route.fulfill({ status: 503, body: 'Test fixture: checkout disabled' });
     if (url.origin !== base) { issues.push(`${r.method()} ${r.url()}`); return route.abort(); }
+    if (stall && url.pathname === '/vendor/ag-studio/ag-studio.min.js') { await studioGate; return route.continue().catch(() => {}); }
     if (!studio && url.pathname === '/vendor/ag-studio/ag-studio.min.js') return route.fulfill({ status: 503, body: 'unavailable' });
     if (failUpdate && url.pathname === '/vendor/ag-studio/ag-studio.min.js') {
       const response = await route.fetch();
@@ -81,10 +83,14 @@ async function start(page, { studio = true, hold = false, sandbox = false, failU
   });
   await page.goto(base);
   await page.waitForFunction(() => document.body.dataset.ready === 'true');
+  if (stall) { await page.clock.install(); s.ledgerAt = await page.evaluate(() => performance.now()); }
   await page.locator('#tab-ledger').click();
-  await expect.poll(() => page.evaluate(() => window.__ourCastle.treasury().source)).toBe(studio ? 'ag-studio' : 'fallback');
+  await expect.poll(() => page.evaluate(() => window.__ourCastle.treasury().source)).toBe(stall ? 'pending' : studio ? 'ag-studio' : 'fallback');
   await page.locator('#steward-block > summary').click();
 }
+// With the fake clock installed: move it to eight seconds after `t0`, the page's time when the Ledger was requested.
+const eightSecondsAfter = async (page, t0) => page.clock.fastForward(Math.max(0, Math.floor(t0 + 8000 - await page.evaluate(() => performance.now()))));
+const frames = (page) => page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
 const agent = (page) => page.evaluate(() => window.__ourCastle.treasury().agent);
 const ask = async (page) => {
   await page.locator('#steward-form input[name="question"]').fill('How close are we to the next area?');
@@ -131,6 +137,37 @@ test('changing member during a held request cancels the scoped run and never sho
   s.release();
   await expect.poll(() => s.aiRequests.length).toBe(2);
   await expect(page.locator('#steward-answer')).toBeHidden();
+  expect(s.writes).toEqual(['POST /api/steward']);
+  expect(s.finance()).toBe(before);
+  expect(s.issues).toEqual([]);
+});
+
+test('a question asked while Studio never answers is refused after a member change; the next runs once without Studio, and a late Studio starts nothing', async ({ page }) => {
+  await start(page, { stall: true });
+  const before = s.finance();
+  await ask(page);
+  await expect(page.locator('#steward-status')).toContainText('reading the ledger');
+  await page.locator('#persona').selectOption('m_wren');
+  await eightSecondsAfter(page, s.ledgerAt);
+  // The milestone falls back within the wait, and the question asked for Rowan is not run for Wren.
+  await expect(page.locator('#treasury-next .next-area[data-source="fallback"]')).toBeVisible();
+  await expect(page.locator('#steward-status')).toHaveText('The records changed. Check the current record again.');
+  expect(s.aiRequests).toHaveLength(0);
+  expect(s.writes).toEqual([]);
+  // The next explicit question, by the adult, runs once and does not claim the framework.
+  await page.locator('#persona').selectOption('m_rowan');
+  await ask(page);
+  await expect(page.locator('#steward-answer')).toContainText('The Manor needs $15.00 more.');
+  expect(await agent(page)).toMatchObject({ source: 'fallback', state: 'idle', completed: 1 });
+  expect(s.aiRequests).toHaveLength(2);
+  expect(s.writes).toEqual(['POST /api/steward']);
+  // Studio arrives late: nothing mounts and nothing is asked.
+  s.releaseStudio();
+  await page.waitForFunction(() => window.agStudio);
+  await frames(page);
+  await expect(page.locator('#treasury-next .ag-studio-root')).toHaveCount(0);
+  expect((await page.evaluate(() => window.__ourCastle.treasury())).source).toBe('fallback');
+  expect(s.aiRequests).toHaveLength(2);
   expect(s.writes).toEqual(['POST /api/steward']);
   expect(s.finance()).toBe(before);
   expect(s.issues).toEqual([]);

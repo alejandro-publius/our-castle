@@ -1,11 +1,13 @@
 // Treasury next-area milestone: an AG Studio custom widget inside the Ledger, fed by the server's own treasury rows.
-// AG Studio (local evaluation licence) is loaded only when the Ledger is first shown. If it cannot load, the same
-// milestone is drawn as plain DOM from the same server data, so the Ledger never loses it. No provider, model or write
+// AG Studio (local evaluation licence) is loaded only when the Ledger is first shown. If it cannot load, or it and its
+// licence have not both answered within START_WAIT_MS, the same milestone is drawn as plain DOM from the same server
+// data, so the Ledger never loses it. That stays until a reload; a late answer changes nothing. No provider, model or write
 // request is made by the widget: it reads Studio's in-page data engine, and "View on map" only moves the camera.
 // The existing steward can explicitly start a scoped, headless Agent Framework run through askSteward.
 import { createTreasuryAgent } from './treasury-agent.js';
 import { rowChanges, hasChanges } from '../core/row-updates.js';
 
+const START_WAIT_MS = 6000;
 let loading = null;
 function loadStudio() {
   if (window.agStudio) return Promise.resolve(window.agStudio);
@@ -225,8 +227,10 @@ export function createTreasury(container, { formatMoney, onVisit, onRecord, getL
   }
 
   async function start() {
+    let timer;
     try {
-      const loaded = await Promise.all([loadStudio(), getLicence().catch(() => null)]);
+      const loaded = await Promise.race([Promise.all([loadStudio(), getLicence().catch(() => null)]),
+        new Promise((resolve, reject) => { timer = setTimeout(() => reject(new Error('AG Studio did not start in time')), START_WAIT_MS); })]);
       lib = loaded[0];
       const licence = loaded[1];
       if (licence) { lib.AgStudioLicenseManager.setLicenseKey(licence); status.licensed = true; } // before createStudio, as documented
@@ -263,7 +267,7 @@ export function createTreasury(container, { formatMoney, onVisit, onRecord, getL
       status.source = 'fallback';
       status.error = error.message;
       fallback();
-    }
+    } finally { clearTimeout(timer); }
   }
 
   function flush() {
