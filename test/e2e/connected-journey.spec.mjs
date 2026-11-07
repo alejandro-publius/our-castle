@@ -46,14 +46,15 @@ async function start(page) {
 const state = (page) => page.evaluate(() => window.__ourCastle.state);
 const openJournal = async (page) => { if (await page.locator('#journey').isHidden()) await page.locator('#journal-toggle').click(); };
 async function closeDeed(page, name) {
-  await expect(page.locator('#deed-dialog')).toBeVisible();
+  // A deed opens after the world's unlock animation, which took longer than 15 s on a software-rendered CI runner.
+  await expect(page.locator('#deed-dialog')).toBeVisible({ timeout: 60_000 });
   await expect(page.locator('#deed-name')).toHaveText(name);
   await page.locator('#deed-close').click();
   await expect(page.locator('#deed-dialog')).toBeHidden();
 }
 
 test('fresh family -> merchant goal -> reviewed plan -> example contribution -> world -> Treasury and reload', { tag: '@release' }, async ({ page }, info) => {
-  test.setTimeout(180_000); // The full-motion journey also runs on slower software-rendered CI runners.
+  test.setTimeout(300_000); // The full-motion journey also runs on slower software-rendered CI runners.
   await start(page);
   // Start from the actual House form rather than preparing a household through an API helper.
   await page.locator('input[name="playMode"][value="family"]').check();
