@@ -318,10 +318,13 @@ export function createAccess({ db, clock, config, events = {} }) {
       const options = await registrationOptions({ userName: account.display_name, userHandle: account.user_handle, excludeCredentials: existing });
       return { options, ceremonyId: saveChallenge({ purpose: 'add-passkey', challenge: options.challenge, sessionId: scope.sessionId }) };
     },
-    async passkeyVerify(req, scope, body) {
+    async passkeyVerify(req, scope, body, assertAccess = () => {}) {
+      assertAccess();
       limited(req, 'passkey');
       const challenge = consumeChallenge({ ceremonyId: body.ceremonyId, purpose: 'add-passkey', sessionId: scope.sessionId });
       const key = await verifiedRegistration(body.response, challenge);
+      // Cryptographic verification yields. Do not persist a new login credential after this session/member ended.
+      assertAccess();
       insertPasskey(scope.accountId, key);
       audit({ householdId: scope.householdId, accountId: scope.accountId, memberId: scope.memberId, action: 'passkey.added', subject: key.id.slice(0, 12) });
       return { passkeys: db.prepare('SELECT COUNT(*) AS n FROM passkeys WHERE account_id = ?').get(scope.accountId).n };
