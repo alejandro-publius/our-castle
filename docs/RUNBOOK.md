@@ -144,3 +144,8 @@ Default demo numbers (editable, synthetic): a $300 goal, $60 already set aside, 
 - The internal ledger is goal progress, not a bank balance, and PayPal does not see the household's other bills.
 
 Architecture, data model and payment states: [docs/ARCHITECTURE.md](ARCHITECTURE.md). Judge handoff: [docs/JUDGE-HANDOFF.md](JUDGE-HANDOFF.md). Demo script: [docs/DEMO-SCRIPT.md](DEMO-SCRIPT.md). Submission draft (not submitted): [docs/SUBMISSION-DRAFT.md](SUBMISSION-DRAFT.md).
+
+
+## Unexpected server failures
+
+An unexpected failure can occur after a contribution commits. Check the latest records before retrying; the HTTP status does not establish payment truth. The response includes a generated request reference, also present in a bounded server log. See [failure diagnostics](FAILURE-DIAGNOSTICS.md) for the fields, reproduction and privacy limits.

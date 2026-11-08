@@ -1,7 +1,7 @@
 import path from 'node:path';
 import { readFile, stat } from 'node:fs/promises';
 import { readFileSync } from 'node:fs';
-import { createHash } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import {
   DEMO_HOUSEHOLD_ID, DomainError, addSelfReportedEntry, ensureDemoHousehold, getActiveGoal, getGoal, resetHousehold,
   progressFor, setupFamilyHouse, setupHousehold, updateCrest, updateGoal, updateGoalProject, updateMemberAvatar,
@@ -446,8 +446,10 @@ export function createApp({ config, db, clock, paypal = null, aiProvider = null,
 
   async function handler(req, res) {
     const url = new URL(req.url, 'http://localhost');
+    let diagnosticRoute = 'unmatched';
     try {
       if (!url.pathname.startsWith('/api/')) {
+        diagnosticRoute = 'static';
         if (family && req.headers.host !== config.access.host && ['GET', 'HEAD'].includes(req.method)) {
           // Passkeys belong to one origin; send any other local address to it instead of serving a page that cannot sign in.
           checkHostAndOrigin(req, { write: false });
@@ -472,6 +474,7 @@ export function createApp({ config, db, clock, paypal = null, aiProvider = null,
         return Boolean(match);
       });
       if (!route) throw new HttpError(404, 'not_found', 'Unknown API route.');
+      diagnosticRoute = typeof route[1] === 'string' ? route[1] : route[1].source;
       let { session, scope } = family ? authorize(req, res, url, write) : { session: null, scope: exampleScope() };
       let body = {};
       let rawBody = '';
@@ -517,8 +520,13 @@ export function createApp({ config, db, clock, paypal = null, aiProvider = null,
         if (error.debugId) console.warn(`[our-castle] ${error.code} (PayPal debug id ${error.debugId})`);
         return sendJson(res, error.status, { error: { code: error.code, message: error.message, issues: error.issues, debugId: error.debugId } });
       }
-      console.error('[our-castle] unexpected error', error);
-      sendJson(res, 500, { error: { code: 'server_error', message: 'Unexpected server error. No payment was credited.' } });
+      // An unexpected failure may happen after a transaction commits. Its HTTP status cannot determine payment truth.
+      // Correlate the response without forwarding arbitrary error objects, request URLs, bodies, headers or private ids.
+      const requestId = randomUUID();
+      const method = ['GET', 'HEAD', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'].includes(req.method) ? req.method : 'OTHER';
+      console.error('[our-castle] unexpected error', { code: 'server_error', method, requestId, route: diagnosticRoute });
+      res.setHeader('X-Request-Id', requestId);
+      sendJson(res, 500, { error: { code: 'server_error', message: 'Something went wrong. Check the latest records before trying again.', requestId } });
     }
   }
 
