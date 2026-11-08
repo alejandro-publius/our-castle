@@ -34,6 +34,18 @@ Branch `claude/payment-restart-recovery`, at the reviewed PR #40 head `e3bc6ff` 
 | `npm run check` | Passed: 47 copied art/runtime files, the original 90-color palette, the renderer wiring and JavaScript syntax |
 | `git diff --check` | Clean |
 
+**A correction after review: startup cleanup in the harness.** Codex found that `startApp` waited for its child to report ready before `scenario` recorded that child. A child that never became ready was therefore left running when the helper gave up. Codex reproduced this on `a257557` with a child that sends no ready message: 1 child was still alive after the rejection.
+
+The fix:
+- **Exit tracking:** the helper now listens for its child's exit the moment the child is forked.
+- **Cleanup on failure:** if readiness fails or times out, the helper ends its own child before passing the error on. It sends SIGKILL only if the child is still running; a child that has already ended, or is ending, is only waited for. The normal kill uses the same path.
+
+A fourth test runs that actual helper with two children of its own: one that never becomes ready, and one that exits before it is ready. Both rejections match, and each child has ended and no longer exists.
+
+Without the cleanup, this test fails on "its own child has ended". Its leftover child also kept the test process from exiting until that one child was ended by its own process id.
+
+With the fix, the four restart tests pass on Node 22.16.0, 26.0.0 and 26.13.0, and `npm run check` passes. This changes only the test harness; there is no production change.
+
 The test command is `node --test test/unit/payment-restart.test.mjs`. The existing full unit command picks it up, so the hosted release checks run it on Node 22.16.0, 24 and 26; that result is reported on the PR.
 
 **Limits.**
@@ -45,7 +57,8 @@ Raw evidence is ignored and stays local in `test-results/payment-restart-2026110
 - the first runs: `first-run-node26.log` (the 502 from the incomplete fake token) and `second-run-node26.log` (passing after the fix);
 - `debug-transport.mjs`, the probe that found the missing `token_type`;
 - the mutation logs, and `contributions.original.mjs`, the file they were restored from;
-- the `affected-*.log`, `fake-users-*.log` and `final-*.log` files, and `check.log`.
+- the `affected-*.log`, `fake-users-*.log` and `final-*.log` files, and `check.log`;
+- for the startup correction: the `correction-*.log` files for each Node version, `startup-before-fix.log` (the new test failing without the cleanup) and `check-correction.log`.
 
 No owner household, credential, real order, paid model or provider call, recording, deployment or submission was used.
 

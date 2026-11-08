@@ -1,9 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { fork } from 'node:child_process';
-import { once } from 'node:events';
 import http from 'node:http';
-import { mkdtempSync, realpathSync, rmSync } from 'node:fs';
+import { mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
@@ -48,17 +47,35 @@ async function servePayPal() {
   };
 }
 
+// SIGKILL ends the process at once, with no shutdown code. Only this test's own children are ever signalled; one that
+// has already ended, or is ending, is only waited for.
+async function end(child, exited, wait) {
+  if (child.exitCode === null && child.signalCode === null) child.kill('SIGKILL');
+  await within(exited, wait, 'the app process to end');
+}
+
 // One app process on `file`, with an empty environment. `withheld` names a route whose answer the harness withholds.
-async function startApp(file, paypalBase, withheld = '') {
-  const child = fork(childScript, [file, paypalBase, withheld], { env: {}, execArgv: [], stdio: ['ignore', 'ignore', 'pipe', 'ipc'] });
+// If it does not become ready, its own child is ended before the error is passed on. `script`, `wait` and `onSpawn`
+// let the startup-cleanup test use a child that never becomes ready.
+async function startApp(file, paypalBase, withheld = '', { script = childScript, wait = WAIT, onSpawn } = {}) {
+  const child = fork(script, [file, paypalBase, withheld], { env: {}, execArgv: [], stdio: ['ignore', 'ignore', 'pipe', 'ipc'] });
+  onSpawn?.(child);
+  // Listened for at once, so no exit is missed, even one before the rest is set up.
+  const exited = new Promise((resolve) => child.once('exit', (code, signal) => resolve({ code, signal })));
   let stderr = '';
   child.stderr.on('data', (chunk) => { stderr += chunk; });
   const messages = [];
   child.on('message', (message) => messages.push(message));
-  const port = await within(new Promise((resolve, reject) => {
-    child.on('message', (message) => { if (message.ready) resolve(message.ready); });
-    child.once('exit', (code, signal) => reject(new Error(`The app process ended (${code ?? signal}) before it was ready: ${stderr.slice(-500)}`)));
-  }), WAIT, 'the app process to start');
+  let port;
+  try {
+    port = await within(new Promise((resolve, reject) => {
+      child.on('message', (message) => { if (message.ready) resolve(message.ready); });
+      exited.then(({ code, signal }) => reject(new Error(`The app process ended (${code ?? signal}) before it was ready: ${stderr.slice(-500)}`)));
+    }), wait, 'the app process to start');
+  } catch (error) {
+    await end(child, exited, wait);
+    throw error;
+  }
   const base = `http://127.0.0.1:${port}`;
   const send = async (pathname, body, headers) => {
     const res = await fetch(base + pathname, { method: 'POST', headers: { 'Content-Type': 'application/json', ...headers }, body });
@@ -72,13 +89,7 @@ async function startApp(file, paypalBase, withheld = '') {
       const seen = messages.find((m) => key in m);
       if (seen) resolve(seen); else child.on('message', (m) => { if (key in m) resolve(m); });
     }), WAIT, key),
-    // SIGKILL ends the process at once, with no shutdown code. Only this test's own child is ever signalled.
-    kill: async () => {
-      if (child.exitCode !== null || child.signalCode !== null) return;
-      const exited = once(child, 'exit');
-      child.kill('SIGKILL');
-      await within(exited, WAIT, 'the app process to end');
-    },
+    kill: () => end(child, exited, WAIT),
   };
 }
 
@@ -234,3 +245,19 @@ test('a refund made while the app is down is recorded once by the explicit check
   assert.equal(paypal.captureRequests(orderId).length, 1);
   evidence(t, paypal, orderId, after);
 }));
+
+test('a child that never becomes ready, or ends before it is ready, is ended by the helper itself', { timeout: 60_000 }, async () => {
+  const dir = realpathSync(mkdtempSync(path.join(tmpdir(), 'our-castle-restart-startup-')));
+  try {
+    const silent = path.join(dir, 'never-ready.mjs');
+    writeFileSync(silent, 'setInterval(() => {}, 1000);\n'); // keeps running, never says it is ready
+    const quitter = path.join(dir, 'ends-early.mjs');
+    writeFileSync(quitter, 'process.exit(3);\n');
+    for (const [script, reason] of [[silent, /Timed out waiting for the app process to start/], [quitter, /The app process ended \(3\) before it was ready/]]) {
+      let child;
+      await assert.rejects(startApp(path.join(dir, 'unused.sqlite'), 'http://127.0.0.1:9', '', { script, wait: 300, onSpawn: (c) => { child = c; } }), reason);
+      assert.ok(child.exitCode !== null || child.signalCode !== null, 'its own child has ended');
+      assert.throws(() => process.kill(child.pid, 0), { code: 'ESRCH' }, 'and no longer exists');
+    }
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
