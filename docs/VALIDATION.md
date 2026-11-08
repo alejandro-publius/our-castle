@@ -1,5 +1,319 @@
 # Validation
 
+## Seeded payment sequences against an independent model — November 7, 2026
+
+Branch `claude/seeded-payment-model` ([PR #47](https://github.com/alejandro-publius/our-castle/pull/47)). It now stacks on Codex's two reviewed fixes for the ordering defects this test found:
+- **The stack:** [PR #48](https://github.com/alejandro-publius/our-castle/pull/48) (`codex/refund-before-capture` at `002d229`), on [PR #46](https://github.com/alejandro-publius/our-castle/pull/46) (`codex/refund-delivery-order` at `eefae41`), on PR #43 (`ce3ec65`), on PR #40 (`e3bc6ff`). Main `579b4f6` contains none of them yet.
+- **The merges:** `eefae41` and `002d229` came in unchanged, by the normal merges `55b500a` and `6c45c86`.
+- **What this branch changes:** only the model test and these docs. The production changes are PR #46's ([refund ordering](REFUND-ORDERING.md)) and PR #48's ([deferred refunds](DEFERRED-REFUNDS.md)).
+
+**What was missing.** The payment tests are named scenarios, each covering one path. Nothing combined captures, retries, lost answers, late webhooks, dashboard refunds and reopening in varied orders, or compared the result with a model of what PayPal holds.
+
+**The method** follows TigerBeetle's [VOPR](https://github.com/tigerbeetle/tigerbeetle/blob/main/docs/internals/vopr.md) at a much smaller scale: a seed fixes every choice, faults are injected on purpose, and separate checks compare the outcome with a model. It is not a deterministic simulator of the whole app.
+- **What runs:** the real contribution service on a disposable SQLite file, with the existing stateful fake PayPal. The fake answers every request in memory, and any other fetch is refused. Credentials are synthetic and no `.env` is read.
+- **Two client paths:**
+  - `rest` is the production REST client (OAuth, `PayPal-Request-Id`, JSON and error mapping) over an in-memory fetch.
+  - `sdk` is the production SDK adapter over `fakeSdkControllers`. Those stand in for the SDK's controllers, so **the SDK's own serialization, OAuth and HTTP transport are not exercised here**; `paypal-sdk-transport` and `payment-restart` cover them.
+  - Webhook verification goes through the REST client on both paths.
+- **Two refund scopes,** both run by CI over the same 24 seeds and both paths:
+  - `credited`: dashboard refunds reach only captures credited here;
+  - `any`: a refund can also reach a capture that PayPal completed before this server saw the completion. That is the space where all three ordering defects lived.
+- **Each seed runs 30–60 actions, with at most 6 orders:**
+  - adult-approved orders of 100–2,500 cents;
+  - first captures, which PayPal completes or holds, and same-order retries, which PayPal answers with its first answer for the same request id;
+  - PayPal completing a held capture, and partial and full dashboard refunds;
+  - verified webhooks delivered late, out of order, again, under a new event id, or never;
+  - explicit checks of an order;
+  - closing and reopening the database and service, then loading the contributions;
+  - refusals: no approval, a child approver, an invalid amount, one cent over the goal, an order not created here, another household, and revoked access.
+- **Faults:**
+  - a capture request that never reaches PayPal, or PayPal's answer lost after it acted, with the read that follows sometimes lost too;
+  - a check whose answer is lost;
+  - a webhook that fails verification, or whose verification answer is lost.
+- **The model** is plain integers and sets. PayPal's side (each order's amount, capture status, first answer and refunds) is kept apart from what the app has been shown:
+  - the captures it has been told of;
+  - those shown completed;
+  - every verified completed refund it has been told of, by id, even before it knew the capture. The app must hold each one durably, as a refund record or as evidence awaiting its capture, and each counts against its capture from the moment that capture is credited;
+  - the webhook event ids it has handled.
+
+  It never calls production code or reads the service's answers to predict anything; `progressFor` is only read to observe.
+- **The one documented exception:** a capture first seen on an order read that already lists it **fully** refunded, before any completion was shown, is not credited. It nets to zero either way. A later completion credits it and reverses its refunds together. A partially refunded capture is never an exception: its remainder must count.
+- **After every action, the app must match the model exactly, in both scopes:**
+  - tracked progress;
+  - the ledger's credits and reversals, as counts and cents, read with SQL;
+  - the credited capture ids and the reversed refund ids;
+  - each capture's net and refunded cents;
+  - the recorded captures, and the held completed refunds: `payment_refunds` and `deferred_refunds` read together with SQL `UNION`;
+  - the local orders.
+- **Rules checked on every action:**
+  - **A bound that holds whatever the app has seen:** a capture's net credit never exceeds what PayPal verified for it, less the completed refunds of it that the app holds, recorded or awaiting their capture.
+  - **Every answer must be the model's.** A completion answers `refunded` when it applies refunds already shown, otherwise `completed`; the documented exception answers `not_credited`; a repeated event id answers `duplicate_event`.
+  - **No-dispatch rules:** a retry of an order settled here, a refusal, reopening and loading must not reach PayPal.
+- **At the end**, an explicit check of every order, after which the app must agree with PayPal's own record. Only the documented exception may be recorded without a credit, at the same net zero.
+
+**Replay one seed, adapter and scope,** for example `PAYMENT_MODEL_SEED=2 PAYMENT_MODEL_ADAPTER=rest PAYMENT_MODEL_REFUNDS=credited node --test test/unit/payment-model.test.mjs`. Seeds are 1–4294967295, adapters `rest` or `sdk`, and scopes `credited` or `any`; each one left unset runs them all. Invalid input is refused before anything runs.
+
+A failure prints the seed, adapter, scope and source commit, the failing action and its checks, the replay command with its scope, the whole action trace (at most 61 entries) and PayPal's record. A pass prints one summary line per adapter and scope.
+
+The generator consults the model, so a seed's actions depend on the model version as well as the seed: a seed and commit replay exactly.
+
+### The final integrated result, at `2d2f3bd`
+
+This adds PR #48 (`6c45c86`) and one observation change (`2d2f3bd`). The expected held refunds are every verified completed refund delivered, replacing the old rule that counted only refunds whose capture the app already knew. The observer reads both tables, and the bound counts both. Money still waits for the capture's completion, and every other check is unchanged and strict in both scopes.
+
+| Check | Actual result |
+| --- | --- |
+| The 5 model tests, PR #46's 12 refund-ordering regressions and PR #48's 12 deferred-refund regressions, on Node 22.16.0 and 26.0.0 | **29 passed on each**, with none skipped or failed. The seeded summaries are identical on both versions, and identical to `9396c06`'s: the change is in what is observed, not in the sequences |
+| The four-variant directed probe, run once | **Corrected on both paths, for the 500-cent partial and the 1,500-cent full refund.** The refund held before its capture was recorded is applied when the older completion arrives, which answers `refunded`. Tracking shows 7,000 or 6,000 cents, PayPal's own net, with no tier award. The repeated delivery and the explicit check change nothing |
+| `npm run check` | Passed: 47 copied art/runtime files, the original 90-color palette, the renderer wiring and JavaScript syntax |
+| `git diff --check` | Clean |
+
+The hosted release checks for the exact final head are reported on PR #47.
+
+### With PR #46 only, at `9396c06` (history)
+
+| Check | Actual result |
+| --- | --- |
+| The model test on Node 22.16.0 and 26.0.0: four seeded runs (two scopes × two paths) and the sensitivity test | **5 passed on each**, with identical summaries. Per path: **`credited`** ran 1,103 actions with 133 injected faults, and PayPal ended with 85 completed and 10 pending captures. **`any`** ran 1,103 actions with 140 faults, and PayPal ended with 86 completed and 7 pending captures; 4 of the completed ones are recorded here without a credit, at net zero (the documented exception). These 24 seeds produced no `refunded` or `not_credited` capture answer; the scan below did |
+| PR #46's 12 refund-ordering regressions, on both versions | 12 passed on each |
+| The five representative seeds that failed before the fix (159, 2, 71, 181 and 21), `any`, both paths, both versions | **The current model: 20 of 20 passed. The before-fix model** (the `3f86614` test file, which replays their recorded failing sequences exactly) against a scratch copy of this tree, whose service matches `eefae41`: **20 of 20 passed** |
+| One bounded scan of seeds 1–200, `any`, `rest` | **200 of 200 passed**: 8,895 actions and 1,103 injected faults. Capture answers matched the model, including 2 `refunded` and 10 `not_credited`. 41 captures in 40 seeds ended recorded without a credit at net zero. The 31 seeds that failed before the fix pass; after the model's first changed decision, their actions differ from the recorded before-fix traces |
+| `npm run check` | Passed: 47 copied art/runtime files, the original 90-color palette, the renderer wiring and JavaScript syntax |
+| `git diff --check` | Clean |
+
+### The further counterexample, and its resolution in PR #48
+
+**Found with PR #46 only**, at `9396c06` (the reviewed head `5774c0d` changed docs only). A verified refund webhook can arrive before this server has recorded the capture at all. That happens when the capture's answer and the read that follows were both lost.
+- **What happened then:**
+  - the refund webhook was answered `ignored_unknown_capture` and marked handled, and no refund row was kept, because refund rows need a recorded capture;
+  - the older COMPLETED webhook then credited the full amount, and that gross credit awarded the first tier;
+  - repeating the refund webhook was a duplicate;
+  - only an explicit check applied the refund, and the tier award stayed, because awards are keepsakes.
+- **Why the scans missed it:** PR #46's regressions covered refunds of captures already recorded. The 24 fixed seeds and the 200 scanned seeds never generated this exact order of events: both losses, then a refund delivered before any capture evidence, then a completion before any check.
+
+**Resolved by PR #48 (`002d229`), now integrated.** Codex reproduced the four cases independently. Schema 8 holds verified completed refunds that arrive before their capture in `deferred_refunds`: references and amounts only, with no household attribution or progress. Ordinary capture validation then adopts them through the existing refund pipeline, and the credit, reversals and milestone decision share one transaction. PR #48's 12 regressions now exercise the exact prefix the seeds missed.
+
+The directed probe is `test-results/seeded-payments-20261108/integrated/probe-unrecorded-refund.mjs`. It ran on both paths, for a 500-cent partial refund and a 1,500-cent full refund of a 1,500-cent capture, and each run matched the rows below:
+
+| Step | At `9396c06` (PR #46 only) | At `2d2f3bd` (PR #48 integrated) |
+| --- | --- | --- |
+| 1. Capture: PayPal completes it, and both the answer and the follow-up read are lost | `unknown`; 6,000 | `unknown`; 6,000 |
+| 2. Dashboard refund; its verified REFUNDED webhook arrives first | `ignored_unknown_capture`; 6,000; the refund is dropped | `ignored_unknown_capture`; 6,000 |
+| 3. The older verified COMPLETED webhook | `completed`; **7,500**, where PayPal nets 7,000 or 6,000; **`tier:1` awarded** | `refunded`; **7,000 or 6,000**, PayPal's net; no tier award |
+| 4. The same REFUNDED webhook again | `duplicate_event`; 7,500 | `duplicate_event`; unchanged |
+| 5. An explicit check | `refunded`; 7,000 or 6,000; `tier:1` remains | `already_completed`; unchanged; no tier award |
+
+### Before the fix, at `ce3ec65` (history)
+
+The test's first version (`3f86614`) ran only the `credited` scope in CI. It passed there. It compared only money in the wider scope, where it treated any capture first seen refunded as a documented exception.
+
+**Six service mutations,** applied only in a scratch copy of the `ce3ec65` tree and restored with a matching SHA-256:
+- **The model test** failed on all six.
+- **The 11 named payment test files** (111 passing tests and 1 designed skip unmutated) failed on five. They missed M2, a retry that treats only `completed` as settled and so asks PayPal again for a refunded order; the model reported "a capture of an order settled here asked PayPal".
+- **The other five:** crediting a pending capture; ignoring refunds listed on the order; processing an unverified webhook; refusing a refund of exactly the remaining amount; and reporting a lost capture answer as failed.
+- **Not repeated:** these comparisons were not repeated after the fix.
+
+**`PAYMENT_MODEL_REFUNDS=any` then found two money divergences:**
+- **Fixed seeds:** 44 of 48 runs passed; seeds 2 and 21 failed on both paths.
+- **Seeds 1–200 on `rest`:** 169 passed and 31 failed, all from two causes.
+- **Reproduction:** five representatives were identical on both paths and on Node 22.16.0 and 26.0.0.
+
+1. **Over-credit after refunds on record (18 of 200 seeds).**
+   - **What happened:** a refund of a capture not yet credited here was recorded but not applied. When the capture was credited later, the full amount counted, until the next explicit check.
+   - **When:** after a late COMPLETED webhook (16 seeds), or after a retry that PayPal answered with its first, completed answer (2 seeds).
+   - **Example:** seed 159. A 300-cent capture was held, completed and fully refunded; the REFUNDED webhook came first, and the app tracked +300 cents where PayPal netted 0.
+2. **Under-credit after first seeing a partial refund (13 of 200 seeds).**
+   - **What happened:** a capture first seen `PARTIALLY_REFUNDED`, on an explicit check or on the read after a lost capture answer, was never credited, even after the final sweep.
+   - **Example:** seed 181. A 21.68 capture was held and completed, then 0.13 refunded; the app tracked 0 where PayPal held 21.55.
+
+**How PR #46 resolved them** (Codex reproduced both independently):
+- **For the over-credit:** the first credit now replays the completed refunds already on record, in the same transaction and before milestones.
+- **For the under-credit:** an order read now recovers a partial remainder, but only from validated completed refund evidence.
+- **Unchanged:** a capture first seen fully refunded without a completion still adds no progress, which is the documented exception above.
+
+### Limits and evidence
+
+**Limits.**
+- **The fake:** the provider is the existing stateful fake, not PayPal.
+  - It repeats any earlier answer for the same request id indefinitely, whereas real PayPal keeps request ids for a limited time.
+  - Dashboard refunds edit the fake's order record, as the existing reconciliation tests do.
+  - Verification is the fake's answer, not a signature.
+  - A redelivery under a new event id is a stronger duplicate than PayPal's same-id retries.
+- **Scope:**
+  - one process and one request at a time; concurrent requests are covered by `payment-dispatch-access`;
+  - USD only, the example household and goal, and at most 6 orders.
+- **Not covered:**
+  - lost answers are raised transport errors, not timeouts or stalled bodies, which `paypal-reconciliation` covers;
+  - no app-initiated refunds, declines, cancels, or amount and currency mismatches, which named tests cover; the brief excludes malformed provider behavior.
+- **Held-refund coverage in the seeds:** refunds held before their capture is recorded are exercised by PR #48's regressions and the directed probe. How often the 24 fixed seeds reach that state was not measured.
+- **Reopening and transport:** reopening is not process death (`payment-restart` covers SIGKILL), and the `sdk` path is not SDK serialization.
+- **Not real-world evidence:** this is not real PayPal reliability, device or production evidence, and not a human playtest.
+
+Raw evidence is ignored and stays local in `test-results/seeded-payments-20261108/`:
+- **Final, with PR #48 (`deferred/`):**
+  - `29-cases-node22.16.0.log` and `29-cases-node26.0.0.log`;
+  - `probe-unrecorded-refund-at-2d2f3bd.log`;
+  - `check.log` and `diff-check.log`.
+- **With PR #46 only (`integrated/`):**
+  - `model-node22.16.0.log`, `model-node26.0.0.log`, `refund-ordering-node22.16.0.log` and `refund-ordering-node26.0.0.log`;
+  - `representatives.log` and `representatives-before-fix-model.log`;
+  - `scan-1-200-rest-any.log`;
+  - `probe-unrecorded-refund.mjs`, and `probe-unrecorded-refund.log`, the probe's run at `9396c06`;
+  - `check.log`.
+- **Before the fix (the folder's top level):**
+  - `final-*.log`;
+  - `widened-any-refunds.log`, `widened-scan-1-200-rest.log` and `widened-representatives.log`;
+  - `mutations.log` and `mutations.json`, with `mutate-009.mjs` and `contributions.original.mjs`;
+  - `replay-input.log` and `check.log`.
+
+## Payment recovery across an abrupt process restart — November 7, 2026
+
+Branch `claude/payment-restart-recovery`, at the reviewed PR #40 head `e3bc6ff` (main `579b4f6` does not contain it yet). There is **no production change**: the current code already holds these crash windows, so this adds evidence and one fake-PayPal fidelity fix.
+
+**What was missing.**
+- **No abrupt process death:** clean close and reopen, and same-process dropped-response recovery, were already tested. No test killed the app process at the windows between PayPal's answer and the local credit.
+- **Other process tests:** `demo.test` stops the demo with SIGINT, and the family runner restarts with SIGTERM. Neither touches a payment.
+
+**The harness:**
+- **`test/unit/payment-restart.test.mjs` (the parent)** runs the existing stateful fake PayPal on 127.0.0.1. Its orders and captures therefore survive the app's death.
+- **`test/helpers/payment-app-child.mjs` (the app)** runs the real server and payment service on a disposable database in a child process:
+  - it is forked with an empty environment, explicit fake credentials and no `.env`;
+  - it uses the production PayPal SDK adapter, with real SDK auth, controllers and serialization, through its existing transport seam;
+  - that transport reaches only the parent. Every non-loopback dispatch is refused.
+- **Killing:** each child is killed with SIGKILL, so no shutdown code runs. Only the test's own children are signalled.
+- **Gates, waits and cleanup:** a gate in the parent holds PayPal's answer, and a gate in the child's harness wrapper withholds the app's answer. Every wait is bounded, and each test removes only its own temporary folder and children.
+
+| Scenario | What happened | Fake PayPal counters | Recovered records |
+| --- | --- | --- | --- |
+| 1. Killed while PayPal's capture answer was held | No credit was invented: the order was still `created`, with no capture or entry and $60.00. The restarted process did nothing by itself, making 0 provider calls at startup. The existing same-order retry sent the **same `PayPal-Request-Id`**, and PayPal replayed its first answer. The explicit check saved a `match` | 2 tokens (one per process), 1 order created, **2 capture requests with 1 request id**, 1 order read, **1 provider capture** | Order `completed`; 1 capture credited; 1 contribution of $15.00; 1 saved check (`match`); $75.00 |
+| 2. Killed after the credit was committed but before the answer reached the client | The retry returned `already_completed` **without calling PayPal**. The same webhook event returned `duplicate_event`; a new event for the capture returned `already_completed` | **1 capture request**, 0 order reads, 3 webhook verifications, 1 provider capture | 1 capture credited; 1 contribution; $75.00 |
+| 3. A dashboard refund made while the app was down, with no webhook | Nothing was reconciled at startup. The explicit check recorded the refund once, and a second check returned `already_completed`. The late refund event returned `duplicate_refund`, then `duplicate_event` | 1 capture request, 2 order reads, 2 webhook verifications, 1 provider capture | Order `refunded`; 1 contribution and 1 refund of $15.00; refunded $15.00; $60.00, debited once |
+
+**A fidelity fix to the fake.** The real SDK OAuth path had never run against the shared fake. Its token answer lacked `token_type`, which real PayPal sends and the installed SDK 2.5.0's `oAuthToken` schema requires. So the first harness run could not create an order: every scenario failed with a 502 before any payment logic ran. The fake now answers with `token_type: 'Bearer'`.
+
+| Check | Actual result |
+| --- | --- |
+| The restart tests on Node 22.16.0, 26.0.0 and 26.13.0 | 3 passed on each |
+| Deliberate service mutations, restored with a matching hash: an unstable capture request id; a settled retry that calls PayPal | Each fails its scenario's own assertion: "one PayPal-Request-Id for the order" and "the settled order is answered without calling PayPal" |
+| Affected suites on the three versions: the restart tests, payments, paypal-reconciliation, paypal-unknown-outcome, payment-dispatch-access, shared-capture-access, paypal-sdk, paypal-sdk-transport, migration-integration, ledger and household-snapshot | 116 tests: 115 passed, 1 existing designed skip, 0 failed on each |
+| The other unit files that use the changed fake (family-live, family-runtime-boundaries, planning-revision, server), on Node 22.16.0 and 26.13.0 | 42 passed on each |
+| `npm run check` | Passed: 47 copied art/runtime files, the original 90-color palette, the renderer wiring and JavaScript syntax |
+| `git diff --check` | Clean |
+
+**A correction after review: startup cleanup in the harness.** Codex found that `startApp` waited for its child to report ready before `scenario` recorded that child. A child that never became ready was therefore left running when the helper gave up. Codex reproduced this on `a257557` with a child that sends no ready message: 1 child was still alive after the rejection.
+
+The fix:
+- **Exit tracking:** the helper now listens for its child's exit the moment the child is forked.
+- **Cleanup on failure:** if readiness fails or times out, the helper ends its own child before passing the error on. It sends SIGKILL only if the child is still running; a child that has already ended, or is ending, is only waited for. The normal kill uses the same path.
+
+A fourth test runs that actual helper with two children of its own: one that never becomes ready, and one that exits before it is ready. Both rejections match, and each child has ended and no longer exists.
+
+Without the cleanup, this test fails on "its own child has ended". Its leftover child also kept the test process from exiting until that one child was ended by its own process id.
+
+With the fix, the four restart tests pass on Node 22.16.0, 26.0.0 and 26.13.0, and `npm run check` passes. This changes only the test harness; there is no production change.
+
+The test command is `node --test test/unit/payment-restart.test.mjs`. The existing full unit command picks it up, so the hosted release checks run it on Node 22.16.0, 24 and 26; that result is reported on the PR.
+
+**Limits.**
+- **What "abrupt" means here:** killing a process is not power loss, a disk failure or an operating-system crash. It is not real PayPal reliability or device evidence, and not a playtest.
+- **The fake:** the provider is the existing stateful fake, with gates that model a held answer; it is not network-fault injection. The refund scenario edits the fake's order record, as the existing reconciliation test does.
+- **Unchanged:** approval, access checks, amount, currency and household matching, the read-only steward, mode separation and the existing recovery semantics. Nothing captures or reconciles at startup.
+
+Raw evidence is ignored and stays local in `test-results/payment-restart-20261107/`:
+- the first runs: `first-run-node26.log` (the 502 from the incomplete fake token) and `second-run-node26.log` (passing after the fix);
+- `debug-transport.mjs`, the probe that found the missing `token_type`;
+- the mutation logs, and `contributions.original.mjs`, the file they were restored from;
+- the `affected-*.log`, `fake-users-*.log` and `final-*.log` files, and `check.log`;
+- for the startup correction: the `correction-*.log` files for each Node version, `startup-before-fix.log` (the new test failing without the cleanup) and `check-correction.log`.
+
+No owner household, credential, real order, paid model or provider call, recording, deployment or submission was used.
+
+## Household snapshots — November 7, 2026
+
+Branch `claude/household-snapshots`, from main `579b4f6`. That commit contains the reviewed PR #38 head `f4bf89c` and every earlier reviewed head.
+
+**The gap, reproduced on `579b4f6` before any change.** No backup or snapshot command existed, and `server/db.mjs` opens every database file in WAL mode. The fixture was an isolated example database in a fresh temporary folder, with no network. The $60 seed was checkpointed. Then one simulated $15 contribution was committed with the writer still open:
+
+| Observation | Node 22.16.0, SQLite 3.49.1 | Node 26.0.0, SQLite 3.53.4 |
+| --- | --- | --- |
+| WAL holding the commit | 53,592 bytes | 53,592 bytes |
+| Copy of the main file only | $60.00 | $60.00 |
+| `sqlite.backup()` from a read-only connection | $75.00; integrity ok; 0 foreign-key violations; 1 credited capture; 1 simulated entry | The same |
+| Source after that read-only backup | $75.00, WAL still 53,592 bytes | The same |
+
+The same probes found three more behaviours on both versions:
+- **Overwrite:** `backup()` replaced an existing SQLite destination; the caller's table was gone.
+- **Interruption:** a throwing progress callback left a 0-byte file at the destination.
+- **Sidecar files:** a read-only open leaves `-wal` and `-shm` files beside the file it opens.
+
+**The command.** `npm run snapshot -- <existing.sqlite> <new.sqlite>` runs `scripts/snapshot.mjs`:
+- **Copy:** it opens the source read-only, then makes a one-step SQLite online backup into a private temporary file with mode `0600`.
+- **Checks:** the copy must pass integrity, foreign-key and schema checks.
+- **Publishing:** a hard link, which never replaces a file. Lock waits are bounded (5 s by default).
+- **Output:** a counts-only summary, with the runtime SQLite version and a SHA-256 that identifies the file but is not a correctness check.
+- **Not included:** no dependency, endpoint, UI, scheduler, upload or restore.
+
+The details and limits are in the [runbook](RUNBOOK.md#household-snapshots).
+
+| Check | Actual result |
+| --- | --- |
+| New `test/unit/household-snapshot.test.mjs`, 6 tests, on Node 22.16.0, 26.0.0 and 26.13.0 | 6 passed on each |
+| Deliberate mutations of the tool, each restored with a matching hash: copying the main file instead of the backup; an overwriting rename instead of the hard link; no validation. Repeated on the corrected tool | 3, 1 and 1 tests fail respectively, both times |
+| The new tests with `migration-integration`, `ledger`, `payments` (both PayPal adapters) and `paypal-reconciliation`, on Node 22.16.0, 26.0.0 and 26.13.0 | 59 tests: 58 passed, 1 existing designed skip, 0 failed on each |
+| Command run on a disposable example file | Written at `0600`; an existing destination refused with exit 1; no paths gives usage and exit 2 |
+| `npm run check` | Passed: 47 copied art/runtime files, the original 90-color palette, the renderer wiring and JavaScript syntax |
+| `git diff --check` | Clean |
+
+**A portability defect found by the first hosted run, and its correction.** Run [42411119299](https://github.com/alejandro-publius/our-castle/actions/runs/42411119299) tested `0186ef7`:
+- **Node 22.16.0:** 367 unit tests passed, with 1 skip.
+- **Browser selection:** 19 passed, with 1 designed skip.
+- **Node 24.22.2 and 26.13.0:** 5 of the 6 new tests failed, all of those that reach the copy. The command asked `backup()` for `rate: -1`, which those releases refuse as "must be a positive integer"; Node 22.16.0 and 26.0.0 accept it.
+
+This was reproduced locally on checksum-verified Node 26.13.0, which bundles SQLite 3.54.0. The command now passes `2**31 - 1`, the largest rate that every tested release accepts, and still copies every page in one step. The hosted result for the corrected head is on the PR.
+
+**What the six tests show:**
+1. **WAL content:** with the app's writer open and a committed contribution in its WAL, a main-file copy reads $60.00. The snapshot reopens at $75.00 with the same simulated labels. The source's rows, main-file bytes and WAL size are unchanged, and the snapshot has mode `0600`. Repeating the request on the reopened copy returns `already_processed`.
+2. **Sandbox, with the stateful fake PayPal:** one order, one credited capture, one contribution credit, the saved check and the recorded webhook event all survive unchanged. On the reopened copy:
+   - the same event returns `duplicate_event`;
+   - a new event for that capture, and a repeated capture, return `already_completed`;
+   - progress stays at $75.00, and the original database never sees those replays.
+3. **Refused sources, creating nothing:** a schema of 8 against this build's 7, a SQLite file that isn't Our Castle's, a text file, and a missing source, which is not created.
+4. **Never replaced:**
+   - an existing destination;
+   - the source itself, its `-wal` path, and a case-folded `-shm` path;
+   - a destination whose `-wal` already exists;
+   - a missing folder.
+
+   A file that appears at the destination after validation is left exactly as it was.
+5. **Not published:**
+   - a source under another connection's exclusive lock, refused within the bounded wait;
+   - an interruption before publishing;
+   - a copy with a damaged table page, which fails SQLite's integrity check.
+
+   No partial file remains.
+6. **Family fixture, through the command:** the command ran as a separate process against a family database that the in-process server was serving.
+   - The copy reports schema 7 with integrity ok.
+   - Its accounts, passkeys, memberships, invitations and sessions rows are identical.
+   - The output contains none of these: the invitation token, the session cookie, the token and CSRF hashes, the passkey ids, the user handles or the names.
+   - Missing paths exit 2 with usage.
+
+**Limits.**
+- **Point in time:** later PayPal captures or refunds are not recreated offline.
+- **Access state:** serving restored family access state needs a separate, explicit recovery procedure. A snapshot is not permission to reactivate old sessions.
+- **No restore:** there is no restore command and no app start on a snapshot.
+- **SQLite version:** Node 22.16.0's SQLite 3.49.1 is within the WAL-reset bug's affected range. The command's connection only reads and never checkpoints, and the runtime was not upgraded.
+- **How the faults were made:** a lock taken by exclusive locking mode, corruption by overwriting one page header, and interruption by a test hook. Hardware failure, power loss and a full disk were not tested.
+- **Hosted result:** the PR's existing release-checks workflow runs the full unit suite on Node 22.16.0, 24 and 26. That result is reported on the PR, not here.
+
+Raw evidence is ignored and stays local in `test-results/household-snapshots-20261107/`:
+- the reproduction scripts and their JSON results: `repro*.mjs`, `repro-node22.16.0.json`, `repro-node26.json`, `repro-overwrite.json`, `repro-rate-lock.json` and `repro-corrupt.json`;
+- the test logs `new-tests-*.log`, `mutation-*.log` and `focused-unit-*.log`;
+- `check.log`;
+- `snapshot.original.mjs` and `snapshot.corrected.mjs`, the exact files the mutations were restored from;
+- the downloaded log of hosted run 42411119299 and `repro-rate.json`, which records the rates each tested Node accepts.
+
+No owner household, credential, real order, paid model or provider call, recording, deployment or submission was used. No database file is committed.
+
 ## Release checks workflow — November 7, 2026
 
 Stacked on PR #37 (`claude/treasury-stall-fallback` at `2cd641d`), which is itself stacked on PR #36 (`a3f262d`, from main `01fb478`). The reviewed candidate had extensive unit and Playwright tests but no committed workflow. `.github/workflows/release-checks.yml` now runs the existing scripts and tests on every pull request, stacked ones included, and on pushes to main.

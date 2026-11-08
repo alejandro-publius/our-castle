@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { openDatabase } from '../../server/db.mjs';
+import { MIGRATIONS, openDatabase } from '../../server/db.mjs';
 import { DEMO_GOAL_ID, DEMO_HOUSEHOLD_ID, createClock, progressFor } from '../../server/household.mjs';
 import { createContributionService } from '../../server/payments/contributions.mjs';
 import { createPayPalClient } from '../../server/payments/paypal-client.mjs';
@@ -36,7 +36,7 @@ test('upgrading an existing schema-3 household preserves every application row a
   db.exec('DROP TABLE order_checks; ALTER TABLE goals DROP COLUMN project_kind; ALTER TABLE goal_items DROP COLUMN selection_json; ALTER TABLE goal_items DROP COLUMN condition; PRAGMA user_version = 3;');
   db.close();
   db = openDatabase(file);
-  assert.equal(db.prepare('PRAGMA user_version').get().user_version, 7);
+  assert.equal(db.prepare('PRAGMA user_version').get().user_version, MIGRATIONS.length);
   assert.deepEqual(rows(db), before);
   assert.deepEqual(checkRows(db), []);
   const service = createContributionService({ db, clock: env.clock, mode: 'sandbox', paypal: null });
@@ -81,7 +81,7 @@ test('the record survives closing and reopening the database, and reopening make
   env.db.close();
 
   const db = openDatabase(file);
-  assert.equal(db.prepare('PRAGMA user_version').get().user_version, 7);
+  assert.equal(db.prepare('PRAGMA user_version').get().user_version, MIGRATIONS.length);
   const reopened = createContributionService({ db, clock: createClock(FIXED_NOW), mode: 'sandbox', paypal: null, webhookId: 'WH-TEST' });
   const after = reopened.contributions(DEMO_GOAL_ID)[0];
   assert.deepEqual(after.lastCheck, before.lastCheck);

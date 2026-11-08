@@ -274,6 +274,21 @@ export const MIGRATIONS = Object.freeze([
     // tables only, so the example household never has accounts.
     ensure(db) { db.exec(FAMILY_ACCESS_TABLES); },
   }),
+  Object.freeze({
+    id: 'deferred-refunds',
+    // Verified completed refunds that arrived before their capture was recorded. References and amounts only,
+    // private until a validated capture binds them to an owned order; never household progress by themselves.
+    ensure(db) { db.exec(`
+      CREATE TABLE IF NOT EXISTS deferred_refunds (
+        refund_id TEXT PRIMARY KEY,
+        capture_id TEXT NOT NULL,
+        amount_cents INTEGER NOT NULL CHECK (amount_cents > 0),
+        currency TEXT NOT NULL CHECK (length(currency) = 3),
+        received_at TEXT NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS deferred_refunds_capture ON deferred_refunds (capture_id, received_at, refund_id);
+    `); },
+  }),
 ]);
 
 export function openDatabase(file) {
@@ -289,7 +304,7 @@ export function openDatabase(file) {
   // Schemas 5 and 6 exist only in databases a pre-integration branch build opened, and mean different things there.
   // Re-check every step from 5 against the actual tables rather than trusting that number.
   const shared = MIGRATIONS.findIndex((step) => typeof step !== 'string');
-  const start = version > shared && version < MIGRATIONS.length ? shared : version;
+  const start = version === 5 || version === 6 ? shared : version;
   if (start !== version) console.warn(`[our-castle] database schema ${version} came from a pre-integration branch build; checking steps ${shared + 1}–${MIGRATIONS.length} against its tables.`);
   for (let i = start; i < MIGRATIONS.length; i++) {
     transaction(db, () => {
