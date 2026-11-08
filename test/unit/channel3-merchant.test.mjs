@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { CHANNEL3_SEARCH_URL, createMerchant, normalizeSearch, searchRequestBody, validateSearch } from '../../server/merchant/channel3.mjs';
 import { createApp } from '../../server/app.mjs';
 import { loadConfig } from '../../server/config.mjs';
-import { openDatabase } from '../../server/db.mjs';
+import { MIGRATIONS, openDatabase } from '../../server/db.mjs';
 import { createClock } from '../../server/household.mjs';
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -480,7 +480,7 @@ test('the goal_items migration is additive: an existing version-two household ke
   db.close();
   db = openDatabase(file);
   try {
-    assert.equal(db.prepare('PRAGMA user_version').get().user_version, 7); // saved checks, project kind, item selection, family access
+    assert.equal(db.prepare('PRAGMA user_version').get().user_version, MIGRATIONS.length);
     assert.deepEqual(snapshot(db), before);
     assert.equal(db.prepare('SELECT COUNT(*) AS n FROM goal_items').get().n, 0);
     assert.equal(db.prepare('SELECT COUNT(*) AS n FROM order_checks').get().n, 0);
