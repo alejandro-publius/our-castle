@@ -1,0 +1,101 @@
+{
+  "capturedAt": "2026-11-08T23:24:55Z",
+  "sourceCommit": "f55e1ba2339938fa3bc7f75fff43a6636866e527",
+  "environment": "Playwright 1.64.1 / Chromium 156.0.8078.4 headless, macOS arm64 with SwiftShader; phone is the 390 x 844 touch-emulated project at device scale 2",
+  "fixture": "Disposable in-memory family-mode household. Rowan (owner, adult), Ash (adult) and Wren (child) each sign in with their own virtual passkey. The real Channel3 merchant code runs over a fake transport returning three invented tents ($120.00, $150.00, $180.00). The server day starts at Nov 8, 2026; the goal starts at $300.00 with $60.00 reported, $30.00 a week and a Dec 20 date. Offers: Rowan $20.00, Ash $10.00.",
+  "spec": "test/e2e/family-schedule.spec.mjs — a family carries a reviewed one-off $90 into a proposed, then accepted, weekly schedule with each adult’s share",
+  "steps": [
+    "The owner shortlists three Market Town results (one explicit search); Rowan and Ash save their own weekly offers",
+    "The owner types a one-off $90.00 (no request) and chooses \"Review this choice\" for the $150.00 tent: capture the unsaved preview",
+    "The owner chooses \"Save goal and propose this schedule\", then \"Use this plan\": capture the accepted schedule",
+    "The test moves the server day to Nov 15 and Ash signs in again: capture the Treasury week"
+  ],
+  "readOnlyPreview": {
+    "requestsWhileTryingTheOneOff": [],
+    "writesBeforeSave": [
+      "POST /api/family-choices/review (read-only)"
+    ]
+  },
+  "recordsInTheWholeJourney": {
+    "moneyRowsUnchanged": true,
+    "planRows": [
+      "accepted family schedule",
+      "proposed later family schedule (no one-off)"
+    ],
+    "deedsOnlyFromTheExistingGoalSave": [
+      "estate:market",
+      "tier:1"
+    ],
+    "providerCalls": 1
+  },
+  "sources": {
+    "index.html": "48f2f0902da9c8f877f23166edb4cfc8cbea27e25fc80570e59e9ddf6258a288",
+    "app.css": "1d994ecdfa360487c2cce44f29a46e48865d8981b875ad248969261dc6ca3eaf",
+    "src/app/main.js": "9fbc8efa80c22066bbc81e56ad12edba9872a36794a3e70401c18c3b07ead70e",
+    "src/app/family-choices.js": "38f9589a373eaa97ac727bdf3185b7b778379e054762302a1bcc0259faa96010",
+    "src/core/family-choices.js": "9640a8d3f85f950f3a1480c0d9e79b4572262bf1a1132c8058f990e13946b064",
+    "server/family-choices.mjs": "6df22e3c4e9aefa44f2073e2c6200f0bed015a71b7e78b81da1150af0202fc9d",
+    "server/planner/index.mjs": "9b04187767b9eab7c817b6d8b4690032814778c39e8c04420910f70077e6075a",
+    "server/planner/family.mjs": "c0957494b13e0e1bf524f939bb39d93d91eaf462700d9575255ef048f95c65e1",
+    "server/app.mjs": "10d823348d4e8b3e23deeefce6a47021c5f967546cab332f7bf08287fe9ecd50",
+    "server/access/policy.mjs": "2846e4cc53ef4effabea533b74ec2f05ff575059f418201fe10fc7b72e1ad6c8",
+    "test/e2e/family-schedule.spec.mjs": "c6ab5754d710945625a19fb7e4ecdf83dd3d0d878693e7f9aeca9d9c1716fa87"
+  },
+  "images": [
+    {
+      "path": "docs/screenshots/family-schedule-desktop-preview.png",
+      "sha256": "0d4b59b1c3b2db48c99236060bec9146702680a75b6393bbd959fba238e8d756",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "region": "#goal-draft (Plan journal)",
+      "story": "Preview: \"Review this choice\" with a one-off $90.00 tried. The unsaved goal draft lists weeks 1–3 (Nov 15–Nov 29) as $0.00 to the goal, each week’s $30.00 going to the expense, then weeks 4–6 (Dec 6–Dec 20) at $30.00 a week, Rowan $20.00 · Ash $10.00. Two explicit actions: \"Save goal and propose this schedule\" or \"Save as our goal\".",
+      "mode": "fake Channel3 transport and invented tents; simulated family payments; no real provider"
+    },
+    {
+      "path": "docs/screenshots/family-schedule-desktop-in-use.png",
+      "sha256": "a643f552d0183ecc484f3e76f87316b59d3eddc86fa095bc3571e6308f0d734a",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "region": "#plan-result (Plan journal)",
+      "story": "Accepted: after \"Use this plan\" the Family schedule is in use; each dated week shows its amount and each adult’s share, and the $0.00 weeks say they go to the one-off expense.",
+      "mode": "fake Channel3 transport and invented tents; simulated family payments; no real provider"
+    },
+    {
+      "path": "docs/screenshots/family-schedule-phone-preview.png",
+      "sha256": "f3eeb8974a6599be96c832a028b60cb62806ef3510adf97cc84da7f9b0e9c15a",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "region": "#goal-draft (Plan journal)",
+      "story": "The same preview on a 390px phone.",
+      "mode": "fake Channel3 transport and invented tents; simulated family payments; no real provider"
+    },
+    {
+      "path": "docs/screenshots/family-schedule-phone-in-use.png",
+      "sha256": "b579718b5d29baacf6a5b5f782cea597632bbeec2ceb6de69b5d91e7b82b88bb",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "region": "#plan-result (Plan journal)",
+      "story": "The accepted family schedule on a 390px phone.",
+      "mode": "fake Channel3 transport and invented tents; simulated family payments; no real provider"
+    },
+    {
+      "path": "docs/screenshots/family-schedule-desktop-treasury.png",
+      "sha256": "04f8396c5d5b841c2518339a0d55b32440ee8fbc7a7e507c746d3595211f87b6",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "region": "#treasury-next (Ledger)",
+      "story": "A week later (server day Nov 15, after signing in again): the Treasury’s week of Nov 9 plans $0.00, because the accepted schedule gives that week to the one-off expense.",
+      "mode": "fake Channel3 transport and invented tents; simulated family payments; no real provider"
+    }
+  ]
+}

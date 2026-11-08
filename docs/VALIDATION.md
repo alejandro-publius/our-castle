@@ -1,5 +1,110 @@
 # Validation
 
+## Family schedule: the reviewed expense and each adult's share, saved and used — November 8, 2026
+
+Branch `claude/family-choice-schedule`, from the reviewed PR #54 head `d0d2dda`. That head is still unmerged, stacked on PR #53 → #52 → #51 → #50 → #49. The commits are:
+- `4752432`: the failing reproduction;
+- `f55e1ba`: the implementation and its tests;
+- the commit after it: these screenshots and this note.
+
+The owner authorized this follow-through. It is a planning aid. No person has used it, and nothing here shows that families save more.
+
+**The gap, reproduced on `d0d2dda` before any change:**
+- **HTTP** (`test/unit/family-schedule.test.mjs` as committed in `4752432`):
+  - The reviewed comparison held the one-off $90.00: weeks 1–3 went to the expense.
+  - "Review this choice" said the draft allowed for it.
+  - After "Save as our goal", the page's plan button and "Use this plan", the accepted weeks were `[1500, 1500, 1500, 1500, 1500, 1500]` instead of `[0, 0, 0, 3000, 3000, 3000]`.
+- **Browser probe** (desktop and 390 px phone) of the same steps: $15.00 in each of the six weeks, and a next step of $15.00 on Nov 15, a week the comparison had given to the expense.
+
+**What a family can do now:**
+- **Preview.** "Review this choice" still fills the unsaved goal draft. It also lists the weeks it would propose: dates, the goal amount, the part each week gives to the one-off expense, and each adult's share. Typing a trial or reviewing writes nothing.
+- **Propose.** **Save goal and propose this schedule** sends only the one-off amount and the preview's revision.
+  - In one transaction, the server saves the goal through the existing goal save, recomputes every figure from its own records and stores the schedule as a proposal.
+  - Any differing figure refuses the whole request, so the goal is never saved without its proposal or the other way round. An edited amount, date, weekly amount or starting report is one such figure.
+  - The plain **Save as our goal** is unchanged and proposes nothing.
+- **Use.** The existing **Use this plan** puts it in use. Before that it is refused, with the change named, when any of these changed: an adult's offer, a removed adult, the source choice's price after an explicit check, the goal, progress or the day.
+- **Propose later.** **Propose this schedule** on the current goal makes a new proposal without changing the goal. Any one-off amount must be entered again, and an accepted schedule stays in use until another is accepted.
+
+**Reused, not rewritten:** the next planned contribution (`planNextStep`) already skipped $0 weeks, and the Treasury already summed the accepted plan's dated amounts. Both now read the stored family weeks:
+- the next positive contribution is week 4, Dec 6, $30.00;
+- the Treasury plans $0.00 in an expense week and $30.00 in the week of Dec 6;
+- plan milestones follow the stored amounts (the Keep on Dec 6, the Castle on Dec 20).
+
+**Arithmetic:** `familySchedule` in `src/core/family-choices.js`. It is pure, works in whole cents and is shared with the page. It reuses the comparison's earliest-finish weeks and its proportional cent-remainder split.
+- **Rows:** one per week up to the goal's date, at most 52.
+- **Each week:**
+  - the goal amount is at or below both the household's weekly amount and the sum of active adults' own offers;
+  - no share exceeds that adult's offer;
+  - the final week takes exactly what remains.
+- **The one-off expense:** taken once, from the earliest weeks. It never comes out of tracked progress and is never repeated.
+- **The task's example** (test data: Nov 8; $60.00 tracked; a $150.00 item; $30.00 a week; $20.00 + $10.00 offers; a $90.00 one-off; Dec 20):
+  - weeks `[0, 0, 0, 3000, 3000, 3000]`, with shares `[0, 0]` for weeks 1–3 and `[2000, 1000]` for weeks 4–6;
+  - $90.00 in all, finishing Dec 20.
+- **The $180.00 item at Dec 20:** $30.00 short. Its review offers Dec 27, the earliest finish at the same offers, only as a draft the adult saves explicitly. No offer is raised.
+- **Nothing to schedule** is refused plainly: no offers, a $0 household amount, a goal already reached, a date under a week away, or a one-off taking every week.
+
+**Data and access:**
+- **Storage:** no migration and no new table. A family schedule is an ordinary `plans` row with `source = 'rules'` (deterministic, no AI) and `plan_json.kind = 'family'`.
+  - `plan_json.family`: every dated week, the shares, the offers and the one-off amount.
+  - `basis_json.family`: the offers and source-choice price it rests on.
+  - Existing AI, built-in and household-edited plans, their labels and the untrusted AI plan schema are unchanged. A family schedule is not edited week by week (`409 family_schedule_fixed`).
+- **Routes:**
+  - `POST /api/merchant/goal` gains an optional `schedule` object.
+  - One new route, `POST /api/plans/family`, is adult-only in the fail-closed policy.
+  - Session scope, CSRF, origin checks and the access recheck are unchanged.
+
+**Checks on `f55e1ba`:**
+- **Reproduction first:** on `d0d2dda` the HTTP test failed (1 test, 1 failure, with actual weeks `[1500 ×6]`). The browser probe failed on desktop and phone (2 failures, $15.00 in every week).
+- **`test/unit/family-choices-core.test.mjs`** (16 tests, 6 new). Literal expectations for:
+  - the example's dated rows: goal amounts, the expense's share of each week, and each adult's share;
+  - the $180.00 item, $30.00 short with Dec 27 as its earliest finish;
+  - a partly covered week, and a final $20.00 week split $13.33 + $6.67;
+  - a household amount below the offers;
+  - the 52-week limit;
+  - every nothing-to-schedule outcome;
+  - the dated lines the page shows.
+- **`test/unit/family-schedule.test.mjs`** (6 HTTP tests, family mode with a fake Channel3 transport, plus one in example mode):
+  - the reproduction, now passing through propose and accept, with every member reading the same weeks;
+  - every money table compared row by row, and only the existing goal save's deeds;
+  - the ordinary built-in plan still `[1500 ×6]`, leaving the accepted family schedule in use;
+  - a reload and clock advances to Nov 15 and Dec 1: the stored plan row stays byte-identical, the Treasury plans $0.00 then $30.00, and a $30.00 contribution moves the next step to week 5;
+  - child, foreign-family, impersonation, signed-out, CSRF, expired-session and invalid-amount refusals, with nothing written;
+  - a refused combined save undone whole: an edited amount or date, or a different one-off amount;
+  - refusals at "Use this plan" after a price check, an offer change, a removed adult, a goal edit or a contribution;
+  - the nothing-to-schedule refusals, and the $180.00 choice.
+- **Unit runs:** the 16 new and affected unit files passed 160/160 on Node 22.16.0 and 26.0.0.
+- **`test/e2e/family-schedule.spec.mjs`** (`@release`), desktop and 390 px phone: 2/2 passed. Two adults and a child each use their own passkey context.
+  - The existing shortlist, offers and $90.00 trial, with no request while typing.
+  - The preview, including that an edited amount disables the combined action.
+  - "Save goal and propose this schedule", the proposal arriving live on the other adult's page, and the child unable to use it.
+  - "Use this plan": a suggested contribution of $30.00 and a next step of Dec 6.
+  - The same weeks after a reload, and on Ash's page after the server day moves to Nov 15 (Treasury $0.00) and Dec 1 (Treasury $30.00).
+  - A later proposal with no one-off amount.
+  - Throughout: one provider call (the search); no payment, steward, model or ordinary-plan request; every money row unchanged.
+- **Affected existing browser specs** (`channel3-merchant`, `connected-journey`, `family-choices`, `family-journey`, `plan-check`, `journey`, `shared-live`), desktop and phone: 91 passed, 9 designed viewport skips, 0 failed, on exactly the source of `f55e1ba`.
+- **Guard:** `npm run check` passed: 47 copied art/runtime files, the original 90-colour palette, the renderer wiring and syntax.
+- **Isolation:** every check used disposable in-memory data, empty synthetic configuration and a preload that refuses non-loopback app transport.
+- **Hosted:** one Release checks run is required on the final PR head. Its actual result is recorded in the PR, so no docs-only run is needed.
+
+**Limits:**
+- **Offers:** a family-visible planning ceiling an adult chose, not a promise, income, a held balance, a mandate or a PayPal approval. Each contribution still needs an adult's approval.
+- **The one-off expense:** a planning assumption. The app does not know whether it was paid and never assumes so. An accepted schedule keeps its dates; a later proposal needs the amount entered again.
+- **Ordinary plans:** built-in and AI plans still spread contributions and include no one-off amount. Choosing one later replaces nothing until it is used.
+- **Prices:** Channel3 catalog prices as last checked. Tax and shipping are extra.
+- **Scope:** fake providers, simulated payments, virtual passkeys and disposable data only. This is not human, device or real-provider evidence.
+
+| Preview in the goal draft | Family schedule in use | Treasury a week later |
+| --- | --- | --- |
+| ![The unsaved draft lists weeks 1–3 at $0.00 for the $90.00 expense, then $30.00 a week, Rowan $20.00 · Ash $10.00](screenshots/family-schedule-desktop-preview.png) | ![The accepted family schedule: three $0.00 weeks for the expense, then three $30.00 weeks with each adult's share](screenshots/family-schedule-desktop-in-use.png) | ![The Treasury's week of Nov 9 plans $0.00, a week the schedule gives to the expense](screenshots/family-schedule-desktop-treasury.png) |
+
+| Preview, 390 px phone | In use, 390 px phone |
+| --- | --- |
+| ![The schedule preview and the two explicit save actions on a phone](screenshots/family-schedule-phone-preview.png) | ![The accepted family schedule on a phone](screenshots/family-schedule-phone-in-use.png) |
+
+The captures are from the passing `@release` journey on `f55e1ba`, using invented tents over a fake Channel3 transport. Provenance, step notes and hashes, with every listed source verified against `f55e1ba`, are in [family-schedule-sources.json](screenshots/family-schedule-sources.json).
+
+**Evidence:** kept local and ignored, in `test-results/family-choice-schedule-20261108/`. It holds the red reproduction logs and probe, the development and final logs, the raw captures with `SHA256SUMS.txt` and the commands.
+
 ## Family choices completion: visible expense tradeoffs — November 8, 2026
 
 Codex completed the interrupted family-choice feature in a separate branch, from Claude's implementation 9f75440. The completed implementation is 53b2d49; PR #53 at 7329b8f remains the exact unmerged base. Claude's source checkout and usage-limit prompt were left untouched.
@@ -87,7 +192,7 @@ The owner authorized this direction. It is a planning aid, not evidence that fam
 - **Progress:** tracked progress is a record, not money to spend or proof an item can be bought.
 - **Prices:** Channel3 catalog prices as last checked. The retailer's price and stock may differ, and tax and shipping are extra. A choice checked more than 30 minutes ago, or whose draft has expired, needs an explicit price check before review.
 - **Saving a cheaper item:** the existing goal save may record milestones that already-tracked progress reaches under the new amount (an existing rule). A preview, offer or preference grants nothing.
-- **Earliest finish:** it assumes each week's full open amount. After saving, the existing planner's own schedule may spread contributions evenly.
+- **Earliest finish:** it assumes each week's full open amount. After saving, the existing planner's own schedule may spread contributions evenly. *(Resolved for a reviewed choice by the family schedule in the section above; ordinary plans still spread contributions and include no one-off amount.)*
 - **Scope:** fake providers and disposable data only. This is not human, device or real-provider evidence.
 
 | Three choices, desktop | One-off $90.00, desktop | Three choices, 390 px phone | One-off $90.00, phone |
