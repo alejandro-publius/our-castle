@@ -2,10 +2,10 @@
 
 ## Seeded payment sequences against an independent model — November 7, 2026
 
-Branch `claude/seeded-payment-model` ([PR #47](https://github.com/alejandro-publius/our-castle/pull/47)). It now stacks on Codex's reviewed refund-ordering fix, which this test's first version found:
-- **The stack:** [PR #46](https://github.com/alejandro-publius/our-castle/pull/46) (`codex/refund-delivery-order` at `eefae41`), on PR #43 (`ce3ec65`), on PR #40 (`e3bc6ff`). Main `579b4f6` contains none of them yet.
-- **The merge:** `eefae41` came in unchanged, by the normal merge `55b500a`.
-- **What this branch changes:** only the model test and these docs. The production change is PR #46's; see [refund ordering](REFUND-ORDERING.md).
+Branch `claude/seeded-payment-model` ([PR #47](https://github.com/alejandro-publius/our-castle/pull/47)). It now stacks on Codex's two reviewed fixes for the ordering defects this test found:
+- **The stack:** [PR #48](https://github.com/alejandro-publius/our-castle/pull/48) (`codex/refund-before-capture` at `002d229`), on [PR #46](https://github.com/alejandro-publius/our-castle/pull/46) (`codex/refund-delivery-order` at `eefae41`), on PR #43 (`ce3ec65`), on PR #40 (`e3bc6ff`). Main `579b4f6` contains none of them yet.
+- **The merges:** `eefae41` and `002d229` came in unchanged, by the normal merges `55b500a` and `6c45c86`.
+- **What this branch changes:** only the model test and these docs. The production changes are PR #46's ([refund ordering](REFUND-ORDERING.md)) and PR #48's ([deferred refunds](DEFERRED-REFUNDS.md)).
 
 **What was missing.** The payment tests are named scenarios, each covering one path. Nothing combined captures, retries, lost answers, late webhooks, dashboard refunds and reopening in varied orders, or compared the result with a model of what PayPal holds.
 
@@ -17,7 +17,7 @@ Branch `claude/seeded-payment-model` ([PR #47](https://github.com/alejandro-publ
   - Webhook verification goes through the REST client on both paths.
 - **Two refund scopes,** both run by CI over the same 24 seeds and both paths:
   - `credited`: dashboard refunds reach only captures credited here;
-  - `any`: a refund can also reach a capture that PayPal completed before this server saw the completion. That is the space where the two ordering defects lived.
+  - `any`: a refund can also reach a capture that PayPal completed before this server saw the completion. That is the space where all three ordering defects lived.
 - **Each seed runs 30–60 actions, with at most 6 orders:**
   - adult-approved orders of 100–2,500 cents;
   - first captures, which PayPal completes or holds, and same-order retries, which PayPal answers with its first answer for the same request id;
@@ -33,7 +33,7 @@ Branch `claude/seeded-payment-model` ([PR #47](https://github.com/alejandro-publ
 - **The model** is plain integers and sets. PayPal's side (each order's amount, capture status, first answer and refunds) is kept apart from what the app has been shown:
   - the captures it has been told of;
   - those shown completed;
-  - every completed refund it has been told of, by id, which counts against its capture from the moment that capture is credited;
+  - every verified completed refund it has been told of, by id, even before it knew the capture. The app must hold each one durably, as a refund record or as evidence awaiting its capture, and each counts against its capture from the moment that capture is credited;
   - the webhook event ids it has handled.
 
   It never calls production code or reads the service's answers to predict anything; `progressFor` is only read to observe.
@@ -43,10 +43,10 @@ Branch `claude/seeded-payment-model` ([PR #47](https://github.com/alejandro-publ
   - the ledger's credits and reversals, as counts and cents, read with SQL;
   - the credited capture ids and the reversed refund ids;
   - each capture's net and refunded cents;
-  - the recorded captures and refunds;
+  - the recorded captures, and the held completed refunds: `payment_refunds` and `deferred_refunds` read together with SQL `UNION`;
   - the local orders.
 - **Rules checked on every action:**
-  - **A bound that holds whatever the app has seen:** a capture's net credit never exceeds what PayPal verified for it, less the completed refunds of it on record.
+  - **A bound that holds whatever the app has seen:** a capture's net credit never exceeds what PayPal verified for it, less the completed refunds of it that the app holds, recorded or awaiting their capture.
   - **Every answer must be the model's.** A completion answers `refunded` when it applies refunds already shown, otherwise `completed`; the documented exception answers `not_credited`; a repeated event id answers `duplicate_event`.
   - **No-dispatch rules:** a retry of an order settled here, a refusal, reopening and loading must not reach PayPal.
 - **At the end**, an explicit check of every order, after which the app must agree with PayPal's own record. Only the documented exception may be recorded without a credit, at the same net zero.
@@ -57,7 +57,20 @@ A failure prints the seed, adapter, scope and source commit, the failing action 
 
 The generator consults the model, so a seed's actions depend on the model version as well as the seed: a seed and commit replay exactly.
 
-### The integrated result, at `9396c06`
+### The final integrated result, at `2d2f3bd`
+
+This adds PR #48 (`6c45c86`) and one observation change (`2d2f3bd`). The expected held refunds are every verified completed refund delivered, replacing the old rule that counted only refunds whose capture the app already knew. The observer reads both tables, and the bound counts both. Money still waits for the capture's completion, and every other check is unchanged and strict in both scopes.
+
+| Check | Actual result |
+| --- | --- |
+| The 5 model tests, PR #46's 12 refund-ordering regressions and PR #48's 12 deferred-refund regressions, on Node 22.16.0 and 26.0.0 | **29 passed on each**, with none skipped or failed. The seeded summaries are identical on both versions, and identical to `9396c06`'s: the change is in what is observed, not in the sequences |
+| The four-variant directed probe, run once | **Corrected on both paths, for the 500-cent partial and the 1,500-cent full refund.** The refund held before its capture was recorded is applied when the older completion arrives, which answers `refunded`. Tracking shows 7,000 or 6,000 cents, PayPal's own net, with no tier award. The repeated delivery and the explicit check change nothing |
+| `npm run check` | Passed: 47 copied art/runtime files, the original 90-color palette, the renderer wiring and JavaScript syntax |
+| `git diff --check` | Clean |
+
+The hosted release checks for the exact final head are reported on PR #47.
+
+### With PR #46 only, at `9396c06` (history)
 
 | Check | Actual result |
 | --- | --- |
@@ -68,28 +81,27 @@ The generator consults the model, so a seed's actions depend on the model versio
 | `npm run check` | Passed: 47 copied art/runtime files, the original 90-color palette, the renderer wiring and JavaScript syntax |
 | `git diff --check` | Clean |
 
-### A further counterexample for review, not fixed here
+### The further counterexample, and its resolution in PR #48
 
-A verified refund webhook can arrive before this server has recorded the capture at all. That happens when the capture's answer and the read that follows were both lost.
-- **What happens:**
-  - the refund webhook is answered `ignored_unknown_capture` and marked handled, and no refund row is kept, because refund rows need a recorded capture;
-  - the older COMPLETED webhook then credits the full amount, and that gross credit awards the first tier;
-  - repeating the refund webhook is a duplicate;
-  - only an explicit check applies the refund, and the tier award stays, because awards are keepsakes.
-- **Coverage:** PR #46's regressions cover refunds of captures already recorded.
-- **The model would flag it:** its money rule counts every verified completed refund delivered. The 24 fixed seeds and the 200 scanned seeds never generated this exact order of events: both losses, then a refund delivered before any capture evidence, then a completion before any check.
+**Found with PR #46 only**, at `9396c06` (the reviewed head `5774c0d` changed docs only). A verified refund webhook can arrive before this server has recorded the capture at all. That happens when the capture's answer and the read that follows were both lost.
+- **What happened then:**
+  - the refund webhook was answered `ignored_unknown_capture` and marked handled, and no refund row was kept, because refund rows need a recorded capture;
+  - the older COMPLETED webhook then credited the full amount, and that gross credit awarded the first tier;
+  - repeating the refund webhook was a duplicate;
+  - only an explicit check applied the refund, and the tier award stayed, because awards are keepsakes.
+- **Why the scans missed it:** PR #46's regressions covered refunds of captures already recorded. The 24 fixed seeds and the 200 scanned seeds never generated this exact order of events: both losses, then a refund delivered before any capture evidence, then a completion before any check.
 
-The smallest reproduction is a directed probe, `test-results/seeded-payments-20261108/integrated/probe-unrecorded-refund.mjs`. It ran on both paths, for a 500-cent partial refund and a 1,500-cent full refund of a 1,500-cent capture, and showed the same thing every time:
+**Resolved by PR #48 (`002d229`), now integrated.** Codex reproduced the four cases independently. Schema 8 holds verified completed refunds that arrive before their capture in `deferred_refunds`: references and amounts only, with no household attribution or progress. Ordinary capture validation then adopts them through the existing refund pipeline, and the credit, reversals and milestone decision share one transaction. PR #48's 12 regressions now exercise the exact prefix the seeds missed.
 
-| Step | Answer | Tracked | Tier awards |
-| --- | --- | --- | --- |
-| 1. Capture: PayPal completes it, and both the answer and the follow-up read are lost | `unknown` | 6,000 | none |
-| 2. Dashboard refund; its verified REFUNDED webhook arrives first | `ignored_unknown_capture` | 6,000 | none |
-| 3. The older verified COMPLETED webhook | `completed` | **7,500**, where PayPal nets 7,000 or 6,000 | **`tier:1`** |
-| 4. The same REFUNDED webhook again | `duplicate_event` | 7,500 | `tier:1` |
-| 5. An explicit check | `refunded` | 7,000 or 6,000 | `tier:1` remains |
+The directed probe is `test-results/seeded-payments-20261108/integrated/probe-unrecorded-refund.mjs`. It ran on both paths, for a 500-cent partial refund and a 1,500-cent full refund of a 1,500-cent capture, and each run matched the rows below:
 
-Choosing a remedy, such as keeping that evidence or retrying the delivery, would add payment policy. It is left to Codex and Astra, and this branch changes no production code.
+| Step | At `9396c06` (PR #46 only) | At `2d2f3bd` (PR #48 integrated) |
+| --- | --- | --- |
+| 1. Capture: PayPal completes it, and both the answer and the follow-up read are lost | `unknown`; 6,000 | `unknown`; 6,000 |
+| 2. Dashboard refund; its verified REFUNDED webhook arrives first | `ignored_unknown_capture`; 6,000; the refund is dropped | `ignored_unknown_capture`; 6,000 |
+| 3. The older verified COMPLETED webhook | `completed`; **7,500**, where PayPal nets 7,000 or 6,000; **`tier:1` awarded** | `refunded`; **7,000 or 6,000**, PayPal's net; no tier award |
+| 4. The same REFUNDED webhook again | `duplicate_event`; 7,500 | `duplicate_event`; unchanged |
+| 5. An explicit check | `refunded`; 7,000 or 6,000; `tier:1` remains | `already_completed`; unchanged; no tier award |
 
 ### Before the fix, at `ce3ec65` (history)
 
@@ -133,15 +145,20 @@ The test's first version (`3f86614`) ran only the `credited` scope in CI. It pas
 - **Not covered:**
   - lost answers are raised transport errors, not timeouts or stalled bodies, which `paypal-reconciliation` covers;
   - no app-initiated refunds, declines, cancels, or amount and currency mismatches, which named tests cover; the brief excludes malformed provider behavior.
+- **Held-refund coverage in the seeds:** refunds held before their capture is recorded are exercised by PR #48's regressions and the directed probe. How often the 24 fixed seeds reach that state was not measured.
 - **Reopening and transport:** reopening is not process death (`payment-restart` covers SIGKILL), and the `sdk` path is not SDK serialization.
-- **Not real-world evidence:** this is not real PayPal reliability, device or production evidence.
+- **Not real-world evidence:** this is not real PayPal reliability, device or production evidence, and not a human playtest.
 
 Raw evidence is ignored and stays local in `test-results/seeded-payments-20261108/`:
-- **Integrated (`integrated/`):**
+- **Final, with PR #48 (`deferred/`):**
+  - `29-cases-node22.16.0.log` and `29-cases-node26.0.0.log`;
+  - `probe-unrecorded-refund-at-2d2f3bd.log`;
+  - `check.log` and `diff-check.log`.
+- **With PR #46 only (`integrated/`):**
   - `model-node22.16.0.log`, `model-node26.0.0.log`, `refund-ordering-node22.16.0.log` and `refund-ordering-node26.0.0.log`;
   - `representatives.log` and `representatives-before-fix-model.log`;
   - `scan-1-200-rest-any.log`;
-  - `probe-unrecorded-refund.mjs` with its log;
+  - `probe-unrecorded-refund.mjs`, and `probe-unrecorded-refund.log`, the probe's run at `9396c06`;
   - `check.log`.
 - **Before the fix (the folder's top level):**
   - `final-*.log`;
