@@ -94,6 +94,8 @@ Pass `--folder` anyway. A whole-collection run without the opt-in stops at folde
 ```sh
 npm test              # integrity check + unit tests + browser end-to-end tests
 npm run test:unit     # node --test (ledger, payments on both PayPal adapters, planner, steward, HTTP, Postman files)
+PAYMENT_MODEL_SEED=<1-4294967295> PAYMENT_MODEL_ADAPTER=rest node --test test/unit/payment-model.test.mjs
+                      # replays one seeded payment sequence against its reference model (rest or sdk; docs/VALIDATION.md)
 npm run test:e2e      # Playwright, desktop 1440px and phone 390px, example mode
 npm run check         # asset hashes, 90-color palette, renderer wiring, JS syntax
 npm run check:postman-guard  # proves both Postman guards with Newman 6.2.1, logging mocks and a throwaway example server
