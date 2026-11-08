@@ -288,6 +288,14 @@ button { font: inherit; }
 .contributions .ids { font-size: 12px; color: var(--ink-muted); overflow-wrap: anywhere; }
 .contributions .check-history { list-style: none; padding: 0; margin: 4px 0 0; }
 .contributions .check-history li { border: 0; background: none; padding: 2px 0; border-radius: 0; font-size: inherit; }
+.contributions .counts, .receipt .counts { margin: 6px 0 0; font-size: 15px; color: var(--ink); }
+.record-ids .breakdown { display: grid; grid-template-columns: minmax(0, max-content) max-content; justify-content: start; gap: 2px 0; margin: 2px 0 10px; font-variant-numeric: tabular-nums; }
+.record-ids .breakdown dt { color: var(--ink-muted); padding-right: 18px; }
+.record-ids .breakdown dd { margin: 0; text-align: right; color: var(--ink); }
+.record-ids .breakdown .net { border-top: 1px solid var(--ink-line); padding-top: 3px; margin-top: 2px; font-weight: 700; color: var(--ink); }
+.contributions .story { list-style: none; padding: 0; margin: 0 0 8px; font-size: 13px; color: var(--ink-muted); }
+.contributions .story li { border: 0; background: none; padding: 2px 0; border-radius: 0; font-size: inherit; }
+.contributions .story time { color: var(--ink); font-variant-numeric: tabular-nums; }
 .contributions .actions { margin-top: 6px; }
 .entries li { display: flex; justify-content: space-between; gap: 10px; border-bottom: 1px solid #d3bd8c; padding: 5px 0; font-size: 15px; }
 .entries li.empty, .contributions li.empty, .keepsakes li.empty { color: var(--ink-muted); border: 0; background: none; padding: 0; }

@@ -18,6 +18,7 @@ import { TIME_MODES, WEATHER_MODES, resolveAtmosphere } from '../core/atmosphere
 import { WEATHER_TTL_MS, createWeatherClient } from './local-weather.js';
 import { REALM_DISTRICTS, REALM_LEGENDS, realmAccess, districtById, homeDistrict } from '../core/realm.js';
 import { ledgerTrail } from '../core/ledger.js';
+import { contributionStory, countsSentence, storyKey } from '../core/contribution-story.js';
 import { createMerchantDialog, resultFacts } from './merchant.js';
 import { createTreasury } from './treasury.js';
 import { FAMILY_PROJECT_SITE, PROJECT_KINDS, projectKind, projectLabel, projectStage } from '../core/family-project.js';
@@ -1521,11 +1522,14 @@ function renderReceipt() {
   const capture = c.captures[0];
   const approver = state.members.find((m) => m.id === c.approvedBy);
   const completed = ['completed', 'refunded', 'partially_refunded'].includes(c.status);
+  const story = storyOf(c);
   box.hidden = false;
   box.replaceChildren(
     h('span', { class: `stamp ${c.simulated ? 'simulated' : 'sandbox'}` }, c.simulated ? 'Simulated · example mode · no PayPal transaction' : 'PayPal sandbox · test money'),
     h('h4', { id: 'receipt-title' }, completed ? 'Contribution receipt' : 'Contribution pending'),
     h('p', { class: 'big' }, `${money(c.amountCents)} ${c.currency}`),
+    // The same sentence, from the same records, as the Ledger receipt for this contribution.
+    h('p', { class: 'counts', 'data-counts': storyKey(story) }, countsSentence(story, money)),
     h('dl', {},
       h('dt', {}, 'Status'), h('dd', {}, receiptStatus(c)),
       h('dt', {}, 'Toward'), h('dd', {}, state.goal.name),
@@ -1551,6 +1555,27 @@ function receiptStatus(c) {
     case 'refunded': return 'Refunded — goal progress reduced by the same amount';
     case 'partially_refunded': return 'Partly refunded — goal progress reduced by the refunded amount';
     default: return c.statusDetail ?? c.status;
+  }
+}
+
+// What a contribution has done to this goal, worked out from the ledger and payment records already on the page.
+const storyOf = (c) => contributionStory(c, { householdId: state.household.id, goalId: state.goal.id, currency: state.goal.currency, entries: state.ledger.goalEntries });
+// One dated line per saved record. A saved PayPal check stays a past result, placed before any record saved after it.
+function storyLine(fact, c) {
+  switch (fact.kind) {
+    case 'order': {
+      const who = state.members.find((m) => m.id === fact.approvedBy)?.name;
+      return `${c.simulated ? 'Simulated order' : 'Order'} recorded${who ? ` · approved by ${who}` : ''}`;
+    }
+    case 'credit': return `${money(fact.cents)} counted toward the goal`;
+    case 'refund': return `${money(fact.cents)} refund recorded and subtracted`;
+    case 'refund_pending': return `${money(fact.cents)} refund pending · not subtracted`;
+    case 'refund_not_counted': return `${money(fact.cents)} refund recorded · nothing was subtracted`;
+    case 'check': {
+      const before = fact.before.includes('refund') ? ', before the later refund' : fact.before.includes('credit') ? ', before it was counted' : '';
+      return `Saved PayPal check${before}${fact.note ? `: ${fact.note}` : ''}`;
+    }
+    default: return null;
   }
 }
 
@@ -1694,9 +1719,20 @@ function renderLedgerRecord() {
         ? h('button', { type: 'button', class: 'danger', onclick: () => refund(capture.captureId, c.simulated) }, `Confirm refund of ${money(left)}`)
         : h('button', { type: 'button', onclick: () => { ui.refundArm = capture.captureId; renderLedger(); } }, c.simulated ? 'Simulate refund' : 'Refund in sandbox'));
     }
-    return h('li', { 'data-contribution': c.id, tabindex: -1 },
+    // How much still counts, from this contribution's own ledger rows. The breakdown and dated records wait inside the
+    // existing Payment details disclosure; with nothing counted, or nothing more than the order to date, they are left out.
+    const story = storyOf(c);
+    const breakdown = story.known && story.recordedCents > 0 ? h('dl', { class: 'breakdown' },
+      h('dt', {}, 'Recorded contribution'), h('dd', {}, money(story.recordedCents)),
+      h('dt', {}, 'Completed refunds'), h('dd', {}, story.refundedCents ? `−${money(story.refundedCents)}` : 'None'),
+      h('dt', { class: 'net' }, 'Counts toward the goal'), h('dd', { class: 'net' }, money(story.countsCents))) : null;
+    const facts = story.known ? story.history.map((fact) => [fact, storyLine(fact, c)]).filter(([, text]) => text) : [];
+    const history = facts.length > 1 ? h('ol', { class: 'story', 'aria-label': 'Saved records for this contribution, oldest first' },
+      ...facts.map(([fact, text]) => h('li', {}, h('time', { datetime: fact.at }, timeLabel(fact.at)), ` · ${text}`))) : null;
+    return h('li', { 'data-contribution': c.id, 'data-ledger-record': row.id, tabindex: -1 },
       h('div', { class: 'row' }, h('span', { class: 'amount' }, row.recordEntry?.effect < 0 ? row.amountText : money(c.amountCents)), h('span', {}, STATUS_LABEL[c.status] ?? c.status,
         h('span', { class: `tag ${c.simulated ? 'simulated' : 'sandbox'}` }, c.simulated ? 'simulated' : 'PayPal sandbox'))),
+      h('p', { class: 'counts', 'data-counts': storyKey(story) }, countsSentence(story, money)),
       // The server's record of the last explicit "Check with PayPal": its own reconciliation of PayPal's order, kept across reloads.
       // A record that needs a check carries that action right here; a completed capture with no check says so.
       check.key !== 'none' ? h('p', { class: 'fine last-check', 'data-check': check.key },
@@ -1706,6 +1742,7 @@ function renderLedgerRecord() {
         check.needsCheck ? checkButton : null) : null,
       recordImpact(row),
       h('details', { class: 'record-ids' }, h('summary', {}, 'Payment details'),
+        breakdown, history,
         h('div', { class: 'ids' }, `${timeLabel(c.createdAt)} · order ${c.providerOrderId ?? '—'}${capture ? ` · capture ${capture.captureId}` : ''}${refundId ? ` · refund ${refundId}` : ''}`),
         c.checks?.length > 1 ? h('ul', { class: 'ids check-history', 'aria-label': 'Earlier checks with PayPal' },
           ...c.checks.slice(1).map((k) => h('li', {}, `${timeLabel(k.checkedAt)} · ${k.note}`))) : null),
@@ -1713,7 +1750,15 @@ function renderLedgerRecord() {
       actions.length ? h('div', { class: 'actions' }, actions) : null);
 
   })();
+  // A refresh of the same record (a live update, say) keeps Payment details open, and keyboard focus on its summary, as
+  // the family left them. Nothing is stored: a reload starts closed.
+  const previous = list.firstElementChild;
+  const same = previous?.dataset.ledgerRecord === row.id;
+  const open = same && previous.querySelector('.record-ids')?.open;
+  const focused = same && previous.contains(document.activeElement) && document.activeElement.matches('.record-ids > summary');
   list.replaceChildren(card);
+  if (open) card.querySelector('.record-ids').open = true;
+  if (focused) card.querySelector('.record-ids > summary').focus({ preventScroll: true });
 }
 
 // ---------- House steward (AI, read-only) ----------
