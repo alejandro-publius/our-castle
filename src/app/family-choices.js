@@ -197,6 +197,7 @@ export function createFamilyChoices({ getState, actor, openMerchant, onReview, a
   $('family-offer-save').addEventListener('click', saveOffer);
   $('family-offer-withdraw').addEventListener('click', withdraw);
   $('family-trial-input').addEventListener('input', (e) => {
+    ++ui.review; // Any edit cancels an in-flight review, even while the last valid amount stays unchanged.
     const value = e.currentTarget.value.trim();
     const cents = value ? parseAmountToCents(value) : 0;
     ui.reserveInvalid = cents === null || cents > RESERVE_LIMITS.maxCents;
@@ -207,6 +208,7 @@ export function createFamilyChoices({ getState, actor, openMerchant, onReview, a
     render();
   });
   $('family-trial-clear').addEventListener('click', () => {
+    ++ui.review;
     $('family-trial-input').value = '';
     $('family-trial-input').removeAttribute('aria-invalid');
     ui.reserveCents = 0;

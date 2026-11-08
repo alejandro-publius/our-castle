@@ -148,6 +148,27 @@ test('two adults and a child shortlist three items, offer weekly amounts, prefer
     await expect(option(owner, ITEMS[1][1]).locator('.family-option-change')).toHaveText('Without this expense: Nov 29. This trial adds 3 weeks.');
     await shot(owner, 'one-off-90', { endAt: '#family-trial' });
 
+    // Editing the trial also cancels a review already in flight; a late answer must not create a goal draft.
+    let releaseReview, reviewStarted;
+    const gate = new Promise((resolve) => { releaseReview = resolve; });
+    const started = new Promise((resolve) => { reviewStarted = resolve; });
+    await owner.page.route('**/api/family-choices/review', async (route) => {
+      reviewStarted();
+      await gate;
+      await route.continue();
+    }, { times: 1 });
+    await option(owner, ITEMS[1][1]).getByRole('button', { name: 'Review this choice' }).click();
+    await started;
+    await owner.page.locator('#family-trial-input').fill('100000.01');
+    const responseArrived = owner.page.waitForResponse((response) => new URL(response.url()).pathname === '/api/family-choices/review');
+    releaseReview();
+    await (await responseArrived).finished();
+    // Let the fulfilled fetch and its synchronous draft rendering finish before checking this negative outcome.
+    await owner.page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+    await expect(owner.page.locator('#goal-draft')).toBeHidden();
+    await expect(owner.page.locator('#family-status')).toContainText('between $0.00 and $100,000.00');
+    await owner.page.locator('#family-trial-input').fill('90.00');
+
     // 6. "Review this choice" checks it with the server and fills the goal form as an unsaved draft.
     await option(owner, ITEMS[1][1]).getByRole('button', { name: 'Review this choice' }).click();
     await expect(owner.page.locator('#goal-draft')).toBeVisible();
