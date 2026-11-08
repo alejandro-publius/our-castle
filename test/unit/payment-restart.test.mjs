@@ -1,26 +1,21 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { fork } from 'node:child_process';
 import http from 'node:http';
 import { mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
-import { fileURLToPath } from 'node:url';
 import { DEMO_GOAL_ID, DEMO_HOUSEHOLD_ID, progressFor } from '../../server/household.mjs';
-import { createFakePayPal, webhookHeaders } from '../helpers/fake-paypal.mjs';
+import { createFakePayPal } from '../helpers/fake-paypal.mjs';
+import { WAIT, startApp, within } from '../helpers/payment-app-process.mjs';
 import { setupDomain } from '../helpers/setup.mjs';
 
 // Abrupt process death at the payment windows. The app runs in a child process (test/helpers/payment-app-child.mjs) on a
 // disposable database. The stateful fake PayPal runs here, in the parent, so what "PayPal" recorded survives the app.
 // Children are killed with SIGKILL, so no shutdown code runs. This is not power-loss, real PayPal or device evidence.
-const childScript = fileURLToPath(new URL('../helpers/payment-app-child.mjs', import.meta.url));
+// Starting and ending children is shared with the two-server test (test/helpers/payment-app-process.mjs).
 const SANDBOX = 'https://api-m.sandbox.paypal.com';
 const owner = { householdId: DEMO_HOUSEHOLD_ID, goalId: DEMO_GOAL_ID };
-const WAIT = 20_000;
-
-const within = (promise, ms, what) => Promise.race([promise,
-  new Promise((_, reject) => { setTimeout(() => reject(new Error(`Timed out waiting for ${what}`)), ms).unref(); })]);
 
 // The fake PayPal on loopback. `hold` lets the fake process the next matching request, then withholds its answer.
 async function servePayPal() {
@@ -44,52 +39,6 @@ async function servePayPal() {
     captureRequests: (orderId) => fake.requests.filter((r) => r.method === 'POST' && r.pathname === `/v2/checkout/orders/${orderId}/capture`),
     providerCaptures: (orderId) => fake.orders.get(orderId).purchase_units[0].payments?.captures ?? [],
     close: () => new Promise((resolve) => { server.closeAllConnections(); server.close(resolve); }),
-  };
-}
-
-// SIGKILL ends the process at once, with no shutdown code. Only this test's own children are ever signalled; one that
-// has already ended, or is ending, is only waited for.
-async function end(child, exited, wait) {
-  if (child.exitCode === null && child.signalCode === null) child.kill('SIGKILL');
-  await within(exited, wait, 'the app process to end');
-}
-
-// One app process on `file`, with an empty environment. `withheld` names a route whose answer the harness withholds.
-// If it does not become ready, its own child is ended before the error is passed on. `script`, `wait` and `onSpawn`
-// let the startup-cleanup test use a child that never becomes ready.
-async function startApp(file, paypalBase, withheld = '', { script = childScript, wait = WAIT, onSpawn } = {}) {
-  const child = fork(script, [file, paypalBase, withheld], { env: {}, execArgv: [], stdio: ['ignore', 'ignore', 'pipe', 'ipc'] });
-  onSpawn?.(child);
-  // Listened for at once, so no exit is missed, even one before the rest is set up.
-  const exited = new Promise((resolve) => child.once('exit', (code, signal) => resolve({ code, signal })));
-  let stderr = '';
-  child.stderr.on('data', (chunk) => { stderr += chunk; });
-  const messages = [];
-  child.on('message', (message) => messages.push(message));
-  let port;
-  try {
-    port = await within(new Promise((resolve, reject) => {
-      child.on('message', (message) => { if (message.ready) resolve(message.ready); });
-      exited.then(({ code, signal }) => reject(new Error(`The app process ended (${code ?? signal}) before it was ready: ${stderr.slice(-500)}`)));
-    }), wait, 'the app process to start');
-  } catch (error) {
-    await end(child, exited, wait);
-    throw error;
-  }
-  const base = `http://127.0.0.1:${port}`;
-  const send = async (pathname, body, headers) => {
-    const res = await fetch(base + pathname, { method: 'POST', headers: { 'Content-Type': 'application/json', ...headers }, body });
-    return { status: res.status, json: await res.json() };
-  };
-  return {
-    child,
-    call: (pathname, body) => send(pathname, JSON.stringify(body), { Origin: base }),
-    deliver: (event) => send('/api/paypal/webhook', JSON.stringify(event), webhookHeaders),
-    message: (key) => within(new Promise((resolve) => {
-      const seen = messages.find((m) => key in m);
-      if (seen) resolve(seen); else child.on('message', (m) => { if (key in m) resolve(m); });
-    }), WAIT, key),
-    kill: () => end(child, exited, WAIT),
   };
 }
 
