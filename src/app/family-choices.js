@@ -6,7 +6,7 @@
 // Only explicit buttons write, and only planning records. "Review this choice" hands a server-checked draft to the
 // existing Plan form; nothing here saves a goal, moves money or searches by itself.
 import { api } from './api.js';
-import { choicesInput, compareChoices, describeComparison } from '../core/family-choices.js';
+import { RESERVE_LIMITS, choicesInput, compareChoices, describeComparison } from '../core/family-choices.js';
 import { formatCents, parseAmountToCents } from '../core/rules.js';
 
 const $ = (id) => document.getElementById(id);
@@ -32,7 +32,7 @@ const AVAILABILITY = { InStock: 'In stock', OutOfStock: 'Out of stock' };
  * @param options.applyState (state) => applies a server state
  */
 export function createFamilyChoices({ getState, actor, openMerchant, onReview, applyState }) {
-  const ui = { reserveCents: 0, offerDirty: false, offerActor: null, busy: false, review: 0, scope: null };
+  const ui = { reserveCents: 0, reserveInvalid: false, offerDirty: false, offerActor: null, busy: false, review: 0, scope: null };
   const currency = () => getState()?.goal?.currency ?? 'USD';
   const money = (cents) => formatCents(cents, currency());
   const date = (iso) => {
@@ -85,6 +85,7 @@ export function createFamilyChoices({ getState, actor, openMerchant, onReview, a
   // The server checks the comparison this page shows, then returns a goal draft. A late answer is used only if the family,
   // member, comparison and trial are still the ones it was asked for.
   async function review(choice) {
+    if (ui.reserveInvalid) return;
     const s = getState(), fc = s.familyChoices;
     const mine = ++ui.review;
     const asked = JSON.stringify([scopeKey(), fc.revision, ui.reserveCents]);
@@ -119,11 +120,12 @@ export function createFamilyChoices({ getState, actor, openMerchant, onReview, a
 
   function optionItem(option, { s, fc, comparison, text, me, adult, merchantOn }) {
     const result = h('p', { class: 'family-option-result' }, text.lines[option.id]);
+    const change = text.changes[option.id] ? h('p', { class: 'family-option-change' }, text.changes[option.id]) : null;
     const split = option.segments.length ? h('ul', { class: 'family-split', 'aria-label': 'Weekly amounts by adult' }, ...segmentLines(option, comparison).map((line) => h('li', {}, line))) : null;
     if (option.id === 'goal') {
       return h('li', { class: 'family-option current', 'data-status': option.status },
         h('div', { class: 'family-option-head' }, h('strong', {}, 'Current goal'), h('span', { class: 'family-option-price' }, money(option.priceCents))),
-        h('p', { class: 'family-option-facts' }, s.goal.name), result, split);
+        h('p', { class: 'family-option-facts' }, s.goal.name), result, change, split);
     }
     const c = fc.choices.find((x) => x.id === option.id);
     const prefs = fc.preferences.filter((p) => p.choiceId === c.id);
@@ -134,11 +136,11 @@ export function createFamilyChoices({ getState, actor, openMerchant, onReview, a
     return h('li', { class: 'family-option', 'data-choice': c.id, 'data-status': option.status },
       h('div', { class: 'family-option-head' }, h('strong', { class: 'family-option-name' }, c.title), h('span', { class: 'family-option-price' }, money(c.priceCents))),
       h('p', { class: 'family-option-facts' }, facts.join(' · '), c.fresh ? null : h('span', { class: 'family-stale' }, ' · check the price again before choosing it')),
-      result, split,
+      result, change, split,
       h('p', { class: 'family-prefs' }, prefs.length ? `${prefs.length} ${prefs.length === 1 ? 'prefers' : 'prefer'} this: ${prefs.map((p) => nameOf(p.memberId)).join(', ')}` : 'No one has said they prefer this yet.'),
       h('div', { class: 'actions' },
         me ? h('button', { type: 'button', class: 'family-prefer', 'aria-pressed': String(mine), 'data-focus-key': `prefer:${c.id}`, onclick: () => (mine ? unprefer() : prefer(c.id)) }, 'Prefer this') : null,
-        adult ? h('button', { type: 'button', 'data-focus-key': `review:${c.id}`, onclick: () => review(c) }, 'Review this choice') : null,
+        adult ? h('button', { type: 'button', disabled: ui.reserveInvalid, 'data-focus-key': `review:${c.id}`, onclick: () => review(c) }, 'Review this choice') : null,
         adult && merchantOn && !c.fresh ? h('button', { type: 'button', class: 'link-button', 'data-focus-key': `check:${c.id}`, onclick: () => check(c) }, 'Check price') : null,
         adult && merchantOn ? h('button', { type: 'button', class: 'link-button', 'data-focus-key': `replace:${c.id}`, onclick: (e) => openMerchant(e.currentTarget, { query: c.title.replace(/…$/, '').slice(0, 80), replaceChoice: { id: c.id, title: c.title } }) }, 'Replace') : null,
         adult ? h('button', { type: 'button', class: 'link-button', 'data-focus-key': `remove:${c.id}`, onclick: () => remove(c) }, 'Remove') : null));
@@ -151,7 +153,7 @@ export function createFamilyChoices({ getState, actor, openMerchant, onReview, a
     if (ui.offerActor !== (me?.id ?? null)) { ui.offerActor = me?.id ?? null; ui.offerDirty = false; }
     // A one-off trial belongs to the member, household and goal it was typed for; it never carries over to another.
     if (ui.scope !== scopeKey()) {
-      if (ui.scope !== null && ui.reserveCents) { $('family-trial-input').value = ''; $('family-trial-input').removeAttribute('aria-invalid'); ui.reserveCents = 0; }
+      if (ui.scope !== null) { $('family-trial-input').value = ''; $('family-trial-input').removeAttribute('aria-invalid'); ui.reserveCents = 0; ui.reserveInvalid = false; }
       ui.scope = scopeKey();
     }
     $('family-choices-count').textContent = `${fc.choices.length} of ${fc.maxChoices} · ${fc.offers.length} weekly ${fc.offers.length === 1 ? 'offer' : 'offers'}`;
@@ -197,15 +199,18 @@ export function createFamilyChoices({ getState, actor, openMerchant, onReview, a
   $('family-trial-input').addEventListener('input', (e) => {
     const value = e.currentTarget.value.trim();
     const cents = value ? parseAmountToCents(value) : 0;
-    e.currentTarget.toggleAttribute('aria-invalid', cents === null);
-    ui.reserveCents = cents ?? 0;
-    say(cents === null ? 'error' : '', cents === null ? 'Enter the one-off amount in dollars, like 90.00.' : '');
+    ui.reserveInvalid = cents === null || cents > RESERVE_LIMITS.maxCents;
+    if (ui.reserveInvalid) e.currentTarget.setAttribute('aria-invalid', 'true');
+    else { e.currentTarget.removeAttribute('aria-invalid'); ui.reserveCents = cents; }
+    say(ui.reserveInvalid ? 'error' : '', ui.reserveInvalid
+      ? `Enter a one-off amount between ${money(0)} and ${money(RESERVE_LIMITS.maxCents)}. The comparison keeps your last valid amount.` : '');
     render();
   });
   $('family-trial-clear').addEventListener('click', () => {
     $('family-trial-input').value = '';
     $('family-trial-input').removeAttribute('aria-invalid');
     ui.reserveCents = 0;
+    ui.reserveInvalid = false;
     say('', '');
     render();
     $('family-trial-input').focus();

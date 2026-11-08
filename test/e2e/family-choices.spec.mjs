@@ -135,6 +135,17 @@ test('two adults and a child shortlist three items, offer weekly amounts, prefer
     expect(sent.get('Rowan').slice(requestsBefore)).toEqual([]);
     expect(records(s.db)).toBe(before);
     await expect(results(ash)[2]).toHaveText('Finishes Dec 6 (week 4), on time for Dec 20.'); // the trial is the owner's own
+    // A syntactically valid amount above the supported range must not break the comparison or drop the last valid trial.
+    await owner.page.locator('#family-trial-input').fill('100000.01');
+    await expect(owner.page.locator('#family-trial-input')).toHaveAttribute('aria-invalid', 'true');
+    await expect(owner.page.locator('#family-status')).toContainText('between $0.00 and $100,000.00');
+    await expect(c).toHaveText('Finishes Dec 27 (week 7): 1 week after Dec 20, $30.00 short by then.');
+    for (const button of await owner.page.getByRole('button', { name: 'Review this choice' }).all()) await expect(button).toBeDisabled();
+    expect(owner.errors).toEqual([]);
+    expect(sent.get('Rowan').slice(requestsBefore)).toEqual([]);
+    await owner.page.locator('#family-trial-input').fill('90.00');
+    await expect(owner.page.locator('#family-trial-input')).not.toHaveAttribute('aria-invalid');
+    await expect(option(owner, ITEMS[1][1]).locator('.family-option-change')).toHaveText('Without this expense: Nov 29. This trial adds 3 weeks.');
     await shot(owner, 'one-off-90', { endAt: '#family-trial' });
 
     // 6. "Review this choice" checks it with the server and fills the goal form as an unsaved draft.

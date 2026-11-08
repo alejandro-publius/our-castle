@@ -508,6 +508,7 @@ button { font: inherit; }
 .family-option-price { font-weight:700; font-variant-numeric:tabular-nums; white-space:nowrap; }
 .family-option-facts, .family-prefs, .family-split { margin:2px 0 0; font-size:13px; color:var(--ink-muted); overflow-wrap:anywhere; }
 .family-option-result { margin:4px 0 0; font-size:15px; color:var(--ink); }
+.family-option-change { margin:3px 0 0; font-size:14px; color:var(--ink-muted); }
 .family-split { list-style:none; padding:0; font-variant-numeric:tabular-nums; }
 .family-stale { color:var(--ink); font-weight:500; }
 .family-option .actions { margin-top:6px; }

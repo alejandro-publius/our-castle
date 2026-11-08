@@ -96,6 +96,7 @@ export function compareChoices(input) {
   const { today, deadline, progressCents, householdLimitCents, currency, offers, options, reserveCents = 0 } = input;
   checkInputs({ ...input, reserveCents });
   const capacity = weeklyCapacity({ householdLimitCents, offers, reserveCents });
+  const withoutReserve = reserveCents > 0 ? weeklyCapacity({ householdLimitCents, offers }) : null;
   const days = daysBetween(today, deadline);
   const deadlineWeek = days < 0 ? 0 : Math.min(MAX_WEEKS, Math.floor(days / 7));
   const dates = Array.from({ length: MAX_WEEKS }, (_, i) => addDays(today, 7 * (i + 1)));
@@ -113,7 +114,15 @@ export function compareChoices(input) {
       uncoveredCents: capacity.reserveLeftCents,
     },
     offers: offers.map(({ memberId, name, weeklyCents }) => ({ memberId, name: name ?? null, weeklyCents })),
-    options: options.map((option) => forecastOption(option, { progressCents, capacity, offers, dates, deadlineWeek, currency })),
+    options: options.map((option) => {
+      const result = forecastOption(option, { progressCents, capacity, offers, dates, deadlineWeek, currency });
+      // Keep the same offers and deadline for the comparison: only this one-off amount changes.
+      if (withoutReserve) {
+        const baseline = forecastOption(option, { progressCents, capacity: withoutReserve, offers, dates, deadlineWeek, currency });
+        result.withoutReserve = { status: baseline.status, finishWeek: baseline.finishWeek, finishDate: baseline.finishDate };
+      }
+      return result;
+    }),
   };
 }
 
@@ -198,7 +207,19 @@ export function describeComparison(comparison, { money, date, titles = {} }) {
     choices = `Still on time for ${date(c.deadline)}: ${onTime.map((o) => `${name(o.id)} (${money(o.priceCents)})`).join(', ')}. `
       + `Later: ${later.map((o) => (o.finishDate ? `${name(o.id)}, finishing ${date(o.finishDate)}` : `${name(o.id)}, beyond ${MAX_WEEKS} weeks`)).join('; ')}.`;
   }
-  return { capacity, reserve, lines, choices };
+  const changes = Object.fromEntries(c.options.flatMap((o) => {
+    const before = o.withoutReserve;
+    if (!before?.finishDate) return [];
+    let line;
+    if (o.finishWeek === null) line = `Without this expense: ${date(before.finishDate)}. This trial puts the finish beyond ${MAX_WEEKS} weeks.`;
+    else {
+      const delay = o.finishWeek - before.finishWeek;
+      line = delay === 0 ? `The finish stays ${date(o.finishDate)} with this expense.`
+        : `Without this expense: ${date(before.finishDate)}. This trial adds ${delay} ${delay === 1 ? 'week' : 'weeks'}.`;
+    }
+    return [[o.id, line]];
+  }));
+  return { capacity, reserve, lines, choices, changes };
 }
 
 function optionLine(o, c, { money, date }) {

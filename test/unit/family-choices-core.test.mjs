@@ -127,3 +127,27 @@ test('bad inputs are refused, and reading a comparison changes neither input', (
   compareChoices(input);
   assert.equal(JSON.stringify(input), before);
 });
+
+test('an expense comparison keeps the original finish so the family can see the delay without clearing the trial', () => {
+  const c = compareChoices({ ...BASE, reserveCents: 9000 });
+  assert.deepEqual(c.options.map((o) => o.withoutReserve), [
+    { status: 'fits', finishWeek: 2, finishDate: '2026-11-22' },
+    { status: 'fits', finishWeek: 3, finishDate: '2026-11-29' },
+    { status: 'fits', finishWeek: 4, finishDate: '2026-12-06' },
+  ]);
+  const text = describeComparison(c, { money, date: (iso) => iso });
+  assert.deepEqual(text.changes, {
+    a: 'Without this expense: 2026-11-22. This trial adds 3 weeks.',
+    b: 'Without this expense: 2026-11-29. This trial adds 3 weeks.',
+    c: 'Without this expense: 2026-12-06. This trial adds 3 weeks.',
+  });
+});
+
+test('a small expense can leave the finish unchanged, while a large one can put it beyond the planning limit', () => {
+  const small = compareChoices({ ...BASE, options: [{ id: 'odd', priceCents: 12500, currency: 'USD' }], reserveCents: 100 });
+  assert.equal(describeComparison(small, { money, date: (iso) => iso }).changes.odd, 'The finish stays 2026-11-29 with this expense.');
+  const big = compareChoices({ ...BASE, reserveCents: 200000 });
+  assert.equal(describeComparison(big, { money, date: (iso) => iso }).changes.a, 'Without this expense: 2026-11-22. This trial puts the finish beyond 52 weeks.');
+  const baseline = compareChoices(BASE);
+  assert.deepEqual(describeComparison(baseline, { money, date: (iso) => iso }).changes, {});
+});
