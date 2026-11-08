@@ -1,5 +1,56 @@
 # Validation
 
+## Release integration candidate — November 8, 2026
+
+Branch `claude/release-integration-20261108`, from the reviewed main `579b4f6`, which had not moved. It is a candidate for Codex's final review. Merging it into main, the safe activation of the 3010/3021 apps with backups, and any video are separate steps, and none of them is done here. Neither web submission nor family playtesting is part of this work.
+
+**What merged.** Five normal merges, in this order, each of the exact reviewed head. None had a conflict:
+
+| Merge | Reviewed head | What it adds |
+| --- | --- | --- |
+| `9ec3f24` | PR #47 `3294e2c` | The seeded payment model, with its stack: PR #48 `002d229` (deferred refunds, schema 8), PR #46 `eefae41` (refund ordering), PR #43 `ce3ec65` (restart proof) and PR #40 `e3bc6ff` (the snapshot command) |
+| `eba9080` | PR #41 `2d8f3a3` | Reuse of unchanged scene state |
+| `65908c6` | PR #42 `4903beb` | Opt-in, default-muted CC0 retro music, with its provenance and notice |
+| `b9d01c3` | PR #44 `fe80d5f` | Truthful post-commit failure diagnostics. Git combined `server/app.mjs` (PR #42's `.mp3` MIME entry with PR #44's error handling) and `docs/RUNBOOK.md` (PR #47's snapshot section with PR #44's failure section) automatically |
+| `f5e1d38` | PR #45 `d572e3d` | Sourced review research |
+
+Then `18e2578` corrects the runbook's snapshot example. It printed schema 7 and 19 tables. It now shows the real output of the documented rehearsal on this candidate: a throwaway example server with no keys, one simulated contribution through the browser's own API, and the snapshot taken while the server ran. That output is schema 8, 20 tables and 57 pages, and the example says which values vary. The snapshot command and the PR #40 evidence below are unchanged.
+
+**Integrity checks:**
+- **Ancestry:** all nine original heads, and main, are ancestors.
+- **No hand edits:** every file that only one PR changed is byte-identical to that PR's head.
+- **Dependencies:** `package-lock.json` is identical to main. `package.json` adds only PR #40's `snapshot` script. `@paypal/paypal-server-sdk` stays pinned at 2.5.0.
+- **Assets:** the only asset changes are PR #42's three music files.
+
+| Local check | Actual result |
+| --- | --- |
+| `npm run check` | Passed: 47 copied art/runtime files, the original 90-color palette, the renderer wiring and JavaScript syntax |
+| `git diff --check` against main | Clean |
+| The app-level integration points on Node 22.16.0 and 26.0.0: PR #44's diagnostics and the restart proof, which runs the real app with PR #44's handler | **7 passed on each.** One of them checks that "an error after a committed contribution does not tell the family that no payment was credited" |
+| Browser, at `18e2578`: scene lifecycle (PR #41) and music (PR #42), desktop and 390 px phone, run from a fresh copy with a new example database and tracing off | **12 passed, 4 designed skips** (the scene-lifecycle tests run on desktop only), 0 failed. The music spec's own `@release` test confirms the music is opt-in and opens silent again after a reload |
+
+**Not rerun locally:**
+- **Payment units:** the payment-model, refund-ordering and deferred-refund tests depend only on files that are byte-identical to the reviewed PR #47 head, and no other PR touches them. The hosted full unit run covers them, with the browser `@release` selection.
+- **Where the hosted result goes:** it is reported on the pull request, to avoid a docs-only CI loop.
+
+**An observation, not changed.** A hand-written request to `POST /api/example/contributions` without `householdId` and `goalId` gets HTTP 500 instead of a refusal:
+- **Pre-existing:** the same happens on main `579b4f6`.
+- **No effect:** nothing is committed, and PR #44's message stays truthful.
+- **Not reachable from the app:** the app always sends both ids.
+
+This came from the first, malformed rehearsal request.
+
+**Isolation:**
+- **Data and providers:** only disposable data and fake providers were used, with explicit empty configuration, no `.env`, and non-loopback fetches refused in the rehearsal server.
+- **Owner apps:** the apps on 3010 and 3021 and their data were not touched.
+- **External actions:** no provider call, order, login, recording or deployment was made.
+
+Raw evidence is ignored and stays local in `test-results/release-integration-20261108/`:
+- `check-f5e1d38.log` and `diff-check-f5e1d38.log`;
+- `runbook-snapshot-rehearsal.log`;
+- `integration-units-node22.16.0-18e2578.log` and `integration-units-node26.0.0-18e2578.log`;
+- `browser-scene-music-18e2578.log`.
+
 ## Seeded payment sequences against an independent model — November 7, 2026
 
 Branch `claude/seeded-payment-model` ([PR #47](https://github.com/alejandro-publius/our-castle/pull/47)). It now stacks on Codex's two reviewed fixes for the ordering defects this test found:
