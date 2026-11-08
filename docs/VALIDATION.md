@@ -33,7 +33,7 @@ Branch `claude/two-server-payment-races`, from the reviewed PR #51 head `5aa58ee
 - **Why it needs two servers:** within one process, the in-flight map joins both attempts.
 - **Assumption:** it relies on the fake's idempotency model, in which a refusal is not stored under the request id, so a later attempt with that key can capture. That is also the assumption behind the app's own "try again" answers.
 
-**Fix (`d309e58`).** Four lines in `server/payments/contributions.mjs`: the two refusal branches re-read the canonical status, like the other status writes after a provider call, and answer `already_completed` for a settled order. There is no schema, API, provider or dependency change.
+**Fix (`d309e58`).** One guard in `server/payments/contributions.mjs` (5 lines added, 1 changed): the two refusal branches re-read the canonical status, like the other status writes after a provider call, and answer `already_completed` for a settled order. There is no schema, API, provider or dependency change.
 
 **Local results:**
 - **Before the fix** (`server/` at `5aa58ee`; the final test file, except for one HTTP-status assertion added to S8 afterwards): 8 passed; S6 and S7 failed. Five more runs failed the same two only.
