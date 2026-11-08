@@ -9,7 +9,7 @@ const PORTRAIT = 'assets/member-avatars/wizard.png'; // an original bundled port
 export const KEEPER_STEPS = Object.freeze([
   { id: 'welcome', text: 'Welcome, traveler. I’m Moss, keeper of this castle. Every house here begins with a shared goal. Let me show you around.' },
   { id: 'house', tab: 'house', cue: '#tab-house', text: 'Your house begins here in the journal. Give it a name and a crest; its banner flies over the realm once you raise it.' },
-  { id: 'plan', tab: 'plan', cue: '#tab-plan', text: 'In Plan, the house sets a weekly pace toward its goal. Try ideas freely; nothing is kept until you choose to save a plan.' },
+  { id: 'plan', tab: 'plan', cue: '#tab-plan', text: 'In Plan, use Check schedule to try your weekly pace without saving. You choose whether to make and use a plan.' },
   { id: 'give', tab: 'give', cue: '#tab-give', text: 'Every contribution needs an adult’s approval. Payments here are simulated, so no money moves, and nothing happens until an adult approves.' },
   { id: 'ledger', tab: 'ledger', cue: '#tab-ledger', text: 'The Treasury keeps each record the house makes. Choose a receipt to read what was recorded and when.' },
   { id: 'compass', cue: '#map-explore', text: 'The compass on the map lets you wander the realm freely. Districts not yet opened show what the house is working toward.' },

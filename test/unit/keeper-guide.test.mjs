@@ -4,7 +4,8 @@ import { readFileSync } from 'node:fs';
 import { KEEPER_STEPS } from '../../src/app/keeper.js';
 
 // Moss, the castle keeper: the tour is authored text that may only show journal tabs and point at the compass and
-// Sound. The browser checks are in test/e2e/keeper.spec.mjs; these guard the script and the module's reach.
+// Sound. These check the script, and add a narrow source guard against direct calls. The actual zero-write evidence is
+// the browser checks in test/e2e/keeper.spec.mjs; a pattern check cannot prove every possible behavior.
 const source = readFileSync(new URL('../../src/app/keeper.js', import.meta.url), 'utf8');
 
 test('the keeper tells eight short steps in the demo order, pointing only at navigation', () => {
@@ -17,7 +18,7 @@ test('the keeper tells eight short steps in the demo order, pointing only at nav
   assert.ok(Object.isFrozen(KEEPER_STEPS));
 });
 
-test('the keeper module cannot send, press, tick, fill or store anything', () => {
+test('source guard: the keeper module makes no direct network, click, submit, field, event or storage call', () => {
   const forbidden = [/\bfetch\s*\(/, /\bapi\b/, /XMLHttpRequest|sendBeacon|WebSocket|EventSource/, /\.click\s*\(/, /requestSubmit|\.submit\s*\(/,
     /\.checked\s*=/, /\.value\s*=/, /dispatchEvent\s*\(/, /localStorage|sessionStorage|indexedDB|document\.cookie/];
   for (const pattern of forbidden) assert.doesNotMatch(source, pattern, String(pattern));

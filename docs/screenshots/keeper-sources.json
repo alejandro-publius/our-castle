@@ -1,6 +1,7 @@
 {
   "date": "2026-11-08",
   "sourceCommit": "678d9df",
+  "note": "Captured at 678d9df; the source hashes below describe that commit. A later review correction changed only the Plan step text (step 3), which these captures do not show. The depicted views (steps 1 and 4) are unchanged, so they were not recaptured or relabeled.",
   "base": "fd49188e2fd68dd91b6bbaa2f984f3e5eb123000 (PR #49)",
   "mode": "Throwaway example server serving the committed tree: simulated payments, fresh data folder, no keys, no .env, non-loopback fetches refused on the server and all outside requests refused in the browser. Chromium via Playwright with reduced motion. No owner app, credentials or provider calls; zero write requests during the captures.",
   "generator": "test-results/keeper-guide-20261108/capture-keeper-screenshots.mjs (ignored, local)",

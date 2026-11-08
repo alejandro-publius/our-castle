@@ -27,13 +27,11 @@ Codex's bounded Refero research supplied these pattern references, and no paid v
 | Pauses while any existing modal `<dialog>` card is open (a deed, the merchant, family sign-in), and comes back without taking focus | Existing modal cards; tested with a deed | No dimming, new screen, currency, celebration, reward, or progress that looks like financial progress |
 | A short fade only when motion is welcome | Existing reduced-motion handling | No typewriter, so no character-by-character announcements. The step text is a polite live region |
 
-**What the keeper may do.** `src/app/keeper.js` receives exactly four injected functions from `main.js`:
-- whether payments are simulated;
-- the current tab;
-- whether the journal is open;
-- show a tab or close the journal, without moving focus or saving a preference.
+**What the keeper may do.** `src/app/keeper.js` receives five callbacks from `main.js`:
+- **three readers:** whether payments are simulated, the current tab, and whether the journal is open;
+- **two navigation callbacks:** show a tab, and close the journal. Neither moves focus or saves a preference.
 
-`test/unit/keeper-guide.test.mjs` checks that the module contains no fetch, API, click, submit, checkbox or value assignment, event dispatch or storage access, and that its three buttons are `type="button"`. `test/e2e/keeper.spec.mjs` drives the real page on desktop and a 390 px phone and checks:
+`test/unit/keeper-guide.test.mjs` is a narrow source guard. It finds no direct fetch, API, click, submit, checkbox or value assignment, event-dispatch or storage call in the module's source, and checks that its three buttons are `type="button"`. A pattern check like this cannot prove every possible behavior. It complements the browser evidence, which records the actual zero writes and outside requests across the real tour. `test/e2e/keeper.spec.mjs` drives the real page on desktop and a 390 px phone and checks:
 - the whole tour over a pre-approved Contribute form, with no write or outside request, and with drafts, amount, approval and progress unchanged;
 - keys and reduced motion;
 - `?tour=1`, Skip and replay;
