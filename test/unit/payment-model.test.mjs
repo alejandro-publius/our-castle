@@ -31,7 +31,7 @@ import { FIXED_NOW } from '../helpers/setup.mjs';
 //
 // The model is plain integers and sets, written from what each action did and from the evidence the app has actually
 // been shown; it never calls production code or reads the service's answers to predict anything (progressFor only
-// observes). After every action the app's progress, credits, reversals, recorded captures and refunds, and per-capture
+// observes). After every action the app's progress, credits, reversals, recorded captures, held refunds and per-capture
 // totals must match it exactly, in both scopes, and stay within what PayPal verified. After a final explicit check of
 // every order, the app must agree with PayPal's own record.
 //
@@ -97,15 +97,15 @@ const list = (items) => items.join(',') || 'none';
 // The rest is the evidence the app has been shown, deduplicated by capture, refund and event id:
 // - known: captures named by an answer, an order read or a capture webhook; the app records each one;
 // - completed: captures shown completed, each credited once;
-// - shown: completed refunds the app has been told of, whether or not it knew their capture then. Each reverses its
-//   capture once, as soon as that capture is credited: a refund told first counts from the credit on;
-// - recordable: the shown refunds it could store when told, because it already knew their capture;
+// - shown: every verified completed refund the app has been told of, whether or not it knew their capture then. The
+//   app holds each one durably, as a refund record or as evidence awaiting its capture. Each reverses its capture once,
+//   as soon as that capture is credited: money waits for the completion, so a refund told first counts from then on;
 // - processed: verified webhook event ids, each handled once whatever it said;
 // - zeroNet: the one documented exception. A capture first seen on an order read that already lists it FULLY refunded,
 //   before any completion was shown, is not credited; it nets to zero either way. A later completion credits it and
 //   reverses its refunds together. A partially refunded capture is never an exception: its remainder counts.
 function createModel() {
-  return { provider: new Map(), events: [], known: new Set(), completed: new Set(), shown: new Map(), recordable: new Set(), processed: new Set(), zeroNet: new Set() };
+  return { provider: new Map(), events: [], known: new Set(), completed: new Set(), shown: new Map(), processed: new Set(), zeroNet: new Set() };
 }
 const orderOf = (m, captureId) => [...m.provider.values()].find((o) => o.captureId === captureId);
 const reversed = (m) => [...m.shown].filter(([, r]) => m.completed.has(r.captureId));
@@ -116,17 +116,14 @@ function expected(m) {
   const reversedCents = sum(reversed(m).map(([, r]) => r.amount));
   return {
     credited, creditedCents, reversedCents, progressCents: STARTING_CENTS + creditedCents - reversedCents,
-    reversals: reversed(m).map(([id]) => id).sort(), known: [...m.known].sort(), recorded: [...m.recordable].sort(),
+    reversals: reversed(m).map(([id]) => id).sort(), known: [...m.known].sort(), held: [...m.shown.keys()].sort(),
   };
 }
 const refundedHere = (m, captureId) => sum(reversed(m).filter(([, r]) => r.captureId === captureId).map(([, r]) => r.amount));
 const paypalProgress = (m) => STARTING_CENTS + sum([...m.provider.values()].filter((o) => o.status === 'COMPLETED').map((o) => o.amount - sum(o.refunds.values())));
 function showPending(m, captureId) { m.known.add(captureId); }
 function showCompleted(m, captureId) { m.known.add(captureId); m.completed.add(captureId); m.zeroNet.delete(captureId); }
-function showRefund(m, refundId, captureId, amount) {
-  if (!m.shown.has(refundId)) m.shown.set(refundId, { captureId, amount });
-  if (m.known.has(captureId)) m.recordable.add(refundId);
-}
+function showRefund(m, refundId, captureId, amount) { if (!m.shown.has(refundId)) m.shown.set(refundId, { captureId, amount }); }
 function showOrder(m, order) { // the app read PayPal's current order
   if (!order.status) return;
   if (order.status === 'PENDING') { showPending(m, order.captureId); return; }
@@ -161,8 +158,12 @@ function observe(db) {
     credited: captures.filter((c) => c.credited).map((c) => c.capture_id),
     captures: Object.fromEntries(captures.map((c) => [c.capture_id, c])),
     reversedRefunds: db.prepare('SELECT refund_id FROM payment_refunds WHERE credited = 1 ORDER BY refund_id').all().map((r) => r.refund_id),
-    recordedRefunds: db.prepare('SELECT refund_id FROM payment_refunds ORDER BY refund_id').all().map((r) => r.refund_id),
-    completedRefundCents: Object.fromEntries(db.prepare("SELECT capture_id, SUM(amount_cents) AS cents FROM payment_refunds WHERE status = 'COMPLETED' GROUP BY capture_id").all().map((r) => [r.capture_id, r.cents])),
+    // Completed refunds the app holds durably: refund records, and evidence awaiting its capture (schema 8).
+    heldRefunds: db.prepare(`SELECT refund_id FROM payment_refunds WHERE status = 'COMPLETED' UNION SELECT refund_id FROM deferred_refunds
+      ORDER BY refund_id`).all().map((r) => r.refund_id),
+    heldRefundCents: Object.fromEntries(db.prepare(`SELECT capture_id, SUM(amount_cents) AS cents FROM (
+      SELECT refund_id, capture_id, amount_cents FROM payment_refunds WHERE status = 'COMPLETED'
+      UNION SELECT refund_id, capture_id, amount_cents FROM deferred_refunds) GROUP BY capture_id`).all().map((r) => [r.capture_id, r.cents])),
     orders: db.prepare('SELECT provider_order_id AS id, amount_cents AS cents FROM payment_orders ORDER BY provider_order_id').all().map((r) => `${r.id}:${r.cents}`),
   };
 }
@@ -182,18 +183,18 @@ function violations(m, o) {
   for (const c of want.credited) if ((o.captures[c]?.refunded_cents ?? 0) !== refundedHere(m, c)) found.push(`capture ${c} refunded ${o.captures[c]?.refunded_cents ?? 0} cents here, model ${refundedHere(m, c)}`);
   const recordedCaptures = Object.keys(o.captures).sort();
   if (!sameList(recordedCaptures, want.known)) found.push(`recorded captures ${list(recordedCaptures)}, model ${list(want.known)}`);
-  if (!sameList(o.recordedRefunds, want.recorded)) found.push(`recorded refunds ${list(o.recordedRefunds)}, model ${list(want.recorded)}`);
+  if (!sameList(o.heldRefunds, want.held)) found.push(`held completed refunds ${list(o.heldRefunds)}, model ${list(want.held)}`);
   const orders = [...m.provider].map(([id, order]) => `${id}:${order.amount}`).sort();
   if (!sameList(o.orders, orders)) found.push(`local orders ${list(o.orders)}, model ${list(orders)}`);
   // Whatever the app has been shown: a capture's net credit never exceeds what PayPal verified for it (nothing, while it
-  // is pending or unknown) less the completed refunds of it that the app has on record.
+  // is pending or unknown) less the completed refunds of it that the app holds, recorded or awaiting their capture.
   for (const capture of Object.values(o.captures)) {
     if (!capture.credited) continue;
     const order = orderOf(m, capture.capture_id);
     const verified = order?.status === 'COMPLETED' ? order.amount : 0;
-    const recorded = o.completedRefundCents[capture.capture_id] ?? 0;
+    const recorded = o.heldRefundCents[capture.capture_id] ?? 0;
     const net = capture.amount_cents - capture.refunded_cents;
-    if (net > verified - recorded) found.push(`capture ${capture.capture_id} nets ${net} cents here, above PayPal's verified ${verified} less ${recorded} of completed refunds on record`);
+    if (net > verified - recorded) found.push(`capture ${capture.capture_id} nets ${net} cents here, above PayPal's verified ${verified} less ${recorded} of completed refunds held`);
   }
   return found;
 }
