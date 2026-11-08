@@ -1,5 +1,25 @@
 # Validation
 
+## The castle keeper's tour — November 8, 2026
+
+Branch `claude/keeper-walkthrough`, from the reviewed PR #49 head `fd49188`; the implementation is `678d9df`. [The castle keeper](KEEPER-GUIDE.md) is an optional authored tour of the example demo, in a bottom dialogue box. Its decision ledger, copy and limits are in that note. It adds no dependency, server, API or database change, model call or credential step. The crest rendering, the art and the portrait bytes are unchanged.
+
+| Local check, at `678d9df` | Actual result |
+| --- | --- |
+| `test/e2e/keeper.spec.mjs`, desktop and 390 px phone, from a fresh copy with a new example database and tracing off | **10 passed** (5 scenarios × 2 viewports), 0 failed. The scenarios cover the whole tour over a pre-approved form, with no write or outside request and with drafts, amount, approval and progress unchanged; keys and reduced motion; `?tour=1`, Skip and replay; a deed card pausing the keeper; and layout and overlap |
+| `test/e2e/family-access.spec.mjs` (families with simulated payments also show the entry) | 5 passed, 5 skipped by the spec's existing desktop/phone split, 0 failed |
+| `test/unit/keeper-guide.test.mjs`, Node 22.16.0 and 26.0.0 | 2 passed on each |
+| `npm run check` | Passed: 47 copied art/runtime files, the original 90-color palette, the renderer wiring and JavaScript syntax |
+
+The first runs exposed two mistakes in my test setup, not in the keeper:
+- **Founding moves the journal:** founding a house moves the journal on to Plan, so the helper now returns to House.
+- **A scroll race:** on a phone, a measurement raced the keeper's own smooth scroll, so the layout scenario now uses reduced motion. A direct measurement showed every Contribute control 8 px clear of the docked keeper.
+
+The screenshots and their hashes are in [keeper-sources.json](screenshots/keeper-sources.json). They are automated Chromium captures with phone emulation; there has been no human playtest, physical phone or screen-reader session. The hosted result is reported on the pull request. Raw evidence is ignored and stays local in `test-results/keeper-guide-20261108/`:
+- `browser-678d9df.log`, `unit-keeper-node*-678d9df.log` and `check-678d9df.log`;
+- the earlier `spec-run-*.log` runs;
+- the capture and debug scripts.
+
 ## Release integration candidate — November 8, 2026
 
 Branch `claude/release-integration-20261108`, from the reviewed main `579b4f6`, which had not moved. It is a candidate for Codex's final review. Merging it into main, the safe activation of the 3010/3021 apps with backups, and any video are separate steps, and none of them is done here. Neither web submission nor family playtesting is part of this work.

@@ -1,0 +1,61 @@
+{
+  "date": "2026-11-08",
+  "sourceCommit": "678d9df",
+  "base": "fd49188e2fd68dd91b6bbaa2f984f3e5eb123000 (PR #49)",
+  "mode": "Throwaway example server serving the committed tree: simulated payments, fresh data folder, no keys, no .env, non-loopback fetches refused on the server and all outside requests refused in the browser. Chromium via Playwright with reduced motion. No owner app, credentials or provider calls; zero write requests during the captures.",
+  "generator": "test-results/keeper-guide-20261108/capture-keeper-screenshots.mjs (ignored, local)",
+  "portrait": "assets/member-avatars/wizard.png, an original code-rendered portrait (see assets/member-avatars/provenance.json), shown unchanged",
+  "sources": {
+    "src/app/keeper.js": "1627e540ed5131d390b499b3e47d10c9f177f48cc4708ac9c61f0f2e56b59af5",
+    "src/app/main.js": "e0a1facb4cbb6985558e1dbf2145d4d22f952eb6f42a701500ad30a52df056a2",
+    "index.html": "6498089882bb0dfed4655fcd9b3ca7dd92ed48d78a532ebb029b1f2eaee113e6",
+    "app.css": "f786c9b2edc1a35b5c323d2ffec172808ebd8872c082680629b8b4f75d4215f3",
+    "test/e2e/keeper.spec.mjs": "03d88166972d7acfbb6215bf33d7237ed6a6535687d57dc3194185af3c9b82f9",
+    "assets/member-avatars/wizard.png": "53b9155244c909d0a12b449dcc0c3027892cdd98f124755b1e06387f8af13fe9"
+  },
+  "captures": [
+    {
+      "file": "keeper-desktop-welcome.png",
+      "sha256": "a8d848a9a97b119a709264756392fc1e4c0cb172603820d8fb1d89f298b66e21",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "capture": "Actual full-viewport screenshot of /?tour=1 on a fresh example household: step 1 of 8 over the map, House journal open with the Meet the Keeper link. No image edits."
+    },
+    {
+      "file": "keeper-desktop-contribute.png",
+      "sha256": "500f6f83f9fc5eee6b3a1bd882276df9afbfbca4fdf94c1fb3a1ee5a7652fe46",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "capture": "Actual full-viewport screenshot after Next three times: step 4 of 8, Contribute tab shown with its one dashed cue. No image edits."
+    },
+    {
+      "file": "keeper-phone-welcome.png",
+      "sha256": "ab22455ae7fd7bfb053025b8973e28ba2e42c19f3f6f5ad29ad227b633abbd4c",
+      "viewport": {
+        "width": 390,
+        "height": 844,
+        "deviceScaleFactor": 2
+      },
+      "capture": "Actual viewport screenshot of /?tour=1 in phone emulation: step 1 docked to the bottom of the screen. No image edits."
+    },
+    {
+      "file": "keeper-phone-contribute.png",
+      "sha256": "25faefa90763d064249cf6d27e2f6c5d6d560559df18202359008a62d8a2b72c",
+      "viewport": {
+        "width": 390,
+        "height": 844,
+        "deviceScaleFactor": 2
+      },
+      "capture": "Actual viewport screenshot after Next three times: step 4, the journal scrolled above the docked keeper. No image edits."
+    }
+  ],
+  "checks": {
+    "keeper": "test/e2e/keeper.spec.mjs: five scenarios, each passed on desktop and 390 px phone (ten executed cases) at 678d9df: the whole tour over a pre-approved form with no writes or outside requests, keys and reduced motion, ?tour=1 with Skip and replay, a deed card pausing the keeper, and layout/overlap.",
+    "regressions": "family-access.spec.mjs (simulated payments show the entry): five cases passed, five skipped by the existing desktop/phone split."
+  },
+  "limits": "Automated Chromium with phone emulation only: no physical phone, Safari or screen-reader session, and no human playtest."
+}
