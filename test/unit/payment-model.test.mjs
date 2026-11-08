@@ -26,14 +26,18 @@ import { FIXED_NOW } from '../helpers/setup.mjs';
 //   paypal-sdk-transport.test.mjs and payment-restart.test.mjs cover them. Webhook verification uses the REST client.
 // Closing and reopening the database is not process death or power loss; payment-restart.test.mjs covers SIGKILL.
 //
-// The model is plain integers and sets, written from what each action did and from the evidence the app has actually
-// been shown; it never calls production code to predict anything (progressFor only observes). After every action the
-// app's progress, credits, reversals and per-capture refund totals must match it and stay within what PayPal verified.
-// After a final explicit check of every order, the app must agree with PayPal's own record.
+// Two refund scopes run by default over the same seeds: credited, where dashboard refunds reach only captures credited
+// here, and any, where a refund can also reach a capture PayPal completed before this server saw the completion.
 //
-// Replay one seed: PAYMENT_MODEL_SEED=<1-4294967295> [PAYMENT_MODEL_ADAPTER=rest|sdk] node --test test/unit/payment-model.test.mjs
-// PAYMENT_MODEL_REFUNDS=any also lets dashboard refunds reach captures this server has not credited yet. That wider
-// space is outside the supported subset CI runs (the default, credited); docs/VALIDATION.md records what it shows.
+// The model is plain integers and sets, written from what each action did and from the evidence the app has actually
+// been shown; it never calls production code or reads the service's answers to predict anything (progressFor only
+// observes). After every action the app's progress, credits, reversals, recorded captures and refunds, and per-capture
+// totals must match it exactly, in both scopes, and stay within what PayPal verified. After a final explicit check of
+// every order, the app must agree with PayPal's own record.
+//
+// Replay one seed, adapter and scope, for example:
+//   PAYMENT_MODEL_SEED=2 PAYMENT_MODEL_ADAPTER=rest PAYMENT_MODEL_REFUNDS=credited node --test test/unit/payment-model.test.mjs
+// Seeds are 1-4294967295, adapters rest or sdk, and scopes credited or any; each one left unset runs them all.
 const root = fileURLToPath(new URL('../../', import.meta.url));
 const SANDBOX = 'https://api-m.sandbox.paypal.com';
 const STARTING_CENTS = 6000; // the example house's reported starting savings
@@ -54,7 +58,7 @@ function parseChoice(name, value, choices) {
 }
 const seeds = process.env.PAYMENT_MODEL_SEED === undefined ? SEEDS : [parseSeed(process.env.PAYMENT_MODEL_SEED)];
 const adapters = process.env.PAYMENT_MODEL_ADAPTER === undefined ? ['rest', 'sdk'] : [parseChoice('PAYMENT_MODEL_ADAPTER', process.env.PAYMENT_MODEL_ADAPTER, ['rest', 'sdk'])];
-const refundScope = parseChoice('PAYMENT_MODEL_REFUNDS', process.env.PAYMENT_MODEL_REFUNDS ?? 'credited', ['credited', 'any']);
+const scopes = process.env.PAYMENT_MODEL_REFUNDS === undefined ? ['credited', 'any'] : [parseChoice('PAYMENT_MODEL_REFUNDS', process.env.PAYMENT_MODEL_REFUNDS, ['credited', 'any'])];
 
 function sourceCommit() {
   const git = (...args) => execFileSync('git', args, { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
@@ -89,30 +93,58 @@ const list = (items) => items.join(',') || 'none';
 // ---- The reference model ----------------------------------------------------------------------------------------
 // provider: what PayPal holds per order: the amount; its capture (status null until PayPal captures; a refunded capture
 // stays COMPLETED here, with its refunds listed); and the capture status in PayPal's first answer, which PayPal repeats
-// for the same PayPal-Request-Id. completed and shown: the evidence the app has been shown, by capture and refund id.
-// firstSeenRefunded: captures whose completion the app first saw on an order already listing refunds (wider space only).
-// events: the verified webhooks PayPal has sent, each deliverable late, again or never.
+// for the same PayPal-Request-Id. events: the verified webhooks PayPal has sent, each deliverable late, again or never.
+// The rest is the evidence the app has been shown, deduplicated by capture, refund and event id:
+// - known: captures named by an answer, an order read or a capture webhook; the app records each one;
+// - completed: captures shown completed, each credited once;
+// - shown: completed refunds the app has been told of, whether or not it knew their capture then. Each reverses its
+//   capture once, as soon as that capture is credited: a refund told first counts from the credit on;
+// - recordable: the shown refunds it could store when told, because it already knew their capture;
+// - processed: verified webhook event ids, each handled once whatever it said;
+// - zeroNet: the one documented exception. A capture first seen on an order read that already lists it FULLY refunded,
+//   before any completion was shown, is not credited; it nets to zero either way. A later completion credits it and
+//   reverses its refunds together. A partially refunded capture is never an exception: its remainder counts.
 function createModel() {
-  return { provider: new Map(), completed: new Set(), shown: new Map(), firstSeenRefunded: new Set(), events: [] };
+  return { provider: new Map(), events: [], known: new Set(), completed: new Set(), shown: new Map(), recordable: new Set(), processed: new Set(), zeroNet: new Set() };
 }
 const orderOf = (m, captureId) => [...m.provider.values()].find((o) => o.captureId === captureId);
-// The app counts each capture it has been shown PayPal completed, once, less each completed refund of it, once.
 const reversed = (m) => [...m.shown].filter(([, r]) => m.completed.has(r.captureId));
+const hasShownRefunds = (m, captureId) => [...m.shown.values()].some((r) => r.captureId === captureId);
 function expected(m) {
   const credited = [...m.completed].sort();
   const creditedCents = sum(credited.map((c) => orderOf(m, c).amount));
   const reversedCents = sum(reversed(m).map(([, r]) => r.amount));
-  return { credited, reversals: reversed(m).map(([id]) => id).sort(), creditedCents, reversedCents, progressCents: STARTING_CENTS + creditedCents - reversedCents };
+  return {
+    credited, creditedCents, reversedCents, progressCents: STARTING_CENTS + creditedCents - reversedCents,
+    reversals: reversed(m).map(([id]) => id).sort(), known: [...m.known].sort(), recorded: [...m.recordable].sort(),
+  };
 }
 const refundedHere = (m, captureId) => sum(reversed(m).filter(([, r]) => r.captureId === captureId).map(([, r]) => r.amount));
 const paypalProgress = (m) => STARTING_CENTS + sum([...m.provider.values()].filter((o) => o.status === 'COMPLETED').map((o) => o.amount - sum(o.refunds.values())));
-function showCompleted(m, captureId) { m.completed.add(captureId); }
-function showRefund(m, refundId, captureId, amount) { if (!m.shown.has(refundId)) m.shown.set(refundId, { captureId, amount }); }
+function showPending(m, captureId) { m.known.add(captureId); }
+function showCompleted(m, captureId) { m.known.add(captureId); m.completed.add(captureId); m.zeroNet.delete(captureId); }
+function showRefund(m, refundId, captureId, amount) {
+  if (!m.shown.has(refundId)) m.shown.set(refundId, { captureId, amount });
+  if (m.known.has(captureId)) m.recordable.add(refundId);
+}
 function showOrder(m, order) { // the app read PayPal's current order
-  if (order.status !== 'COMPLETED') return;
-  if (!m.completed.has(order.captureId) && order.refunds.size) m.firstSeenRefunded.add(order.captureId);
-  showCompleted(m, order.captureId);
+  if (!order.status) return;
+  if (order.status === 'PENDING') { showPending(m, order.captureId); return; }
+  m.known.add(order.captureId);
   for (const [refundId, amount] of order.refunds) showRefund(m, refundId, order.captureId, amount);
+  if (m.completed.has(order.captureId)) return;
+  if (sum(order.refunds.values()) >= order.amount) m.zeroNet.add(order.captureId); // the documented exception
+  else showCompleted(m, order.captureId); // completed, or a partial remainder established by its listed refunds
+}
+// The answer a capture request should get, from the same evidence, never from the service's own answer: a completion
+// credits the capture and applies any refunds of it already shown, so it answers refunded if there were any.
+const answerFor = (m, captureId, status) => (status === 'COMPLETED' ? (hasShownRefunds(m, captureId) ? 'refunded' : 'completed') : 'pending');
+// After a lost answer the app reads the order instead. Only a capture not credited here gets that far.
+function readAnswer(order) {
+  if (!order.status) return 'unknown';
+  if (order.status === 'PENDING') return 'pending';
+  const refunded = sum(order.refunds.values());
+  return refunded === 0 ? 'completed' : refunded < order.amount ? 'refunded' : 'not_credited';
 }
 
 // ---- Observing the app (reads only) -----------------------------------------------------------------------------
@@ -129,14 +161,13 @@ function observe(db) {
     credited: captures.filter((c) => c.credited).map((c) => c.capture_id),
     captures: Object.fromEntries(captures.map((c) => [c.capture_id, c])),
     reversedRefunds: db.prepare('SELECT refund_id FROM payment_refunds WHERE credited = 1 ORDER BY refund_id').all().map((r) => r.refund_id),
-    recordedRefunds: Object.fromEntries(db.prepare("SELECT capture_id, SUM(amount_cents) AS cents FROM payment_refunds WHERE status = 'COMPLETED' GROUP BY capture_id").all().map((r) => [r.capture_id, r.cents])),
+    recordedRefunds: db.prepare('SELECT refund_id FROM payment_refunds ORDER BY refund_id').all().map((r) => r.refund_id),
+    completedRefundCents: Object.fromEntries(db.prepare("SELECT capture_id, SUM(amount_cents) AS cents FROM payment_refunds WHERE status = 'COMPLETED' GROUP BY capture_id").all().map((r) => [r.capture_id, r.cents])),
     orders: db.prepare('SELECT provider_order_id AS id, amount_cents AS cents FROM payment_orders ORDER BY provider_order_id').all().map((r) => `${r.id}:${r.cents}`),
   };
 }
-// scope credited (the supported subset) compares the record itself as well as the money. In the wider space, a capture
-// PayPal refunded before this server saw it complete is a documented choice ("never credit retroactively"): it may be
-// recorded without a credit and reversal, so only money is compared there.
-function violations(m, o, scope = 'credited') {
+// The same checks in both scopes; nothing is relaxed for the wider one.
+function violations(m, o) {
   const want = expected(m);
   const found = [];
   if (o.progressCents !== want.progressCents) found.push(`tracked progress ${o.progressCents} cents, model ${want.progressCents}`);
@@ -144,13 +175,14 @@ function violations(m, o, scope = 'credited') {
   const netHere = (c) => (o.captures[c]?.credited ? o.captures[c].amount_cents - o.captures[c].refunded_cents : 0);
   const netModel = (c) => (m.completed.has(c) ? orderOf(m, c).amount - refundedHere(m, c) : 0);
   for (const c of [...new Set([...Object.keys(o.captures), ...m.completed])].sort()) if (netHere(c) !== netModel(c)) found.push(`capture ${c} nets ${netHere(c)} cents here, model ${netModel(c)}`);
-  if (scope === 'credited') {
-    if (o.credits !== want.credited.length || o.creditedCents !== want.creditedCents) found.push(`${o.credits} contribution credits of ${o.creditedCents} cents, model ${want.credited.length} of ${want.creditedCents}`);
-    if (o.reversals !== want.reversals.length || o.reversedCents !== want.reversedCents) found.push(`${o.reversals} refund reversals of ${o.reversedCents} cents, model ${want.reversals.length} of ${want.reversedCents}`);
-    if (!sameList(o.credited, want.credited)) found.push(`credited captures ${list(o.credited)}, model ${list(want.credited)}`);
-    if (!sameList(o.reversedRefunds, want.reversals)) found.push(`reversed refunds ${list(o.reversedRefunds)}, model ${list(want.reversals)}`);
-    for (const c of want.credited) if ((o.captures[c]?.refunded_cents ?? 0) !== refundedHere(m, c)) found.push(`capture ${c} refunded ${o.captures[c]?.refunded_cents ?? 0} cents here, model ${refundedHere(m, c)}`);
-  }
+  if (o.credits !== want.credited.length || o.creditedCents !== want.creditedCents) found.push(`${o.credits} contribution credits of ${o.creditedCents} cents, model ${want.credited.length} of ${want.creditedCents}`);
+  if (o.reversals !== want.reversals.length || o.reversedCents !== want.reversedCents) found.push(`${o.reversals} refund reversals of ${o.reversedCents} cents, model ${want.reversals.length} of ${want.reversedCents}`);
+  if (!sameList(o.credited, want.credited)) found.push(`credited captures ${list(o.credited)}, model ${list(want.credited)}`);
+  if (!sameList(o.reversedRefunds, want.reversals)) found.push(`reversed refunds ${list(o.reversedRefunds)}, model ${list(want.reversals)}`);
+  for (const c of want.credited) if ((o.captures[c]?.refunded_cents ?? 0) !== refundedHere(m, c)) found.push(`capture ${c} refunded ${o.captures[c]?.refunded_cents ?? 0} cents here, model ${refundedHere(m, c)}`);
+  const recordedCaptures = Object.keys(o.captures).sort();
+  if (!sameList(recordedCaptures, want.known)) found.push(`recorded captures ${list(recordedCaptures)}, model ${list(want.known)}`);
+  if (!sameList(o.recordedRefunds, want.recorded)) found.push(`recorded refunds ${list(o.recordedRefunds)}, model ${list(want.recorded)}`);
   const orders = [...m.provider].map(([id, order]) => `${id}:${order.amount}`).sort();
   if (!sameList(o.orders, orders)) found.push(`local orders ${list(o.orders)}, model ${list(orders)}`);
   // Whatever the app has been shown: a capture's net credit never exceeds what PayPal verified for it (nothing, while it
@@ -159,14 +191,15 @@ function violations(m, o, scope = 'credited') {
     if (!capture.credited) continue;
     const order = orderOf(m, capture.capture_id);
     const verified = order?.status === 'COMPLETED' ? order.amount : 0;
-    const recorded = o.recordedRefunds[capture.capture_id] ?? 0;
+    const recorded = o.completedRefundCents[capture.capture_id] ?? 0;
     const net = capture.amount_cents - capture.refunded_cents;
     if (net > verified - recorded) found.push(`capture ${capture.capture_id} nets ${net} cents here, above PayPal's verified ${verified} less ${recorded} of completed refunds on record`);
   }
   return found;
 }
-// After the final sweep, the app must agree with PayPal's own record, computed from the model's provider side only.
-function divergence(m, o, scope = 'credited') {
+// After the final sweep the app must agree with PayPal's own record, computed from the model's provider side only.
+// The documented exception alone may be recorded here without a credit, at the same net zero.
+function divergence(m, o) {
   const found = [];
   if (o.progressCents !== paypalProgress(m)) found.push(`tracked progress ${o.progressCents} cents, PayPal's record ${paypalProgress(m)}`);
   for (const [orderId, order] of m.provider) {
@@ -175,7 +208,7 @@ function divergence(m, o, scope = 'credited') {
     const refunded = sum(order.refunds.values());
     const net = here?.credited ? here.amount_cents - here.refunded_cents : 0;
     if (net !== order.amount - refunded) found.push(`capture ${order.captureId} of ${orderId} nets ${net} cents here, ${order.amount - refunded} in PayPal (${order.amount} captured, ${refunded} refunded)`);
-    else if (scope === 'credited' && (!here?.credited || here.refunded_cents !== refunded)) found.push(`capture ${order.captureId} of ${orderId} is ${here?.credited ? `credited with ${here.refunded_cents} cents refunded` : 'not credited'} here; PayPal captured ${order.amount} and refunded ${refunded}`);
+    else if (!m.zeroNet.has(order.captureId) && (!here?.credited || here.refunded_cents !== refunded)) found.push(`capture ${order.captureId} of ${orderId} is ${here?.credited ? `credited with ${here.refunded_cents} cents refunded` : 'not credited'} here; PayPal captured ${order.amount} and refunded ${refunded}`);
   }
   return found;
 }
@@ -232,20 +265,20 @@ async function runSeed(seed, adapter, scope, { atEnd } = {}) {
   const transport = transportTo(fake);
   const m = createModel();
   const trace = [];
-  const stats = { actions: {}, faults: {} };
+  const stats = { actions: {}, faults: {}, answers: {} };
   let app = null;
   let serial = 0;
   const ordered = () => [...m.provider.keys()];
   const label = (orderId) => `o${ordered().indexOf(orderId) + 1}`;
   const paypalRecord = () => [...m.provider].map(([id, o]) => `${label(id)}=${id}/${o.captureId ?? '-'} ${o.amount}c ${o.status ?? 'uncaptured'}${o.refunds.size ? ` refunded ${[...o.refunds.values()].join('+')}` : ''}`).join('; ');
-  const replay = `PAYMENT_MODEL_SEED=${seed} PAYMENT_MODEL_ADAPTER=${adapter}${scope === 'credited' ? '' : ` PAYMENT_MODEL_REFUNDS=${scope}`} node --test test/unit/payment-model.test.mjs`;
+  const replay = `PAYMENT_MODEL_SEED=${seed} PAYMENT_MODEL_ADAPTER=${adapter} PAYMENT_MODEL_REFUNDS=${scope} node --test test/unit/payment-model.test.mjs`;
   const fail = (problems) => assert.fail([
     `seed ${seed} (${adapter}, refunds of ${scope} captures) at ${commit}, action ${trace.length} "${trace.at(-1) ?? 'start'}": ${problems.join('; ')}`,
     `replay: ${replay}`,
     `actions: ${trace.join(' | ')}`,
     `paypal: ${paypalRecord() || 'no orders'}`,
   ].join('\n'));
-  const check = () => { const found = violations(m, observe(app.db), scope); if (found.length) fail(found); };
+  const check = () => { const found = violations(m, observe(app.db)); if (found.length) fail(found); };
   const begin = (text) => { trace.push(text); };
   const fault = (name) => { stats.faults[name] = (stats.faults[name] ?? 0) + 1; };
   const providerCapture = (orderId) => fake.orders.get(orderId).purchase_units[0].payments.captures[0];
@@ -273,8 +306,7 @@ async function runSeed(seed, adapter, scope, { atEnd } = {}) {
       if (order.captureId && m.completed.has(order.captureId)) {
         begin(`capture ${label(orderId)}: settled here`);
         const { outcome } = await app.service.capturePayPalOrder({ providerOrderId: orderId, ...owner });
-        // A capture first seen refunded may stay unsettled here by the documented choice; only money is checked then.
-        if (scope === 'any' && m.firstSeenRefunded.has(order.captureId)) return;
+        stats.answers.already_completed = (stats.answers.already_completed ?? 0) + 1;
         if (outcome !== 'already_completed') fail([`answered ${outcome}, model already_completed`]);
         if (transport.calls !== before) fail(['a capture of an order settled here asked PayPal']);
         return;
@@ -296,16 +328,15 @@ async function runSeed(seed, adapter, scope, { atEnd } = {}) {
       }
       // What the app has now been shown, and so what it should answer.
       let want = 'unknown';
-      if (lost === 'none') {
-        if (order.answer === 'COMPLETED') showCompleted(m, order.captureId);
-        want = order.answer === 'COMPLETED' ? 'completed' : 'pending';
-      } else if (!readLost && order.status) {
+      if (lost === 'none') { // PayPal's first answer for this request id
+        want = answerFor(m, order.captureId, order.answer);
+        if (order.answer === 'COMPLETED') showCompleted(m, order.captureId); else showPending(m, order.captureId);
+      } else if (!readLost) { // the order as read now
+        want = readAnswer(order);
         showOrder(m, order);
-        want = order.status === 'PENDING' ? 'pending' : order.refunds.size ? 'refunded' : 'completed';
       }
-      // Only reachable in the wider space: the answer for a capture first seen refunded is the documented choice above.
-      const refundedFirst = scope === 'any' && order.refunds.size > 0 && outcome === 'not_credited';
-      if (outcome !== want && !refundedFirst) fail([`answered ${outcome}, model ${want}`]);
+      stats.answers[want] = (stats.answers[want] ?? 0) + 1;
+      if (outcome !== want) fail([`answered ${outcome}, model ${want}`]);
     },
     // PayPal completes a held capture and sends a webhook, which may arrive late, more than once or never.
     async complete() {
@@ -315,8 +346,8 @@ async function runSeed(seed, adapter, scope, { atEnd } = {}) {
       m.provider.get(orderId).status = 'COMPLETED';
       enqueue(orderId, 'PAYMENT.CAPTURE.COMPLETED', { ...capture, supplementary_data: { related_ids: { order_id: orderId } } });
     },
-    // A partial or full refund in the PayPal dashboard: the order lists it and a webhook is sent. By default only captures
-    // credited here are refunded (see refundScope above).
+    // A partial or full refund in the PayPal dashboard: the order lists it and a webhook is sent. In the credited scope
+    // only captures credited here are refunded.
     async refund() {
       const orderId = rand.pick(ordered().filter(refundable));
       const order = m.provider.get(orderId);
@@ -350,7 +381,13 @@ async function runSeed(seed, adapter, scope, { atEnd } = {}) {
         return;
       }
       if (answer.code) fail([`a verified webhook was refused: ${answer.code} ${answer.message}`]);
+      if (m.processed.has(delivered.id)) { // an event id already handled changes nothing
+        if (answer.value?.outcome !== 'duplicate_event') fail([`a repeated event id answered ${answer.value?.outcome}, model duplicate_event`]);
+        return;
+      }
+      m.processed.add(delivered.id);
       if (body.event_type === 'PAYMENT.CAPTURE.COMPLETED') showCompleted(m, body.resource.id);
+      if (body.event_type === 'PAYMENT.CAPTURE.PENDING') showPending(m, body.resource.id);
       if (body.event_type === 'PAYMENT.CAPTURE.REFUNDED') {
         const captureId = body.resource.links[0].href.split('/').at(-1);
         showRefund(m, body.resource.id, captureId, orderOf(m, captureId).refunds.get(body.resource.id));
@@ -443,13 +480,16 @@ async function runSeed(seed, adapter, scope, { atEnd } = {}) {
       showOrder(m, m.provider.get(orderId));
     }
     check();
-    const apart = divergence(m, observe(app.db), scope);
+    const apart = divergence(m, observe(app.db));
     if (apart.length) fail(apart);
     await atEnd?.({ model: m, db: app.db });
     const completed = [...m.provider.values()].filter((o) => o.status === 'COMPLETED');
     return {
       steps, ...stats,
-      outcomes: { orders: m.provider.size, completed: completed.length, pending: [...m.provider.values()].filter((o) => o.status === 'PENDING').length, refunds: sum(completed.map((o) => o.refunds.size)), events: m.events.length },
+      outcomes: {
+        orders: m.provider.size, completed: completed.length, pending: [...m.provider.values()].filter((o) => o.status === 'PENDING').length,
+        refunds: sum(completed.map((o) => o.refunds.size)), events: m.events.length, uncreditedFullRefunds: m.zeroNet.size,
+      },
     };
   } finally {
     app?.db.close();
@@ -458,18 +498,18 @@ async function runSeed(seed, adapter, scope, { atEnd } = {}) {
 }
 
 const add = (into, from) => { for (const [key, n] of Object.entries(from)) into[key] = (into[key] ?? 0) + n; };
-for (const adapter of adapters) {
-  test(`seeded payment sequences match the reference model and converge to PayPal's record (${adapter})`, { timeout: 120_000 }, async (t) => {
-    const totals = { steps: 0, actions: {}, faults: {}, outcomes: {} };
-    for (const seed of seeds) {
-      const run = await runSeed(seed, adapter, refundScope);
-      totals.steps += run.steps;
-      add(totals.actions, run.actions);
-      add(totals.faults, run.faults);
-      add(totals.outcomes, run.outcomes);
-    }
-    t.diagnostic(`${seeds.length} seed${seeds.length === 1 ? '' : 's'} [${seeds.join(', ')}] at ${commit}, refunds of ${refundScope} captures: ${totals.steps} actions ${JSON.stringify(totals.actions)}; faults ${JSON.stringify(totals.faults)}; final PayPal record ${JSON.stringify(totals.outcomes)}`);
-  });
+for (const scope of scopes) {
+  for (const adapter of adapters) {
+    test(`seeded payment sequences match the reference model and converge to PayPal's record (${adapter}, refunds of ${scope} captures)`, { timeout: 120_000 }, async (t) => {
+      const totals = { steps: 0, actions: {}, faults: {}, answers: {}, outcomes: {} };
+      for (const seed of seeds) {
+        const run = await runSeed(seed, adapter, scope);
+        totals.steps += run.steps;
+        for (const key of ['actions', 'faults', 'answers', 'outcomes']) add(totals[key], run[key]);
+      }
+      t.diagnostic(`${seeds.length} seed${seeds.length === 1 ? '' : 's'} [${seeds.join(', ')}] at ${commit}, ${adapter}, refunds of ${scope} captures: ${totals.steps} actions ${JSON.stringify(totals.actions)}; faults ${JSON.stringify(totals.faults)}; capture answers ${JSON.stringify(totals.answers)}; final PayPal record ${JSON.stringify(totals.outcomes)}`);
+    });
+  }
 }
 
 test('the checks notice a second credit or a one-cent difference, and replay input is validated', async () => {
@@ -508,4 +548,5 @@ test('the checks notice a second credit or a one-cent difference, and replay inp
   for (const bad of ['', 'abc', '0', '-1', '1.5', ' 7', '07', '1e3', '4294967296']) assert.throws(() => parseSeed(bad), /PAYMENT_MODEL_SEED must be a whole number/, JSON.stringify(bad));
   assert.equal(parseSeed('4294967295'), 4294967295);
   assert.throws(() => parseChoice('PAYMENT_MODEL_ADAPTER', 'soap', ['rest', 'sdk']), /PAYMENT_MODEL_ADAPTER must be rest or sdk, not "soap"/);
+  assert.throws(() => parseChoice('PAYMENT_MODEL_REFUNDS', 'some', ['credited', 'any']), /PAYMENT_MODEL_REFUNDS must be credited or any, not "some"/);
 });
