@@ -480,7 +480,11 @@ export function createContributionService({ db, clock, mode, paypal = null, webh
           } catch (error) {
             if (!(error instanceof PayPalError)) throw error;
             if (error.hasIssue('ORDER_ALREADY_CAPTURED')) ({ data: order } = await paypal.getOrder(providerOrderId));
-            else if (error.hasIssue('INSTRUMENT_DECLINED')) {
+            else if (['INSTRUMENT_DECLINED', 'ORDER_NOT_APPROVED'].some((issue) => error.hasIssue(issue)) && SETTLED.has(orderById(row.id).status)) {
+              // Another request (on a second server, say) captured and credited this order while this refusal was on its
+              // way. Canonical state wins: a late refusal does not reopen a settled order.
+              return result(row, 'already_completed');
+            } else if (error.hasIssue('INSTRUMENT_DECLINED')) {
               setStatus(row, 'declined', 'The payment method was declined in PayPal sandbox. Try another sandbox funding source.');
               return result(row, 'declined');
             } else if (error.hasIssue('ORDER_NOT_APPROVED')) {

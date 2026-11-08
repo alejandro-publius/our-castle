@@ -413,6 +413,39 @@ test('one server loses its capture answer while the other captures the same orde
   }
 }));
 
+// S6 and S7: PayPal refuses A's attempt and the refusal is held on its way back. The buyer then approves (or picks
+// another funding source). The fake keeps no refusal under the request id, the model behind the app's own "try again"
+// answers, so B's attempt with the same key captures and credits. Then A's refusal arrives.
+for (const [id, issue] of [['S6', 'ORDER_NOT_APPROVED'], ['S7', 'INSTRUMENT_DECLINED']]) {
+  test(`a ${issue} refusal that reaches one server after the other captured the same order leaves it completed (${id})`, { timeout: 120_000 }, (t) => campaign(t, `late-refusal-${id}`, async ({ model, paypal, start, check, record }) => {
+    const A = await start('A');
+    const B = await start('B');
+    const { orderId, captureKey } = await createOrder(A, `two-server-${id}-refusal`);
+    paypal.fake.behavior.captureError = { status: 422, issue };
+    const reached = paypal.hold('POST', capturePath(orderId));
+    const a = inflight(capture(A, orderId));
+    const [held] = await reached;
+    assert.equal(held.entry.fakeStatus, 422, 'PayPal refused A and the refusal is held');
+    paypal.fake.behavior.captureError = null;
+    const rb = await capture(B, orderId);
+    const captureId = providerCaptures(paypal, orderId)[0].id;
+    model.credit(captureId, 1500);
+    answered(rb, 'completed', model, `${id} B`);
+    check(`${id} after B`, { [orderId]: 'completed' });
+    held.release();
+    const ra = await a.done;
+    record.schedules.push({ id, controlled: `A's capture refused (${issue}) and the refusal held at the fake`, released: "after B's attempt with the same key captured and credited", outcomes: { B: 'completed', A: ra.json.outcome } });
+    check(`${id} after A's late refusal`, { [orderId]: 'completed' });
+    answered(ra, 'already_completed', model, `${id} A's late refusal`);
+    // A later explicit check keeps the order completed.
+    answered(await refresh(A, orderId), 'already_completed', model, `${id} check`);
+    check(`${id} after a check`, { [orderId]: 'completed' });
+    const provider = attempts(paypal, capturePath(orderId));
+    assert.deepEqual(provider, { attempts: 2, requestIds: [captureKey], effects: 1 });
+    record.schedules.at(-1).provider = provider;
+  }));
+}
+
 test('one completion delivered to both servers while the capture answer is held: one credit (S8)', { timeout: 120_000 }, (t) => campaign(t, 'duplicate-completion', async ({ model, paypal, start, note, check, record, lock }) => {
   const A = await start('A');
   const B = await start('B');
