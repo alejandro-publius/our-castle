@@ -26,8 +26,9 @@ Local artifacts: test-results/refund-before-capture-20261108/.
 - affected-node22.log and affected-node26.log: 130 affected cases, 129 pass and one existing skip, no failures on Node22.16.0/26.0.0.
 - Twelve new regressions cover full/partial refunds before any capture, persistence through close/reopen, duplicate deliveries, a later pending observation, signature rejection, wrong-order rejection and rollback that retains the receipt if writing the reversal fails.
 - Existing refund-ordering, payment, reconciliation, unknown-outcome, dispatch/access, crash-restart, ledger, migration and snapshot tests were included.
+- schema-expectations-node22.log and schema-expectations-node26.log: all 46 cases in the four affected older test files pass after updating their schema expectations.
 - guard.log: source/art/palette/syntax guard passed. git diff --check passed.
 
-The first affected run exposed three stale snapshot assertions about schema7; these now check the current version and its future successor. They were test expectations, not backup defects.
+The first affected run exposed three stale snapshot assertions about schema7; these now check the current version and its future successor. Hosted full-unit checks then found five assertions in older Merchant, avatar, access and saved-receipt cases that also assumed schema7 or its exact table list. A local full-suite reproduction confirmed those five failures (390 passes, one existing skip); the version assertions now use MIGRATIONS.length and the exact additive-table list includes deferred_refunds. No payment or backup implementation change was needed for these stale expectations.
 
 All data and providers are fake and disposable. Reopening is not hardware power-loss evidence; SDK-adapter tests use fake controllers. The existing real-SDK transport and SIGKILL tests remain separate. No actual payment, refund, owner database, credential, video or deployment was used.
