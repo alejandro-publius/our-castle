@@ -179,9 +179,17 @@ export function createContributionService({ db, clock, mode, paypal = null, webh
         .run(row.household_id, row.goal_id, kinds.contribution, amountCents, currency, kinds.source, `${kinds.prefix}-capture:${captureId}`,
           row.approved_by, `${row.provider === 'simulated' ? 'Simulated contribution' : 'PayPal sandbox contribution'} approved by ${approver?.name ?? 'an adult'}`, at);
       db.prepare("UPDATE payment_orders SET status = 'completed', status_detail = NULL, updated_at = ? WHERE id = ?").run(at, row.id);
-      return { duplicate: false, awarded: awardTierMilestones(db, getGoal(db, row.goal_id), at) };
+      // A verified refund can arrive while this capture is still pending locally. Keep that evidence when an older
+      // completion arrives: apply the stored reversals before awarding milestones, in this same transaction.
+      let refunded = false;
+      const knownRefunds = db.prepare("SELECT * FROM payment_refunds WHERE capture_id = ? AND credited = 0 AND status = 'COMPLETED' ORDER BY created_at, refund_id").all(captureId);
+      for (const refund of knownRefunds) {
+        if (applyRefund({ refundId: refund.refund_id, captureId, amountCents: refund.amount_cents,
+          currency: refund.currency, status: refund.status }).outcome === 'refunded') refunded = true;
+      }
+      return { duplicate: false, refunded, awarded: awardTierMilestones(db, getGoal(db, row.goal_id), at) };
     });
-    return result(row, outcome.duplicate ? 'already_completed' : 'completed', { awarded: outcome.awarded });
+    return result(row, outcome.duplicate ? 'already_completed' : outcome.refunded ? 'refunded' : 'completed', { awarded: outcome.awarded });
   }
 
   /** Check one provider capture against the order the server created, then act on its status. */
@@ -210,7 +218,7 @@ export function createContributionService({ db, clock, mode, paypal = null, webh
       case 'PARTIALLY_REFUNDED':
         // Refunded after we credited it: the credit stands and the refunds themselves are applied by applyOrder/webhooks.
         if (captureById(capture.id)?.credited) return result(row, 'already_completed');
-        // Refunded before this server ever saw it complete: never credit retroactively, and say what happened.
+        // First seen after a refund: withhold credit unless applyOrder can establish a partial remainder from refund details.
         upsertCapture(row, capture.id, amountCents, currency, capture.status);
         if (!SETTLED.has(orderById(row.id).status)) setStatus(row, 'failed', 'This capture was refunded in PayPal before any progress was recorded here. Nothing was credited.');
         return result(row, 'not_credited');
@@ -254,15 +262,23 @@ export function createContributionService({ db, clock, mode, paypal = null, webh
     // Refunds listed on the order are applied too (once per refund id), so a refund made in the PayPal dashboard is not
     // lost when its webhook was never delivered: PayPal stops retrying after 3 days, and local runs often have no tunnel.
     let refunded = false;
+    let rejectedRefund = false;
     for (const refund of unit.payments?.refunds ?? []) {
       const up = (refund.links ?? []).find((l) => l.rel === 'up')?.href ?? '';
       const captureId = decodeURIComponent(/\/captures\/([^/?#]+)/.exec(up)?.[1] ?? capture.id);
-      if (!unit.payments.captures.some((c) => c.id === captureId)) continue;
+      if (!unit.payments.captures.some((c) => c.id === captureId)) { rejectedRefund = true; continue; }
       const outcome = applyRefund({
         refundId: refund.id, captureId, amountCents: decimalStringToCents(refund.amount?.value),
         currency: refund.amount?.currency_code, status: refund.status,
       }).outcome;
       if (outcome === 'refunded') refunded = true;
+      if (['rejected_refund', 'ignored_unknown_capture'].includes(outcome)) rejectedRefund = true;
+    }
+    // PARTIALLY_REFUNDED confirms a capture, but not its remainder by itself. Only validated, completed refunds for
+    // this capture can establish that amount. Credit and replay those reversals together, never the gross milestone.
+    if (capture.status === 'PARTIALLY_REFUNDED' && applied.outcome === 'not_credited' && !rejectedRefund) {
+      const known = db.prepare("SELECT COALESCE(SUM(amount_cents), 0) AS cents FROM payment_refunds WHERE capture_id = ? AND currency = ? AND status = 'COMPLETED' AND credited = 0").get(capture.id, row.currency).cents;
+      if (known > 0 && known < row.amount_cents) return credit(row, capture.id, row.amount_cents, row.currency);
     }
     return refunded ? result(row, 'refunded') : applied;
   }
