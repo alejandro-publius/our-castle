@@ -1,5 +1,82 @@
 # Validation
 
+## Readable contribution receipts — November 8, 2026
+
+Branch `claude/receipt-breakdown`, from the reviewed PR #52 head `ecb6323` (still unmerged: PR #52 → #51 → #50 → #49). The implementation and tests are `a3c47a8`; the screenshots and this note follow it.
+
+This is a feature the owner authorized, not a fix for an observed defect. Whether it helps a family understand a payment is a hypothesis. No person was asked, and nothing here measures understanding or savings.
+
+**What a receipt now says.** The selected Ledger receipt and the Contribute receipt each add one sentence, written by the same function:
+- after a $15.00 credit and a completed $5.00 refund: "$10.00 of this contribution counts toward the goal.";
+- after a full refund: "All $18.00 was refunded, so none of this contribution counts toward the goal.";
+- while pending or awaiting approval: "No contribution has been counted yet.";
+- once declined, rejected or failed: "No contribution has been counted.";
+- when the records disagree: "How much of this counts can’t be shown from the saved records."
+
+The existing Payment details disclosure gains the recorded contribution, the completed refunds and the amount that counts toward the goal. Below them come the dated saved records:
+- the order recorded, with its approver;
+- each credit;
+- each refund: recorded, pending, or not subtracted;
+- the latest saved PayPal check, marked "before the later refund" when a refund followed it.
+
+**What stayed the same.** The original amount, source badge, status, saved-check line, earlier checks, ids and actions are unchanged. There is no new panel, button, column, endpoint, schema, provider call or dependency.
+
+**Source of truth** (`src/core/contribution-story.js`, pure):
+- **What counts:** only ledger rows with the exact reference the server writes. That is `paypal-capture:` and `paypal-refund:`, or the `simulated-` pair. Each row must match in kind, direction, amount and currency, with exactly one row per credited capture or applied refund.
+- **What never counts:** an uncredited capture, a pending or unapplied refund, reported starting progress, bills, gifts and other contributions. Each refund is subtracted once, from its reversal row.
+- **No number, breakdown or timeline** in any of these cases:
+  - another household, goal or currency;
+  - a missing, duplicated or mismatched row;
+  - a capture whose refunded total differs from its reversal rows;
+  - a settled status without a credit, or a credit under an unsettled status.
+- **Dates:** only from the order's creation, the ledger rows, a refund's own record and the saved check. They never come from the order's last update or from the time the receipt is opened.
+
+**Design.**
+- **Kept:** the existing receipt layout, parchment, ink, font and quiet status colors.
+- **Borrowed from `task-014-design-research.json`, structure only:** PayPal's refunded-transaction hierarchy (original amount, refund and net kept apart) and Open Collective's labelled rows.
+- **Behavior:** nothing opens by itself. A same-record live refresh keeps the disclosure open and its summary focused. That state is held in memory only, so a reload starts closed.
+
+| Partial refund, desktop | Partial refund, 390 px phone | Pending, phone | Completed, desktop |
+| --- | --- | --- | --- |
+| ![$15.00 contribution, $5.00 refunded: $10.00 counts, with Payment details open](screenshots/receipt-breakdown-desktop-partial.png) | ![The same partial-refund receipt on a 390px phone](screenshots/receipt-breakdown-phone-partial.png) | ![A $20.00 pending payment: no contribution has been counted yet](screenshots/receipt-breakdown-phone-pending.png) | ![A $12.00 completed contribution, checked afterwards](screenshots/receipt-breakdown-desktop-completed.png) |
+
+The captures come from a disposable fake-PayPal sandbox fixture, with no real transaction. Provenance, source hashes and image hashes are in [receipt-breakdown-sources.json](screenshots/receipt-breakdown-sources.json).
+
+**Checks on `a3c47a8`:**
+- **`test/unit/contribution-story.test.mjs`:** 8 tests, with literal expected cents. With the existing ledger-trail tests, 11/11 passed on Node 22.16.0 and 26.0.0. They cover:
+  - completed and never-credited contributions;
+  - a $15.00 − $5.00 = $10.00 partial refund, a full refund and a pending refund;
+  - simulated records, exact identity and scope;
+  - 25 malformed or conflicting inputs;
+  - history times, including a check saved before a refund;
+  - inputs left unchanged.
+- **The projection over real service output** (fake sandbox):
+
+  | Story | Recorded / refunded / counts (cents) |
+  | --- | --- |
+  | Completed | 1500 / 0 / 1500 |
+  | Partial refund | 1500 / 500 / 1000 |
+  | Full refund | 1500 / 1500 / 0 |
+  | Pending refund | 1500 / 0 / 1500 |
+  | Pending | nothing counted |
+  | Declined | nothing counted |
+- **`test/e2e/receipt-breakdown.spec.mjs`, desktop 1440 px and phone 390 px:** 8/8 passed. It covers:
+  - the four stories, with each history line's time matching its saved record;
+  - choosing and opening four receipts, which made zero requests, provider calls, writes or storage changes;
+  - a reload;
+  - the plain table when Grid and Studio never load, where a late load leaves the open receipt alone;
+  - the Contribute and Ledger receipts agreeing before and after a refund;
+  - another adult's refund updating the owner's open receipt live, with the disclosure still open and focused and no write from the owner's page.
+- **Affected existing browser specs** (`payment-recheck`, `treasury-status`, `treasury`, `journey`, `earned-realm`), both viewports: 58 passed, plus 2 designed desktop-only skips.
+- **`npm run check`:** passed.
+
+**Limits:**
+- **Scope:** emulated Chromium, fake providers and disposable data only. This is not real-PayPal, physical-device, accessibility-audit or human evidence.
+- **Not shown:** the records carry no time for a pending capture, so none is shown. Earlier saved checks stay in their existing list.
+- **Unchanged association:** `ledgerTrail` still links a row to its contribution by an id suffix. The numbers themselves use exact identities.
+
+**Evidence:** kept local and ignored, in `test-results/receipt-breakdown-20261108/`. It holds logs, raw captures with `SHA256SUMS.txt`, the real-service output and the commands.
+
 ## Two app servers on one database — November 8, 2026
 
 Branch `claude/two-server-payment-races`, from the reviewed PR #51 head `5aa58ee` (still unmerged: PR #51 → #50 → #49). Harness and schedules: `d7dd30b`. Late-refusal regression and fix: `d309e58`.
