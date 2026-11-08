@@ -24,6 +24,7 @@ import { FAMILY_PROJECT_SITE, PROJECT_KINDS, projectKind, projectLabel, projectS
 import { CONFIRMATION_HISTORY_QUESTION, NEEDS_CHECK_QUESTION, isLocalQuestion, isNeedsCheckQuestion } from '../core/steward-questions.js';
 import { checkStatus } from '../core/check-status.js';
 import { createPlanCheck } from './plan-check.js';
+import { createKeeper } from './keeper.js';
 
 // ---------- small helpers ----------
 const $ = (selector, root = document) => root.querySelector(selector);
@@ -316,6 +317,18 @@ async function boot() {
     setJournalOpen(pref.get('journal') !== 'closed', { remember: false });
     scene?.focusDistrict(homeDistrict(state.board.builtTier).id);
     if (family.on) startFamilyLive();
+    // Moss, the castle keeper: an optional authored tour, offered only while payments are simulated. It may only show
+    // a journal tab; it never presses a control, writes a record or saves a preference.
+    try {
+      createKeeper({
+        available: () => state?.modes.payments.mode === 'example',
+        currentTab: () => ui.tab,
+        journalOpen: () => !$('#journey').hidden,
+        showTab: (name) => { setJournalOpen(true, { remember: false }); selectTab(name, { focus: false, remember: false, open: false }); },
+        closeJournal: () => setJournalOpen(false, { remember: false }),
+        autoStart: new URLSearchParams(location.search).get('tour') === '1',
+      });
+    } catch (error) { console.warn('[our-castle] the keeper tour is unavailable', error); } // optional; never blocks the house
   } catch (error) {
     $('#honesty').textContent = `Could not load the household: ${error.message}`;
   }
