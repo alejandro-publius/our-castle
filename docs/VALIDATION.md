@@ -2,7 +2,10 @@
 
 ## Seeded payment sequences against an independent model — November 7, 2026
 
-Branch `claude/seeded-payment-model`, from the reviewed PR #43 head `ce3ec65` (main `579b4f6` does not contain it yet). There is **no production change**. The new test is `test/unit/payment-model.test.mjs`, which the full unit command picks up.
+Branch `claude/seeded-payment-model` ([PR #47](https://github.com/alejandro-publius/our-castle/pull/47)). It now stacks on Codex's reviewed refund-ordering fix, which this test's first version found:
+- **The stack:** [PR #46](https://github.com/alejandro-publius/our-castle/pull/46) (`codex/refund-delivery-order` at `eefae41`), on PR #43 (`ce3ec65`), on PR #40 (`e3bc6ff`). Main `579b4f6` contains none of them yet.
+- **The merge:** `eefae41` came in unchanged, by the normal merge `55b500a`.
+- **What this branch changes:** only the model test and these docs. The production change is PR #46's; see [refund ordering](REFUND-ORDERING.md).
 
 **What was missing.** The payment tests are named scenarios, each covering one path. Nothing combined captures, retries, lost answers, late webhooks, dashboard refunds and reopening in varied orders, or compared the result with a model of what PayPal holds.
 
@@ -12,6 +15,9 @@ Branch `claude/seeded-payment-model`, from the reviewed PR #43 head `ce3ec65` (m
   - `rest` is the production REST client (OAuth, `PayPal-Request-Id`, JSON and error mapping) over an in-memory fetch.
   - `sdk` is the production SDK adapter over `fakeSdkControllers`. Those stand in for the SDK's controllers, so **the SDK's own serialization, OAuth and HTTP transport are not exercised here**; `paypal-sdk-transport` and `payment-restart` cover them.
   - Webhook verification goes through the REST client on both paths.
+- **Two refund scopes,** both run by CI over the same 24 seeds and both paths:
+  - `credited`: dashboard refunds reach only captures credited here;
+  - `any`: a refund can also reach a capture that PayPal completed before this server saw the completion. That is the space where the two ordering defects lived.
 - **Each seed runs 30–60 actions, with at most 6 orders:**
   - adult-approved orders of 100–2,500 cents;
   - first captures, which PayPal completes or holds, and same-order retries, which PayPal answers with its first answer for the same request id;
@@ -24,53 +30,96 @@ Branch `claude/seeded-payment-model`, from the reviewed PR #43 head `ce3ec65` (m
   - a capture request that never reaches PayPal, or PayPal's answer lost after it acted, with the read that follows sometimes lost too;
   - a check whose answer is lost;
   - a webhook that fails verification, or whose verification answer is lost.
-- **The model** is plain integers and sets. PayPal's side (each order's amount, capture status, first answer and refunds) is kept apart from what the app has been shown: completed captures and completed refunds, by id. It never calls production code to predict anything; `progressFor` is only read to observe.
-- **After every action, the app must match the model:**
+- **The model** is plain integers and sets. PayPal's side (each order's amount, capture status, first answer and refunds) is kept apart from what the app has been shown:
+  - the captures it has been told of;
+  - those shown completed;
+  - every completed refund it has been told of, by id, which counts against its capture from the moment that capture is credited;
+  - the webhook event ids it has handled.
+
+  It never calls production code or reads the service's answers to predict anything; `progressFor` is only read to observe.
+- **The one documented exception:** a capture first seen on an order read that already lists it **fully** refunded, before any completion was shown, is not credited. It nets to zero either way. A later completion credits it and reverses its refunds together. A partially refunded capture is never an exception: its remainder must count.
+- **After every action, the app must match the model exactly, in both scopes:**
   - tracked progress;
   - the ledger's credits and reversals, as counts and cents, read with SQL;
   - the credited capture ids and the reversed refund ids;
   - each capture's net and refunded cents;
+  - the recorded captures and refunds;
   - the local orders.
 - **Rules checked on every action:**
-  - **A bound that holds whatever the app has seen:** a capture's net credit never exceeds what PayPal verified for it, less the completed refunds of it on record. A pending or unknown capture has nothing verified.
-  - **Every answer** (`completed`, `pending`, `unknown`, `already_completed` or the refusal code) must be the one the model expects.
-  - **No-dispatch rules:** a settled retry, a refusal, reopening and loading must not reach PayPal.
-- **At the end**, an explicit check of every order, after which the app must agree with PayPal's own record.
+  - **A bound that holds whatever the app has seen:** a capture's net credit never exceeds what PayPal verified for it, less the completed refunds of it on record.
+  - **Every answer must be the model's.** A completion answers `refunded` when it applies refunds already shown, otherwise `completed`; the documented exception answers `not_credited`; a repeated event id answers `duplicate_event`.
+  - **No-dispatch rules:** a retry of an order settled here, a refusal, reopening and loading must not reach PayPal.
+- **At the end**, an explicit check of every order, after which the app must agree with PayPal's own record. Only the documented exception may be recorded without a credit, at the same net zero.
 
-**Replay one seed** with `PAYMENT_MODEL_SEED=<1-4294967295> PAYMENT_MODEL_ADAPTER=rest|sdk node --test test/unit/payment-model.test.mjs`. Invalid seeds and adapters are refused before anything runs. A failure prints the seed, adapter and source commit, the failing action and its checks, the replay command, the whole action trace (at most 61 entries) and PayPal's record. A pass prints one summary line per adapter.
+**Replay one seed, adapter and scope,** for example `PAYMENT_MODEL_SEED=2 PAYMENT_MODEL_ADAPTER=rest PAYMENT_MODEL_REFUNDS=credited node --test test/unit/payment-model.test.mjs`. Seeds are 1–4294967295, adapters `rest` or `sdk`, and scopes `credited` or `any`; each one left unset runs them all. Invalid input is refused before anything runs.
+
+A failure prints the seed, adapter, scope and source commit, the failing action and its checks, the replay command with its scope, the whole action trace (at most 61 entries) and PayPal's record. A pass prints one summary line per adapter and scope.
+
+The generator consults the model, so a seed's actions depend on the model version as well as the seed: a seed and commit replay exactly.
+
+### The integrated result, at `9396c06`
 
 | Check | Actual result |
 | --- | --- |
-| The default (refunds only of captures credited here), 24 fixed seeds on both paths, on Node 22.16.0 and 26.0.0 | 3 tests passed on each. Each path ran 1,103 actions: 139 orders, 242 captures, 145 checks, 283 deliveries, 84 refunds, 31 completions, 85 reopens and 94 refusals. Faults injected: 30 lost capture requests, 26 lost capture answers, 29 lost reads after a capture, 16 lost check answers, 24 failed verifications and 8 lost verification answers. At the end PayPal held 85 completed and 10 pending captures. Identical counts on both versions and paths |
-| Oracle sensitivity, on a finished seed, each change rolled back | A second credit under another reference is noticed by the credit count, the model's progress and PayPal's record. One cent more on a credit is noticed by progress against both. One cent less on a capture's refund total is noticed by that capture's refund check and by the bound. The schema itself refuses a second entry under the same reference |
-| Replay input | `''`, `abc`, `0`, `-1`, `1.5`, `' 7'`, `07`, `1e3` and `4294967296` are refused; `4294967295` is accepted; adapter `soap` is refused |
-| Six service mutations, applied only in a scratch copy of the reviewed tree and restored with a matching SHA-256 | **The model test failed on all six. The 11 named payment test files (111 passing tests and 1 designed skip unmutated) failed on five.** They missed M2, a retry that treats only `completed` as settled, which asks PayPal again for a refunded order. The model reported "a capture of an order settled here asked PayPal". The other five: crediting a pending capture; ignoring refunds listed on the order; processing an unverified webhook; refusing a refund of exactly the remaining amount; and reporting a lost capture answer as failed |
+| The model test on Node 22.16.0 and 26.0.0: four seeded runs (two scopes × two paths) and the sensitivity test | **5 passed on each**, with identical summaries. Per path: **`credited`** ran 1,103 actions with 133 injected faults, and PayPal ended with 85 completed and 10 pending captures. **`any`** ran 1,103 actions with 140 faults, and PayPal ended with 86 completed and 7 pending captures; 4 of the completed ones are recorded here without a credit, at net zero (the documented exception). These 24 seeds produced no `refunded` or `not_credited` capture answer; the scan below did |
+| PR #46's 12 refund-ordering regressions, on both versions | 12 passed on each |
+| The five representative seeds that failed before the fix (159, 2, 71, 181 and 21), `any`, both paths, both versions | **The current model: 20 of 20 passed. The before-fix model** (the `3f86614` test file, which replays their recorded failing sequences exactly) against a scratch copy of this tree, whose service matches `eefae41`: **20 of 20 passed** |
+| One bounded scan of seeds 1–200, `any`, `rest` | **200 of 200 passed**: 8,895 actions and 1,103 injected faults. Capture answers matched the model, including 2 `refunded` and 10 `not_credited`. 41 captures in 40 seeds ended recorded without a credit at net zero. The 31 seeds that failed before the fix pass; after the model's first changed decision, their actions differ from the recorded before-fix traces |
 | `npm run check` | Passed: 47 copied art/runtime files, the original 90-color palette, the renderer wiring and JavaScript syntax |
 | `git diff --check` | Clean |
 
-**Finding outside the supported subset (not fixed here).** With `PAYMENT_MODEL_REFUNDS=any`, a dashboard refund can also reach a capture that PayPal completed before this server saw the completion. That happens with a capture held for review whose COMPLETED webhook was missed (local runs often have no tunnel) or arrives after the refund's. In that wider space, a capture first seen already refunded may by design be recorded without a credit ("never credit retroactively"), so only money is compared there.
-- **Fixed seeds:** 44 of 48 runs pass. Seeds 2 and 21 fail on both paths.
-- **Seeds 1–200 on `rest`:** 169 pass and 31 fail, all from two causes.
-- **Reproduction:** five representative failures are identical on both paths and on Node 22.16.0 and 26.0.0.
+### A further counterexample for review, not fixed here
 
-1. **Over-credit after refunds are on record (18 of 200 seeds).**
-   - **What happens:** a completed refund of a capture that is not credited here is recorded but, correctly, not reversed. When that capture is credited later, the full amount is credited, and the recorded refund stays unapplied until the next explicit check of that order.
-   - **When it happens:** after a late COMPLETED webhook (16 seeds), or after a retry that PayPal answers with its first, completed answer (2 seeds).
-   - **Example:** seed 159, 16 actions. A 300-cent capture is held, completed and fully refunded in PayPal. The REFUNDED webhook arrives before the COMPLETED one. The app then tracks +300 cents where PayPal nets 0.
-   - **What it breaks:** the rule that net credit cannot exceed the verified capture less recognized completed refunds.
+A verified refund webhook can arrive before this server has recorded the capture at all. That happens when the capture's answer and the read that follows were both lost.
+- **What happens:**
+  - the refund webhook is answered `ignored_unknown_capture` and marked handled, and no refund row is kept, because refund rows need a recorded capture;
+  - the older COMPLETED webhook then credits the full amount, and that gross credit awards the first tier;
+  - repeating the refund webhook is a duplicate;
+  - only an explicit check applies the refund, and the tier award stays, because awards are keepsakes.
+- **Coverage:** PR #46's regressions cover refunds of captures already recorded.
+- **The model would flag it:** its money rule counts every verified completed refund delivered. The 24 fixed seeds and the 200 scanned seeds never generated this exact order of events: both losses, then a refund delivered before any capture evidence, then a completion before any check.
+
+The smallest reproduction is a directed probe, `test-results/seeded-payments-20261108/integrated/probe-unrecorded-refund.mjs`. It ran on both paths, for a 500-cent partial refund and a 1,500-cent full refund of a 1,500-cent capture, and showed the same thing every time:
+
+| Step | Answer | Tracked | Tier awards |
+| --- | --- | --- | --- |
+| 1. Capture: PayPal completes it, and both the answer and the follow-up read are lost | `unknown` | 6,000 | none |
+| 2. Dashboard refund; its verified REFUNDED webhook arrives first | `ignored_unknown_capture` | 6,000 | none |
+| 3. The older verified COMPLETED webhook | `completed` | **7,500**, where PayPal nets 7,000 or 6,000 | **`tier:1`** |
+| 4. The same REFUNDED webhook again | `duplicate_event` | 7,500 | `tier:1` |
+| 5. An explicit check | `refunded` | 7,000 or 6,000 | `tier:1` remains |
+
+Choosing a remedy, such as keeping that evidence or retrying the delivery, would add payment policy. It is left to Codex and Astra, and this branch changes no production code.
+
+### Before the fix, at `ce3ec65` (history)
+
+The test's first version (`3f86614`) ran only the `credited` scope in CI. It passed there. It compared only money in the wider scope, where it treated any capture first seen refunded as a documented exception.
+
+**Six service mutations,** applied only in a scratch copy of the `ce3ec65` tree and restored with a matching SHA-256:
+- **The model test** failed on all six.
+- **The 11 named payment test files** (111 passing tests and 1 designed skip unmutated) failed on five. They missed M2, a retry that treats only `completed` as settled and so asks PayPal again for a refunded order; the model reported "a capture of an order settled here asked PayPal".
+- **The other five:** crediting a pending capture; ignoring refunds listed on the order; processing an unverified webhook; refusing a refund of exactly the remaining amount; and reporting a lost capture answer as failed.
+- **Not repeated:** these comparisons were not repeated after the fix.
+
+**`PAYMENT_MODEL_REFUNDS=any` then found two money divergences:**
+- **Fixed seeds:** 44 of 48 runs passed; seeds 2 and 21 failed on both paths.
+- **Seeds 1–200 on `rest`:** 169 passed and 31 failed, all from two causes.
+- **Reproduction:** five representatives were identical on both paths and on Node 22.16.0 and 26.0.0.
+
+1. **Over-credit after refunds on record (18 of 200 seeds).**
+   - **What happened:** a refund of a capture not yet credited here was recorded but not applied. When the capture was credited later, the full amount counted, until the next explicit check.
+   - **When:** after a late COMPLETED webhook (16 seeds), or after a retry that PayPal answered with its first, completed answer (2 seeds).
+   - **Example:** seed 159. A 300-cent capture was held, completed and fully refunded; the REFUNDED webhook came first, and the app tracked +300 cents where PayPal netted 0.
 2. **Under-credit after first seeing a partial refund (13 of 200 seeds).**
-   - **What happens:** a capture first seen `PARTIALLY_REFUNDED`, whether on an explicit check or on the read after a lost capture answer, is never credited. The money PayPal still holds is not tracked, even after the final sweep. A full refund nets to zero either way.
-   - **Example:** seed 181, 8 actions. A 21.68 capture is held and completed, then 0.13 is refunded. The check then tracks 0 where PayPal holds 21.55.
+   - **What happened:** a capture first seen `PARTIALLY_REFUNDED`, on an explicit check or on the read after a lost capture answer, was never credited, even after the final sweep.
+   - **Example:** seed 181. A 21.68 capture was held and completed, then 0.13 refunded; the app tracked 0 where PayPal held 21.55.
 
-**Both depend on which evidence arrives first:** the same PayPal record can end credited correctly, over-credited or under-credited.
+**How PR #46 resolved them** (Codex reproduced both independently):
+- **For the over-credit:** the first credit now replays the completed refunds already on record, in the same transaction and before milestones.
+- **For the under-credit:** an order read now recovers a partial remainder, but only from validated completed refund evidence.
+- **Unchanged:** a capture first seen fully refunded without a completion still adds no progress, which is the documented exception above.
 
-**Options for review:**
-- **For the over-credit:** when a capture is credited, apply in the same transaction the completed refunds of it already on record, each once and within the remaining amount.
-- **For the under-credit, either:**
-  - credit a capture first seen refunded and reverse its listed refunds, so the record matches PayPal; or
-  - keep "never credit retroactively" consistently, refusing the later credit paths too and saying that progress stays below PayPal's record.
-
-That is a product decision about payment and ledger semantics, which belong to Astra. The CI default therefore keeps the supported subset.
+### Limits and evidence
 
 **Limits.**
 - **The fake:** the provider is the existing stateful fake, not PayPal.
@@ -88,10 +137,17 @@ That is a product decision about payment and ledger semantics, which belong to A
 - **Not real-world evidence:** this is not real PayPal reliability, device or production evidence.
 
 Raw evidence is ignored and stays local in `test-results/seeded-payments-20261108/`:
-- `final-*.log`, the default runs at the committed head;
-- `widened-any-refunds.log` (the fixed seeds on both paths), `widened-scan-1-200-rest.log` and `widened-representatives.log`, the wider space;
-- `mutations.log` and `mutations.json`, with the runner `mutate-009.mjs` and `contributions.original.mjs`;
-- `check.log`.
+- **Integrated (`integrated/`):**
+  - `model-node22.16.0.log`, `model-node26.0.0.log`, `refund-ordering-node22.16.0.log` and `refund-ordering-node26.0.0.log`;
+  - `representatives.log` and `representatives-before-fix-model.log`;
+  - `scan-1-200-rest-any.log`;
+  - `probe-unrecorded-refund.mjs` with its log;
+  - `check.log`.
+- **Before the fix (the folder's top level):**
+  - `final-*.log`;
+  - `widened-any-refunds.log`, `widened-scan-1-200-rest.log` and `widened-representatives.log`;
+  - `mutations.log` and `mutations.json`, with `mutate-009.mjs` and `contributions.original.mjs`;
+  - `replay-input.log` and `check.log`.
 
 ## Payment recovery across an abrupt process restart — November 7, 2026
 
