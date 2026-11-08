@@ -43,6 +43,14 @@ The walkthrough captures use isolated test households and simulated contribution
 | --- | --- |
 | ![Manor deed arriving on another family member's page](docs/screenshots/shared-live-owner-manor.png) | ![Illustrated Treasury milestone, weekly plan and contribution records](docs/screenshots/sponsor-treasury-desktop.png) |
 
+## Decide on a purchase together
+
+In **Plan → Family choices**, shortlist up to three Market Town items, let each adult offer their own comfortable weekly amount, and let family members express a preference. Try an unexpected expense to see which item still fits the date and how much later the others finish. Choosing an item opens a goal draft for explicit review.
+
+This source-branch feature is awaiting integration into the preserved Mac demos. The capture uses invented tents and fake provider responses. [Walkthrough, worked example and research](docs/FAMILY-CHOICES.md).
+
+![A family compares three purchase options beside the woodland](docs/screenshots/family-choices-desktop-three.png)
+
 ## Three sponsor integrations
 
 | Tool | In the game | Implementation and evidence |

@@ -1,5 +1,103 @@
 # Validation
 
+## Family choices completion: visible expense tradeoffs — November 8, 2026
+
+Codex completed the interrupted family-choice feature in a separate branch, from Claude's implementation 9f75440. The completed implementation is bf8d518; PR #53 at 7329b8f remains the exact unmerged base. Claude's source checkout and usage-limit prompt were left untouched.
+
+The existing comparison now keeps the finish date without the one-off expense beside the revised result. For the $150 example, it says: “Without this expense: Nov 29. This trial adds 3 weeks.” An amount above $100,000 is marked invalid, keeps the last valid preview and blocks review until corrected. The browser regression failed before this correction and passes afterwards.
+
+**Final focused checks on the content committed as bf8d518:**
+- 16 unit/HTTP tests pass on Node 22.16.0 and 26.0.0: ten pure arithmetic/text cases and six family HTTP/migration cases. The route-policy consistency assertions also pass.
+- The two-adult-and-child browser journey passes on desktop 1440×1000 and emulated phone 390×844: 2 passed, 0 failed, 0 skipped. It covers shared choices/offers/preferences, the $90 trial, the invalid-amount recovery, before/after text, stale review refusal, explicit goal save and reload.
+- The original-art, palette, renderer and syntax guard passes. No full local browser suite was repeated.
+- Every new app check used disposable in-memory family records and fake providers, with empty synthetic configuration and non-loopback transport denied. Comparing and typing made no requests; no payment/refund/model record changed from planning actions.
+- One hosted Release checks run is required on the final PR head; its actual result is recorded in the PR, avoiding a docs-only CI rerun.
+
+The screenshots below were refreshed from this passing journey. Their provenance records the capture-time working-tree head and verifies every changed source file against bf8d518; no claim is made that this later commit already existed at capture time.
+
+Local ignored evidence: test-results/family-choice-finish-20261108/ (red/green logs, hermetic test configuration and transport guard), plus test-results/family-buying-plan/ (four raw captures). [Product walkthrough and research](FAMILY-CHOICES.md).
+
+
+## Family choices: offers, preferences and a one-off trial — November 8, 2026
+
+Branch `claude/family-buying-plan`, from the reviewed PR #53 head `7329b8f` (still unmerged: PR #53 → #52 → #51 → #50 → #49). The feature and its tests are `9f75440`; the screenshots and this note follow it.
+
+The owner authorized this direction. It is a planning aid, not evidence that families decide better or save more. No person has used it.
+
+**What a family can do** (Plan → Family choices; Market Town → Add to family choices):
+- **Shortlist:** an adult saves up to three Market Town results.
+  - The server copies its own shown draft: price, currency, retailer, condition, variant and check time. The page sends only references.
+  - The same item again refreshes its line, and a full list needs an explicit replacement.
+- **Offers:** each adult saves or withdraws only their own weekly amount, which the family can see. It is a ceiling that adult chose, not income, a balance or anyone else's consent.
+- **Preferences:** every member, child or adult, holds one preference and can change or remove it. It is not an approval.
+- **Comparison:** the current goal and each choice, with:
+  - total price and earliest finish;
+  - fit with the goal's date, or the shortfall by then;
+  - each adult's weekly share and who prefers it.
+
+  Feasibility and preference are separate facts, and nothing is ranked.
+- **One-off trial:** an adult types an amount, and it comes out of the first weeks' amounts once, until covered. It stays on the page only: no request, no saved record, and recorded progress is untouched.
+- **Review this choice:**
+  - The server re-checks the comparison revision and the item's live draft, and recomputes with the trial amount.
+  - It then fills the existing unsaved goal draft with the price, the weekly amount the offers allow, and a date: the goal's date, or the earliest finish if the choice is late.
+  - Only **Save as our goal** changes the goal, and it verifies the same revision again.
+
+**Arithmetic** (`src/core/family-choices.js`: pure, whole cents, shared by the server and the page):
+- **Weekly capacity:** the lower of the household's weekly amount and the sum of active adult offers. The two are never added together.
+- **Earliest finish at those ceilings:**
+  - every week's full open amount goes to the choice, and the last week takes exactly what remains;
+  - week 1 is seven days after today, and the existing 52-week limit holds.
+- **Weekly split:** each week is split in proportion to the offers. Each adult first gets the whole-cent floor of their share, and leftover cents go to the largest remainders, ties to the earlier member. It is a rounding rule, not a judgement of fairness, and no share exceeds its offer.
+- **One-off amount:** it comes out of capacity once, from the earliest weeks. It never comes out of recorded progress, never counts as a refund, and is never taken weekly.
+- **The task's example (test data):** Nov 8, $60.00 tracked, $30.00 a week, offers of $20.00 and $10.00, and items at $120/$150/$180, with a Dec 20 date (week 6).
+  - The items finish Nov 22, Nov 29 and Dec 6.
+  - With a one-off $90.00 they finish in weeks 5, 6 and 7 (Dec 13, Dec 20, Dec 27), and the $180 item is $30.00 short.
+
+**Data and access:**
+- **Storage:** migration step 9 adds `family_choices`, `family_offers` and `family_preferences`, keyed to goal and member. Removing a choice removes its preferences.
+- **Routes:** eight new routes, all in the fail-closed policy. Adults change choices, check prices, review, and save their own offer; any member sets their own preference.
+- **Who acts:** the session's member. In example mode it is the labelled persona, which must be a member of the household.
+- **Removed members:** their offers and preferences stop counting.
+- **Review:** read-only, so it does not move the live revision.
+
+**Inherited checks on `9f75440`, before the Codex completion above:**
+- **`test/unit/family-choices-core.test.mjs` (8 tests):** literal example cents and dates; splits, including every total from 0 to 300 cents; zero capacity; the 52-week limit; a passed date; an uncovered one-off amount; inputs left unchanged.
+- **`test/unit/family-choices.test.mjs` (6 tests):** real HTTP in family mode with a fake Channel3 transport, plus a disposable migration.
+  - Own offers and own preferences, child refusals and impersonation.
+  - A full shortlist and its replacement.
+  - Invalid, foreign, stale and signed-out requests.
+  - Draft expiry and the explicit price check, and revision checks at review and at save.
+  - A removed member and example personas.
+  - Schema 8 → 9 with every earlier row kept.
+- **Existing tests:** changed only where the new tables require it (the access-upgrade table list and the migration sequence names).
+- **Unit runs:** the new and affected unit files (14 files) passed 121/121 on Node 22.16.0 and 26.0.0.
+- **`test/e2e/family-choices.spec.mjs` (`@release`), desktop and 390 px phone:** 2/2 passed. Two adults and a child each use their own passkey context.
+  - Shortlist of three and offers of $20 + $10, arriving live, plus preference changes.
+  - The $90 trial with zero requests and unchanged money, plan and goal records.
+  - A review, then a refusal of the stale draft after another adult changes their offer, a fresh review, the explicit save and a reload.
+  - One provider call (the search), and no payment, plan, steward or entry write.
+- **Affected existing browser specs** (`channel3-merchant`, `plan-check`, `goal-projects`, `keeper`, `connected-journey`, `shared-live`): 65 passed, plus 7 designed viewport skips.
+  - That run preceded two small page edits: the persona switch re-renders family choices, and the trial resets when the member changes.
+  - `journey`, `member-avatars` and the new spec then passed on `9f75440`: 35 passed, plus 1 designed skip.
+- **Guard:** `npm run check` passed.
+- **Runbook:** the snapshot example comes from a real rehearsal on a fresh schema-9 database (23 tables).
+
+**Limits:**
+- **Offers:** unverified planning estimates. Bills listed in Plan stay context; nothing checks income or affordability.
+- **Progress:** tracked progress is a record, not money to spend or proof an item can be bought.
+- **Prices:** Channel3 catalog prices as last checked. The retailer's price and stock may differ, and tax and shipping are extra. A choice checked more than 30 minutes ago, or whose draft has expired, needs an explicit price check before review.
+- **Saving a cheaper item:** the existing goal save may record milestones that already-tracked progress reaches under the new amount (an existing rule). A preview, offer or preference grants nothing.
+- **Earliest finish:** it assumes each week's full open amount. After saving, the existing planner's own schedule may spread contributions evenly.
+- **Scope:** fake providers and disposable data only. This is not human, device or real-provider evidence.
+
+| Three choices, desktop | One-off $90.00, desktop | Three choices, 390 px phone | One-off $90.00, phone |
+| --- | --- | --- | --- |
+| ![Three tents compared at $20.00 + $10.00 a week, finishing Nov 22, Nov 29 and Dec 6, with preferences](screenshots/family-choices-desktop-three.png) | ![With a one-off $90.00 tried, the $180.00 tent finishes Dec 27, $30.00 short of Dec 20](screenshots/family-choices-desktop-one-off.png) | ![The three choices on a phone](screenshots/family-choices-phone-three.png) | ![The one-off trial on a phone](screenshots/family-choices-phone-one-off.png) |
+
+The refreshed captures use invented tents over a fake Channel3 transport and include the completion above. Provenance and hashes are in [family-choices-sources.json](screenshots/family-choices-sources.json).
+
+**Evidence:** kept local and ignored, in `test-results/family-buying-plan-20261108/`. It holds the pre-commit and final logs, raw captures with `SHA256SUMS.txt`, the snapshot rehearsal, the HTTP smoke script and the commands.
+
 ## Readable contribution receipts — November 8, 2026
 
 Branch `claude/receipt-breakdown`, from the reviewed PR #52 head `ecb6323` (still unmerged: PR #52 → #51 → #50 → #49). The implementation and tests are `a3c47a8`; the screenshots and this note follow it.
