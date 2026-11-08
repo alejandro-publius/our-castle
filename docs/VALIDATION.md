@@ -1,5 +1,59 @@
 # Validation
 
+## Two app servers on one database — November 8, 2026
+
+Branch `claude/two-server-payment-races`, from the reviewed PR #51 head `5aa58ee` (still unmerged: PR #51 → #50 → #49). Harness and schedules: `d7dd30b`. Late-refusal regression and fix: `d309e58`.
+
+**The gap.** The seeded payment model is sequential and runs in one process, and the restart proof kills one child. Within one process, concurrent captures of an order join one in-flight provider call. Two servers on one database do not share that: each sends its own capture with the same PayPal-Request-Id, and both commit through SQLite (`BEGIN IMMEDIATE`, WAL, 3 s busy timeout).
+
+**The harness** (`test/unit/payment-two-servers.test.mjs`):
+- **Processes:** two test-owned processes of the existing `payment-app-child.mjs` share one fresh disposable SQLite file. Each runs the real server, payment service and SDK transport with an empty environment, explicit fake credentials and non-loopback dispatch refused.
+- **Fake PayPal:** the stateful fake runs in the parent on loopback and outlives the servers. Every start made zero provider requests (22 starts per run).
+- **Shared helper:** `startApp` and `end` moved unchanged to `test/helpers/payment-app-process.mjs`. The restart file imports them, and its startup-cleanup regression still passes.
+- **Controlled windows (no sleeps):**
+  - a provider answer held at the fake, or lost as a 503 after the fake acted;
+  - the SQLite write lock held by the harness until both servers announce their write transaction (an opt-in child trace, written synchronously to stderr) and nothing has committed;
+  - SIGKILL of one owned server while the other serves.
+- **Oracle:** a small integer-and-identity model in the test, never production helpers. Ledger rows with their source refs, captures, refunds, held refunds, deeds, order status and webhook events are read directly through a read-only connection, and every result must be an array of complete rows.
+
+**14 schedules:**
+
+| Schedules | Window | Result |
+| --- | --- | --- |
+| S1–S3 | A's and B's captures of one order both held at the fake. Released B first (S1), A first (S2), or both under the write lock with SQLite choosing (S3) | 2 attempts, 1 request id, 1 provider capture, 1 credit |
+| S4–S5 | A's capture answer is lost (503) after PayPal captured, before (S4) or after (S5) B captures | 1 credit; the order ends completed and is never reopened |
+| S6–S7 | A's capture is refused (not approved, or declined) and the refusal is held; B's attempt with the same key captures | **Counterexample**, below |
+| S8 | One completion event to both servers: signature checks held, then released under the write lock; then A's capture answer | 1 credit, 1 event row |
+| S9 | A dashboard refund's event reaches B before A's capture answer | Held, then applied with the credit in one transaction: net $60.00, no deed |
+| S10–S11 | A stale order read (A) and a stale completion (B), held across a refund | Nothing changes; the Manor deed is kept |
+| S12 | Both servers refund one capture; both attempts held, then released under the write lock | 2 attempts, 1 key, 1 provider refund, 1 reversal |
+| S13–S14 | A is killed with its capture answer held, then with its refund answer held; B carries on; A restarts | 1 credit, 1 reversal; the restarted A's retries make no provider request (409 `already_refunded`) |
+
+**Counterexample (S6–S7, reproduced on the unchanged `5aa58ee`).** After B credited $15.00, A's held refusal reopened the order as `created` (not approved) or `declined`, while the credit still counted. A later explicit check did not repair it. Money was unaffected.
+- **Why it needs two servers:** within one process, the in-flight map joins both attempts.
+- **Assumption:** it relies on the fake's idempotency model, in which a refusal is not stored under the request id, so a later attempt with that key can capture. That is also the assumption behind the app's own "try again" answers.
+
+**Fix (`d309e58`).** Four lines in `server/payments/contributions.mjs`: the two refusal branches re-read the canonical status, like the other status writes after a provider call, and answer `already_completed` for a settled order. There is no schema, API, provider or dependency change.
+
+**Local results:**
+- **Before the fix** (`server/` at `5aa58ee`; the final test file, except for one HTTP-status assertion added to S8 afterwards): 8 passed; S6 and S7 failed. Five more runs failed the same two only.
+- **On the clean `d309e58`, Node 22.16.0 and 26.0.0:**
+  - the new file: 10/10, and 10/10 in each of 5 repeats;
+  - `payment-restart`, `payments` and `paypal-cancel-status`: 52 tests, 51 passed, 1 designed skip;
+  - `npm run check`: passed.
+- **Commit races:** S3 and S12 went to A on both versions; S8 went to A on 22.16.0 and to B on 26.0.0. Every ordering satisfied the oracle.
+- **Cleanup, on success and on deliberate failure:**
+  - all 22 owned servers ended: SIGKILL by their own handle, and a signal-0 probe gets ESRCH;
+  - held answers are destroyed and no sockets stay open;
+  - the fake is closed and no lock stays open.
+
+**Limits:**
+- **Not exercised:** windows inside one synchronous step (between two SQLite statements) cannot be held from outside. The guarded status writes, the new one included, still read and then write in two statements.
+- **Scope:** fake providers and disposable data only. This is not deterministic simulation, load, power-loss, real-PayPal, or human or device evidence.
+- **Harness fix:** a cleanup race in the harness's own socket check was found and fixed during development; its raw log is kept.
+
+**Evidence:** kept local and ignored, in `test-results/two-server-races-20261108/`. It holds the before-fix runs and the persistence probe, the `final-d309e58` logs, per-scenario JSON traces, the repeats and the exact commands.
+
 ## Malformed contribution ids get a 4xx — November 8, 2026
 
 Branch `claude/contribution-input-validation`, from the reviewed PR #50 head `59ad514`; the fix is `32e1155`. Task 010 had seen `POST /api/example/contributions` answer HTTP 500 when `householdId` and `goalId` were missing.
