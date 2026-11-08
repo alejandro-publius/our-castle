@@ -2,18 +2,18 @@
 
 ## Family choices completion: visible expense tradeoffs — November 8, 2026
 
-Codex completed the interrupted family-choice feature in a separate branch, from Claude's implementation 9f75440. The completed implementation is bf8d518; PR #53 at 7329b8f remains the exact unmerged base. Claude's source checkout and usage-limit prompt were left untouched.
+Codex completed the interrupted family-choice feature in a separate branch, from Claude's implementation 9f75440. The completed implementation is 53b2d49; PR #53 at 7329b8f remains the exact unmerged base. Claude's source checkout and usage-limit prompt were left untouched.
 
-The existing comparison now keeps the finish date without the one-off expense beside the revised result. For the $150 example, it says: “Without this expense: Nov 29. This trial adds 3 weeks.” An amount above $100,000 is marked invalid, keeps the last valid preview and blocks review until corrected. The browser regression failed before this correction and passes afterwards.
+The existing comparison now keeps the finish date without the one-off expense beside the revised result. For the $150 example, it says: “Without this expense: Nov 29. This trial adds 3 weeks.” An amount above $100,000 is marked invalid, keeps the last valid preview and blocks review until corrected. The browser regression failed before this correction and passes afterwards. A second controlled browser regression reproduced an older review reopening the draft after an invalid edit; editing or clearing the trial now cancels that in-flight review.
 
-**Final focused checks on the content committed as bf8d518:**
+**Final focused checks on the content committed as 53b2d49:**
 - 16 unit/HTTP tests pass on Node 22.16.0 and 26.0.0: ten pure arithmetic/text cases and six family HTTP/migration cases. The route-policy consistency assertions also pass.
-- The two-adult-and-child browser journey passes on desktop 1440×1000 and emulated phone 390×844: 2 passed, 0 failed, 0 skipped. It covers shared choices/offers/preferences, the $90 trial, the invalid-amount recovery, before/after text, stale review refusal, explicit goal save and reload.
+- The two-adult-and-child browser journey passes on desktop 1440×1000 and emulated phone 390×844: 2 passed, 0 failed, 0 skipped. It covers shared choices/offers/preferences, the $90 trial, the invalid-amount recovery, before/after text, cancelled in-flight review, stale review refusal, explicit goal save and reload.
 - The original-art, palette, renderer and syntax guard passes. No full local browser suite was repeated.
 - Every new app check used disposable in-memory family records and fake providers, with empty synthetic configuration and non-loopback transport denied. Comparing and typing made no requests; no payment/refund/model record changed from planning actions.
 - One hosted Release checks run is required on the final PR head; its actual result is recorded in the PR, avoiding a docs-only CI rerun.
 
-The screenshots below were refreshed from this passing journey. Their provenance records the capture-time working-tree head and verifies every changed source file against bf8d518; no claim is made that this later commit already existed at capture time.
+The screenshots below were refreshed from this passing journey. Their provenance records the capture-time working-tree head and verifies every changed source file against 53b2d49; no claim is made that this later commit already existed at capture time.
 
 Local ignored evidence: test-results/family-choice-finish-20261108/ (red/green logs, hermetic test configuration and transport guard), plus test-results/family-buying-plan/ (four raw captures). [Product walkthrough and research](FAMILY-CHOICES.md).
 
@@ -22,7 +22,7 @@ Local ignored evidence: test-results/family-choice-finish-20261108/ (red/green l
 
 Branch `claude/family-buying-plan`, from the reviewed PR #53 head `7329b8f` (still unmerged: PR #53 → #52 → #51 → #50 → #49). The feature and its tests are `9f75440`; the screenshots and this note follow it.
 
-The owner authorized this direction. It is a planning aid, not evidence that families decide better or save more. No person has used it.
+The owner authorized this direction. It is a planning aid, not evidence that families decide better or save more. No human playtest has been recorded for this feature.
 
 **What a family can do** (Plan → Family choices; Market Town → Add to family choices):
 - **Shortlist:** an adult saves up to three Market Town results.

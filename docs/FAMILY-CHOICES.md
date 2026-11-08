@@ -38,7 +38,7 @@ Weekly capacity is the lower of the household limit and the sum of active adults
 
 The expense is reserved from future capacity once. It is not subtracted from recorded progress, treated as a refund or deducted as a recurring bill. Listed household bills remain context.
 
-The trial is local to that member, household and goal. An invalid amount keeps the last valid comparison visible, reports the supported range and prevents reviewing it until corrected. A valid amount or Clear restores review. Neither action makes a provider request.
+The trial is local to that member, household and goal. An invalid amount keeps the last valid comparison visible, reports the supported range and prevents reviewing it until corrected. Editing or clearing also cancels any pending review so an older response cannot reopen a draft. A valid amount or Clear restores review. Neither action makes a provider request.
 
 Review copies a suggested total, date and weekly ceiling into a draft. The adult may edit those fields. Saving that draft does not persist the trial expense into an accepted contribution schedule; generating and accepting a plan remains a separate explicit action. The existing planner may spread payments differently from the earliest-finish comparison.
 
