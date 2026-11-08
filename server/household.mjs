@@ -371,7 +371,7 @@ export function ledgerEntries(db, goalId) {
 /** Delete local example data and re-seed. Used by the reset script/tests only. */
 export function resetHousehold(db, clock) {
   transaction(db, () => {
-    for (const table of ['webhook_events', 'payment_refunds', 'payment_captures', 'payment_orders', 'achievements', 'plans', 'ledger_entries', 'goals', 'members', 'households']) {
+    for (const table of ['deferred_refunds', 'webhook_events', 'payment_refunds', 'payment_captures', 'payment_orders', 'achievements', 'plans', 'ledger_entries', 'goals', 'members', 'households']) {
       db.exec(`DELETE FROM ${table}`);
     }
   });

@@ -52,6 +52,7 @@ export function createContributionService({ db, clock, mode, paypal = null, webh
       db.prepare(`INSERT INTO payment_captures (capture_id, order_id, amount_cents, currency, status, credited, created_at, updated_at)
         VALUES (?, ?, ?, ?, ?, 0, ?, ?)`).run(captureId, row.id, amountCents, currency, status, at, at);
     }
+    adoptDeferredRefunds(captureId);
   }
 
   function view(orderId) {
@@ -181,7 +182,7 @@ export function createContributionService({ db, clock, mode, paypal = null, webh
       db.prepare("UPDATE payment_orders SET status = 'completed', status_detail = NULL, updated_at = ? WHERE id = ?").run(at, row.id);
       // A verified refund can arrive while this capture is still pending locally. Keep that evidence when an older
       // completion arrives: apply the stored reversals before awarding milestones, in this same transaction.
-      let refunded = false;
+      let refunded = adoptDeferredRefunds(captureId);
       const knownRefunds = db.prepare("SELECT * FROM payment_refunds WHERE capture_id = ? AND credited = 0 AND status = 'COMPLETED' ORDER BY created_at, refund_id").all(captureId);
       for (const refund of knownRefunds) {
         if (applyRefund({ refundId: refund.refund_id, captureId, amountCents: refund.amount_cents,
@@ -305,11 +306,45 @@ export function createContributionService({ db, clock, mode, paypal = null, webh
     return new DomainError(502, 'paypal_error', `${message} No progress was recorded.`, { debugId: error.debugId, issues: error.issues });
   }
 
+  // Once capture validation establishes ownership, transfer matching evidence to the ordinary refund pipeline.
+  // Joining the caller's transaction keeps the receipt, credit, reversals and milestone decision atomic.
+  function adoptDeferredRefunds(captureId) {
+    return transaction(db, () => {
+      if (!captureById(captureId)) return false;
+      let refunded = false;
+      const waiting = db.prepare('SELECT * FROM deferred_refunds WHERE capture_id = ? ORDER BY received_at, refund_id').all(captureId);
+      for (const row of waiting) {
+        const applied = applyRefund({ refundId: row.refund_id, captureId, amountCents: row.amount_cents, currency: row.currency, status: 'COMPLETED' });
+        if (['refunded', 'duplicate_refund', 'refund_not_credited'].includes(applied.outcome)) {
+          db.prepare('DELETE FROM deferred_refunds WHERE refund_id = ?').run(row.refund_id);
+        }
+        if (applied.outcome === 'refunded') refunded = true;
+      }
+      return refunded;
+    });
+  }
+
   /** Record a provider refund once, reversing only progress that was actually credited. */
   function applyRefund({ refundId, captureId, amountCents, currency, status }) {
     return transaction(db, () => {
       const cap = captureById(captureId);
-      if (!cap) return { outcome: 'ignored_unknown_capture' };
+      if (!cap) {
+        // This path is reached only from verified webhooks or validated provider order data. Hold minimal completed
+        // evidence durably; a raw capture id alone never attributes it to a household or changes progress.
+        if (status === 'COMPLETED' && typeof refundId === 'string' && refundId.length > 0 && refundId.length <= 128
+          && typeof captureId === 'string' && captureId.length > 0 && captureId.length <= 128
+          && Number.isSafeInteger(amountCents) && amountCents > 0 && typeof currency === 'string' && /^[A-Z]{3}$/.test(currency)) {
+          const recorded = db.prepare('SELECT capture_id FROM payment_refunds WHERE refund_id = ?').get(refundId);
+          if (recorded && recorded.capture_id !== captureId) throw new DomainError(409, 'refund_conflict', 'That refund belongs to a different capture.');
+          const held = db.prepare('SELECT * FROM deferred_refunds WHERE refund_id = ?').get(refundId);
+          if (held && (held.capture_id !== captureId || held.amount_cents !== amountCents || held.currency !== currency)) {
+            throw new DomainError(409, 'refund_conflict', 'That refund was already recorded with different details.');
+          }
+          db.prepare('INSERT INTO deferred_refunds (refund_id, capture_id, amount_cents, currency, received_at) VALUES (?, ?, ?, ?, ?) ON CONFLICT(refund_id) DO NOTHING')
+            .run(refundId, captureId, amountCents, currency, clock.iso());
+        }
+        return { outcome: 'ignored_unknown_capture' };
+      }
       const row = orderById(cap.order_id);
       const kinds = LEDGER[row.provider];
       if (!refundId || !Number.isSafeInteger(amountCents) || amountCents <= 0 || currency !== cap.currency) {

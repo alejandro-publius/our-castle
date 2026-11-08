@@ -8,7 +8,7 @@ import path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
-import { openDatabase } from '../../server/db.mjs';
+import { MIGRATIONS, openDatabase } from '../../server/db.mjs';
 import { DEMO_GOAL_ID, DEMO_HOUSEHOLD_ID, progressFor } from '../../server/household.mjs';
 import { createContributionService } from '../../server/payments/contributions.mjs';
 import { SnapshotError, snapshotDatabase } from '../../scripts/snapshot.mjs';
@@ -56,7 +56,7 @@ test('a snapshot taken while the app writes keeps committed WAL content and leav
     assert.deepEqual([fingerprint(env.db), sha256(source)], before, 'the source was neither changed nor checkpointed');
     assert.equal(statSync(`${source}-wal`).size, walBytes, 'its WAL is still in place');
     assert.equal(summary.destination, destination);
-    assert.equal(summary.schema, 7);
+    assert.equal(summary.schema, MIGRATIONS.length);
     assert.deepEqual(summary.rows, { households: 1, ledger_entries: 2, payment_orders: 1, payment_captures: 1 });
     assert.equal(statSync(destination).mode & 0o777, 0o600, 'household data is private to its owner');
     assert.deepEqual(partials(dir), []);
@@ -122,10 +122,10 @@ test('refuses a newer schema, another database and a missing or non-SQLite sourc
   setupDomain({ file: valid, mode: 'example' }).db.close();
   const future = path.join(dir, 'future.sqlite');
   copyFileSync(valid, future); // closed cleanly, so the main file is complete
-  const upgraded = new DatabaseSync(future); upgraded.exec('PRAGMA user_version = 8'); upgraded.close();
+  const upgraded = new DatabaseSync(future); upgraded.exec(`PRAGMA user_version = ${MIGRATIONS.length + 1}`); upgraded.close();
   const other = new DatabaseSync(path.join(dir, 'other.sqlite')); other.exec('CREATE TABLE notes (text)'); other.close();
   writeFileSync(path.join(dir, 'notes.txt'), 'not a database');
-  for (const [name, reason] of [['future.sqlite', /schema 8, newer than this build's 7/], ['other.sqlite', /not an Our Castle database/], ['notes.txt', /not a SQLite database/], ['missing.sqlite', /does not exist/]]) {
+  for (const [name, reason] of [['future.sqlite', new RegExp(`schema ${MIGRATIONS.length + 1}, newer than this build's ${MIGRATIONS.length}`)], ['other.sqlite', /not an Our Castle database/], ['notes.txt', /not a SQLite database/], ['missing.sqlite', /does not exist/]]) {
     const destination = path.join(dir, `snapshot-of-${name}`);
     await assert.rejects(snapshotDatabase({ source: path.join(dir, name), destination }), refused(reason), name);
     assert.equal(existsSync(destination), false);
@@ -205,7 +205,7 @@ test('the command snapshots a family database while it is served; the summary sh
     const destination = path.join(dir, 'family-snapshot.sqlite');
     const { stdout, stderr } = await run(process.execPath, [script, source, destination]);
     assert.match(stdout, /^Snapshot written: /);
-    assert.match(stdout, /schema 7 · integrity ok · foreign keys ok/);
+    assert.match(stdout, new RegExp(`schema ${MIGRATIONS.length} · integrity ok · foreign keys ok`));
     const printed = (stdout + stderr).replaceAll(dir, '<folder>');
     for (const secret of secrets) assert.equal(printed.includes(secret), false, 'the summary shows counts only');
 
