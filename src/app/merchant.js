@@ -30,8 +30,10 @@ export function resultFacts(r) {
 /**
  * @param options.getState () => current app state (for the connection mode)
  * @param options.onUse (result) => void — receives the chosen usable result; must not save anything by itself
+ * @param options.onShortlist ({ draftId, expectedGoalId, replaceId }) => Promise — saves a shown result as a family choice
+ * @param options.canShortlist () => boolean — whether the member acting here may change the family choices (adults)
  */
-export function createMerchantDialog({ getState, onUse }) {
+export function createMerchantDialog({ getState, onUse, onShortlist = null, canShortlist = () => false }) {
   const dialog = $('#merchant-dialog');
   const form = $('#merchant-form');
   const status = $('#merchant-status');
@@ -42,6 +44,7 @@ export function createMerchantDialog({ getState, onUse }) {
   let controller = null;
   let leaving = false; // "Use as goal" moves focus to the Plan draft instead of back to the map.
   let retailerWindow = null;
+  let replacing = null; // { id, title }: a family choice this search may replace (opened from its Replace button)
 
   const connected = () => getState()?.modes?.merchant?.mode === 'live';
   function say(kind, text) { status.dataset.kind = kind; status.textContent = text; }
@@ -56,9 +59,10 @@ export function createMerchantDialog({ getState, onUse }) {
     } else if (status.dataset.kind === 'off') say('', '');
   }
 
-  function open(from, { query = null, budgetCents = null } = {}) {
+  function open(from, { query = null, budgetCents = null, replaceChoice = null } = {}) {
     origin = from ?? document.activeElement;
     leaving = false;
+    replacing = replaceChoice;
     seq++; controller?.abort();
     retailerWindow?.close(); retailerWindow = null;
     list.replaceChildren(); source.hidden = true; // old offers are never presented as current on reopening
@@ -70,6 +74,7 @@ export function createMerchantDialog({ getState, onUse }) {
       say('', 'Search again for a current price.');
     }
     renderConnection();
+    if (replacing && connected()) say('', `Search for an item to replace “${replacing.title}” among the family choices.`);
     if (!dialog.open) dialog.showModal();
     (connected() ? $('#merchant-query') : $('#merchant-title')).focus();
   }
@@ -92,13 +97,39 @@ export function createMerchantDialog({ getState, onUse }) {
       h('p', {}, [r.brand, selection, r.otherOffers ? `${r.otherOffers} other ${r.otherOffers === 1 ? 'retailer' : 'retailers'}` : null].filter(Boolean).join(' · ')),
       h('button', { type: 'button', class: 'link-button', onclick: () => lookup('refresh', ref, context) }, 'Check price & stock'),
       r.url && r.usable && h('button', { type: 'button', class: 'link-button', onclick: () => lookup('refresh', ref, context, { visit: r }) }, `Visit ${r.merchant}`, h('span', { class: 'sr-only' }, ' (checks the item and opens a retailer site in a new tab)')));
-    const actions = h('div', { class: 'merchant-item-actions' }, cheaper, more);
+    const actions = h('div', { class: 'merchant-item-actions' }, cheaper, more, shortlistButton(r, context));
     const use = h('button', { type: 'button', class: 'merchant-use', disabled: !r.usable, 'aria-describedby': name.id }, 'Use as goal');
     if (r.usable) use.addEventListener('click', () => { leaving = true; close(); onUse({ ...r, ...context }); });
     return h('li', { class: 'merchant-item', 'data-product': r.productId },
       picture,
       h('div', { class: 'merchant-item-text' }, name, meta, notes.length ? h('p', { class: 'merchant-item-note' }, notes.join(' · ')) : null, actions),
       use);
+  }
+
+  // A shown result an adult may save as a family choice. Only references travel: the server copies its own result.
+  function shortlistButton(r, context) {
+    const fc = getState()?.familyChoices;
+    if (!onShortlist || !fc || !r.usable || !r.draftId || !canShortlist()) return null;
+    const selection = JSON.stringify(r.selection ?? []);
+    const same = fc.choices.find((c) => c.productId === r.productId && c.merchant === r.merchant && (c.condition ?? null) === (r.condition ?? null) && JSON.stringify(c.selection ?? []) === selection);
+    const full = fc.choices.length >= fc.maxChoices;
+    const label = same ? 'Update this family choice' : replacing ? `Replace “${replacing.title}”` : full ? `Family choices full (${fc.maxChoices})` : 'Add to family choices';
+    const button = h('button', { type: 'button', class: 'link-button merchant-shortlist', disabled: !same && !replacing && full, 'aria-describedby': `merchant-item-${r.productId}` }, label);
+    button.addEventListener('click', async () => {
+      button.disabled = true;
+      const replaced = same ? null : replacing;
+      try {
+        const res = await onShortlist({ draftId: r.draftId, expectedGoalId: context.goalId, replaceId: replaced?.id });
+        const count = getState()?.familyChoices?.choices.length ?? 0;
+        say('ok', res.outcome === 'replaced' ? `Replaced “${replaced.title}” in the family choices.` : res.outcome === 'updated' ? 'Family choice updated with this price.' : `Added to the family choices (${count} of ${fc.maxChoices}).`);
+        if (res.outcome === 'replaced') replacing = null;
+        button.textContent = 'In the family choices';
+      } catch (error) {
+        say('error', error.message);
+        button.disabled = false;
+      }
+    });
+    return button;
   }
 
   function showResults(res, context) {

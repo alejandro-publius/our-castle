@@ -20,6 +20,7 @@ import { REALM_DISTRICTS, REALM_LEGENDS, realmAccess, districtById, homeDistrict
 import { ledgerTrail } from '../core/ledger.js';
 import { contributionStory, countsSentence, storyKey } from '../core/contribution-story.js';
 import { createMerchantDialog, resultFacts } from './merchant.js';
+import { createFamilyChoices } from './family-choices.js';
 import { createTreasury } from './treasury.js';
 import { FAMILY_PROJECT_SITE, PROJECT_KINDS, projectKind, projectLabel, projectStage } from '../core/family-project.js';
 import { CONFIRMATION_HISTORY_QUESTION, NEEDS_CHECK_QUESTION, isLocalQuestion, isNeedsCheckQuestion } from '../core/steward-questions.js';
@@ -89,6 +90,7 @@ let paypalLoadFailed = false;
 let ledgerGrid = null;
 let familyAvatars = null;
 let merchant = null;
+let familyChoices = null; // the Plan journal's family choices (src/app/family-choices.js)
 let treasury = null;
 let planCheck = null;
 const ui = {
@@ -1005,7 +1007,7 @@ async function saveHouse() {
 }
 
 // ---------- 2. Plan ----------
-function renderPlan() { renderPlanForm(); lockPlanForChildren(); }
+function renderPlan() { renderPlanForm(); familyChoices?.render(); lockPlanForChildren(); }
 // A child in a shared family sees the goal and plan and may try a weekly amount or date with the read-only check, but
 // changes neither; the server refuses those requests anyway.
 function lockPlanForChildren() {
@@ -1140,10 +1142,13 @@ const goalNameFor = (title) => {
 };
 function renderGoalDraft() {
   const draft = ui.goalDraft, box = $('#goal-draft');
+  // A draft from "Review this choice" belongs to the comparison it was checked against. Once another member changes the
+  // choices, offers or goal, it must be reviewed again (the server refuses to save it as well).
+  if (draft?.familyChoice && state.familyChoices && state.familyChoices.revision !== draft.familyChoice.revision) draft.choicesChanged = true;
   box.hidden = !draft;
   $('#goal-draft-review').hidden = !draft?.needsReview;
   $('#goal-draft-search').hidden = !draft?.expired;
-  $('#goal-draft-save').disabled = ui.goalDraftBusy || Boolean(draft?.needsReview || draft?.expired);
+  $('#goal-draft-save').disabled = ui.goalDraftBusy || Boolean(draft?.needsReview || draft?.expired || draft?.choicesChanged);
   $('#goal-draft-review').disabled = ui.goalDraftBusy;
   $('#goal-draft-discard').disabled = ui.goalDraftBusy;
   $('#ask-planner').disabled = Boolean(draft); // one explicit decision at a time: save or discard the draft first
@@ -1165,6 +1170,13 @@ function renderGoalDraft() {
   const effects = [`Not saved yet. Saving replaces “${goal.name}” (${money(goal.targetCents)}) with the name and amount below`];
   if (progress.progressCents > 0) effects.push(`; the ${money(progress.progressCents)} already tracked stays and counts toward the new amount`);
   if (state.plan) effects.push('; the current plan is set aside, so make a new one afterwards');
+  if (draft.familyPlan) {
+    const p = draft.familyPlan;
+    effects.push(`. From family choices: up to ${money(p.weeklyBudgetCents)} a week from the adults’ offers, `
+      + (p.targetDate !== p.deadline ? `with the target date moved from ${dateLabel(p.deadline)} to ${dateLabel(p.targetDate)}, the earliest finish at those offers` : `by ${dateLabel(p.targetDate)}`)
+      + (p.reserveCents ? `, allowing for the one-off ${money(p.reserveCents)} you tried` : ''));
+  }
+  if (draft.choicesChanged) effects.push('. The family’s choices or offers changed after this review: discard this draft and review the choice again');
   effects.push('. The price excludes tax and shipping; nothing is bought.');
   $('#goal-draft-effect').textContent = effects.join('');
 }
@@ -1180,6 +1192,25 @@ function useMerchantItem(item) {
   selectTab('plan', { focus: false });
   renderGoalDraft();
   $('#goal-draft-title').focus();
+}
+// "Review this choice": the server-checked item, its price as the goal amount, and the date and weekly amount from the
+// family's comparison, as the same unsaved draft a Market Town result makes. The adult reviews it, may change any field,
+// and saves it with "Save as our goal" (or discards it).
+function useFamilyChoice(review) {
+  useMerchantItem({ ...review.item, goalId: state.goal.id, goalRevision: state.merchantGoalRevision });
+  ui.goalDraft = { ...ui.goalDraft, goalId: state.goal.id, goalRevision: state.merchantGoalRevision,
+    familyChoice: { choiceId: review.choiceId, revision: review.revision },
+    familyPlan: { weeklyBudgetCents: review.goal.weeklyBudgetCents, targetDate: review.goal.targetDate, deadline: review.deadline, reserveCents: review.reserveCents } };
+  ui.planGoalId = state.goal.id; ui.planGoalRevision = state.merchantGoalRevision;
+  $('#goal-date').value = review.goal.targetDate;
+  $('#goal-weekly').value = centsToInput(review.goal.weeklyBudgetCents);
+  renderGoalDraft();
+}
+// "Add to family choices" in Market Town: the server copies its own shown result; the page sends only references.
+async function shortlistItem({ draftId, expectedGoalId, replaceId }) {
+  const res = await api.post('/api/family-choices', { draftId, expectedGoalId, ...(replaceId ? { replaceId } : {}), ...(state.access ? {} : { memberId: persona()?.id }) });
+  applyState(res.state);
+  return res;
 }
 function discardGoalDraft() {
   ui.goalDraft = null;
@@ -1197,7 +1228,8 @@ async function saveGoalDraft() {
   renderGoalDraft();
   setStatus('#plan-status', 'working', 'Saving the goal…');
   try {
-    const res = await api.post('/api/merchant/goal', { draftId: draft.draftId, goalId: draft.goalId, expectedGoalRevision: draft.goalRevision, goal });
+    const res = await api.post('/api/merchant/goal', { draftId: draft.draftId, goalId: draft.goalId, expectedGoalRevision: draft.goalRevision, goal,
+      ...(draft.familyChoice ? { familyChoice: draft.familyChoice } : {}) });
     if (ui.goalDraft !== draft) { applyState(res.state); return; }
     ui.goalDraft = null;
     ui.planFormDirty = false;
@@ -1209,6 +1241,7 @@ async function saveGoalDraft() {
     setStatus('#plan-status', 'error', error.message); // a refused save changes nothing; the draft stays for review
     if (error.code === 'merchant_draft_expired') draft.expired = true;
     if (error.code === 'goal_changed') draft.needsReview = true;
+    if (error.code === 'choices_changed') draft.choicesChanged = true;
   } finally {
     ui.goalDraftBusy = false;
     renderGoalDraft();
@@ -1962,7 +1995,8 @@ function bindEvents() {
     const id = e.currentTarget.dataset.district;
     if (id) openDeedFromMap(id, e.currentTarget);
   });
-  merchant = createMerchantDialog({ getState: () => state, onUse: useMerchantItem });
+  merchant = createMerchantDialog({ getState: () => state, onUse: useMerchantItem, onShortlist: shortlistItem, canShortlist: () => persona()?.role === 'adult' });
+  familyChoices = createFamilyChoices({ getState: () => state, actor: persona, openMerchant: (from, options) => merchant.open(from, options), onReview: useFamilyChoice, applyState });
   for (const opener of [$('#open-merchant'), $('#find-goal-item')]) opener.addEventListener('click', (e) => merchant.open(e.currentTarget));
   $('#visit-campsite').addEventListener('click', visitCampsite);
   $('#goal-draft-save').addEventListener('click', saveGoalDraft);
@@ -2014,7 +2048,7 @@ function bindEvents() {
     e.currentTarget.textContent = on ? 'Pixel art' : 'Raw 3D';
     scene?.setPixelMode(on);
   });
-  $('#persona').addEventListener('change', (e) => { ui.personaId = e.target.value; pref.set('persona', ui.personaId); ui.refundArm = null; $('#give-approve').checked = false; ui.approvalBasis = null; renderGive(); renderLedger(); renderNextStep(); });
+  $('#persona').addEventListener('change', (e) => { ui.personaId = e.target.value; pref.set('persona', ui.personaId); ui.refundArm = null; $('#give-approve').checked = false; ui.approvalBasis = null; renderGive(); renderLedger(); renderNextStep(); familyChoices?.render(); });
   $('#next-step-go').addEventListener('click', openNextStep);
   $('#deed-visit').addEventListener('click', visitDeed);
   $('#deed-next').addEventListener('click', () => { ui.deeds.index++; renderDeed(); $('#deed-name').focus(); });

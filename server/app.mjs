@@ -3,7 +3,7 @@ import { readFile, stat } from 'node:fs/promises';
 import { readFileSync } from 'node:fs';
 import { createHash, randomUUID } from 'node:crypto';
 import {
-  DEMO_HOUSEHOLD_ID, DomainError, addSelfReportedEntry, ensureDemoHousehold, getActiveGoal, getGoal, resetHousehold,
+  DEMO_HOUSEHOLD_ID, DomainError, addSelfReportedEntry, ensureDemoHousehold, getActiveGoal, getGoal, getMember, resetHousehold,
   progressFor, setupFamilyHouse, setupHousehold, updateCrest, updateGoal, updateGoalProject, updateMemberAvatar,
 } from './household.mjs';
 import { createAccess } from './access/index.mjs';
@@ -17,6 +17,9 @@ import { buildState } from './view.mjs';
 import { publicModes } from './config.mjs';
 import { createMerchant } from './merchant/channel3.mjs';
 import { goalItemFor, merchantGoalRevision, saveGoalFromItem } from './merchant/goal-item.mjs';
+import {
+  addChoice, checkChoiceForSave, familyChoicesView, refreshChoice, removeChoice, removePreference, reviewChoice, saveOffer, setPreference, withdrawOffer,
+} from './family-choices.mjs';
 import { treasuryFor } from './treasury.mjs';
 
 const MIME = {
@@ -112,7 +115,7 @@ function checkHostAndOrigin(req, { write }) {
 
 const str = (v) => (typeof v === 'string' ? v : undefined);
 // Write-method routes that change no household record: calculations, provider look-ups, questions and ceremony steps.
-const UNCHANGING_WRITES = new Set(['/api/plans/preview', '/api/merchant/search', '/api/merchant/refresh', '/api/merchant/alternatives', '/api/steward', '/api/paypal/client-token', '/api/auth/passkeys/options', '/api/auth/signout']);
+const UNCHANGING_WRITES = new Set(['/api/plans/preview', '/api/merchant/search', '/api/merchant/refresh', '/api/merchant/alternatives', '/api/family-choices/review', '/api/steward', '/api/paypal/client-token', '/api/auth/passkeys/options', '/api/auth/signout']);
 
 export function createApp({ config, db, clock, paypal = null, aiProvider = null, stewardAi = null, paypalTools = null, stewardFetch, merchant = null, root, live: liveLimits = {} }) {
   // Example mode is the single local example household. Family mode serves only households whose members enrolled their
@@ -152,6 +155,7 @@ export function createApp({ config, db, clock, paypal = null, aiProvider = null,
     s.goalItem = goalItemFor(db, s.goal);
     s.merchantGoalRevision = merchantGoalRevision(s.goal, s.progress.startingCents);
     s.treasury = treasuryFor(s, clock.iso(), planner.accepted(s.goal.id));
+    s.familyChoices = familyChoicesView(db, choiceScope(scope, s.goal, s.progress));
     if (family) { s.access = access.viewer(scope); s.revision = live.revisionOf(scope.householdId); }
     return s;
   };
@@ -226,6 +230,11 @@ export function createApp({ config, db, clock, paypal = null, aiProvider = null,
         throw new DomainError(410, 'merchant_draft_expired', 'That merchant result has expired. Search again for a fresh price before saving.');
       }
       const item = shop.draft(str(body.draftId));
+      // From "Review this choice": the draft must be that family choice's own, and the comparison unchanged since review.
+      if (body.familyChoice !== undefined) {
+        const goal = getGoal(db, scope.goalId);
+        checkChoiceForSave(db, { ...choiceScope(scope, goal, progressFor(db, goal.id)), familyChoice: body.familyChoice, draftId: body.draftId, item });
+      }
       saveGoalFromItem(db, { householdId: scope.householdId, goalId: scope.goalId, expectedGoalId: str(body.goalId), expectedGoalRevision: str(body.expectedGoalRevision), item, goal: body.goal }, clock);
       return { status: 'ok', state: state(scope) };
     }],
@@ -244,6 +253,55 @@ export function createApp({ config, db, clock, paypal = null, aiProvider = null,
       if (family) rememberDrafts(found, scope);
       return { ...found, goalId: goal.id, goalRevision };
     }]),
+    // ---- Family choices: a shared shortlist, each adult's own weekly offer and each member's own preference. Planning
+    // only: no route here moves, approves or reserves money, changes the goal or the ledger, or searches by itself. ----
+    ['POST', '/api/family-choices', ({ body, scope }) => {
+      refuseForeign(body, scope);
+      // The item is this server's own copy of a result it showed this household, never product facts from the page.
+      if (family && !shownTo(body.draftId, scope)) throw new DomainError(410, 'merchant_draft_expired', 'That merchant result has expired. Search again for a fresh price.');
+      const item = shop.draft(str(body.draftId));
+      const added = addChoice(db, { householdId: scope.householdId, goalId: scope.goalId, actor: choiceActor(body, scope), expectedGoalId: str(body.expectedGoalId), item, draftId: body.draftId, replaceId: body.replaceId }, clock);
+      return { ...added, state: state(scope) };
+    }],
+    ['POST', '/api/family-choices/remove', ({ body, scope }) => {
+      refuseForeign(body, scope);
+      removeChoice(db, { householdId: scope.householdId, goalId: scope.goalId, actor: choiceActor(body, scope), choiceId: body.choiceId });
+      return { status: 'ok', state: state(scope) };
+    }],
+    // The one provider call here: an explicit price check for a choice, through the merchant's existing bounded refresh.
+    ['POST', '/api/family-choices/refresh', async ({ body, scope, assertAccess }) => {
+      refuseForeign(body, scope);
+      const result = await refreshChoice(db, { householdId: scope.householdId, goalId: scope.goalId, actor: choiceActor(body, scope), choiceId: body.choiceId,
+        refresh: async (reference) => { const found = await shop.refresh(reference); assertAccess(); if (family) rememberDrafts(found, scope); return found; } });
+      return { ...result, state: state(scope) };
+    }],
+    // Read-only: re-checks the reviewed comparison against the server's records and returns a goal draft. Saves nothing.
+    ['POST', '/api/family-choices/review', ({ body, scope }) => {
+      refuseForeign(body, scope);
+      const goal = getGoal(db, scope.goalId);
+      return reviewChoice(db, { ...choiceScope(scope, goal, progressFor(db, goal.id)), actor: choiceActor(body, scope), choiceId: body.choiceId, revision: body.revision, reserveCents: body.reserveCents,
+        draftFor: (draftId) => { if (family && !shownTo(draftId, scope)) throw new DomainError(410, 'merchant_draft_expired', 'Expired.'); return shop.draft(draftId); } });
+    }],
+    ['PUT', '/api/family-choices/offer', ({ body, scope }) => {
+      refuseForeign(body, scope);
+      saveOffer(db, { householdId: scope.householdId, goalId: scope.goalId, actor: choiceActor(body, scope), weeklyCents: body.weeklyCents }, clock);
+      return { status: 'ok', state: state(scope) };
+    }],
+    ['POST', '/api/family-choices/offer/withdraw', ({ body, scope }) => {
+      refuseForeign(body, scope);
+      const result = withdrawOffer(db, { householdId: scope.householdId, goalId: scope.goalId, actor: choiceActor(body, scope) });
+      return { ...result, state: state(scope) };
+    }],
+    ['PUT', '/api/family-choices/preference', ({ body, scope }) => {
+      refuseForeign(body, scope);
+      setPreference(db, { householdId: scope.householdId, goalId: scope.goalId, actor: choiceActor(body, scope), choiceId: body.choiceId }, clock);
+      return { status: 'ok', state: state(scope) };
+    }],
+    ['POST', '/api/family-choices/preference/remove', ({ body, scope }) => {
+      refuseForeign(body, scope);
+      const result = removePreference(db, { householdId: scope.householdId, goalId: scope.goalId, actor: choiceActor(body, scope) });
+      return { ...result, state: state(scope) };
+    }],
     // ---- Treasury: read-only. The AG Studio licence (if configured) is the only setting the page may read here. ----
     ['GET', '/api/treasury/studio', () => ({ licenseKey: config.studio?.licenseKey ?? null })],
     ['POST', '/api/steward', async ({ body, scope, assertAccess }) => (family ? stewardFor(scope.householdId) : steward)
@@ -340,6 +398,15 @@ export function createApp({ config, db, clock, paypal = null, aiProvider = null,
     if (value !== undefined && value !== scope.memberId) throw new HttpError(403, 'member_mismatch', 'Only the signed-in family member can act as themselves.');
     return scope.memberId;
   }
+  // Family choices act for exactly one member: the session's own in family mode, the chosen example persona otherwise.
+  function choiceActor(body, scope) {
+    const member = getMember(db, scope.householdId, actingMember(body.memberId, scope));
+    if (!member) throw new DomainError(400, 'invalid_member', 'Choose who is taking part.');
+    return { memberId: member.id, role: member.role };
+  }
+  // A family request naming another household or goal is refused before any work (example mode has only one).
+  function refuseForeign(body, scope) { if (family) owner(body, scope); }
+  const choiceScope = (scope, goal, progress) => ({ householdId: scope.householdId, goal, progress, today: clock.today(), now: clock.now().getTime(), family });
   function contributionInput(body, scope) {
     return {
       ...owner(body, scope),

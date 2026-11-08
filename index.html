@@ -163,6 +163,35 @@
           <p class="lede" id="planner-lede"></p>
           <!-- The family project's current stage and the one way to it from the journal. Camera only; it writes nothing. -->
           <p class="plan-project" id="plan-project"><span id="plan-project-stage"></span><button type="button" class="link-button" id="visit-campsite">Visit campsite</button></p>
+          <!-- Family choices: up to three items compared against each adult's own weekly offer, the household's weekly amount
+               and the goal's date. Planning only: offers, preferences and a one-off trial move no money and save no goal. -->
+          <details class="family-choices" id="family-choices">
+            <summary><span>Family choices</span> <small id="family-choices-count"></small></summary>
+            <p class="fine">Save up to three items from Market Town. Each adult can offer a weekly amount of their own, and everyone can say which they prefer.</p>
+            <div class="family-empty" id="family-choices-empty" hidden><p id="family-empty-text"></p><button type="button" class="link-button" id="family-find" aria-haspopup="dialog" aria-controls="merchant-dialog">Find an item</button></div>
+            <p class="family-capacity" id="family-capacity"></p>
+            <ol class="family-options" id="family-options" aria-label="Choices and when each could be reached"></ol>
+            <p class="family-note" id="family-choice-note" hidden></p>
+            <fieldset class="family-offers">
+              <legend>Weekly offers <small>— each adult chooses their own; your family can see it</small></legend>
+              <ul class="family-offer-list" id="family-offer-list"></ul>
+              <p class="fine" id="family-offer-note" hidden>Adults in the family offer weekly amounts.</p>
+              <div class="family-my-offer" id="family-my-offer" hidden>
+                <label class="field"><span>Your weekly offer</span><span class="money"><input id="family-offer-input" inputmode="decimal" autocomplete="off"></span></label>
+                <div class="actions"><button type="button" id="family-offer-save">Save my offer</button><button type="button" class="link-button" id="family-offer-withdraw">Withdraw my offer</button></div>
+              </div>
+            </fieldset>
+            <fieldset class="family-trial" id="family-trial" hidden>
+              <legend>Try a one-off expense <small>— not saved</small></legend>
+              <p class="fine">It comes out of the first weeks’ amounts, once, until it is covered. Recorded progress is not touched, and nothing is paid.</p>
+              <div class="family-trial-row">
+                <label class="field"><span>One-off amount</span><span class="money"><input id="family-trial-input" inputmode="decimal" autocomplete="off" placeholder="90.00"></span></label>
+                <button type="button" class="link-button" id="family-trial-clear">Clear</button>
+              </div>
+              <p class="fine" id="family-trial-note" aria-live="polite"></p>
+            </fieldset>
+            <div class="form-status" id="family-status" role="status" aria-live="polite"></div>
+          </details>
           <!-- A Market Town merchant result waiting for the family's confirmation. Nothing is saved until "Save as our goal". -->
           <section class="goal-draft" id="goal-draft" hidden aria-labelledby="goal-draft-title">
             <h4 id="goal-draft-title" tabindex="-1">Draft from the market</h4>

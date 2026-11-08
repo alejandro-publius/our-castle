@@ -120,10 +120,10 @@ Rehearse it on a disposable household, never on someone's records:
 OUR_CASTLE_ENV_FILE=none OUR_CASTLE_DATA_DIR=/tmp/castle-rehearsal PAYPAL_CLIENT_ID= PAYPAL_CLIENT_SECRET= AI_API_KEY= PORT=3134 npm start
 # Terminal 2, while it runs:
 npm run snapshot -- /tmp/castle-rehearsal/our-castle-example.sqlite /tmp/castle-snapshot-1.sqlite
-# Output of one such rehearsal on a fresh schema-8 database (20 tables). The page count, rows, SQLite and Node
+# Output of one such rehearsal on a fresh schema-9 database (23 tables). The page count, rows, SQLite and Node
 # versions and the hash vary with the household and the runtime:
 # Snapshot written: …/castle-snapshot-1.sqlite
-#   schema 8 · integrity ok · foreign keys ok · 20 tables · 57 pages
+#   schema 9 · integrity ok · foreign keys ok · 23 tables · 65 pages
 #   rows: households 1, ledger_entries 2, payment_orders 1, payment_captures 1
 #   SQLite 3.53.4, Node v26.0.0
 #   sha256 … (identifies this file; it does not replace the checks above)

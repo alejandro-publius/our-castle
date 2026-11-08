@@ -289,6 +289,49 @@ export const MIGRATIONS = Object.freeze([
       CREATE INDEX IF NOT EXISTS deferred_refunds_capture ON deferred_refunds (capture_id, received_at, refund_id);
     `); },
   }),
+  Object.freeze({
+    id: 'family-choices',
+    // Shared buying choices for the active goal, planning facts only. Three tables:
+    // - family_choices: up to three merchant results an adult saved from this server's own shown results;
+    // - family_offers: each adult's own weekly planning offer;
+    // - family_preferences: each member's one preference.
+    // No amount here is money, a payment, an approval or a reserved price. Removing a choice removes its preferences.
+    ensure(db) { db.exec(`
+      CREATE TABLE IF NOT EXISTS family_choices (
+        id TEXT PRIMARY KEY,
+        household_id TEXT NOT NULL REFERENCES households(id) ON DELETE CASCADE,
+        goal_id TEXT NOT NULL REFERENCES goals(id) ON DELETE CASCADE,
+        product_id TEXT NOT NULL,
+        title TEXT NOT NULL,
+        merchant TEXT NOT NULL,
+        url TEXT NOT NULL,
+        price_cents INTEGER NOT NULL CHECK (price_cents > 0),
+        currency TEXT NOT NULL CHECK (length(currency) = 3),
+        availability TEXT,
+        condition TEXT,
+        selection_json TEXT NOT NULL DEFAULT '[]',
+        checked_at TEXT NOT NULL,
+        draft_id TEXT,
+        added_by TEXT NOT NULL REFERENCES members(id) ON DELETE CASCADE,
+        added_at TEXT NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS family_choices_goal ON family_choices (goal_id, added_at);
+      CREATE TABLE IF NOT EXISTS family_offers (
+        goal_id TEXT NOT NULL REFERENCES goals(id) ON DELETE CASCADE,
+        member_id TEXT NOT NULL REFERENCES members(id) ON DELETE CASCADE,
+        weekly_cents INTEGER NOT NULL CHECK (weekly_cents > 0),
+        updated_at TEXT NOT NULL,
+        PRIMARY KEY (goal_id, member_id)
+      );
+      CREATE TABLE IF NOT EXISTS family_preferences (
+        goal_id TEXT NOT NULL REFERENCES goals(id) ON DELETE CASCADE,
+        member_id TEXT NOT NULL REFERENCES members(id) ON DELETE CASCADE,
+        choice_id TEXT NOT NULL REFERENCES family_choices(id) ON DELETE CASCADE,
+        updated_at TEXT NOT NULL,
+        PRIMARY KEY (goal_id, member_id)
+      );
+    `); },
+  }),
 ]);
 
 export function openDatabase(file) {

@@ -41,6 +41,16 @@ export const ROUTE_POLICIES = Object.freeze([
   ['POST', '/api/merchant/goal', 'adult'],
   ['POST', '/api/merchant/refresh', 'adult'],
   ['POST', '/api/merchant/alternatives', 'adult'],
+  // Family choices. Adults change the shortlist, check prices, review a choice and save or withdraw their OWN weekly offer;
+  // any member, child or adult, sets or removes their OWN preference. The acting member always comes from the session.
+  ['POST', '/api/family-choices', 'adult'],
+  ['POST', '/api/family-choices/remove', 'adult'],
+  ['POST', '/api/family-choices/refresh', 'adult'],
+  ['POST', '/api/family-choices/review', 'adult'],
+  ['PUT', '/api/family-choices/offer', 'adult'],
+  ['POST', '/api/family-choices/offer/withdraw', 'adult'],
+  ['PUT', '/api/family-choices/preference', 'member'],
+  ['POST', '/api/family-choices/preference/remove', 'member'],
   ['POST', '/api/steward', 'adult'],
   ['POST', '/api/entries', 'adult'],
   ['GET', '/api/paypal/config', 'adult'],
