@@ -1,5 +1,45 @@
 # Validation
 
+## Malformed contribution ids get a 4xx — November 8, 2026
+
+Branch `claude/contribution-input-validation`, from the reviewed PR #50 head `59ad514`; the fix is `32e1155`. Task 010 had seen `POST /api/example/contributions` answer HTTP 500 when `householdId` and `goalId` were missing.
+
+**Reproduced first, on the unchanged `59ad514`.** A disposable example server (no keys, no `.env`, non-loopback fetches refused) received a 12-case malformed matrix:
+- **9 answered 500:** a missing, `null` or non-text household or goal id, and a missing or non-text request id.
+- **Nothing was recorded** in any case.
+- **The cause:** each request reached SQLite with an id it cannot bind, in `getHousehold`, `getGoal`, or the retry lookup `orderByRequestId`, which runs before `validateRequest`.
+- **Same failure elsewhere:** new HTTP regressions failed the same way on the sandbox order route and, for a missing request id, in family mode.
+
+**The fix**, in `server/payments/contributions.mjs`:
+- **Household and goal:** `validateRequest` refuses a non-text household or goal id with 400 `invalid_owner`.
+- **Request id:** both creation methods check the request id's type before the retry lookup, giving the existing 400 `invalid_request_id`.
+
+**Not changed:**
+- no id is defaulted or inferred;
+- `owner()`, family scoping and the spoofing and child refusals are untouched;
+- an empty id still gets the existing 404;
+- a malformed retry of a known request is still `request_conflict`;
+- approval, adult, amount and request-id format checks are as before.
+
+| Check | Actual result |
+| --- | --- |
+| The same matrix at `32e1155` | Every former 500 is a 400 with a code; the empty id and approver answers are unchanged; nothing was recorded. The well-formed control credits once and its retry is `already_processed`. Unexpected-error log lines: 9 before, 0 after |
+| The new regressions before the fix (`server.test.mjs` ×2, `family-access.test.mjs` ×1) | All 3 failed on `[500, 'server_error']` |
+| `server.test.mjs`, `family-access.test.mjs`, `payments.test.mjs` and `failure-diagnostics.test.mjs`, on the tree committed unchanged as `32e1155`, Node 22.16.0 and 26.0.0 | **68 passed, 1 existing skip** (the SDK manages its own OAuth token), 0 failed on each |
+| `npm run check` | Passed |
+
+What the regressions cover:
+- **Example persona:** the matrix records nothing, a well-formed contribution counts once, and a malformed retry is a conflict.
+- **Sandbox:** malformed orders reach no PayPal request, not even OAuth.
+- **Family:** a missing or non-text request id is refused, while a body with no ids still succeeds from the session and counts once.
+
+These are fake providers and disposable data, not production evidence. The hosted result is reported on the pull request. Raw evidence is ignored and stays local in `test-results/contribution-input-20261108/`:
+- the request and row results: `before-59ad514.*` and `after-32e1155.*`;
+- the server logs;
+- the failing and passing test logs;
+- `repro-stacks-59ad514.log`, which records the failing statements;
+- the scripts.
+
 ## The castle keeper's tour — November 8, 2026
 
 Branch `claude/keeper-walkthrough`, from the reviewed PR #49 head `fd49188`; the implementation is `678d9df`. [The castle keeper](KEEPER-GUIDE.md) is an optional authored tour of the example demo, in a bottom dialogue box. Its decision ledger, copy and limits are in that note. It adds no dependency, server, API or database change, model call or credential step. The crest rendering, the art and the portrait bytes are unchanged.
