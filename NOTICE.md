@@ -8,6 +8,10 @@ The demo clip `docs/demos/our-castle-connected-realm.mp4` is a screen capture of
 
 Hollybrook Open and Nightshoal are inspiration links/descriptions only. Their source, screenshots, models, music and other art are not bundled. The owner later supplied a written description of Hollybrook Open's code structure; only general principles from it were applied: an event bus between systems, logic testable without the renderer, test hooks, pixel-snapped orthographic rendering, a world that keeps living at a cheap idle frame rate, and sound synthesized live with Web Audio (no samples), silent until enabled. No Hollybrook code was copied, and the original Our Castle renderer and palette files are unchanged. No Monopoly artwork, branding or source is included.
 
+## Optional music
+
+“Welcome to the Item Shop” by congusbongus is bundled under CC0 1.0, converted from the author’s original Ogg to MP3. It is an original retro RPG track, separate from the owner’s artwork and from Nintendo/Pokémon music. Source, licence and conversion hashes are in [assets/music/README.md](assets/music/README.md) and its provenance file. Playback starts only after Sound is explicitly enabled. Existing board effects remain synthesized locally with Web Audio.
+
 ## Dependencies added for the application
 
 The official PayPal wordmark in `assets/brand/paypal/` comes from PayPal's public CDN. Its sampled outlines form the in-world hillside lettering; no font software is bundled. The logo/name remain PayPal trademarks, excluded from the MIT source licence and the owner's original-art scope. Source, checksum and transformation notes are in that directory's README. The use does not claim endorsement or an awarded sponsor prize.

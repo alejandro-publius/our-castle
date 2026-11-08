@@ -301,7 +301,6 @@ async function boot() {
     $('#world').hidden = true;
     $('#world-fallback').hidden = false;
     $('#pixel-toggle').hidden = true;
-    $('#sound-toggle').hidden = true;
   }
   $('#world').setAttribute('aria-busy', 'false');
   bindAtmosphere();
@@ -1922,11 +1921,15 @@ function bindEvents() {
     e.preventDefault();
     selectTab(TABS[next]);
   });
-  $('#sound-toggle').addEventListener('click', (e) => {
-    const on = sound.setEnabled(e.currentTarget.getAttribute('aria-pressed') !== 'true');
-    e.currentTarget.setAttribute('aria-pressed', String(on));
-    e.currentTarget.textContent = on ? 'Sound on' : 'Sound off';
+  sound.onChange(({ enabled, message }) => {
+    const toggle = $('#sound-toggle');
+    toggle.setAttribute('aria-pressed', String(enabled));
+    toggle.setAttribute('aria-label', enabled ? 'Sound on. Turn music and sound off' : 'Sound off. Turn music and sound on');
+    toggle.title = enabled ? 'Turn music and sound off' : 'Turn music and sound on';
+    $('#sound-label').textContent = enabled ? 'Sound on' : 'Sound off';
+    $('#sound-status').textContent = message;
   });
+  $('#sound-toggle').addEventListener('click', () => sound.setEnabled(!sound.enabled));
   for (const button of $$('[data-view]')) button.addEventListener('click', () => scene?.adjustView(button.dataset.view));
   // The compass: drag to move across the realm instead of turning it (camera only; nothing is saved).
   $('#map-explore').addEventListener('click', (e) => {

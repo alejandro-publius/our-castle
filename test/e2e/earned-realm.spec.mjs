@@ -84,7 +84,7 @@ test('the plain-table fallback supports record search and selection', async ({ p
 test('one unlock frames the bridge, moves the family, plays the cue and opens one deed afterwards', async ({ page }, info) => {
   test.skip(info.project.name !== 'desktop', 'One desktop animation capture; phone behavior is covered with reduced motion.');
   await start(page, { motion: 'no-preference' });
-  await page.locator('#world-settings > summary').click(); await page.locator('#sound-toggle').click(); await page.keyboard.press('Escape');
+  await page.locator('#sound-toggle').click();
   await page.evaluate(() => {
     window.__arrival = [];
     for (const type of ['scene:bridge:start', 'scene:bridge:open', 'scene:hop', 'scene:rise', 'scene:arrival'])
