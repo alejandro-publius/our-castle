@@ -200,7 +200,14 @@
               <p><strong id="goal-draft-name"></strong><span id="goal-draft-facts"></span></p>
             </div>
             <p class="goal-draft-effect" id="goal-draft-effect"></p>
-            <div class="actions"><button type="button" class="primary" id="goal-draft-save">Save as our goal</button><button type="button" id="goal-draft-review" hidden>Review latest goal</button><button type="button" id="goal-draft-search" hidden>Search again</button><button type="button" id="goal-draft-discard">Discard draft</button></div>
+            <!-- From "Review this choice": the dated weeks the family's offers and one-off amount give. A preview; it is
+                 proposed only with "Save goal and propose this schedule", and used only with "Use this plan". -->
+            <div class="goal-draft-schedule" id="goal-draft-schedule" hidden>
+              <p class="goal-draft-schedule-title"><strong>Family schedule</strong> <small>— preview from the adults’ own offers, not saved</small></p>
+              <ul class="family-split" id="goal-draft-weeks" aria-label="Weekly amounts this schedule would propose"></ul>
+              <p class="fine" id="goal-draft-schedule-note"></p>
+            </div>
+            <div class="actions"><button type="button" class="primary" id="goal-draft-propose" hidden>Save goal and propose this schedule</button><button type="button" class="primary" id="goal-draft-save">Save as our goal</button><button type="button" id="goal-draft-review" hidden>Review latest goal</button><button type="button" id="goal-draft-search" hidden>Search again</button><button type="button" id="goal-draft-discard">Discard draft</button></div>
           </section>
           <form id="plan-form" class="grid-form" novalidate>
             <div class="field span-2">

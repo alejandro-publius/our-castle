@@ -4,9 +4,10 @@
 // - says which choice each member prefers;
 // - can try a one-off expense on the page alone.
 // Only explicit buttons write, and only planning records. "Review this choice" hands a server-checked draft to the
-// existing Plan form; nothing here saves a goal, moves money or searches by itself.
+// existing Plan form; nothing here saves a goal, moves money or searches by itself. "Propose this schedule" (the current goal
+// only) saves the dated weeks shown here as a plan proposal; "Use this plan" in the Plan journal stays the decision.
 import { api } from './api.js';
-import { RESERVE_LIMITS, choicesInput, compareChoices, describeComparison } from '../core/family-choices.js';
+import { RESERVE_LIMITS, choicesInput, compareChoices, describeComparison, familySchedule } from '../core/family-choices.js';
 import { formatCents, parseAmountToCents } from '../core/rules.js';
 
 const $ = (id) => document.getElementById(id);
@@ -30,8 +31,9 @@ const AVAILABILITY = { InStock: 'In stock', OutOfStock: 'Out of stock' };
  * @param options.openMerchant (from, options) => opens Market Town (options.replaceChoice for a replacement)
  * @param options.onReview (answer) => hands the server-checked goal draft to the Plan form; saves nothing
  * @param options.applyState (state) => applies a server state
+ * @param options.onProposed (plan) => called after a family schedule was proposed for the current goal
  */
-export function createFamilyChoices({ getState, actor, openMerchant, onReview, applyState }) {
+export function createFamilyChoices({ getState, actor, openMerchant, onReview, applyState, onProposed = () => {} }) {
   const ui = { reserveCents: 0, reserveInvalid: false, offerDirty: false, offerActor: null, busy: false, review: 0, scope: null };
   const currency = () => getState()?.goal?.currency ?? 'USD';
   const money = (cents) => formatCents(cents, currency());
@@ -72,6 +74,11 @@ export function createFamilyChoices({ getState, actor, openMerchant, onReview, a
   const remove = (choice) => send(() => api.post('/api/family-choices/remove', asActor({ choiceId: choice.id })), () => `${choice.title} is no longer a family choice.`);
   const check = (choice) => send(() => api.post('/api/family-choices/refresh', asActor({ choiceId: choice.id })), (res) => (!res.usable ? res.reason
     : res.previousPriceCents !== res.priceCents ? `Price changed: ${money(res.previousPriceCents)} → ${money(res.priceCents)}. Review the comparison again.` : 'Price checked. Prices and stock still change.'));
+
+  // The current goal's weeks at these offers and this trial, saved as a proposal. The server recomputes them from its own
+  // records and refuses if the comparison it was shown has changed; the one-off amount is the only figure sent.
+  const propose = () => send(() => api.post('/api/plans/family', asActor({ reserveCents: ui.reserveCents, revision: getState().familyChoices.revision })),
+    (res) => { onProposed(res.plan); return `Family schedule proposed for ${getState().goal.name}${ui.reserveCents ? `, with the one-off ${money(ui.reserveCents)} first` : ''}. Check its weeks in the plan below, then choose “Use this plan”. Nothing is paid.`; });
 
   function saveOffer() {
     const input = $('family-offer-input');
@@ -123,9 +130,14 @@ export function createFamilyChoices({ getState, actor, openMerchant, onReview, a
     const change = text.changes[option.id] ? h('p', { class: 'family-option-change' }, text.changes[option.id]) : null;
     const split = option.segments.length ? h('ul', { class: 'family-split', 'aria-label': 'Weekly amounts by adult' }, ...segmentLines(option, comparison).map((line) => h('li', {}, line))) : null;
     if (option.id === 'goal') {
+      // Only when these offers and this trial put something toward the goal by its date (otherwise there is nothing to propose).
+      const own = adult ? familySchedule({ today: fc.today, targetDate: s.goal.targetDate, progressCents: s.progress.progressCents, targetCents: s.goal.targetCents,
+        householdLimitCents: s.goal.weeklyBudgetCents, currency: s.goal.currency, offers: fc.offers, reserveCents: comparison.reserve.cents }) : null;
+      const proposable = own && ['on_time', 'short'].includes(own.outcome);
       return h('li', { class: 'family-option current', 'data-status': option.status },
         h('div', { class: 'family-option-head' }, h('strong', {}, 'Current goal'), h('span', { class: 'family-option-price' }, money(option.priceCents))),
-        h('p', { class: 'family-option-facts' }, s.goal.name), result, change, split);
+        h('p', { class: 'family-option-facts' }, s.goal.name), result, change, split,
+        proposable ? h('div', { class: 'actions' }, h('button', { type: 'button', disabled: ui.reserveInvalid || ui.busy, 'data-focus-key': 'propose:goal', onclick: propose }, 'Propose this schedule')) : null);
     }
     const c = fc.choices.find((x) => x.id === option.id);
     const prefs = fc.preferences.filter((p) => p.choiceId === c.id);

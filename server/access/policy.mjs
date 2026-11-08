@@ -35,6 +35,7 @@ export const ROUTE_POLICIES = Object.freeze([
   ['PUT', '/api/goal', 'adult'],
   ['POST', '/api/plans', 'adult'],
   ['POST', '/api/plans/rules', 'adult'],
+  ['POST', '/api/plans/family', 'adult'],
   ['PUT', /^\/api\/plans\/([\w-]+)$/, 'adult'],
   ['POST', /^\/api\/plans\/([\w-]+)\/accept$/, 'adult'],
   ['POST', '/api/merchant/search', 'adult'],

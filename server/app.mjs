@@ -21,6 +21,7 @@ import {
   addChoice, checkChoiceForSave, familyChoicesView, refreshChoice, removeChoice, removePreference, reviewChoice, saveOffer, setPreference, withdrawOffer,
 } from './family-choices.mjs';
 import { treasuryFor } from './treasury.mjs';
+import { transaction } from './db.mjs';
 
 const MIME = {
   '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8',
@@ -130,7 +131,7 @@ export function createApp({ config, db, clock, paypal = null, aiProvider = null,
     memberRevoked: (memberId) => live.endMember(memberId, 'access_revoked'),
     householdChanged: (householdId) => live.notify(householdId),
   } }) : null;
-  const planner = createPlanner({ db, clock, provider: aiProvider });
+  const planner = createPlanner({ db, clock, provider: aiProvider, family });
   const contributions = createContributionService({ db, clock, mode: config.payments.mode, paypal, webhookId: config.payments.webhookId });
   // The steward reads one household's records. In family mode every request gets one bound to its own scope.
   const stewardFor = (householdId) => createSteward({ db, contributions, householdId, ai: stewardAi, paypalTools, fetch: stewardFetch, clock });
@@ -207,6 +208,14 @@ export function createApp({ config, db, clock, paypal = null, aiProvider = null,
       const preview = planner.previewRemaining({ householdId: scope.householdId, goalId: scope.goalId, weeklyBudgetCents: body.weeklyBudgetCents ?? null, targetDate: body.targetDate ?? null });
       return { status: 'ok', preview };
     }],
+    // A family schedule for the goal as it is now, from the comparison the adult saw and the one-off amount they entered.
+    // Saved as a proposal only; "Use this plan" (below) is still the separate decision that puts it in use.
+    ['POST', '/api/plans/family', ({ body, scope }) => {
+      refuseForeign(body, scope);
+      const plan = planner.proposeFamily({ householdId: scope.householdId, goalId: scope.goalId, actor: choiceActor(body, scope), reserveCents: body.reserveCents,
+        expected: { choicesRevision: str(body.revision) ?? null } });
+      return { status: 'ok', plan, state: state(scope) };
+    }],
     ['PUT', /^\/api\/plans\/([\w-]+)$/, ({ body, params, scope }) => {
       const plan = planner.edit({ householdId: scope.householdId, goalId: scope.goalId, planId: params[0], amounts: body.amounts });
       return { status: 'ok', plan, state: state(scope) };
@@ -230,13 +239,26 @@ export function createApp({ config, db, clock, paypal = null, aiProvider = null,
         throw new DomainError(410, 'merchant_draft_expired', 'That merchant result has expired. Search again for a fresh price before saving.');
       }
       const item = shop.draft(str(body.draftId));
-      // From "Review this choice": the draft must be that family choice's own, and the comparison unchanged since review.
-      if (body.familyChoice !== undefined) {
-        const goal = getGoal(db, scope.goalId);
-        checkChoiceForSave(db, { ...choiceScope(scope, goal, progressFor(db, goal.id)), familyChoice: body.familyChoice, draftId: body.draftId, item });
+      // "Save goal and propose this schedule" (only after "Review this choice"): the same goal save, plus the reviewed family
+      // schedule as a proposal, in one transaction. Either both are saved or neither is; nothing is put in use or paid.
+      const proposing = body.schedule !== undefined;
+      if (proposing && (body.familyChoice === undefined || body.schedule === null || typeof body.schedule !== 'object')) {
+        throw new DomainError(400, 'invalid_schedule', 'Review a family choice before proposing its schedule.');
       }
-      saveGoalFromItem(db, { householdId: scope.householdId, goalId: scope.goalId, expectedGoalId: str(body.goalId), expectedGoalRevision: str(body.expectedGoalRevision), item, goal: body.goal }, clock);
-      return { status: 'ok', state: state(scope) };
+      const actor = proposing ? choiceActor(body, scope) : null;
+      const plan = transaction(db, () => {
+        // From "Review this choice": the draft must be that family choice's own, and the comparison unchanged since review.
+        if (body.familyChoice !== undefined) {
+          const goal = getGoal(db, scope.goalId);
+          checkChoiceForSave(db, { ...choiceScope(scope, goal, progressFor(db, goal.id)), familyChoice: body.familyChoice, draftId: body.draftId, item });
+        }
+        saveGoalFromItem(db, { householdId: scope.householdId, goalId: scope.goalId, expectedGoalId: str(body.goalId), expectedGoalRevision: str(body.expectedGoalRevision), item, goal: body.goal }, clock);
+        // Recomputed from the saved goal and the server's records; refused (and the goal save undone) unless every figure
+        // matches the schedule the adult reviewed.
+        return proposing ? planner.proposeFamily({ householdId: scope.householdId, goalId: scope.goalId, actor, reserveCents: body.schedule.reserveCents,
+          choiceId: body.familyChoice.choiceId, expected: { scheduleRevision: str(body.schedule.revision) ?? null } }) : null;
+      });
+      return { status: 'ok', ...(plan ? { plan } : {}), state: state(scope) };
     }],
     ...['refresh', 'alternatives'].map((action) => ['POST', `/api/merchant/${action}`, async ({ body, scope }) => {
       const goal = getActiveGoal(db, scope.householdId);

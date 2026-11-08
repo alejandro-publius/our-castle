@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { MAX_WEEKS, compareChoices, describeComparison, splitWeek, weeklyCapacity } from '../../src/core/family-choices.js';
+import { MAX_WEEKS, compareChoices, describeComparison, familySchedule, scheduleLines, splitWeek, weeklyCapacity } from '../../src/core/family-choices.js';
 import { formatCents } from '../../src/core/rules.js';
 
 // Expected cents and dates are written from the task's example, not computed by the module:
@@ -150,4 +150,102 @@ test('a small expense can leave the finish unchanged, while a large one can put 
   assert.equal(describeComparison(big, { money, date: (iso) => iso }).changes.a, 'Without this expense: 2026-11-22. This trial puts the finish beyond 52 weeks.');
   const baseline = compareChoices(BASE);
   assert.deepEqual(describeComparison(baseline, { money, date: (iso) => iso }).changes, {});
+});
+
+// ---- The saved family schedule (familySchedule): one dated row per week up to the goal's date ----
+// Expected rows are written out from the task's example, not computed by the module.
+const GOAL = { today: '2026-11-08', targetDate: '2026-12-20', progressCents: 6000, householdLimitCents: 3000, currency: 'USD', offers: OFFERS };
+const rowsOf = (s) => s.rows.map((r) => [r.week, r.date, r.goalCents, r.reservedCents, r.perMember.map((p) => p.cents)]);
+
+test('the example schedule: a one-off $90.00 takes weeks 1-3 once, then $30.00 a week ($20.00 + $10.00) finishes the $150.00 tent on Dec 20', () => {
+  const s = familySchedule({ ...GOAL, targetCents: 15000, reserveCents: 9000 });
+  assert.deepEqual(rowsOf(s), [
+    [1, '2026-11-15', 0, 3000, [0, 0]],
+    [2, '2026-11-22', 0, 3000, [0, 0]],
+    [3, '2026-11-29', 0, 3000, [0, 0]],
+    [4, '2026-12-06', 3000, 0, [2000, 1000]],
+    [5, '2026-12-13', 3000, 0, [2000, 1000]],
+    [6, '2026-12-20', 3000, 0, [2000, 1000]],
+  ]);
+  assert.deepEqual([s.outcome, s.weeks, s.remainingCents, s.plannedCents, s.shortfallCents, s.feasible, s.finishWeek, s.finishDate],
+    ['on_time', 6, 9000, 9000, 0, true, 6, '2026-12-20']);
+  assert.deepEqual(s.reserve, { cents: 9000, byDateCents: 9000, weeks: 3, coveredWeek: 3, uncoveredCents: 0 });
+  assert.deepEqual(s.capacity, { householdLimitCents: 3000, offeredCents: 3000, capacityCents: 3000, limitedBy: 'both' });
+  // Without the one-off amount the same tent finishes in week 3, and later weeks are $0.
+  assert.deepEqual(rowsOf(familySchedule({ ...GOAL, targetCents: 15000 })).map((r) => r[2]), [3000, 3000, 3000, 0, 0, 0]);
+});
+
+test('the $180.00 item by the same Dec 20 date is $30.00 short; its earliest finish at the same offers is Dec 27', () => {
+  const s = familySchedule({ ...GOAL, targetCents: 18000, reserveCents: 9000 });
+  assert.deepEqual(rowsOf(s).map((r) => [r[2], r[4]]), [[0, [0, 0]], [0, [0, 0]], [0, [0, 0]], [3000, [2000, 1000]], [3000, [2000, 1000]], [3000, [2000, 1000]]]);
+  assert.deepEqual([s.outcome, s.remainingCents, s.plannedCents, s.shortfallCents, s.feasible, s.finishWeek, s.finishDate], ['short', 12000, 9000, 3000, false, 7, '2026-12-27']);
+  // A later date is a separate, explicit choice: at Dec 27 the same offers cover it, and no share rises above an offer.
+  const later = familySchedule({ ...GOAL, targetDate: '2026-12-27', targetCents: 18000, reserveCents: 9000 });
+  assert.deepEqual(rowsOf(later).map((r) => r[2]), [0, 0, 0, 3000, 3000, 3000, 3000]);
+  assert.equal(later.outcome, 'on_time');
+});
+
+test('a partly covered week, a final week of exactly what remains and a household limit below the offers, in whole cents', () => {
+  // $45.00 one-off: all of week 1, half of week 2. $95.00 to go: $15.00, $30.00, $30.00, then the final $20.00.
+  const s = familySchedule({ ...GOAL, targetCents: 15500, reserveCents: 4500 });
+  assert.deepEqual(rowsOf(s), [
+    [1, '2026-11-15', 0, 3000, [0, 0]],
+    [2, '2026-11-22', 1500, 1500, [1000, 500]],
+    [3, '2026-11-29', 3000, 0, [2000, 1000]],
+    [4, '2026-12-06', 3000, 0, [2000, 1000]],
+    [5, '2026-12-13', 2000, 0, [1333, 667]], // 1333.33 + 666.67: the leftover cent goes to the larger remainder
+    [6, '2026-12-20', 0, 0, [0, 0]],
+  ]);
+  assert.deepEqual([s.plannedCents, s.shortfallCents, s.finishWeek, s.reserve.weeks], [9500, 0, 5, 2]);
+  // The household's $25.00 is below the $30.00 offered: each week is $25.00, split $16.67 + $8.33, under each offer.
+  const capped = familySchedule({ ...GOAL, householdLimitCents: 2500, targetCents: 13500 });
+  assert.deepEqual(rowsOf(capped).map((r) => [r[2], r[4]]), [[2500, [1667, 833]], [2500, [1667, 833]], [2500, [1667, 833]], [0, [0, 0]], [0, [0, 0]], [0, [0, 0]]]);
+  assert.equal(capped.capacity.limitedBy, 'household');
+  for (const sched of [s, capped]) {
+    for (const r of sched.rows) {
+      assert.equal(r.perMember.reduce((sum, p) => sum + p.cents, 0), r.goalCents);
+      r.perMember.forEach((p, i) => assert.ok(p.cents <= OFFERS[i].weeklyCents));
+      assert.ok(r.goalCents + r.reservedCents <= sched.capacity.capacityCents);
+    }
+  }
+});
+
+test('the 52-week limit: a goal a year away gets 52 dated weeks and a truthful shortfall, never a feasible-looking schedule', () => {
+  const offers = [{ memberId: 'm_rowan', name: 'Rowan', weeklyCents: 600 }, { memberId: 'm_ash', name: 'Ash', weeklyCents: 400 }];
+  const s = familySchedule({ today: '2026-11-08', targetDate: '2027-11-09', progressCents: 0, targetCents: 100000, householdLimitCents: 5000, currency: 'USD', offers, reserveCents: 500 });
+  assert.equal(s.weeks, MAX_WEEKS);
+  assert.equal(s.rows.length, 52);
+  assert.deepEqual([s.rows[0].date, s.rows.at(-1).date], ['2026-11-15', '2027-11-07']);
+  assert.deepEqual([s.rows[0].goalCents, s.rows[0].reservedCents, s.rows[1].goalCents, s.rows.at(-1).goalCents], [500, 500, 1000, 1000]);
+  assert.deepEqual([s.outcome, s.plannedCents, s.shortfallCents, s.feasible, s.finishWeek, s.finishDate], ['short', 51500, 48500, false, null, null]);
+});
+
+test('nothing to schedule is said plainly: a reached goal, no offers, a $0 household amount, a date under a week away, a one-off taking every week', () => {
+  const outcome = (over) => { const s = familySchedule({ ...GOAL, targetCents: 15000, ...over }); return [s.outcome, s.plannedCents, s.rows.length]; };
+  assert.deepEqual(outcome({ progressCents: 15000 }), ['reached', 0, 6]);
+  assert.deepEqual(outcome({ offers: [] }), ['no_offers', 0, 6]);
+  assert.deepEqual(outcome({ householdLimitCents: 0 }), ['no_capacity', 0, 6]);
+  assert.deepEqual(outcome({ targetDate: '2026-11-13' }), ['date_passed', 0, 0]);
+  assert.deepEqual(outcome({ reserveCents: 18000 }), ['nothing_planned', 0, 6]);
+  // An input is never changed by computing a schedule.
+  const input = { ...GOAL, targetCents: 15000, reserveCents: 9000 };
+  const before = JSON.stringify(input);
+  familySchedule(input);
+  assert.equal(JSON.stringify(input), before);
+});
+
+test('the schedule reads as short dated lines: weeks given to the one-off, a partly covered week, each adult’s share and the weeks after the finish', () => {
+  const names = new Map([['m_rowan', 'Rowan'], ['m_ash', 'Ash']]);
+  const lines = (sched) => scheduleLines(sched.rows, { money, date: (iso) => iso.slice(5), names });
+  assert.deepEqual(lines(familySchedule({ ...GOAL, targetCents: 15000, reserveCents: 9000 })), [
+    'Weeks 1–3 (11-15–11-29): $0.00 to the goal; each week’s $30.00 goes to the one-off expense',
+    'Weeks 4–6 (12-06–12-20): $30.00 a week — Rowan $20.00 · Ash $10.00',
+  ]);
+  assert.deepEqual(lines(familySchedule({ ...GOAL, targetCents: 15500, reserveCents: 4500 })), [
+    'Week 1 (11-15): $0.00 to the goal; this week’s $30.00 goes to the one-off expense',
+    'Week 2 (11-22): $15.00, after $15.00 to the one-off expense — Rowan $10.00 · Ash $5.00',
+    'Weeks 3–4 (11-29–12-06): $30.00 a week — Rowan $20.00 · Ash $10.00',
+    'Week 5 (12-13): $20.00 — Rowan $13.33 · Ash $6.67',
+    'Week 6 (12-20): $0.00, nothing more is needed',
+  ]);
 });

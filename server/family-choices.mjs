@@ -9,7 +9,8 @@
 import { createHash, randomBytes } from 'node:crypto';
 import { transaction } from './db.mjs';
 import { DomainError, getGoal, getMembers } from './household.mjs';
-import { MAX_CHOICES, OFFER_LIMITS, RESERVE_LIMITS, choicesInput, compareChoices } from '../src/core/family-choices.js';
+import { MAX_CHOICES, OFFER_LIMITS, RESERVE_LIMITS, choicesInput, compareChoices, familySchedule } from '../src/core/family-choices.js';
+import { formatCents } from '../src/core/rules.js';
 
 const CHOICE_ID = /^fc_[0-9a-f]{24}$/;
 // The merchant's own draft lifetime (server/merchant/channel3.mjs). Older observations need an explicit check before adoption.
@@ -47,20 +48,24 @@ export function choicesRevision({ householdId, goal, progressCents, today, choic
   return `fc1_${createHash('sha256').update(JSON.stringify(facts)).digest('hex').slice(0, 32)}`;
 }
 
+// Offers from adults who still have access, in member order; a removed member's offer no longer counts.
+function activeOffers(db, goalId, byId) {
+  return db.prepare('SELECT member_id, weekly_cents, updated_at FROM family_offers WHERE goal_id = ?').all(goalId)
+    .filter((o) => byId.get(o.member_id)?.role === 'adult')
+    .sort((a, b) => byId.get(a.member_id).order - byId.get(b.member_id).order)
+    .map((o) => ({ memberId: o.member_id, name: byId.get(o.member_id).name, weeklyCents: o.weekly_cents, updatedAt: o.updated_at }));
+}
+const membersById = (db, householdId, family) => new Map(activeMembers(db, householdId, family).map((m, i) => [m.id, { ...m, order: i }]));
+
 /** What the page shows: the shortlist, the adults' offers, members' preferences and the comparison at no one-off amount. */
 export function familyChoicesView(db, { householdId, goal, progress, today, now, family }) {
-  const members = activeMembers(db, householdId, family);
-  const byId = new Map(members.map((m, i) => [m.id, { ...m, order: i }]));
+  const byId = membersById(db, householdId, family);
   const choices = choiceRows(db, goal.id).map((r) => ({
     id: r.id, productId: r.product_id, title: r.title, merchant: r.merchant, priceCents: r.price_cents, currency: r.currency, availability: r.availability,
     condition: r.condition, selection: JSON.parse(r.selection_json), checkedAt: r.checked_at, addedBy: r.added_by,
     fresh: Boolean(r.draft_id) && now - Date.parse(r.checked_at) <= FRESH_MS,
   }));
-  // Offers from adults who still have access, in member order; a removed member's offer no longer counts.
-  const offers = db.prepare('SELECT member_id, weekly_cents, updated_at FROM family_offers WHERE goal_id = ?').all(goal.id)
-    .filter((o) => byId.get(o.member_id)?.role === 'adult')
-    .sort((a, b) => byId.get(a.member_id).order - byId.get(b.member_id).order)
-    .map((o) => ({ memberId: o.member_id, name: byId.get(o.member_id).name, weeklyCents: o.weekly_cents, updatedAt: o.updated_at }));
+  const offers = activeOffers(db, goal.id, byId);
   const ids = new Set(choices.map((c) => c.id));
   const preferences = db.prepare('SELECT member_id, choice_id FROM family_preferences WHERE goal_id = ?').all(goal.id)
     .filter((p) => byId.has(p.member_id) && ids.has(p.choice_id))
@@ -156,10 +161,68 @@ export function removePreference(db, { householdId, goalId, actor }) {
   return { removed: db.prepare('DELETE FROM family_preferences WHERE goal_id = ? AND member_id = ?').run(goalId, actor.memberId).changes === 1 };
 }
 
-function needReserve(value) {
+export function needReserve(value) {
   const cents = value ?? 0;
   if (!Number.isSafeInteger(cents) || cents < 0 || cents > RESERVE_LIMITS.maxCents) throw fail(400, 'invalid_one_off', 'Try a one-off amount between $0.00 and $100,000.00.');
   return cents;
+}
+
+/**
+ * The family schedule for a goal at these offers and one-off amount (familySchedule), with a revision over every figure
+ * in it. The page shows this answer; saving it later must reproduce the same revision from the server's own records.
+ */
+export function scheduleFor({ goal, progress, today, offers, reserveCents }) {
+  const schedule = familySchedule({ today, targetDate: goal.targetDate, progressCents: progress.progressCents, targetCents: goal.targetCents,
+    householdLimitCents: goal.weeklyBudgetCents, currency: goal.currency, offers, reserveCents });
+  const facts = ['family-schedule-v1', today, goal.currency, goal.targetCents, goal.targetDate, goal.weeklyBudgetCents, progress.progressCents, reserveCents,
+    offers.map((o) => [o.memberId, o.weeklyCents]), schedule.rows.map((r) => [r.date, r.goalCents, r.reservedCents, r.perMember.map((p) => [p.memberId, p.cents])])];
+  return { ...schedule, revision: `fs1_${createHash('sha256').update(JSON.stringify(facts)).digest('hex').slice(0, 32)}` };
+}
+
+/** Why a schedule with nothing in it cannot be proposed, in the family's terms ({ code, message }), or null when it can. */
+export function unschedulable(schedule) {
+  const f = (cents) => formatCents(cents, schedule.currency);
+  const why = (code, message) => ({ code, message });
+  switch (schedule.outcome) {
+    case 'reached': return why('goal_reached', 'Tracked progress already covers this goal, so there is nothing to schedule.');
+    case 'no_offers': return why('no_offers', 'An adult needs to offer a weekly amount before a family schedule can be made.');
+    case 'no_capacity': return why('no_capacity', `The household’s weekly amount is ${f(0)}, so nothing can be scheduled.`);
+    case 'date_passed': return why('date_too_soon', 'The goal’s date is less than a week away, so no weekly schedule fits. Choose a later date first.');
+    case 'nothing_planned': return why('nothing_planned', `The one-off ${f(schedule.reserve.cents)} takes every week’s amount up to the goal’s date, so nothing would go to the goal. Choose a later date or a smaller amount first.`);
+    default: return null;
+  }
+}
+
+/**
+ * The facts a family schedule rests on beyond the goal's own: the active adults' offers and, when it came from a family
+ * choice, that choice's current price. A proposal is usable only while these still hold.
+ */
+export function familyFacts(db, { householdId, goalId, family, choiceId = null }) {
+  const offers = activeOffers(db, goalId, membersById(db, householdId, family)).map((o) => ({ memberId: o.memberId, name: o.name, weeklyCents: o.weeklyCents }));
+  if (!choiceId) return { offers, choice: null };
+  const row = db.prepare('SELECT * FROM family_choices WHERE id = ? AND goal_id = ?').get(choiceId, goalId);
+  return { offers, choice: row ? { id: row.id, title: row.title, identity: identityOf(rowItem(row)), priceCents: row.price_cents, currency: row.currency } : { id: choiceId, removed: true } };
+}
+
+/** What changed in those facts, in plain words. Empty when nothing did. */
+export function describeFamilyChanges(was, now, currency) {
+  const f = (cents) => formatCents(cents, currency);
+  const changes = [];
+  const before = new Map(was.offers.map((o) => [o.memberId, o])), after = new Map(now.offers.map((o) => [o.memberId, o]));
+  for (const o of was.offers) {
+    const n = after.get(o.memberId);
+    if (!n) changes.push({ code: 'offer_ended', message: `${o.name}’s weekly offer of ${f(o.weeklyCents)} no longer counts: it was withdrawn or their access ended.` });
+    else if (n.weeklyCents !== o.weeklyCents) changes.push({ code: 'offer_changed', message: `${o.name}’s weekly offer changed from ${f(o.weeklyCents)} to ${f(n.weeklyCents)}.` });
+  }
+  for (const n of now.offers) if (!before.has(n.memberId)) changes.push({ code: 'offer_added', message: `${n.name} now offers ${f(n.weeklyCents)} a week.` });
+  if (was.choice) {
+    const c = now.choice;
+    if (!c || c.removed || c.identity !== was.choice.identity) changes.push({ code: 'choice_changed', message: `The family choice this schedule came from (${was.choice.title}) was removed or replaced.` });
+    else if (c.priceCents !== was.choice.priceCents || c.currency !== was.choice.currency) {
+      changes.push({ code: 'price_changed', message: `${was.choice.title} now shows ${formatCents(c.priceCents, c.currency)}; this schedule used ${formatCents(was.choice.priceCents, was.choice.currency)}.` });
+    }
+  }
+  return changes;
 }
 
 /**
@@ -189,11 +252,17 @@ export function reviewChoice(db, { householdId, goal, progress, today, now, fami
   const option = comparison.options.find((o) => o.id === id);
   // Keep the goal's date when the choice is on time; otherwise offer the earliest finish these offers reach.
   const targetDate = option.status === 'late' ? option.finishDate : goal.targetDate;
+  const draftGoal = { targetCents: item.priceCents, targetDate, weeklyBudgetCents: comparison.capacityCents };
+  // The dated weeks "Save goal and propose this schedule" would propose if the adult saves this draft unchanged. A preview:
+  // the save recomputes it from the server's records and refuses it unless every figure is still the same.
+  const schedule = scheduleFor({ goal: { ...goal, ...draftGoal }, progress, today, offers: view.offers, reserveCents: reserve });
+  const blocked = unschedulable(schedule);
   return {
     status: 'ok', saved: false, choiceId: id, revision: view.revision, reserveCents: reserve,
     item: { ...item, draftId: row.draft_id },
-    goal: { targetCents: item.priceCents, targetDate, weeklyBudgetCents: comparison.capacityCents },
+    goal: draftGoal, startingCents: progress.startingCents,
     option, deadline: goal.targetDate,
+    schedule: { ...schedule, proposable: !blocked, reason: blocked?.message ?? null },
   };
 }
 

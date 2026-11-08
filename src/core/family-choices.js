@@ -180,6 +180,77 @@ export function choicesInput({ goal, progress, today, choices, offers, reserveCe
 }
 
 /**
+ * The dated weekly schedule a family schedule saves for a goal, from the same arithmetic as the comparison. There is one
+ * row for each week up to the goal's date (at most 52 weeks). Each row has:
+ * - the amount planned for the goal;
+ * - the part of that week's open amount that goes to the one-off expense;
+ * - each adult's share of the goal amount (splitWeek).
+ * Every week puts its whole open amount toward the goal until the last week, which takes exactly what remains. Weeks
+ * after that are $0. A week given to the one-off expense is a $0 goal week; the expense never comes out of tracked
+ * progress and is taken once, not every week.
+ *
+ * `outcome` says whether there is anything to schedule:
+ * - 'on_time' or 'short': some weeks have a goal amount ('short' leaves a shortfall by the date);
+ * - 'reached', 'no_offers', 'no_capacity', 'date_passed' or 'nothing_planned': nothing can be scheduled.
+ * Figures only: nothing is paid, held or set aside in the app.
+ */
+export function familySchedule({ today, targetDate, progressCents, targetCents, householdLimitCents, currency, offers, reserveCents = 0 }) {
+  const c = compareChoices({ today, deadline: targetDate, progressCents, householdLimitCents, currency, offers, reserveCents,
+    options: [{ id: 'goal', priceCents: targetCents, currency }] });
+  const option = c.options[0];
+  const weeks = c.deadlineWeek;
+  const zero = () => offers.map((o) => ({ memberId: o.memberId, cents: 0 }));
+  const rows = Array.from({ length: weeks }, (_, i) => ({ week: i + 1, date: addDays(today, 7 * (i + 1)), goalCents: 0, reservedCents: 0, perMember: zero() }));
+  for (const seg of option.segments) {
+    for (let w = seg.fromWeek; w <= Math.min(seg.toWeek, weeks); w++) {
+      Object.assign(rows[w - 1], { goalCents: seg.goalCents, reservedCents: seg.reservedCents, perMember: seg.perMember.map((p) => ({ ...p })) });
+    }
+  }
+  const plannedCents = rows.reduce((sum, r) => sum + r.goalCents, 0);
+  const remainingCents = option.remainingCents ?? Math.max(0, targetCents - progressCents);
+  const shortfallCents = remainingCents - plannedCents;
+  let outcome;
+  if (remainingCents === 0) outcome = 'reached';
+  else if (c.limitedBy === 'no_offers') outcome = 'no_offers';
+  else if (c.capacityCents === 0) outcome = 'no_capacity';
+  else if (weeks < 1) outcome = 'date_passed';
+  else if (plannedCents === 0) outcome = 'nothing_planned';
+  else outcome = shortfallCents === 0 ? 'on_time' : 'short';
+  return {
+    outcome, today, targetDate, weeks, currency, rows,
+    remainingCents, plannedCents, shortfallCents, feasible: shortfallCents === 0,
+    // The earliest finish at these offers (week and date), which may be after the goal's date or beyond the planning limit.
+    finishWeek: option.finishWeek ?? null, finishDate: option.finishDate ?? null,
+    capacity: { householdLimitCents: c.householdLimitCents, offeredCents: c.offeredCents, capacityCents: c.capacityCents, limitedBy: c.limitedBy },
+    reserve: { cents: reserveCents, byDateCents: rows.reduce((sum, r) => sum + r.reservedCents, 0), weeks: rows.filter((r) => r.reservedCents > 0).length,
+      coveredWeek: c.reserve.coveredWeek, uncoveredCents: c.reserve.uncoveredCents },
+    offers: c.offers,
+  };
+}
+
+/**
+ * A schedule's weeks as short lines, with consecutive weeks of the same figures together, for example
+ * "Weeks 4–6 (Dec 6–Dec 20): $30.00 a week — Rowan $20.00 · Ash $10.00". `names` maps member ids to names.
+ */
+export function scheduleLines(rows, { money, date, names }) {
+  const groups = [];
+  for (const r of rows) {
+    const key = JSON.stringify([r.goalCents, r.reservedCents, r.perMember.map((p) => p.cents)]);
+    const last = groups.at(-1);
+    if (last?.key === key) last.to = r;
+    else groups.push({ key, from: r, to: r });
+  }
+  return groups.map(({ from, to }) => {
+    const one = from.week === to.week;
+    const weeks = one ? `Week ${from.week} (${date(from.date)})` : `Weeks ${from.week}–${to.week} (${date(from.date)}–${date(to.date)})`;
+    if (from.goalCents === 0 && from.reservedCents > 0) return `${weeks}: ${money(0)} to the goal; ${one ? 'this week’s' : 'each week’s'} ${money(from.reservedCents)} goes to the one-off expense`;
+    if (from.goalCents === 0) return `${weeks}: ${money(0)}, nothing more is needed`;
+    const shares = from.perMember.filter((p) => p.cents > 0).map((p) => `${names.get(p.memberId) ?? 'An adult'} ${money(p.cents)}`).join(' · ');
+    return `${weeks}: ${money(from.goalCents)}${one ? '' : ' a week'}${from.reservedCents ? `, after ${money(from.reservedCents)} to the one-off expense` : ''} — ${shares}`;
+  });
+}
+
+/**
  * Plain sentences for the comparison, from its numbers only. `money(cents)` and `date(iso)` are the page's formatters;
  * `titles` maps option ids to names.
  */

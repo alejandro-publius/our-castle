@@ -228,6 +228,7 @@ button { font: inherit; }
 .source-badge.ai { background: var(--cobalt); border-color: #253f63; color: #fff; }
 .source-badge.rules { border-style: dashed; border-color: var(--brass-dark); color: var(--ink); background: #f6ecd2; }
 .source-badge.household-edited { background: var(--violet); border-color: #4d4870; color: #fff; }
+.source-badge.family { background: var(--paper-3); border-color: var(--moss); color: var(--ink); }
 .arithmetic { margin: 0; padding-left: 22px; }
 .arithmetic li { margin: 3px 0; font-variant-numeric: tabular-nums; }
 .milestones { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
@@ -243,6 +244,8 @@ button { font: inherit; }
 .schedule input { min-height: 38px; text-align: right; }
 .schedule tr.reaches td:first-child::after { content: ' ◆'; color: var(--brass-dark); }
 .schedule tfoot th, .schedule tfoot td { font-weight: 700; border-bottom: 0; }
+.schedule .schedule-amount { display: block; font-weight: 700; }
+.schedule .schedule-share { display: block; font-size: 13px; color: var(--ink-muted); overflow-wrap: anywhere; }
 .cautions { margin: 14px 0 0; padding: 10px 12px 10px 30px; background: #efe3c3; border-left: 3px solid var(--brass-dark); font-size: 15px; }
 .cautions li { margin: 3px 0; }
 .commitment { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, .9fr) auto; gap: 8px; margin-bottom: 8px; align-items: end; }
@@ -524,6 +527,10 @@ button { font: inherit; }
 .family-trial-row { display:flex; flex-wrap:wrap; align-items:flex-end; gap:0 12px; }
 .merchant-shortlist { min-height:44px; }
 .goal-draft .actions { margin-top:6px; }
+.goal-draft-schedule { margin:0 0 8px; }
+.goal-draft-schedule-title { margin:0; font-size:15px; }
+.goal-draft-schedule-title small { color:var(--ink-muted); }
+.goal-draft-schedule .family-split li { padding:2px 0; }
 .goal-item { margin:-6px 0 0; font-size:14px; color:var(--ink-muted); overflow-wrap:anywhere; }
 .goal-item a { color:#6e4a12; }
 
