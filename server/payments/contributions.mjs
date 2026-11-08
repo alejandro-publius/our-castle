@@ -29,6 +29,12 @@ export function createContributionService({ db, clock, mode, paypal = null, webh
   const orderById = (id) => db.prepare('SELECT * FROM payment_orders WHERE id = ?').get(id);
   const orderByProviderId = (id) => db.prepare('SELECT * FROM payment_orders WHERE provider_order_id = ?').get(id);
   const orderByRequestId = (id) => db.prepare('SELECT * FROM payment_orders WHERE request_id = ?').get(id);
+  // The retry lookup for a new contribution. A missing or non-text request id is refused before SQLite is asked to
+  // bind it, with the same answer as the format check in validateRequest.
+  const priorRequest = (requestId) => {
+    if (typeof requestId !== 'string') throw new DomainError(400, 'invalid_request_id', 'Missing request id.');
+    return orderByRequestId(requestId);
+  };
   const captureById = (id) => db.prepare('SELECT * FROM payment_captures WHERE capture_id = ?').get(id);
 
   function requireMode(expected) {
@@ -129,6 +135,9 @@ export function createContributionService({ db, clock, mode, paypal = null, webh
 
   /** Validate an adult-approved contribution request against the server's own records. */
   function validateRequest({ householdId, goalId, amountCents, approverId, approvalConfirmed, requestId }) {
+    // The server never guesses which household or goal a contribution is for. Without a session to supply them, a missing
+    // or non-text id is a refusal, before any lookup could fail on it.
+    if (typeof householdId !== 'string' || typeof goalId !== 'string') throw new DomainError(400, 'invalid_owner', 'Say which household and goal this contribution is for.');
     const household = getHousehold(db, householdId);
     if (!household) throw new DomainError(404, 'not_found', 'Household not found.');
     if (!household.setupComplete) throw new DomainError(409, 'setup_required', 'Set up the house before contributing.');
@@ -412,7 +421,7 @@ export function createContributionService({ db, clock, mode, paypal = null, webh
 
     async createPayPalOrder(input) {
       requireMode('sandbox');
-      const existing = orderByRequestId(input.requestId);
+      const existing = priorRequest(input.requestId);
       if (existing) {
         if (!sameRequest(existing, input, 'paypal-sandbox')) throw new DomainError(409, 'request_conflict', 'That request id was already used for a different contribution.');
         if (existing.provider_order_id) return { orderId: existing.provider_order_id, approveUrl: null, contribution: view(existing.id) };
@@ -611,7 +620,7 @@ export function createContributionService({ db, clock, mode, paypal = null, webh
 
     simulateContribution(input) {
       requireMode('example');
-      const existing = orderByRequestId(input.requestId);
+      const existing = priorRequest(input.requestId);
       if (existing) {
         if (!sameRequest(existing, input, 'simulated')) throw new DomainError(409, 'request_conflict', 'That request id was already used for a different contribution.');
         return result(existing, 'already_processed');

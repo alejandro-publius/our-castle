@@ -435,3 +435,24 @@ for (const [reason, phase] of [['revocation', 'model'], ['expiry', 'model'], ['s
     } finally { finish.release(); await s.close(); }
   });
 }
+
+// The signed-in session supplies the household, goal and approver, so a body without them stays valid. A request id
+// still comes from the body, and a missing or non-text one is a refusal, not an internal error.
+test('a family contribution without a usable request id is refused cleanly; the session still supplies the ids', async () => {
+  const s = await startServer();
+  try {
+    const { owner } = await familyWith(s);
+    const orders = () => s.db.prepare('SELECT COUNT(*) AS n FROM payment_orders').get().n;
+    const progress = async () => (await owner.call('GET', '/api/state')).json.progress.progressCents;
+    const before = { orders: orders(), progress: await progress() };
+    for (const [label, body] of [['no request id', { amountCents: 1500, approvalConfirmed: true }], ['numeric request id', { amountCents: 1500, approvalConfirmed: true, requestId: 12345678 }]]) {
+      const res = await owner.call('POST', '/api/example/contributions', body);
+      assert.deepEqual([res.status, res.json?.error?.code], [400, 'invalid_request_id'], label);
+    }
+    assert.deepEqual({ orders: orders(), progress: await progress() }, before);
+    const good = { amountCents: 1500, approvalConfirmed: true, requestId: 'family-well-formed-01' };
+    assert.equal((await owner.call('POST', '/api/example/contributions', good)).json.outcome, 'completed');
+    assert.equal((await owner.call('POST', '/api/example/contributions', good)).json.outcome, 'already_processed');
+    assert.deepEqual({ orders: orders(), progress: await progress() }, { orders: before.orders + 1, progress: before.progress + 1500 });
+  } finally { await s.close(); }
+});
