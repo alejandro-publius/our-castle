@@ -369,8 +369,12 @@ export async function compareKits(db, context, { solver, sampleSize = 0, signal 
   return Object.assign(result, { sample: answer.sample.map(makeCard) });
 }
 
-/** A kit's public description for ordering by preference: catalog titles and retailers only, nothing about the family. */
-export const kitDescription = (card) => card.lines.map((l) => `${l.listings} × ${l.title} (${l.merchant})`).join('; ').slice(0, RERANK_LIMITS.maxDocumentChars);
+/**
+ * A kit's public description for ordering by preference: each listing's catalog title and shop, nothing else. How many
+ * listings the family needs, counts per listing, prices, weights and the list's own words stay on this server, where the
+ * solver and the family's page use them.
+ */
+export const kitDescription = (card) => card.lines.map((l) => `${l.title} (${l.merchant})`).join('; ').slice(0, RERANK_LIMITS.maxDocumentChars);
 
 /**
  * Put a preference's best match among the kits that fit into the shown kits: labelled when it is already shown, otherwise

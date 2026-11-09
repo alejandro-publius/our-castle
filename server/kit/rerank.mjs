@@ -29,6 +29,7 @@ export const KIT_PREFERENCES = Object.freeze({
 const fail = (status, code, message) => new DomainError(status, code, message);
 const KEPT = 'The kits shown are unchanged.';
 const malformed = () => fail(502, 'kit_rank_malformed', `Cohere sent an answer this app could not check, so it was not used. ${KEPT}`);
+const unranked = () => fail(502, 'kit_rank_empty', `Cohere ranked none of these kits, so they were not ordered. ${KEPT}`);
 const isObject = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);
 const codePoints = (text) => Array.from(text);
 
@@ -40,11 +41,13 @@ export function rerankRequest({ model, query, documents }) {
 
 /**
  * The checked order of a Rerank reply for these documents: every index once at most, in range, with a finite score in
- * [0, 1], and spans that are code-point ranges inside the document they belong to. Documents the reply leaves out keep
- * their own order after the ranked ones. Returns [{ index, excerpt: string | null }].
+ * [0, 1], and spans that are code-point ranges inside the document they belong to. Only the documents Cohere ranked are
+ * returned, in its order; one it left out is never reported as ranked, and a reply that ranks none is a failure.
+ * Returns [{ index, excerpt: string | null }], never empty.
  */
 export function readRanking(json, documents) {
   if (!isObject(json) || !Array.isArray(json.results) || json.results.length > documents.length) throw malformed();
+  if (!json.results.length) throw unranked();
   const seen = new Set();
   const ranked = json.results.map((r) => {
     if (!isObject(r) || !Number.isSafeInteger(r.index) || r.index < 0 || r.index >= documents.length || seen.has(r.index)) throw malformed();
@@ -62,7 +65,7 @@ export function readRanking(json, documents) {
     }
     return { index: r.index, excerpt };
   });
-  return [...ranked, ...documents.map((_, index) => index).filter((index) => !seen.has(index)).map((index) => ({ index, excerpt: null }))];
+  return ranked;
 }
 
 function httpError(status) {

@@ -473,6 +473,10 @@ export function createApp({ config, db, clock, paypal = null, aiProvider = null,
       if (!key || !Object.hasOwn(KIT_PREFERENCES, key)) throw new DomainError(400, 'invalid_preference', 'Choose one of the preferences listed.');
       const { label } = KIT_PREFERENCES[key];
       const { sample, ...result } = await compareKits(db, context, { solver, sampleSize: 8 });
+      // The solver's wait is over: a session that ended or facts that changed meanwhile stop the request here, before any
+      // answer (even "nothing to order"), the minute's quota or a Cohere call.
+      assertAccess();
+      sameKitFacts(result, body, scope);
       if (result.status !== 'ok' || sample.length < 2) return { ...result, preference: { key, label, status: 'not_needed', message: 'Fewer than two kits fit these figures, so there is nothing to order.' } };
       const at = clock.now().getTime();
       for (const [id, times] of kitRanks) if (!times.some((t) => at - t < 60_000)) kitRanks.delete(id);
@@ -483,12 +487,16 @@ export function createApp({ config, db, clock, paypal = null, aiProvider = null,
       try { ranking = await kitReranker.rank({ preference: key, documents: sample.map(kitDescription) }); } catch (error) {
         assertAccess();
         if (!(error instanceof DomainError)) throw error;
+        // A failure keeps the kits as compared only while they are still the family's current ones.
+        sameKitFacts(result, body, scope);
         return { ...result, preference: { key, label, status: 'failed', message: error.message } };
       }
       assertAccess();
       sameKitFacts(result, body, scope);
+      // Only kits Cohere ranked are in `ranking` (never empty): its first is Cohere's own first choice.
       const top = sample[ranking[0].index];
-      return { ...result, kits: withPreference(result, top, 'preference'), preference: { key, label, status: 'ok', ordered: sample.length, matchKey: top.key, excerpt: ranking[0].excerpt } };
+      return { ...result, kits: withPreference(result, top, 'preference'),
+        preference: { key, label, status: 'ok', sent: sample.length, ordered: ranking.length, matchKey: top.key, excerpt: ranking[0].excerpt } };
     }],
     ['PUT', '/api/kit/choice', ({ body, scope }) => {
       refuseForeign(body, scope);

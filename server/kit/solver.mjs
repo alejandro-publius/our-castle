@@ -52,7 +52,7 @@ export function createKitSolver({ root, engine = 'auto', program = null, timeout
         return;
       }
       const out = [];
-      let outBytes = 0, settled = false;
+      let outBytes = 0, errBytes = 0, settled = false;
       const finish = (error, value) => {
         if (settled) return;
         settled = true;
@@ -71,7 +71,9 @@ export function createKitSolver({ root, engine = 'auto', program = null, timeout
       const onAbort = () => stop(Object.assign(new Error('The comparison was cancelled.'), { name: 'AbortError' }));
       signal?.addEventListener('abort', onAbort, { once: true });
       child.stdout.on('data', (chunk) => { outBytes += chunk.length; if (outBytes > SOLVER_LIMITS.maxOutputBytes) stop(fail(502, 'kit_solver_failed', FAILED)); else out.push(chunk); });
-      child.stderr.on('data', () => {}); // read and discarded, never logged
+      // Standard error is counted and discarded, never kept or logged; past its bound the program is stopped and its answer,
+      // even a valid one written afterwards, is not used.
+      child.stderr.on('data', (chunk) => { errBytes += chunk.length; if (errBytes > SOLVER_LIMITS.maxErrorBytes) stop(fail(502, 'kit_solver_failed', FAILED)); });
       child.stdin.on('error', () => {}); // a solver that exits early closes its input; its exit says what happened
       child.on('error', () => finish(fail(502, 'kit_solver_failed', FAILED)));
       child.on('close', (code) => {

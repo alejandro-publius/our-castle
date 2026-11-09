@@ -5,7 +5,8 @@ import assert from 'node:assert/strict';
 import { DEFAULT_KIT_RANK_MODEL, loadConfig } from '../../server/config.mjs';
 import { COHERE_RERANK_URL, KIT_PREFERENCES, RERANK_LIMITS, createKitReranker, readRanking, rerankRequest } from '../../server/kit/rerank.mjs';
 
-const DOCS = ['1 × Test fixture: Tent A (fixture-a.test); 2 × Test fixture: Sleeping bag A (fixture-a.test)', '1 × Test fixture: Tent B, ultralight (fixture-b.test); 2 × Test fixture: Sleeping bag A (fixture-a.test)'];
+// Kit descriptions as the server writes them: public listing titles and shops only, with no count or other figure.
+const DOCS = ['Test fixture: Tent A (fixture-a.test); Test fixture: Sleeping bag A (fixture-a.test)', 'Test fixture: Tent B, ultralight (fixture-b.test); Test fixture: Sleeping bag A (fixture-a.test)'];
 const json = (status, body) => new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
 function fake(reply) {
   const calls = [];
@@ -13,7 +14,7 @@ function fake(reply) {
 }
 
 test('one request to the fixed Rerank host: the key as a Bearer header, a fixed preference sentence and public kit text only', async () => {
-  const transport = fake(json(200, { results: [{ index: 1, relevance_score: 0.91, relevant_spans: [{ start: 4, end: 37, score: 0.8 }] }, { index: 0, relevance_score: 0.12 }] }));
+  const transport = fake(json(200, { results: [{ index: 1, relevance_score: 0.91, relevant_spans: [{ start: 0, end: 33, score: 0.8 }] }, { index: 0, relevance_score: 0.12 }] }));
   const ranker = createKitReranker({ apiKey: 'fake-cohere-key-not-real', fetch: transport.fetch });
   assert.equal(ranker.model, DEFAULT_KIT_RANK_MODEL);
   const order = await ranker.rank({ preference: 'light', documents: DOCS });
@@ -33,7 +34,10 @@ test('one request to the fixed Rerank host: the key as a Bearer header, a fixed 
 
 test('every reply is checked: indices, duplicates, scores and code-point spans; anything else is refused whole', () => {
   const ok = (results) => readRanking({ results }, DOCS);
-  assert.deepEqual(ok([{ index: 0, relevance_score: 0 }]), [{ index: 0, excerpt: null }, { index: 1, excerpt: null }], 'an unranked document keeps its own place after the ranked ones');
+  // Only what Cohere ranked is returned: a reply that ranks some kits names those, and nothing is filled in for the rest.
+  assert.deepEqual(ok([{ index: 1, relevance_score: 0 }]), [{ index: 1, excerpt: null }], 'a kit Cohere did not rank is not reported as ranked');
+  // A reply that ranks nothing is a failure, said plainly: there is no order or match to show (the root probe's empty reply).
+  assert.throws(() => ok([]), (e) => e.code === 'kit_rank_empty' && /ranked none of these kits/.test(e.message) && e.message.includes('unchanged'));
   for (const results of [
     [{ index: 2, relevance_score: 0.5 }], [{ index: -1, relevance_score: 0.5 }], [{ index: 0.5, relevance_score: 0.5 }],
     [{ index: 0, relevance_score: 0.5 }, { index: 0, relevance_score: 0.4 }],
@@ -55,6 +59,7 @@ test('every reply is checked: indices, duplicates, scores and code-point spans; 
 test('failures are reported plainly, without the provider’s text, and never retried', async () => {
   const cases = [[json(401, { message: 'secret detail' }), 'kit_rank_auth'], [json(498, {}), 'kit_rank_auth'], [json(429, {}), 'kit_rank_limited'],
     [json(422, { message: 'bad' }), 'kit_rank_rejected'], [json(503, {}), 'kit_rank_unavailable'], [new Response('not json', { status: 200 }), 'kit_rank_malformed'],
+    [json(200, { results: [] }), 'kit_rank_empty'],
     [new Response('x'.repeat(RERANK_LIMITS.maxResponseBytes + 1), { status: 200 }), 'kit_rank_malformed']];
   for (const [reply, code] of cases) {
     const transport = fake(reply);

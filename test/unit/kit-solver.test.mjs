@@ -12,7 +12,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { KitPlanError, checkSolverRequest, evaluateKit, referenceSolve, verifySolverAnswer } from '../../src/core/kit-plan.js';
-import { createKitSolver, nativeSolverPath } from '../../server/kit/solver.mjs';
+import { SOLVER_LIMITS, createKitSolver, nativeSolverPath } from '../../server/kit/solver.mjs';
 
 const root = fileURLToPath(new URL('../../', import.meta.url));
 const required = process.env.KIT_SOLVER_REQUIRED === '1';
@@ -177,6 +177,40 @@ test('the bridge refuses timeouts, crashes, malformed, oversized, refused and wr
     await assert.rejects(solver.solve(request), (e) => e.code === code, name);
     assert.equal(solver.running, 0, `${name}: no solver left running`);
   }
+});
+
+// Standard error is bounded like the answer: at most SOLVER_LIMITS.maxErrorBytes (4 KiB). A program that writes more is
+// stopped there and its answer is not used, even a valid one written afterwards; what it wrote is counted, never kept.
+test('the bridge stops a program that writes more than 4 KiB to standard error, refuses its answer and logs none of it', async () => {
+  const request = acceptance(18_000);
+  const answer = answerText(request);
+  const toError = (bytes) => `printf '%s' '${'x'.repeat(bytes)}' >&2`;
+  const methods = ['log', 'info', 'warn', 'error', 'debug'], saved = methods.map((m) => console[m]), logged = [];
+  for (const m of methods) console[m] = (...args) => { logged.push(args.map(String).join(' ')); };
+  try {
+    // Exactly at the bound, the answer is used.
+    const within = createKitSolver({ root, engine: 'native', program: program('stderr-at-bound', `${toError(SOLVER_LIMITS.maxErrorBytes)}\nprintf '%s' '${answer}'`) });
+    assert.deepEqual((await within.solve(request)).lowestTotal.choice, [0, 0, 0]);
+    // One byte more, then a valid answer and a normal exit: refused (the root probe's 4097-byte fixture).
+    const over = createKitSolver({ root, engine: 'native', program: program('stderr-over-bound', `${toError(SOLVER_LIMITS.maxErrorBytes + 1)}\nprintf '%s' '${answer}'`) });
+    await assert.rejects(over.solve(request), (e) => e.code === 'kit_solver_failed' && e.message === 'The kit comparison could not be completed this time. Nothing was changed; try again.');
+    assert.equal(over.running, 0, 'no solver left running');
+    // A program that keeps running after passing the bound is stopped then, not at the time limit, and does not live on.
+    const pidFile = path.join(dir, 'stderr-then-wait.pid');
+    const waits = createKitSolver({ root, engine: 'native', timeoutMs: 4000,
+      program: program('stderr-then-wait', `echo $$ > '${pidFile}'\n${toError(SOLVER_LIMITS.maxErrorBytes + 1)}\nexec /bin/sleep 5`) });
+    const started = Date.now();
+    await assert.rejects(waits.solve(request), (e) => e.code === 'kit_solver_failed');
+    assert.ok(Date.now() - started < 2000, `stopped when the bound was passed (${Date.now() - started} ms), not at the 4 s time limit`);
+    assert.equal(waits.running, 0);
+    const pid = Number(readFileSync(pidFile, 'utf8'));
+    let gone = false;
+    for (let i = 0; i < 100 && !gone; i++) {
+      try { process.kill(pid, 0); await new Promise((r) => setTimeout(r, 20)); } catch (error) { if (error.code !== 'ESRCH') throw error; gone = true; }
+    }
+    assert.ok(gone, `the stopped program (pid ${pid}) is no longer running`);
+  } finally { methods.forEach((m, i) => { console[m] = saved[i]; }); }
+  assert.deepEqual(logged.filter((l) => l.includes('xxxx')), [], 'nothing written to standard error is logged');
 });
 
 test('the bridge limits how many run at once, can be cancelled, and refuses an oversized kit before running anything', async () => {

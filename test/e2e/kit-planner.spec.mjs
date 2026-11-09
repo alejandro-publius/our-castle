@@ -143,6 +143,9 @@ test('a family compares complete kits within its own figures, keeps what it agre
     await expect(kits.nth(1)).toContainText('Cohere’s match in the listing titles: “Tent B, four-person ultralight”');
     expect(cohere).toHaveLength(1);
     expect(JSON.stringify(cohere[0])).not.toMatch(/Rowan|Ash|Wren|Camping gear|House of|2026-12|9000|180/);
+    // Titles and shops only: no count of listings (the family needs two sleeping bags) or any other figure is sent.
+    expect(cohere[0].documents.filter((d) => /×|\d/.test(d))).toEqual([]);
+    await expect(owner.page.locator('#kit-plan-prefer-note')).toHaveText('Cohere ordered the 5 lowest-total kits that fit by “Lighter to carry”, matching the listings’ titles. It is not a check of quality, weight or price.');
     await shot(owner, 'kits-compared', '#kit-plan-result');
 
     // 4. Rowan chooses the lighter kit and keeps its stove. Ash's page shows the choice live; Wren can only read it.
@@ -153,6 +156,10 @@ test('a family compares complete kits within its own figures, keeps what it agre
     for (const p of [ash, wren]) await expect(p.page.locator('#kit-plan-chosen-lines > li')).toHaveCount(3);
     await expect(wren.page.locator('#kit-plan-chosen')).toContainText('· kept');
     await expect(wren.page.getByRole('button', { name: /Keep|Choose this kit|Find listings|Compare complete kits|Review this kit/ })).toHaveCount(0);
+    // Each page's date is its own estimate: Rowan's includes the $90 one-off Rowan is trying; Wren tries none and never sees Rowan's.
+    await expect(owner.page.locator('#kit-plan-chosen-note')).toContainText('Finishes Dec 27 (week 7), on time for Dec 27. This page’s estimate, after the one-off $90.00 tried here.');
+    await expect(wren.page.locator('#kit-plan-chosen-note')).toContainText('Finishes Dec 6 (week 4), on time for Dec 27. This page’s estimate, with no one-off tried here.');
+    await expect(wren.page.locator('#kit-plan-chosen')).not.toContainText('$90.00');
     await shot(wren, 'child-chosen', '#kit-plan-chosen');
 
     // 5. A larger one-off ($120) changes what fits. The comparison follows it without any catalog or model call: the chosen
@@ -163,7 +170,7 @@ test('a family compares complete kits within its own figures, keeps what it agre
     await expect(kits.nth(0).locator('.kit-plan-kit-head')).toHaveText('Smallest change · Lowest listed total · Lower listed weight · Fewest shops$150.00');
     await expect(kits.nth(0).locator('.kit-plan-kit-changes')).toHaveText('Switched 4-person tent: Test fixture: Tent B, four-person ultralight → Test fixture: Tent A, four-person dome, $110.00 → $80.00');
     await expect(kits.nth(0).locator('.kit-plan-kit-lines li', { hasText: 'stove' })).toContainText('kept');
-    await expect(owner.page.locator('#kit-plan-chosen-note')).toContainText('Keeping this kit: finishes Jan 3, 2027, 1 week after Dec 27. Keeping the date: $30.00 short by then.');
+    await expect(owner.page.locator('#kit-plan-chosen-note')).toContainText('Keeping this kit: finishes Jan 3, 2027, 1 week after Dec 27. Keeping the date: $30.00 short by then. This page’s estimate, after the one-off $120.00 tried here.');
     expect(catalog.calls.length).toBe(calls);
     expect(cohere).toHaveLength(1);
     await shot(owner, 'smallest-change', '#kit-plan-result');

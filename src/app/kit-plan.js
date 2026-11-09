@@ -207,7 +207,7 @@ export function createKitPlan({ getState, actor, applyState, openMerchant, reser
       if (!select.options.length) select.replaceChildren(...s.kitPlan.preference.options.map((o) => h('option', { value: o.key }, o.label)));
       select.value = chosen;
       $('kit-plan-prefer-note').textContent = a.preference?.status === 'ok'
-        ? `Cohere ordered the ${plural(a.preference.ordered, 'lowest-total kit')} that fit by “${a.preference.label}”, matching the listings’ titles. It is not a check of quality, weight or price.`
+        ? `Cohere ordered ${a.preference.ordered < a.preference.sent ? `${a.preference.ordered} of ` : ''}the ${plural(a.preference.sent, 'lowest-total kit')} that fit by “${a.preference.label}”, matching the listings’ titles. It is not a check of quality, weight or price.`
         : 'Sends only the listings’ titles and shops, with the preference you pick, to Cohere. Prices, dates and the family stay here.';
     }
   }
@@ -267,9 +267,14 @@ export function createKitPlan({ getState, actor, applyState, openMerchant, reser
     const fc = s.familyChoices;
     let finish = null;
     if (!missing.length && total > 0) {
+      const tried = reserve().cents;
       const o = compareChoices({ today: fc.today, deadline: s.goal.targetDate, progressCents: s.progress.progressCents, householdLimitCents: s.goal.weeklyBudgetCents, currency: s.goal.currency,
-        offers: fc.offers, reserveCents: reserve().cents, options: [{ id: 'kit', priceCents: total, currency: s.goal.currency }] }).options[0];
-      finish = finishText({ ...o, deadline: s.goal.targetDate });
+        offers: fc.offers, reserveCents: tried, options: [{ id: 'kit', priceCents: total, currency: s.goal.currency }] }).options[0];
+      // The date is this page's own estimate: the family's saved figures with only the one-off tried here (a child tries none,
+      // and another member's trial is never shown), so two pages can differ.
+      const estimate = ['fits', 'late', 'beyond_limit', 'covered'].includes(o.status)
+        ? (tried ? ` This page’s estimate, after the one-off ${money(tried)} tried here.` : ' This page’s estimate, with no one-off tried here.') : '';
+      finish = `${finishText({ ...o, deadline: s.goal.targetDate })}${estimate}`;
     }
     const who = [...new Set(sel.lines.map((p) => p.chosenBy))].join(' and ');
     $('kit-plan-chosen-note').textContent = missing.length ? `Chosen by ${who}. No listing is chosen yet for ${missing.map((l) => l.name).join(', ')}.`

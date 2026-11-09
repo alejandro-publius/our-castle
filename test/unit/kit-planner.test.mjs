@@ -15,6 +15,7 @@ import { DomainError } from '../../server/household.mjs';
 import { createMerchant } from '../../server/merchant/channel3.mjs';
 import { createKitSolver } from '../../server/kit/solver.mjs';
 import { createKitReranker } from '../../server/kit/rerank.mjs';
+import { kitDescription } from '../../server/kit/planner.mjs';
 import { familyWith, mutableClock, startServer } from '../helpers/family-http.mjs';
 import { kitCatalog, kitProduct } from '../helpers/kit-catalog.mjs';
 import { fitCatalog, fitProduct } from '../helpers/fit-catalog.mjs';
@@ -60,6 +61,30 @@ async function planFamily({ catalog = kitCatalog(), progress = 6000, weekly = 30
 const ACCEPTANCE = [['4-person tent', 'Tent A'], ['4-person tent', 'Tent B'], ['sleeping bag', 'Sleeping bag A'], ['sleeping bag', 'Sleeping bag B'], ['stove', 'Stove A'], ['stove', 'Stove B']];
 const summary = (card) => ({ labels: card.labels, totalCents: card.totalCents, weightMg: card.weightMg, retailers: card.retailers, finish: card.finish.finishDate,
   status: card.finish.status, lines: card.lines.map((l) => `${l.name}: ${l.title.replace('Test fixture: ', '')} ×${l.listings}`) });
+// A fake Cohere transport for the real adapter: it records each request and answers with `reply(body)`. holdNext() makes the
+// next call wait until the test opens it, so the test can change the family's records while Cohere is "answering".
+function fakeCohere(reply) {
+  const sent = [];
+  let gate = null;
+  const fetch = async (url, init) => {
+    const body = JSON.parse(init.body);
+    sent.push(body);
+    const g = gate; gate = null;
+    if (g) { g.reached(); await g.opened; }
+    const out = fake.reply(body);
+    return out instanceof Response ? out : new Response(JSON.stringify(out), { status: 200, headers: { 'Content-Type': 'application/json' } });
+  };
+  const fake = { sent, reply, holdNext: () => (gate = waitPoint()), reranker: createKitReranker({ apiKey: 'fake-cohere-key-not-real', fetch }) };
+  return fake;
+}
+// A point a request waits at: `held` resolves once it is reached, and the request goes on after open().
+function waitPoint() {
+  const g = {};
+  g.held = new Promise((r) => { g.reached = r; });
+  g.opened = new Promise((r) => { g.open = r; });
+  return g;
+}
+const rankAll = (body) => ({ results: body.documents.map((_, index) => ({ index, relevance_score: 0.5 })) });
 
 test('only adults add listings, for lines still to get, with their own count per listing; owned lines are skipped and nothing is guessed', async () => {
   const f = await planFamily();
@@ -310,6 +335,54 @@ test('a late comparison for figures that changed meanwhile is refused, and a fai
   } finally { await s.close(); }
 });
 
+// Ordering asks Cohere only for a request that still holds once the solver has answered: the session must be the one that
+// asked and the family's facts the ones compared. Both are checked before the minute's quota and before any Cohere call,
+// on the early return as on the ordering path (the root probe: a member signed out while the solver was held, and the
+// fake ranker was still called once).
+test('a preference request whose figures changed or whose session ended while comparing makes no Cohere call and spends no quota', async (t) => {
+  const cohere = fakeCohere(rankAll);
+  const inner = createKitSolver({ root, engine: required ? 'native' : 'auto' });
+  let gate = null;
+  const solver = { engine: inner.engine, stats: inner.stats, async solve(request, options) {
+    const g = gate; gate = null;
+    if (g) { g.reached(); await g.opened; }
+    return inner.solve(request, options);
+  } };
+  const f = await planFamily({ solver, reranker: cohere.reranker });
+  const { s, owner, Ash: ash } = f;
+  try {
+    for (const [line, title] of ACCEPTANCE) assert.equal((await f.add(line, title)).status, 200);
+    const ask = async (b, reserveCents) => { const st = await f.state(b); return { revision: st.kitPlan.revision, choicesRevision: st.familyChoices.revision, reserveCents, preference: 'light' }; };
+    // With a $120 one-off only the $150 kit fits, so there is nothing to order (the early return); with $90 five kits fit.
+    for (const [meanwhile, reserveCents, change, expected] of [
+      ['Rowan changes their offer (one kit fits)', 12000, () => owner.call('PUT', '/api/family-choices/offer', { weeklyCents: 2500 }), [409, 'kit_plan_changed']],
+      ['Rowan changes their offer back (five kits fit)', 9000, () => owner.call('PUT', '/api/family-choices/offer', { weeklyCents: 2000 }), [409, 'kit_plan_changed']],
+      ['Ash signs out (five kits fit)', 9000, () => ash.call('POST', '/api/auth/signout', {}), [401, 'session_expired']],
+    ]) {
+      await t.test(meanwhile, async () => {
+        const body = await ask(ash, reserveCents), calls = cohere.sent.length;
+        const g = (gate = waitPoint());
+        const pending = ash.call('POST', '/api/kit/prefer', body);
+        await g.held;
+        assert.equal((await change()).status, 200);
+        g.open();
+        const late = await pending;
+        assert.deepEqual([late.status, late.json.error?.code, late.json.preference, late.json.kits], [...expected, undefined, undefined], JSON.stringify(late.json));
+        assert.equal(cohere.sent.length - calls, 0, 'no Cohere call');
+      });
+    }
+    await t.test('none of them spent the household’s six orderings a minute', async () => {
+      const body = await ask(owner, 9000), calls = cohere.sent.length;
+      for (let i = 1; i <= 6; i++) {
+        const r = await owner.call('POST', '/api/kit/prefer', body);
+        assert.deepEqual([r.status, r.json.preference?.status, r.json.error?.code], [200, 'ok', undefined], `ordering ${i}`);
+      }
+      assert.equal((await owner.call('POST', '/api/kit/prefer', body)).json.error.code, 'kit_rank_busy');
+      assert.equal(cohere.sent.length - calls, 6, 'only the six current requests reached Cohere');
+    });
+  } finally { await s.close(); }
+});
+
 test('ordering by a preference sends only public catalog text and a fixed sentence; a failure leaves the kits as they were', async () => {
   const sent = [];
   let reply = (body) => ({ results: body.documents.map((_, i) => ({ index: body.documents.length - 1 - i, relevance_score: 0.9 - i * 0.1 })) });
@@ -341,7 +414,9 @@ test('ordering by a preference sends only public catalog text and a fixed senten
     for (const secret of ['Rowan', 'Ash', 'Wren', 'Camping gear', '4-person tent', 'sleeping bag:', '2026-12', '9000', '90.00', '150', '180', 'House of']) {
       assert.ok(!text.includes(secret), `nothing like "${secret}" is sent`);
     }
-    assert.match(sent[0].body.documents[0], /^1 × Test fixture: Tent A, four-person dome \(fixture-a\.test\); 2 × Test fixture: Sleeping bag A \(fixture-a\.test\); 1 × Test fixture: Stove A \(fixture-a\.test\)$/);
+    // Public titles and shops only: how many listings the family needs (two sleeping bags here) is not sent.
+    assert.equal(sent[0].body.documents[0], 'Test fixture: Tent A, four-person dome (fixture-a.test); Test fixture: Sleeping bag A (fixture-a.test); Test fixture: Stove A (fixture-a.test)');
+    assert.ok(sent[0].body.documents.every((d) => !/×|\d/.test(d)), 'no count or other figure is sent');
     // The fake ranks the last of the five first: it is not among the shown kits, so it takes the least important place.
     assert.deepEqual([o.preference.status, o.preference.label, o.preference.ordered], ['ok', 'Lighter to carry', 5]);
     assert.deepEqual(o.kits.map((k) => [k.labels, k.totalCents]), [[['lowest_total', 'fewest_retailers'], 15000], [['lower_weight', 'preference'], 18000]],
@@ -375,6 +450,79 @@ test('ordering by a preference sends only public catalog text and a fixed senten
     const r = await off.owner.call('POST', '/api/kit/prefer', { revision: st.kitPlan.revision, choicesRevision: st.familyChoices.revision, reserveCents: 9000, preference: 'light' });
     assert.deepEqual([r.status, r.json.error.code], [503, 'kit_rank_off']);
   } finally { await off.s.close(); }
+});
+
+// A Cohere answer or failure is used only for the facts it was asked about. If the family's figures changed while Cohere
+// answered, the request is refused either way (the root probe: an offer changed while a failing ranker waited, and the old
+// revision came back as a 200). A failure for figures that are still current keeps the fallback: the kits as compared.
+test('an ordering that ends after the figures changed is refused whether Cohere failed or answered; a failure for current figures keeps the current kits', async (t) => {
+  const cohere = fakeCohere(rankAll);
+  const f = await planFamily({ reranker: cohere.reranker });
+  const { s, owner, Ash: ash } = f;
+  try {
+    for (const [line, title] of ACCEPTANCE) assert.equal((await f.add(line, title)).status, 200);
+    const ask = async (preference) => { const st = await f.state(); return { revision: st.kitPlan.revision, choicesRevision: st.familyChoices.revision, reserveCents: 9000, preference }; };
+    for (const [name, reply, weeklyCents] of [['Cohere fails', () => new Response('{}', { status: 503 }), 1500], ['Cohere answers', rankAll, 1000]]) {
+      await t.test(`${name} after Ash changed their offer`, async () => {
+        cohere.reply = reply;
+        const body = await ask('light');
+        const g = cohere.holdNext();
+        const pending = owner.call('POST', '/api/kit/prefer', body);
+        await g.held;
+        assert.equal((await ash.call('PUT', '/api/family-choices/offer', { weeklyCents })).status, 200);
+        g.open();
+        const late = await pending;
+        assert.deepEqual([late.status, late.json.error?.code, late.json.preference, late.json.kits], [409, 'kit_plan_changed', undefined, undefined], JSON.stringify(late.json));
+      });
+    }
+    await t.test('Cohere fails for the figures as they are now', async () => {
+      cohere.reply = () => new Response('{}', { status: 503 });
+      const body = await ask('sturdy');
+      const plain = (await owner.call('POST', '/api/kit/compare', body)).json;
+      const failed = await owner.call('POST', '/api/kit/prefer', body);
+      assert.equal(failed.status, 200, JSON.stringify(failed.json));
+      const j = failed.json;
+      assert.deepEqual([j.preference.status, j.preference.matchKey, j.revision, j.choicesRevision], ['failed', undefined, plain.revision, plain.choicesRevision]);
+      assert.match(j.preference.message, /HTTP 503.*unchanged/);
+      assert.deepEqual(j.kits.map((k) => [k.key, k.labels]), plain.kits.map((k) => [k.key, k.labels]));
+    });
+    assert.equal(cohere.sent.length, 3, 'one Cohere call for each request');
+  } finally { await s.close(); }
+});
+
+// Cohere ranking none of the kits is not an order (the root probe's empty reply came back as a match). A reply that ranks
+// only some of them still names Cohere's own first choice, and says how many it ranked of how many were sent.
+test('an empty Cohere ranking is a failure with no match; a partial one names Cohere’s first choice and how many it ranked', async () => {
+  const cohere = fakeCohere(() => ({ results: [] }));
+  const f = await planFamily({ reranker: cohere.reranker });
+  const { s, owner } = f;
+  try {
+    for (const [line, title] of ACCEPTANCE) assert.equal((await f.add(line, title)).status, 200);
+    const st = await f.state();
+    const body = { revision: st.kitPlan.revision, choicesRevision: st.familyChoices.revision, reserveCents: 9000 };
+    const plain = (await owner.call('POST', '/api/kit/compare', body)).json;
+    const empty = await owner.call('POST', '/api/kit/prefer', { ...body, preference: 'light' });
+    assert.equal(empty.status, 200, JSON.stringify(empty.json));
+    const e = empty.json;
+    assert.deepEqual([e.preference.status, e.preference.matchKey, e.preference.ordered, e.preference.excerpt], ['failed', undefined, undefined, undefined], JSON.stringify(e.preference));
+    assert.match(e.preference.message, /ranked none of these kits.*unchanged/);
+    assert.deepEqual(e.kits.map((k) => [k.key, k.labels]), plain.kits.map((k) => [k.key, k.labels]), 'no kit is labelled the match');
+    // Cohere ranks only the $180 kit, the one of the five with Tent B: it is the match, and one of five is said to be ordered.
+    cohere.reply = (b) => ({ results: [{ index: b.documents.findIndex((d) => d.includes('Tent B')), relevance_score: 0.8 }] });
+    const partial = (await owner.call('POST', '/api/kit/prefer', { ...body, preference: 'light' })).json;
+    assert.deepEqual([partial.preference.status, partial.preference.ordered, partial.preference.sent], ['ok', 1, 5], JSON.stringify(partial.preference));
+    assert.deepEqual(partial.kits.map((k) => [k.labels, k.totalCents]), [[['lowest_total', 'fewest_retailers'], 15000], [['lower_weight', 'preference'], 18000]]);
+    assert.equal(cohere.sent.length, 2);
+  } finally { await s.close(); }
+});
+
+// What Cohere reads of a kit is the same whatever the family needs: the root probe's one tent and twenty tents of the
+// same public listing gave "1 × …" and "20 × …". Counts, prices, weights and the list's own words stay on this server.
+test('a kit’s Cohere description is its public titles and shops only, the same for one listing or twenty', () => {
+  const kit = (listings) => ({ lines: [{ lineId: 'ki_0000000000000001', name: 'tents for the family', listings, perListing: 1, bought: listings, surplus: 0,
+    priceCents: 8000, lineCents: listings * 8000, weightMg: listings * 3_000_000, kept: false, title: 'Public tent title', merchant: 'shop.test' }] });
+  assert.equal(kitDescription(kit(1)), 'Public tent title (shop.test)');
+  assert.equal(kitDescription(kit(20)), kitDescription(kit(1)));
 });
 
 test('a schema-11 database gains only the three kit-planner tables; every earlier row is unchanged', () => {
