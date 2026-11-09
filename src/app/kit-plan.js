@@ -5,15 +5,18 @@
 //   amount being tried in Family choices: up to three distinct kits that fit, or what is missing or short;
 // - chooses a kit and keeps the lines it has agreed on; later comparisons hold kept lines and show the smallest change;
 // - may order the kits that fit by a preference, with Cohere, when this server has that set up;
-// - reviews the chosen kit into the Plan form as an unsaved goal draft with its family schedule.
-// Only "Choose this kit", "Keep" and the listing buttons save anything, and only planning records. Comparing, ordering
-// and reviewing save nothing. Every figure shown comes from the server's answer or the same arithmetic it uses.
+// - reviews the chosen kit into the Plan form as an unsaved goal draft with its family schedule;
+// - may preview a compared kit on the map: a temporary picture of that plan beside the campsite, drawn from the comparison
+//   answer already on the page. It asks the server nothing and saves nothing.
+// Only "Choose this kit", "Keep" and the listing buttons save anything, and only planning records. Comparing, ordering,
+// previewing and reviewing save nothing. Every figure shown comes from the server's answer or the same arithmetic it uses.
 import { api } from './api.js';
 import { formatCents } from '../core/rules.js';
 import { compareChoices } from '../core/family-choices.js';
 import { ceilingText, fitCeiling } from '../core/family-fit.js';
 import { lineCost, weightText } from '../core/kit-plan.js';
 import { catalogueOf } from '../core/catalogue.js';
+import { matchPreview, picksOf, previewScene } from '../core/kit-preview.js';
 
 const $ = (id) => document.getElementById(id);
 function h(tag, attrs = {}, ...children) {
@@ -44,9 +47,13 @@ const RECOMPARE_MS = 350;
  * @param options.reserve () => { cents, invalid }: the one-off amount being tried in Family choices
  * @param options.onReview (answer) => hands the server-checked kit draft to the Plan form; saves nothing
  * @param options.listEditing () => whether the kit list itself is being edited (the planner then stays out of the way)
+ * @param options.onPreview (view | null, { reveal }) => draws a kit preview on the map or removes it. `view` is
+ *   { scene, caption, pending }; `reveal` is true only when the family asked for it (the map then comes into view)
  */
-export function createKitPlan({ getState, actor, applyState, openMerchant, reserve, onReview, listEditing }) {
-  const ui = { answer: null, asked: null, seq: 0, busy: false, scope: null, timer: null };
+export function createKitPlan({ getState, actor, applyState, openMerchant, reserve, onReview, listEditing, onPreview = () => {} }) {
+  // `preview` is the kit the family asked to see on the map: { anchor (its picks), origin (the button that opened it),
+  // shown (the picks of the card drawn now) }. `inflight` and `recomparing` say a fresh comparison is on its way.
+  const ui = { answer: null, asked: null, seq: 0, busy: false, scope: null, timer: null, preview: null, inflight: null, recomparing: false };
   const currency = () => getState()?.goal?.currency ?? 'USD';
   const money = (cents) => formatCents(cents, currency());
   const date = (iso) => {
@@ -71,6 +78,7 @@ export function createKitPlan({ getState, actor, applyState, openMerchant, reser
   async function send(call, success, { recompare = false } = {}) {
     if (ui.busy) return false;
     ui.busy = true;
+    ui.recomparing = recompare && Boolean(ui.answer); // a shown preview waits for the comparison that follows
     const key = scopeKey();
     let ok = false;
     try {
@@ -81,9 +89,10 @@ export function createKitPlan({ getState, actor, applyState, openMerchant, reser
       if (scopeKey() === key) say('error', error.message);
     } finally {
       ui.busy = false;
+      if (!(ok && recompare && ui.answer)) ui.recomparing = false;
       render();
     }
-    if (ok && recompare && ui.answer) compare();
+    if (ok && recompare && ui.answer) { ui.recomparing = false; compare(); }
     return ok;
   }
 
@@ -101,22 +110,26 @@ export function createKitPlan({ getState, actor, applyState, openMerchant, reser
   // Compare (or order by a preference). Read-only on the server. A late answer is shown only if the household, member,
   // kit, figures and one-off amount are still the ones it was asked for.
   async function compare({ preference = null, focus = false } = {}) {
-    clearTimeout(ui.timer);
+    clearTimeout(ui.timer); ui.timer = null;
     if (!adult()) return;
-    if (reserve().invalid) { say('error', 'Fix the one-off amount in Family choices first.'); return; }
+    if (reserve().invalid) { say('error', `Fix the one-off amount in Family choices first.${closedNote()}`); dropPreview(); return; }
     const mine = ++ui.seq, asked = ask(), key = askKey(asked);
+    ui.inflight = key;
     say('working', preference ? 'Asking Cohere to order the kits that fit…' : 'Comparing complete kits…');
     try {
       const res = await api.post(preference ? '/api/kit/prefer' : '/api/kit/compare', asActor({ ...asked, ...(preference ? { preference } : {}) }));
-      if (mine !== ui.seq) return;
-      if (askKey(ask()) !== key) { say('info', 'The kit or the family’s figures changed while comparing. Compare again with the latest.'); return; }
+      if (mine !== ui.seq) return; // a newer comparison owns the page now; this late answer is dropped
+      ui.inflight = null;
+      if (askKey(ask()) !== key) { say('info', `The kit or the family’s figures changed while comparing. Compare again with the latest.${closedNote()}`); dropPreview(); return; }
       ui.answer = res; ui.asked = key;
       say(res.preference?.status === 'failed' ? 'error' : '', res.preference?.status === 'failed' || res.preference?.status === 'not_needed' ? res.preference.message : '');
       render();
       if (focus) $('kit-plan-note').focus();
     } catch (error) {
       if (mine !== ui.seq) return;
-      say('error', error.message);
+      ui.inflight = null;
+      say('error', `${error.message}${closedNote()}`);
+      dropPreview(); // no current comparison to draw from
     }
   }
   /** The one-off amount in Family choices changed: recompute a shown comparison (no catalog or model call). */
@@ -124,8 +137,70 @@ export function createKitPlan({ getState, actor, applyState, openMerchant, reser
     if (!ui.answer || !adult()) { render(); return; }
     clearTimeout(ui.timer);
     ui.seq++; // an answer for the old amount is no longer wanted
+    ui.timer = setTimeout(() => { ui.timer = null; compare(); }, RECOMPARE_MS);
     render();
-    ui.timer = setTimeout(() => compare(), RECOMPARE_MS);
+  }
+
+  // ---- The preview on the map: one compared kit, drawn from the answer on this page. No request, nothing saved. ----
+  const PREVIEW_CLOSED = {
+    changed: 'The preview was closed because the kit or the family’s figures changed. Compare again, then preview the current result.',
+    invalid: 'The preview was closed. Fix the one-off amount in Family choices, then compare and preview again.',
+    unmatched: 'The previewed kit is not among the current results, so the preview was closed. Preview one of the kits shown now.',
+    none: 'There is no complete kit to preview now, so the preview was closed.',
+  };
+  const closedNote = () => (ui.preview ? ' The map preview was closed.' : '');
+  // A fresh comparison for the figures on the page is scheduled or on its way.
+  const waiting = () => ui.recomparing || ui.timer !== null || (ui.inflight !== null && ui.inflight === askKey(ask()));
+  function dropPreview(reason = null) {
+    if (!ui.preview) return;
+    ui.preview = null;
+    onPreview(null, { reveal: false });
+    if (reason) say('info', PREVIEW_CLOSED[reason] ?? PREVIEW_CLOSED.none);
+  }
+  /** The words beside the picture: what this kit is, its actual total and finish, and what was switched or kept. */
+  function previewCaption(match, a) {
+    const k = match.card, short = (title) => title.replace(/^Sample: /, '');
+    const role = {
+      chosen: 'Your chosen kit', 'chosen-late': 'Your chosen kit · does not fit', proposal: 'Proposal · smallest change',
+      closest: 'Does not fit · closest complete kit', kit: k.labels.map((l) => LABELS[l]).join(' · ') || 'A kit that fits',
+    }[match.role];
+    const switched = k.lines.filter((l) => l.switched).map((l) => `switched ${l.name}: ${short(l.switched.title)} → ${short(l.title)}`);
+    const keptNames = k.lines.filter((l) => l.kept).map((l) => l.name);
+    const changes = [...switched, keptNames.length ? `kept ${keptNames.join(', ')}` : null].filter(Boolean).join('; ');
+    const sample = catalogueOf(getState()).sample;
+    const about = [
+      match.role === 'proposal' ? `Your chosen kit (${money(match.from.totalCents)}) no longer fits${a.reserveCents ? ` after the one-off ${money(a.reserveCents)}` : ''}. This is the planner’s smallest change from it. Your chosen kit stays as it is unless you choose this one.` : null,
+      !k.fits ? `No complete kit fits ${money(a.ceiling.ceilingCents)} by ${date(a.ceiling.targetDate)}${a.reserveCents ? ` after the one-off ${money(a.reserveCents)}` : ''}, so it is drawn pale with red pennants.` : null,
+      sample ? 'The shapes illustrate the example’s invented listings. They are not real products.' : 'Each crate stands for a listing. No product is pictured: the catalog gives no shape, size or colour.',
+      'Tags mark the shop. A kept line is pegged down; a switched line stands on a gold tile. Previewing saves nothing and buys nothing.',
+    ].filter(Boolean).join(' ');
+    return {
+      fits: k.fits, role: match.role, title: `${role} · ${money(k.totalCents)}`, finish: finishText(k.finish),
+      items: k.lines.map((l) => `${l.bought} × ${l.name}`).join(' · '),
+      changes: changes ? `${changes.replace(/^./, (c) => c.toUpperCase())}.${match.role === 'proposal' ? ` Your chosen kit (${money(match.from.totalCents)}) is unchanged.` : ''}` : '',
+      about,
+    };
+  }
+  /** Keep a shown preview true to the page: follow the kit the family asked to see, wait for a comparison on its way, or close. */
+  function syncPreview({ reveal = false } = {}) {
+    if (!ui.preview) return;
+    if (!adult() || !ui.answer) { dropPreview(); return; }
+    if (reserve().invalid) { dropPreview('invalid'); return; }
+    if (stale()) {
+      if (waiting()) onPreview({ pending: true }, { reveal: false }); // the picture stays, marked as updating
+      else dropPreview('changed');
+      return;
+    }
+    const match = matchPreview(ui.preview.anchor, ui.answer);
+    if (!match.card) { dropPreview(match.reason === 'unmatched' ? 'unmatched' : 'none'); return; }
+    ui.preview.shown = picksOf(match.card);
+    onPreview({ pending: false, scene: previewScene(match.card, { sample: catalogueOf(getState()).sample }), caption: previewCaption(match, ui.answer) }, { reveal });
+  }
+  function openPreview(card) {
+    if (!adult() || !ui.answer || stale()) return;
+    ui.preview = { anchor: picksOf(card), origin: `preview:${card.key}`, shown: null };
+    syncPreview({ reveal: true });
+    render();
   }
 
   async function review() {
@@ -173,7 +248,10 @@ export function createKitPlan({ getState, actor, applyState, openMerchant, reser
       switched.length ? h('ul', { class: 'kit-plan-kit-changes', 'aria-label': 'What changes from the chosen kit' }, ...switched) : null,
       h('p', { class: 'fine' }, `${facts.join(' · ').replace(/^./, (c) => c.toUpperCase())}.`), excerpt,
       mayChoose ? h('div', { class: 'actions' }, h('button', { type: 'button', disabled: isStale || ui.busy || isChosen, 'data-focus-key': `choose:${k.key}`, onclick: () => choose(k) },
-        isChosen ? 'The chosen kit' : 'Choose this kit')) : null);
+        isChosen ? 'The chosen kit' : 'Choose this kit'),
+      // A picture of this plan beside the campsite. It only draws: no request, nothing saved, nothing chosen.
+      h('button', { type: 'button', class: 'link-button kit-plan-preview', disabled: isStale, 'aria-pressed': String(ui.preview?.shown === picksOf(k)), 'data-focus-key': `preview:${k.key}`,
+        onclick: () => openPreview(k) }, ui.preview?.shown === picksOf(k) ? 'Shown on map' : 'Preview on map')) : null);
   }
 
   function resultNote(a) {
@@ -289,15 +367,16 @@ export function createKitPlan({ getState, actor, applyState, openMerchant, reser
   function render() {
     const s = getState();
     if (!s?.kitPlan || !s.kit) return;
-    if (ui.scope !== scopeKey()) { // another person, goal or household: a comparison and its message belonged to the old one
+    if (ui.scope !== scopeKey()) { // another person, goal or household: a comparison, its message and its preview belonged to the old one
       if (ui.scope !== null) say('', '');
-      ui.scope = scopeKey(); ui.answer = null; ui.asked = null; ui.seq++; clearTimeout(ui.timer);
+      ui.scope = scopeKey(); ui.answer = null; ui.asked = null; ui.seq++; clearTimeout(ui.timer); ui.timer = null; ui.inflight = null; ui.recomparing = false;
+      dropPreview();
     }
     const plan = s.kitPlan, isAdult = adult(), catalogue = catalogueOf(s), merchantOn = catalogue.open;
     const needed = plan.lines.filter((l) => l.remaining > 0);
     const section = $('kit-plan');
     section.hidden = !s.kit.items.length || listEditing();
-    if (section.hidden) return;
+    if (section.hidden) { dropPreview(); return; }
     $('kit-plan-intro').textContent = !needed.length ? 'Everything on this list is already at home: nothing remains to buy on it.'
       : !isAdult ? 'Adults add listings for each item still to get and compare complete kits. You can read them here.'
         : catalogue.sample ? 'This example’s listings are invented: two sample shops, with invented prices, weights and stock. Compare whole kits against the family’s offers and date, or add and remove listings from Market Town’s example catalogue. Nothing is bought.'
@@ -315,6 +394,7 @@ export function createKitPlan({ getState, actor, applyState, openMerchant, reser
     $('kit-plan-ceiling').textContent = preview ? `${ceilingText(preview, { money, date })}${reserve().cents ? ' The one-off amount is the one being tried in Family choices.' : ''}` : '';
     $('kit-plan-compare-actions').hidden = !(isAdult && needed.length);
     $('kit-plan-compare').disabled = ui.busy || reserve().invalid;
+    syncPreview(); // before the cards are drawn, so each card's button says whether it is the one on the map
     renderResult(s, isAdult);
     renderChosen(s, isAdult);
   }
@@ -325,5 +405,11 @@ export function createKitPlan({ getState, actor, applyState, openMerchant, reser
   // The one-off amount lives in Family choices; the comparison follows it (its own handlers run first).
   $('family-trial-input').addEventListener('input', reserveChanged);
   $('family-trial-clear').addEventListener('click', reserveChanged);
-  return { render };
+  return {
+    render,
+    /** Remove the preview from the map (the plaque's Close, Escape, or the session ending). Saves nothing. */
+    closePreview() { dropPreview(); render(); },
+    /** The button that opened the preview, by its focus key, so focus can return to it. */
+    previewOrigin: () => ui.preview?.origin ?? null,
+  };
 }
