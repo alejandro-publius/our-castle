@@ -5,9 +5,35 @@
 Branch `claude/family-fit-search`, from the reviewed PR #55 head `9ba5e38`. That head is still unmerged, stacked on PR #54 → #53 → #52 → #51 → #50 → #49. The commits are:
 - `09ee37e`: the feature-gap demonstration;
 - `1ecde49`: the implementation and its tests;
-- the commit after it: these screenshots and this note.
+- `245ee2c`: these screenshots and this note;
+- `ea9463a`: review correction 001 (below);
+- the commit after it: that correction's notes.
 
 The owner asked for this product iteration. It is a hypothesis about better buying decisions, not evidence of demand. No person has used it.
+
+**Review correction 001** (Codex review of `245ee2c`; fix `ea9463a`). Both findings were reproduced before any change.
+
+- **F1 (P1).** Two simultaneous family-fit searches with the same public request (words, kind, must-haves, ceiling) shared one whole judged result. Codex observed caller B receive caller A's Dec 20 date, one-off $90.00 and draft reference, from one fake catalog call. Families on one server could therefore receive each other's private planning fields. A fit item's price check had the same pattern.
+- **F1 fix.** Identical searches now share only the public catalog work: the provider call, reading its answer and recording observations. Each caller is then judged against its own need and ceiling, and keeps its own context in drafts of its own. Price checks work the same way. There is still one catalog call, and the limits, version ordering and access checks are unchanged.
+- **F1 regressions**, each failing on `245ee2c` first:
+  - **adapter:** simultaneous fit searches, and simultaneous price checks of one fit item. On `245ee2c` both gave caller B the context caller A sent.
+  - **HTTP:** two families on one server, both with a $150.00 ceiling, searching at once through one shared catalog call. On `245ee2c` Family B's results carried Family A's Dec 20 and $90.00. Now:
+    - each family gets its own date, one-off amount and finish dates (Dec 13 and Dec 20; Dec 27 and Jan 3);
+    - each saved choice stores its own search;
+    - no reference is shared, and Family B using a reference shown only to Family A gets 410;
+    - searching writes nothing, and apart from the two explicit family choices no money, goal, item, plan, deed or offer record changes.
+- **F2 (source concern).** Reproduced in the browser on desktop with actual input:
+  - with two results shown, typing a lower price limit left them on screen;
+  - with the catalog held, unticking "6 person" before its answer arrived still showed the two results judged for "4 or 6 person".
+- **F2 fix.** In family-fit mode, changing the words, the price limit, the kind of item or a must-have clears shown results and drops a search in flight. The page then says "The search changed. Choose “Find options that fit” to see options for it." Nothing is sent until the next explicit search, and focus stays in the edited field. Outside family-fit mode the handler returns at once, so ordinary search is unchanged. The browser case covers the price limit (including focus and that no request is sent) and an accepted value; the other edits use the same handler.
+- **Checks on `ea9463a`:**
+  - the six affected unit files (`channel3-fit`, `family-fit`, `channel3-merchant`, `merchant-freshness`, `family-choices`, `family-fit-core`) passed 57/57 on Node 22.16.0 and 26.0.0;
+  - the family-fit browser journey, now with both F2 cases, passed 2/2 on desktop and the 390 px phone;
+  - `npm run check` passed.
+
+  Other suites were green at review and were not rerun locally.
+- **Screenshots.** That run re-captured all five, each byte-identical (full SHA-256) to the committed file, so they keep their `1ecde49` provenance and are not relabelled. The new message appears only after the captured steps; it is asserted by the browser case, not captured.
+- **Hosted.** One Release checks run on the final head; its result is in the PR.
 
 **The gap, shown on `9ba5e38` before any change** (invented fake catalog data, documented as a missing feature, not a broken promise):
 - Ordinary search took only words and a budget the family had to work out by hand.

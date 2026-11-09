@@ -189,6 +189,7 @@ The example request below is a test fixture, not a live category:
 - **Look-ups:** each is an explicit action within the existing limit of six catalog operations a minute, with the 8-second timeout and redirect refusal.
 - **Every item is judged here**, because unknown slugs are silently dropped by Channel3 and a provider may ignore filters. Kind of item, each must-have (match, mismatch, missing or unclear), a usable USD price within the ceiling and in-stock all count. Missing or unclear facts make an item unknown, never suitable. A title word is never evidence.
 - **Display:** at most three suitable items, lowest price first. Every other item is counted with one reason.
+- **Identical searches share only public work.** Searches with the same words, kind, must-haves and ceiling at the same moment share one catalog call and its reading. Each caller is then judged against its own need and ceiling, and keeps its own planning context in drafts of its own. One family's date, one-off amount or references never reach another family's search. Price checks of one item work the same way.
 - **No loosening:** no filter is relaxed, retried or replaced to fill the list. Agentic mode, browse, pagination and conversations are not used.
 - **Catalog facts stay on the server.** The page receives only the judgement.
 
