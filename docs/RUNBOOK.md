@@ -23,7 +23,7 @@ With no `.env` file the app runs in **example mode**: payments are simulated by 
 
 ### Merchant and Treasury settings
 
-Optional `.env` settings: `CHANNEL3_API_KEY` enables search; `KIT_OPENAI_API_KEY` (its own key, never `OPENAI_API_KEY`) lets an adult read a photo of a kit list, which works fully typed without it; `AG_STUDIO_LICENSE_KEY` applies a Studio licence. The owner's Mac already has its local settings; none are bundled. The supplied licence is evaluation-only. See [the connected handoff](CONNECTED-HANDOFF.md). APIMatic review adds no runtime credential or screen.
+Optional `.env` settings: `CHANNEL3_API_KEY` enables search; `KIT_OPENAI_API_KEY` (its own key, never `OPENAI_API_KEY`) lets an adult read a photo of a kit list, which works fully typed without it; `KIT_COHERE_API_KEY` (its own key, never `CO_API_KEY`) lets an adult order the complete kits that fit by a preference, and every comparison works without it; `AG_STUDIO_LICENSE_KEY` applies a Studio licence. The owner's Mac already has its local settings; none are bundled. The supplied licence is evaluation-only. See [the connected handoff](CONNECTED-HANDOFF.md). APIMatic review adds no runtime credential or screen.
 
 ### Real PayPal sandbox and AI
 
@@ -99,6 +99,9 @@ PAYMENT_MODEL_SEED=2 PAYMENT_MODEL_ADAPTER=rest PAYMENT_MODEL_REFUNDS=credited n
                       # adapter rest or sdk, refund scope credited or any (docs/VALIDATION.md)
 npm run test:e2e      # Playwright, desktop 1440px and phone 390px, example mode
 npm run check         # asset hashes, 90-color palette, renderer wiring, JS syntax
+npm run solver:build  # the Rust complete-kit solver (solver/, Rust 1.99.1 via rustup, locked crates); without it the
+                      # server uses the built-in reference solver. OUR_CASTLE_KIT_SOLVER=native requires the build.
+npm run solver:test   # the solver's own Rust tests; KIT_SOLVER_REQUIRED=1 npm run test:unit compares it with the reference
 npm run check:postman-guard  # proves both Postman guards with Newman 6.2.1, logging mocks and a throwaway example server
                       # (`npx --yes newman@6.2.1 --version` once, or set NEWMAN_BIN; never uses port 3010, PayPal or AI)
 npm run set-ai-key    # store an Anthropic Console API key in .env, hidden as you paste (run in your own terminal)
@@ -120,10 +123,10 @@ Rehearse it on a disposable household, never on someone's records:
 OUR_CASTLE_ENV_FILE=none OUR_CASTLE_DATA_DIR=/tmp/castle-rehearsal PAYPAL_CLIENT_ID= PAYPAL_CLIENT_SECRET= AI_API_KEY= PORT=3134 npm start
 # Terminal 2, while it runs:
 npm run snapshot -- /tmp/castle-rehearsal/our-castle-example.sqlite /tmp/castle-snapshot-1.sqlite
-# Output of one such rehearsal on a fresh schema-11 database (24 tables), after one simulated $15 contribution and
+# Output of one such rehearsal on a fresh schema-12 database (27 tables), after one simulated $15 contribution and
 # one saved kit list. The page count, rows, SQLite and Node versions and the hash vary with the household and runtime:
 # Snapshot written: …/castle-snapshot-1.sqlite
-#   schema 11 · integrity ok · foreign keys ok · 24 tables · 67 pages
+#   schema 12 · integrity ok · foreign keys ok · 27 tables · 75 pages
 #   rows: households 1, ledger_entries 2, payment_orders 1, payment_captures 1
 #   SQLite 3.53.4, Node v26.0.0
 #   sha256 … (identifies this file; it does not replace the checks above)

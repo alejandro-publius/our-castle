@@ -1,0 +1,104 @@
+{
+  "capturedAt": "2026-11-09T14:37:21Z",
+  "sourceCommit": "dfcfa7a2c44bf4582844b6242ed422f2c7cc5db1",
+  "environment": "Playwright 1.64.1 / Chromium 156.0.8078.4 headless, macOS arm64 with SwiftShader; phone is the 390 x 844 touch-emulated project at device scale 2",
+  "solver": {
+    "engine": "native (compiled Rust)",
+    "rustc": "rustc 1.99.1 (58cf8f9c3 2026-10-13)",
+    "binary": "solver/target/release/kit-solver",
+    "binarySha256": "79feaabe78ac9e93413304029663de16534d21816a9228cb686985c1a6a6e4e1",
+    "cargoLockSha256": "111ed384a18b543dfcaa32b00fb8821a7b838241f54f8c6b6567185ae206f16a"
+  },
+  "fixture": "Disposable in-memory family-mode household. Rowan (owner, adult), Ash (adult) and Wren (child) each sign in with their own virtual passkey. The server clock is pinned to Nov 8, 2026. Figures from kit-planning-acceptance-20261109.json: $60 recorded, $30 a week, Rowan $20 + Ash $10 a week, goal Camping gear by Dec 27; kit list 1 tent, 2 sleeping bags, 2 torches (both at home), 1 stove. Six invented test-fixture listings from two invented shops (fixture-a.test, fixture-b.test), with listed weights in the documented offer dimensions shape. None of this is a real product, price, shop or family.",
+  "spec": "test/e2e/kit-planner.spec.mjs — a family compares complete kits within its own figures, keeps what it agreed, sees the smallest change and saves the kit as its goal",
+  "steps": [
+    "Rowan adds two listings for each of the tent, sleeping bags and stove through Market Town, entering 1 item per listing (capture: phone listings)",
+    "With a $90 one-off tried in Family choices, Compare complete kits shows $150 (Dec 20) and $180 (Dec 27); Order with Cohere labels the $180 kit (capture: desktop kits compared)",
+    "Rowan chooses the $180 kit and keeps its stove; Ash and Wren see it live (capture: phone child chosen)",
+    "A $120 one-off recomputes without a catalog or model call: one kit fits, the smallest change switching only the tent (capture: desktop smallest change)",
+    "Rowan chooses it, reviews it into the Plan form, and saves the goal with its family schedule proposed"
+  ],
+  "checks": {
+    "catalogSearches": 3,
+    "cohereCalls": 1,
+    "catalogCallsWhileComparing": 0,
+    "moneyOfferAndChoiceRecordsUnchanged": true
+  },
+  "sources": {
+    "index.html": "af8993ffc33a8486e8645162066be19ab539fff27d857ce6f2bbd23957f6710f",
+    "app.css": "31bbf58931ebcc2c9e0e17a7832803922a590d14d85dd2759071264a1d41697e",
+    "src/app/main.js": "57a409cd33b2f28e766ad68b5505d2f9e78e59b9d042f513555d39e992a263dc",
+    "src/app/kit-plan.js": "1446204860342be950ccd8d0b3dbc2eb68f0543d65fd83f5dd701418024e5f85",
+    "src/app/kit-list.js": "e6ec29e51ffd1dee3058396d0806857c5329069008647ca7acd596b27cef715f",
+    "src/app/merchant.js": "8fd75f2719a245f49159f17c4f5b7dec26181253923c1dc8c501dd4273f7ff49",
+    "src/app/api.js": "569e1f3914fff4434a46ca647467e9d2b054d4849dc1a186d623b90825f88ba7",
+    "src/core/kit-plan.js": "cbf3fa7db9770fecc6c463608887d359169d86fc2a2cc13db532ac3b01b1a08a",
+    "src/core/family-choices.js": "9640a8d3f85f950f3a1480c0d9e79b4572262bf1a1132c8058f990e13946b064",
+    "src/core/family-fit.js": "11d09409b301ca010a308848b61ae584d2007d204e31acb14c4d5c857a8989d6",
+    "server/app.mjs": "82da1906c967ff9e022333b559b34a3fcb6b61e2685161a9c424d54851207503",
+    "server/kit/planner.mjs": "fa83003237bc1581cc7265c4c84b9ef2916fdbbef15ee45cb2821a8a8146dc29",
+    "server/kit/solver.mjs": "94358fb637547f411c0be86f14c17d4dd65dda772f04d1befc46b0183abe5b61",
+    "server/kit/rerank.mjs": "11fd2bf71644c3b9cfb2d1f2cf3ad69d93810b5b5fb0904038451da756f64fca",
+    "server/merchant/channel3.mjs": "d7827d12b18a7c41fccedf4039f793da5054f564953a4bfb88b4363f97a1adad",
+    "server/family-choices.mjs": "f5812ce0c28428bef70b292412595ec55d6efc85fc162effb8a12c54d9881b15",
+    "server/db.mjs": "2acadede0bad7e3a0e7ced0ebe1591cadecbd768dbc708f74bdf8562ff4a2558",
+    "server/access/policy.mjs": "686716d7a3ddf7e45c916b1f256a178f2110e1df3a60cd65745daca6c7a4039d",
+    "server/planner/index.mjs": "78cb9a02d862a6730ba8fc3ff137e5f5de5df4178fd1c80f66576aed05c239a4",
+    "server/planner/family.mjs": "fe74a07f2624838fb0b1ab93dbb84cd9597f684e07370dbf22d09e6649604110",
+    "solver/src/lib.rs": "fa7fff96dde25f7cbc76910924de0c127eb2f6a62e287ec7a25527d5811e27c6",
+    "solver/src/main.rs": "020956e3553401268f10bd178c7019d4837a56f5885ff297a6fecda48e97da95",
+    "solver/Cargo.toml": "05634e24de3df3f465970ed212be23c5605aaf8b1ef0d1fb6563ccefd01ba5f0",
+    "solver/Cargo.lock": "111ed384a18b543dfcaa32b00fb8821a7b838241f54f8c6b6567185ae206f16a",
+    "solver/rust-toolchain.toml": "284106289bf75e0a2082a5a829684c1205eabd9c90883a39d59bf74d519641b5",
+    "test/e2e/kit-planner.spec.mjs": "2d760465bee22c05c53ae33368daaa5fe68a582696fd02e8eca2c655de062fd5",
+    "test/e2e/support/family.mjs": "c25746499ded59960f272ae34a85284b5e93bbb0e2a68565e72f63dd07018007",
+    "test/helpers/kit-catalog.mjs": "f61735a551a6288cb905ce5059f156d86a443dfceb04d5ebf5e36914bd473c2f",
+    "test/helpers/fake-channel3.mjs": "ab8bae0990766a1e1e9dc030ea70505bba8d7d1e164bd26735021aac38deb099"
+  },
+  "images": [
+    {
+      "path": "docs/screenshots/kit-planner-desktop-kits-compared.png",
+      "sha256": "e8f4bf9db42d97cd9033a38e61136ad1be8689d044bd002678791c43d922227a",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "region": "#kit-plan-result (Plan journal, Kit list)",
+      "story": "Rowan compared complete kits with the $90 one-off tried in Family choices, then ordered the kits that fit by \"Lighter to carry\" with the fake Cohere transport. Two different kits fit by Dec 27: $150 (lowest listed total, fewest shops, finishes Dec 20) and $180 (lower listed weight, 4.0 kg, finishes Dec 27, also the invented preference match, quoting \"Tent B, four-person ultralight\").",
+      "mode": "fake Channel3 catalog of six invented listings; fake Cohere order written into the test; invented family; family mode, in-memory data; compiled Rust solver; no real provider"
+    },
+    {
+      "path": "docs/screenshots/kit-planner-desktop-smallest-change.png",
+      "sha256": "d20c65343f0b7a279f4dd22e8993bdd75f4292055ec4248ddae16bafb1df27fe",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "region": "#kit-plan-result (Plan journal, Kit list)",
+      "story": "After choosing the $180 kit and keeping its stove, Rowan tried a $120 one-off. One kit fits: $150, the smallest change from the chosen kit (the tent switched from Tent B to Tent A, $110.00 to $80.00; the stove kept). The chosen kit itself would finish Jan 3, $30 short by Dec 27 (below this capture's fold in the chosen-kit note, asserted by the test).",
+      "mode": "fake Channel3 catalog of six invented listings; fake Cohere order written into the test; invented family; family mode, in-memory data; compiled Rust solver; no real provider"
+    },
+    {
+      "path": "docs/screenshots/kit-planner-phone-listings.png",
+      "sha256": "25eb6cdc2920aed4cbb3a784468bf1eafec2a66411a0401e198fc8fa3ebf3622",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "region": "#kit-plan (Plan journal, Kit list)",
+      "story": "On a 390px phone: the listings Rowan added for each item still to get, each with Rowan's own count per listing and what the line needs (the torches are at home, so they need none).",
+      "mode": "fake Channel3 catalog of six invented listings; fake Cohere order written into the test; invented family; family mode, in-memory data; compiled Rust solver; no real provider"
+    },
+    {
+      "path": "docs/screenshots/kit-planner-phone-child-chosen.png",
+      "sha256": "98fefb953a3aab98b0c5056e3ea74ef22eaf07a9d6d83bf0d97d9c86d1887953",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "region": "#kit-plan-chosen (Plan journal, Kit list)",
+      "story": "Wren, a child, reads the family's chosen kit by live update on a 390px phone: no buttons, the kept stove marked, and its finish at the family's saved figures (Wren tries no one-off).",
+      "mode": "fake Channel3 catalog of six invented listings; fake Cohere order written into the test; invented family; family mode, in-memory data; compiled Rust solver; no real provider"
+    }
+  ]
+}

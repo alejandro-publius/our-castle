@@ -51,6 +51,15 @@ This source-branch feature is awaiting integration into the preserved Mac demos.
 
 **Plan → Kit list** keeps a short checklist of things to bring for the goal: each item, how many are needed and how many the family already has. An adult types or pastes it, or reads a photo of a written list with OpenAI (optional, with its own server key). Either way the result is a draft the adult checks before **Save this list**. It moves no money and changes no goal or plan. [How it works, privacy and limits](docs/KIT-LIST.md).
 
+**Complete kits** then compares whole kits for that list against the family's own offers, one-off amount and date.
+- An adult adds up to three Market Town listings for each item still to get, with their own count of items per listing.
+- Up to three different kits that fit are shown: lowest listed total, lower listed weight, fewest shops. When none fits, the closest one is shown with its shortfall.
+- Kept lines stay fixed, and the smallest change comes first when a larger one-off makes the chosen kit late.
+- A reviewed kit can become the goal, with its family schedule proposed in the same save.
+- The search over that small pool runs in a compact Rust solver (`solver/`, `npm run solver:build`) whose every answer the server checks.
+- An optional Cohere Rerank key, of its own, orders the kits that fit by a preference.
+[How it works and its limits](docs/KIT-PLANNER.md).
+
 ![A family compares three purchase options beside the woodland](docs/screenshots/family-choices-desktop-three.png)
 
 ## Three sponsor integrations

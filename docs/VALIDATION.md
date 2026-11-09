@@ -1,5 +1,79 @@
 # Validation
 
+## Complete kits for the kit list — November 9, 2026
+
+Branch `claude/kit-planner`, from the reviewed PR #57 head `11fc98d` (unmerged, stacked on #56 → … → #49). Commits:
+- `dfcfa7a`: the complete-kit planner, the Rust solver, the optional Cohere adapter, migration 12 and their tests;
+- the commit after it: these notes, the screenshots and their provenance.
+
+The owner asked for this product feature (task 019), after 018's reviewed kit list. No person has used it. [How it works and its limits](KIT-PLANNER.md).
+
+**What was built:**
+- **Listings per item:** for each item still to get, an adult adds up to three Market Town listings, with their own count of items per listing (`kit_candidates`, migration 12). Items already at home are skipped.
+- **Comparison:** `POST /api/kit/compare` is read-only and makes no catalog or model call. It builds one bounded request from the server's records and runs the Rust solver (`solver/`) or, without a build, the reference. It checks every answer and recomputes each shown kit with the family's own arithmetic. It shows up to three distinct kits that fit, or what is missing or short.
+- **Chosen kit, kept lines and the smallest change:** `kit_selections` holds the chosen kit; kept lines stay fixed, and the repair comes first when the chosen kit no longer fits.
+- **Review and adoption:** `/api/kit/review` is read-only. `/api/kit/adopt` saves the goal, the kit's provenance (`goal_kits`) and the family schedule proposal in one transaction, after a fresh-catalog check of every chosen listing.
+- **Preference ordering (optional):** Cohere Rerank (`server/kit/rerank.mjs`), with its own key, a fixed preference sentence and public titles only.
+- **Listed weight** is read from Channel3's documented offer `dimensions.weight`, and is part of the facts 017's read-version guard protects.
+
+**Toolchain (task-local, not installed on the Mac):**
+- rustup-init 1.29.3 for aarch64-apple-darwin, from `static.rust-lang.org`, its SHA-256 matching the published `.sha256` (`63752a19…20f9f`).
+- Installed with `--no-modify-path --profile minimal` into the worktree's ignored `test-results/toolchain/`, with no sudo and no profile or PATH change. rustc and cargo 1.99.1 (2026-10-13) are pinned in `solver/rust-toolchain.toml`.
+- One crate dependency, `serde_json` 1.0.154 (it compiles `serde_core`, `itoa`, `memchr` and `zmij`), with every build and test `--locked`.
+
+**Checks on `dfcfa7a`** (fake catalog and Cohere transports, invented data, disposable databases, `.env` loading off, non-loopback transport denied):
+- **Rust:** a clean `cargo test --locked` passed 9/9, and `cargo build --release --locked` succeeded.
+  - The tests cover the eight literal combinations and both one-off amounts, the retailer-set trap and the $160 → $140 repair.
+  - They also cover whole listings and spares, unknown weights, the largest valid request (6,561 kits, no overflow) and every refused request.
+- **Unit:** 19 files passed **191/191 on Node 22.16.0 and 26.0.0**, with `KIT_SOLVER_REQUIRED=1`, so the compiled solver had to be present.
+  - **New (24 tests).**
+    - `kit-solver`: the reference against the literal examples. The compiled Rust solver equals the reference on 403 cases (the three acceptance ceilings and 400 seeded random kits, over 10,000 complete kits). It also covers tampered answers refused whole and the native boundary: no shell, an empty environment, a fixed folder, timeout, crash, garbage, flood, a refusal, a wrong total, concurrency, cancellation and an oversized kit.
+    - `kit-planner` (HTTP): listings with the adult's count, owned lines skipped, and one search per line.
+      - The literal comparison: $150 by Dec 20 and $180 by Dec 27; at $120 only $150 fits, and the $180 kit finishes Jan 3.
+      - The kept-tent repair, plus incomplete, nothing-fits and nothing-to-buy lists.
+      - Fresh-catalog review, one-transaction adoption, and staleness after a price change.
+      - Child, foreign-household and foreign-id refusals; late and failed solves; and hard needs from family fit.
+      - Cohere ordering: only public text sent, failure kept, six a minute. Migration 11 → 12.
+    - `kit-rerank`: the request, reply validation (including code-point spans), errors and config isolation.
+  - **Affected (167 tests).** `kit-list`, `kit-list-page`, `family-access`, `family-choices`, `family-fit`, `family-fit-core`, `channel3-merchant`, `channel3-fit`, `merchant-freshness`, `migration-integration`, `household-snapshot`, `server`, `family-schedule`, `family-live`, `planning-revision` and `goal-projects`.
+    - Five migration tests pinned step 11 and were updated for step 12.
+    - The Cohere key was added to the check that no secret reaches the browser.
+- **Browser:**
+  - **The new journey** (`test/e2e/kit-planner.spec.mjs`, `@kit-planner`) passed **2/2** on desktop 1440×1000 and the 390×844 phone, on exactly `dfcfa7a` with the compiled solver.
+    - Rowan adds two listings for each of three items, with three catalog searches and none for the torches at home.
+    - At a $90 one-off, two kits are shown; an explicit Cohere ordering (one fake call) labels the $180 kit.
+    - Rowan chooses that kit and keeps the stove; Ash and Wren see it live, Wren with no buttons.
+    - A $120 one-off recomputes with no catalog or model call: the chosen kit would finish Jan 3, and the repair switches only the tent.
+    - Rowan chooses the repair, reviews it, and saves the goal with its family schedule proposed.
+    - No payment, ledger, offer or family-choice record changed, and no page error or outside request occurred.
+  - **The existing specs this touches** (kit-list, family-choices, family-fit, family-schedule, Market Town, area cards and the connected journey) passed **50, with 2 designed skips and 0 failures**, on desktop and phone, on the same app sources.
+- **Guard:** `npm run check` passed.
+- **Snapshot rehearsal:** a fresh throwaway example server ran on port 3190, with no keys and `.env` off; it reported the Rust solver at start.
+  - Steps: one simulated $15 contribution and one typed kit list.
+  - `npm run snapshot` gave schema 12 · integrity ok · foreign keys ok · 27 tables · 75 pages. The server was then stopped.
+- **During development, each fixed before the final runs:**
+  - the shared chosen-kit lines came back in primary-key order rather than the list's order (caught by the repair test);
+  - the native bridge waited for a killed program's inherited output pipe; it now settles the moment it stops a program (caught by a 5.9-second boundary test);
+  - the five migration tests failed as expected at step 12;
+  - the browser test expected "Jan 3" where the page rightly shows "Jan 3, 2027".
+
+**Not run locally:** the full unit suite and the other browser specs (green at the reviewed base). The hosted Release checks run the whole selection, the Rust build and tests, and the new journey in its own job on the final head; the result is in the PR.
+
+**Screenshots** (invented listings, fake catalog and Cohere order; full provenance in `docs/screenshots/kit-planner-sources.json`). They were captured by that final run on exactly `dfcfa7a`, with every one of the 29 recorded sources byte-identical to it, and the compiled solver's hash is recorded:
+- `kit-planner-desktop-kits-compared.png` (`e8f4bf9db42d`): two kits that fit after the $90 one-off, the $180 one also the preference match;
+- `kit-planner-desktop-smallest-change.png` (`d20c65343f0b`): after the $120 one-off, the repair that switches only the tent, with the kept stove;
+- `kit-planner-phone-listings.png` (`25eb6cdc2920`): the listings for each item, with the adult's count per listing;
+- `kit-planner-phone-child-chosen.png` (`98fefb953a3a`): the child's read-only chosen kit.
+
+**Limits:**
+- **Pool, not market:** exact only within the listings an adult added (at most three per item). Prices, stock and weights are as the catalog last reported them.
+- **Counts per listing** are the adult's reading of the listing; the catalog contract has no pack count.
+- **Cohere:** every reply here was invented by a fake transport. No ranking quality or preference fit was measured, and no live Channel3 or Cohere call was made.
+- **Speed:** no speed claim. The small timing figures in the raw logs are not a comparison.
+- **Not covered:** human, physical-device, accessibility-audit or performance evidence.
+
+**Evidence:** kept local and ignored, in `test-results/kit-planner-20261109/`: toolchain, cargo, unit and browser logs with commands, raw captures with `SHA256SUMS.txt`, and the schema-12 snapshot rehearsal.
+
 ## Kit list review correction 002 — November 9, 2026
 
 Codex's review of `4642e94` found one remaining input-preservation error, F3. Correction 001 had recorded it as an unchanged limit; the root reviewer then authorized fixing it. The fix is `e6b1943`; these notes are the commit after it.
