@@ -2,7 +2,7 @@
 
 A family compares up to three items against the weekly amounts its adults choose to offer. Each member can express one preference. Trying an unexpected expense shows the resulting dates and which lower-priced choices still fit the goal's date. A chosen item and expense can then become a dated weekly schedule. The adults review it, and only "Use this plan" puts it in use.
 
-This feature is in the source branch awaiting integration. The preserved owner and rehearsal demos have not been activated with it.
+This feature is integrated into `main` and the saved `b21b2d8` Mac runtimes. The separate [family-trip example](FAMILY-TRIP-EXAMPLE.md) supplies an invented family and catalogue without provider accounts. [Release readiness](RELEASE-READINESS.md) distinguishes the current source from the saved apps and historical live evidence.
 
 ## Use it
 

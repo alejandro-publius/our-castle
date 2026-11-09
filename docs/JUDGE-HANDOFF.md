@@ -11,10 +11,12 @@ This source also includes:
 
 [Release status](RELEASE-READINESS.md) records actual runtime evidence and remaining recording/submission gaps. This is not a submitted entry.
 
-It keeps the reviewed scene lifecycle and Treasury stalled-asset recovery fixes, and [credential-free CI](VALIDATION.md#release-checks-workflow--november-7-2026). On this source (`3aae283`), [run 42659078905](https://github.com/alejandro-publius/our-castle/actions/runs/42659078905) passed:
-- 557 unit tests with one existing skip on each of Node 22.16.0, 24 and 26, with the Rust solver built and tested;
-- the complete-kit journey (2 passed);
-- 45 desktop/phone browser checks, with 3 designed skips.
+The reviewed scene lifecycle, Treasury stalled-asset recovery and [credential-free CI](VALIDATION.md#release-checks-workflow--november-7-2026) remain in the source. The family-trip integration [PR #62](https://github.com/alejandro-publius/our-castle/pull/62) passed all six jobs in [run 42714353423](https://github.com/alejandro-publius/our-castle/actions/runs/42714353423):
+- 568 unit passes and one existing skip on each of Node 22.16.0, 24 and 26, plus nine Rust tests per build;
+- 25 desktop and 22 phone release-browser passes, with three designed phone skips;
+- four native-solver browser passes.
+
+The checked merge tree equals main `3dd2a9f`. These counts describe that integration, not an untested later head. [Validation](VALIDATION.md) records subsequent changes separately.
 
 These source suites use fake providers. Both saved Mac apps now run the integrated source `b21b2d8` at schema 12; the later local upgrade and one live synthetic OpenAI photo check are recorded separately in [validation](VALIDATION.md#saved-mac-runtime-activation--november-9-2026).
 
