@@ -391,7 +391,7 @@ test('two 390 px phones: a change arrives live and the Reconnect control fits wi
     expect(box.x + box.width).toBeLessThanOrEqual(390);
     expect(await ash.page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     // The top bar's own controls stay on screen beside it.
-    for (const sel of ['#signed-in', '#journal-toggle']) {
+    for (const sel of ['#signed-in', '#journal-toggle', '#sound-toggle']) {
       const b = await ash.page.locator(sel).boundingBox();
       expect(b.x + b.width, sel).toBeLessThanOrEqual(390);
     }

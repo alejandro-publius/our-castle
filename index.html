@@ -42,6 +42,8 @@
         <!-- Family access: appears only when live updates from the family have been away for a while. -->
         <p class="live-status" id="live-status" hidden><span class="live-dot" aria-hidden="true"></span><span class="live-text">Updates paused</span><button type="button" class="link-button" id="live-retry" aria-label="Updates paused. Reconnect">Reconnect</button></p>
         <button type="button" id="journal-toggle" class="journal-toggle" aria-label="Journal" aria-expanded="true" aria-controls="journey"><svg viewBox="0 0 20 20" width="19" height="19" fill="none" aria-hidden="true"><path d="M10 4c-2-2-5-2-8-1v13c3-1 6-1 8 1 2-2 5-2 8-1V3c-3-1-6-1-8 1Zm0 0v13" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg><span>Journal</span></button>
+        <button type="button" id="sound-toggle" class="sound-toggle" aria-pressed="false" aria-label="Sound off. Turn music and sound on" title="Turn music and sound on"><svg viewBox="0 0 20 20" width="19" height="19" fill="none" aria-hidden="true"><path d="M9 4 5 7H2v6h3l4 3V4Z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><path class="sound-waves" d="M12 7a4 4 0 0 1 0 6m3-9a8 8 0 0 1 0 12" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><path class="sound-mute" d="m13 8 4 4m0-4-4 4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg><span id="sound-label">Sound off</span></button>
+        <span id="sound-status" class="sr-only" role="status" aria-live="polite"></span>
       </div>
     </header>
 
@@ -98,7 +100,7 @@
           <p class="weather-place-note"><a href="https://open-meteo.com/" target="_blank" rel="noopener noreferrer">Weather data by Open-Meteo.com</a> · <a href="https://www.geonames.org/" target="_blank" rel="noopener noreferrer">town names from GeoNames</a></p>
         </div>
 
-              <div class="board-tools"><button type="button" id="sound-toggle" class="chip" aria-pressed="false">Sound off</button><button type="button" id="pixel-toggle" class="chip" aria-pressed="true">Pixel art</button></div>
+              <div class="board-tools"><button type="button" id="pixel-toggle" class="chip" aria-pressed="true">Pixel art</button></div>
               <ul class="mode-badges" id="mode-badges" aria-label="Integration status"></ul>
             </div>
           </details>
@@ -122,6 +124,8 @@
         <!-- 1. House: solo or family, name and crest -->
         <section class="panel parchment" id="panel-house" role="tabpanel" aria-labelledby="tab-house">
           <h3 id="house-heading" tabindex="-1">Found your house</h3>
+          <!-- Example demo only: an optional authored tour. It shows tabs and controls; it never presses or writes anything. -->
+          <p class="keeper-entry" id="keeper-entry" hidden><button type="button" class="link-button" id="keeper-open">Meet the Keeper</button></p>
           <fieldset class="choice-cards" id="play-mode">
             <legend>Play together</legend>
             <label class="choice">
@@ -159,6 +163,97 @@
           <p class="lede" id="planner-lede"></p>
           <!-- The family project's current stage and the one way to it from the journal. Camera only; it writes nothing. -->
           <p class="plan-project" id="plan-project"><span id="plan-project-stage"></span><button type="button" class="link-button" id="visit-campsite">Visit campsite</button></p>
+          <!-- Family choices: up to three items compared against each adult's own weekly offer, the household's weekly amount
+               and the goal's date. Planning only: offers, preferences and a one-off trial move no money and save no goal. -->
+          <details class="family-choices" id="family-choices">
+            <summary><span>Family choices</span> <small id="family-choices-count"></small></summary>
+            <p class="fine">Save up to three items from Market Town. Each adult can offer a weekly amount of their own, and everyone can say which they prefer.</p>
+            <div class="family-empty" id="family-choices-empty" hidden><p id="family-empty-text"></p><button type="button" class="link-button" id="family-find" aria-haspopup="dialog" aria-controls="merchant-dialog">Find an item</button></div>
+            <p class="family-capacity" id="family-capacity"></p>
+            <ol class="family-options" id="family-options" aria-label="Choices and when each could be reached"></ol>
+            <p class="family-note" id="family-choice-note" hidden></p>
+            <fieldset class="family-offers">
+              <legend>Weekly offers <small>— each adult chooses their own; your family can see it</small></legend>
+              <ul class="family-offer-list" id="family-offer-list"></ul>
+              <p class="fine" id="family-offer-note" hidden>Adults in the family offer weekly amounts.</p>
+              <div class="family-my-offer" id="family-my-offer" hidden>
+                <label class="field"><span>Your weekly offer</span><span class="money"><input id="family-offer-input" inputmode="decimal" autocomplete="off"></span></label>
+                <div class="actions"><button type="button" id="family-offer-save">Save my offer</button><button type="button" class="link-button" id="family-offer-withdraw">Withdraw my offer</button></div>
+              </div>
+            </fieldset>
+            <fieldset class="family-trial" id="family-trial" hidden>
+              <legend>Try a one-off expense <small>— not saved</small></legend>
+              <p class="fine">It comes out of the first weeks’ amounts, once, until it is covered. Recorded progress is not touched, and nothing is paid.</p>
+              <div class="family-trial-row">
+                <label class="field"><span>One-off amount</span><span class="money"><input id="family-trial-input" inputmode="decimal" autocomplete="off" placeholder="90.00"></span></label>
+                <button type="button" class="link-button" id="family-trial-clear">Clear</button>
+              </div>
+              <p class="fine" id="family-trial-note" aria-live="polite"></p>
+            </fieldset>
+            <!-- Find options that fit: Market Town with the family's planning price ceiling for the goal's date (offers, the
+                 household's weekly amount and any one-off amount tried above). Searching saves nothing. -->
+            <p class="family-fit" id="family-fit" hidden><span id="family-fit-text"></span> <button type="button" class="link-button" id="family-fit-find" aria-haspopup="dialog" aria-controls="merchant-dialog">Find options that fit</button></p>
+            <div class="form-status" id="family-status" role="status" aria-live="polite"></div>
+          </details>
+          <!-- Kit list: a short checklist of things to bring for this goal. An adult types it or reads it from a photo, checks
+               every line, then saves it for the family. A draft is never saved by itself, "Already have" is the family's own
+               count (not a purchase), and saving changes no goal, plan, offer or payment. -->
+          <details class="kit-list" id="kit-list">
+            <summary><span>Kit list</span> <small id="kit-count"></small></summary>
+            <p class="fine">A short list of things to bring, how many are needed and how many the family already has.</p>
+            <div class="kit-saved" id="kit-saved"></div>
+            <div class="actions" id="kit-saved-actions" hidden><button type="button" id="kit-edit">Edit the list</button><button type="button" class="link-button" id="kit-new">Start a new list</button></div>
+            <!-- Complete kits: listings an adult adds for each item still to get, compared as whole kits against the family's
+                 own figures. Comparing, ordering and reviewing save nothing; only "Choose this kit" and "Keep" save choices. -->
+            <section class="kit-plan" id="kit-plan" aria-labelledby="kit-plan-title" hidden>
+              <h3 class="kit-plan-title" id="kit-plan-title">Complete kits</h3>
+              <p class="fine" id="kit-plan-intro"></p>
+              <ul class="kit-plan-lines" id="kit-plan-lines"></ul>
+              <p class="fine kit-plan-ceiling" id="kit-plan-ceiling"></p>
+              <div class="actions" id="kit-plan-compare-actions" hidden><button type="button" id="kit-plan-compare">Compare complete kits</button></div>
+              <div class="kit-plan-result" id="kit-plan-result" hidden>
+                <p class="kit-plan-note" id="kit-plan-note" tabindex="-1"></p>
+                <ol class="kit-plan-kits" id="kit-plan-kits" aria-label="Complete kits that fit, or the closest one"></ol>
+                <p class="fine" id="kit-plan-pool"></p>
+                <div class="kit-plan-prefer" id="kit-plan-prefer" hidden>
+                  <label class="field"><span>Order the kits that fit by</span><select id="kit-plan-preference"></select></label>
+                  <button type="button" class="link-button" id="kit-plan-order">Order with Cohere</button>
+                  <p class="fine" id="kit-plan-prefer-note">Sends only the listings’ titles and shops, with the preference you pick, to Cohere. Prices, dates and the family stay here.</p>
+                </div>
+              </div>
+              <div class="kit-plan-chosen" id="kit-plan-chosen" hidden>
+                <h4 class="kit-plan-chosen-title" id="kit-plan-chosen-title" tabindex="-1">Chosen kit</h4>
+                <ul class="kit-plan-chosen-lines" id="kit-plan-chosen-lines"></ul>
+                <p class="fine" id="kit-plan-chosen-note"></p>
+                <div class="actions" id="kit-plan-review-actions" hidden><button type="button" id="kit-plan-review">Review this kit</button></div>
+              </div>
+              <div class="form-status" id="kit-plan-status" role="status" aria-live="polite"></div>
+            </section>
+            <div class="kit-source" id="kit-source" hidden>
+              <label class="field"><span>Type or paste the list <small>— one item per line, or separated by ;</small></span>
+                <textarea id="kit-text" rows="3" autocomplete="off" spellcheck="true" placeholder="1 x 4-person tent; 2 x sleeping bag; 2 x torch"></textarea></label>
+              <div class="actions"><button type="button" id="kit-check">Check this list</button><button type="button" class="link-button" id="kit-source-cancel" hidden>Cancel</button></div>
+              <div class="kit-photo" id="kit-photo" hidden>
+                <label class="field"><span>Or choose a photo of a written list <small>— PNG or JPEG</small></span><input type="file" id="kit-photo-input" accept="image/png,image/jpeg"></label>
+                <img class="kit-photo-preview" id="kit-photo-preview" alt="The chosen photo (not saved)" hidden>
+                <p class="fine" id="kit-photo-note" hidden>Reading sends this photo to OpenAI. You check every line before anything is saved.</p>
+                <div class="actions"><button type="button" id="kit-read" hidden>Read the photo with OpenAI</button><button type="button" class="link-button" id="kit-photo-clear" hidden>Remove photo</button></div>
+              </div>
+              <p class="fine" id="kit-photo-off" hidden>Reading a photo is not set up on this server; typing the list works the same.</p>
+            </div>
+            <fieldset class="kit-draft" id="kit-draft" hidden>
+              <legend id="kit-draft-title" tabindex="-1">Draft <small>— not saved</small></legend>
+              <p class="fine" id="kit-draft-note"></p>
+              <p class="fine">Need: how many to bring. Have: how many the family already has (its own count, not a purchase).</p>
+              <img class="kit-photo-preview" id="kit-draft-photo" alt="The photo these lines were read from (not saved)" hidden>
+              <ol class="kit-rows" id="kit-rows"></ol>
+              <div class="actions"><button type="button" class="link-button" id="kit-add">Add a line</button></div>
+              <ul class="kit-problems" id="kit-problems"></ul>
+              <div class="kit-conflict" id="kit-conflict" hidden><p id="kit-conflict-text"></p><div class="actions"><button type="button" id="kit-keep">Keep my draft</button><button type="button" id="kit-use-saved">Use the saved list</button></div></div>
+              <div class="actions"><button type="button" class="primary" id="kit-save">Save this list</button><button type="button" id="kit-cancel">Cancel</button><button type="button" class="link-button" id="kit-to-text">Type the list instead</button></div>
+            </fieldset>
+            <div class="form-status" id="kit-status" role="status" aria-live="polite"></div>
+          </details>
           <!-- A Market Town merchant result waiting for the family's confirmation. Nothing is saved until "Save as our goal". -->
           <section class="goal-draft" id="goal-draft" hidden aria-labelledby="goal-draft-title">
             <h4 id="goal-draft-title" tabindex="-1">Draft from the market</h4>
@@ -167,7 +262,14 @@
               <p><strong id="goal-draft-name"></strong><span id="goal-draft-facts"></span></p>
             </div>
             <p class="goal-draft-effect" id="goal-draft-effect"></p>
-            <div class="actions"><button type="button" class="primary" id="goal-draft-save">Save as our goal</button><button type="button" id="goal-draft-review" hidden>Review latest goal</button><button type="button" id="goal-draft-search" hidden>Search again</button><button type="button" id="goal-draft-discard">Discard draft</button></div>
+            <!-- From "Review this choice": the dated weeks the family's offers and one-off amount give. A preview; it is
+                 proposed only with "Save goal and propose this schedule", and used only with "Use this plan". -->
+            <div class="goal-draft-schedule" id="goal-draft-schedule" hidden>
+              <p class="goal-draft-schedule-title"><strong>Family schedule</strong> <small>— preview from the adults’ own offers, not saved</small></p>
+              <ul class="family-split" id="goal-draft-weeks" aria-label="Weekly amounts this schedule would propose"></ul>
+              <p class="fine" id="goal-draft-schedule-note"></p>
+            </div>
+            <div class="actions"><button type="button" class="primary" id="goal-draft-propose" hidden>Save goal and propose this schedule</button><button type="button" class="primary" id="goal-draft-save">Save as our goal</button><button type="button" id="goal-draft-review" hidden>Review latest goal</button><button type="button" id="goal-draft-search" hidden>Search again</button><button type="button" id="goal-draft-discard">Discard draft</button></div>
           </section>
           <form id="plan-form" class="grid-form" novalidate>
             <div class="field span-2">
@@ -199,6 +301,7 @@
               <h4 id="plan-headline" tabindex="-1"></h4>
             </header>
             <p id="plan-summary"></p>
+            <p id="plan-chosen-for" class="fine plan-chosen-for" hidden></p>
             <p id="plan-review-status" class="fine" hidden></p>
             <div class="callout warn" id="plan-shortfall" hidden></div>
             <h5>Weekly schedule <small id="plan-schedule-help">— change any week, then save</small></h5>
@@ -361,11 +464,23 @@
           <h2 id="merchant-title" tabindex="-1">Market merchant</h2>
           <button type="button" class="merchant-close" id="merchant-close" aria-label="Close the merchant">×</button>
         </header>
+        <!-- Family fit (opened from Family choices only): the server derives the price ceiling; kinds of item and must-haves
+             come from the catalog's own lists, each looked up only when asked. -->
+        <p id="merchant-fit-limit" class="merchant-fit-limit" hidden></p>
         <form id="merchant-form" class="merchant-form" role="search" novalidate>
           <label class="merchant-field merchant-query"><span>What is the family saving for?</span><input id="merchant-query" type="search" maxlength="80" autocomplete="off" spellcheck="false" required></label>
           <label class="merchant-field merchant-budget"><span>Budget <small>(optional)</small></span><span class="money"><input id="merchant-budget" inputmode="decimal" autocomplete="off" maxlength="12"></span></label>
           <button type="submit" id="merchant-search">Search</button>
         </form>
+        <div id="merchant-need" class="merchant-need" hidden>
+          <div class="merchant-need-kind">
+            <button type="button" class="link-button" id="merchant-find-kinds">Find kinds of item</button>
+            <label class="merchant-field" id="merchant-kind-field" hidden><span>Kind of item <small>(optional)</small></span><select id="merchant-kind"></select></label>
+            <button type="button" class="link-button" id="merchant-show-needs" hidden>Show must-haves</button>
+          </div>
+          <div id="merchant-must-haves" class="merchant-must-haves"></div>
+          <p id="merchant-need-note" class="fine" hidden></p>
+        </div>
         <p id="merchant-status" class="merchant-status" role="status" aria-live="polite"></p>
         <ol id="merchant-results" class="merchant-results" aria-label="Merchant results"></ol>
         <p id="merchant-source" class="merchant-source" hidden></p>

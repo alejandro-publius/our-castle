@@ -18,12 +18,19 @@ import { TIME_MODES, WEATHER_MODES, resolveAtmosphere } from '../core/atmosphere
 import { WEATHER_TTL_MS, createWeatherClient } from './local-weather.js';
 import { REALM_DISTRICTS, REALM_LEGENDS, realmAccess, districtById, homeDistrict } from '../core/realm.js';
 import { ledgerTrail } from '../core/ledger.js';
+import { contributionStory, countsSentence, storyKey } from '../core/contribution-story.js';
 import { createMerchantDialog, resultFacts } from './merchant.js';
+import { createFamilyChoices } from './family-choices.js';
+import { createKitList } from './kit-list.js';
+import { createKitPlan } from './kit-plan.js';
+import { scheduleLines } from '../core/family-choices.js';
+import { needSummary } from '../core/family-fit.js';
 import { createTreasury } from './treasury.js';
 import { FAMILY_PROJECT_SITE, PROJECT_KINDS, projectKind, projectLabel, projectStage } from '../core/family-project.js';
 import { CONFIRMATION_HISTORY_QUESTION, NEEDS_CHECK_QUESTION, isLocalQuestion, isNeedsCheckQuestion } from '../core/steward-questions.js';
 import { checkStatus } from '../core/check-status.js';
 import { createPlanCheck } from './plan-check.js';
+import { createKeeper } from './keeper.js';
 
 // ---------- small helpers ----------
 const $ = (selector, root = document) => root.querySelector(selector);
@@ -87,6 +94,9 @@ let paypalLoadFailed = false;
 let ledgerGrid = null;
 let familyAvatars = null;
 let merchant = null;
+let familyChoices = null; // the Plan journal's family choices (src/app/family-choices.js)
+let kitList = null; // the Plan journal's kit list (src/app/kit-list.js)
+let kitPlan = null; // complete kits for that list (src/app/kit-plan.js)
 let treasury = null;
 let planCheck = null;
 const ui = {
@@ -301,7 +311,6 @@ async function boot() {
     $('#world').hidden = true;
     $('#world-fallback').hidden = false;
     $('#pixel-toggle').hidden = true;
-    $('#sound-toggle').hidden = true;
   }
   $('#world').setAttribute('aria-busy', 'false');
   bindAtmosphere();
@@ -317,6 +326,18 @@ async function boot() {
     setJournalOpen(pref.get('journal') !== 'closed', { remember: false });
     scene?.focusDistrict(homeDistrict(state.board.builtTier).id);
     if (family.on) startFamilyLive();
+    // Moss, the castle keeper: an optional authored tour, offered only while payments are simulated. It may only show
+    // a journal tab; it never presses a control, writes a record or saves a preference.
+    try {
+      createKeeper({
+        available: () => state?.modes.payments.mode === 'example',
+        currentTab: () => ui.tab,
+        journalOpen: () => !$('#journey').hidden,
+        showTab: (name) => { setJournalOpen(true, { remember: false }); selectTab(name, { focus: false, remember: false, open: false }); },
+        closeJournal: () => setJournalOpen(false, { remember: false }),
+        autoStart: new URLSearchParams(location.search).get('tour') === '1',
+      });
+    } catch (error) { console.warn('[our-castle] the keeper tour is unavailable', error); } // optional; never blocks the house
   } catch (error) {
     $('#honesty').textContent = `Could not load the household: ${error.message}`;
   }
@@ -992,7 +1013,7 @@ async function saveHouse() {
 }
 
 // ---------- 2. Plan ----------
-function renderPlan() { renderPlanForm(); lockPlanForChildren(); }
+function renderPlan() { renderPlanForm(); familyChoices?.render(); kitList?.render(); merchant?.refreshFit(); lockPlanForChildren(); }
 // A child in a shared family sees the goal and plan and may try a weekly amount or date with the read-only check, but
 // changes neither; the server refuses those requests anyway.
 function lockPlanForChildren() {
@@ -1028,24 +1049,34 @@ function renderPlanForm() {
   const result = $('#plan-result');
   if (!plan) { result.hidden = true; return; }
   result.hidden = false;
+  // A family schedule: built-in arithmetic from the adults' own offers and one one-off amount, never an AI result.
+  const familyPlan = plan.kind === 'family' ? plan.family : null;
   const badge = $('#plan-source');
-  badge.className = `source-badge ${plan.source}`;
-  badge.textContent = plan.source === 'ai'
-    ? 'AI plan'
-    : plan.source === 'household-edited' ? 'Household plan' : 'Built-in plan';
+  badge.className = `source-badge ${familyPlan ? 'family' : plan.source}`;
+  badge.textContent = familyPlan ? 'Family schedule'
+    : plan.source === 'ai' ? 'AI plan'
+      : plan.source === 'household-edited' ? 'Household plan' : 'Built-in plan';
   if (state.acceptedPlanId === plan.id) badge.append(' · in use');
   $('#plan-headline').textContent = plan.headline;
   $('#plan-summary').textContent = plan.summary;
+  const chosen = plan.family?.choice?.need ? plan.family.choice : null;
+  $('#plan-chosen-for').hidden = !chosen;
+  $('#plan-chosen-for').textContent = chosen ? `${chosen.title}: ${needSummary(chosen.need, { money, date: shortDate })}` : '';
   const review = state.planReview;
   const stale = Boolean(review?.factsChanged);
   const reviewStatus = $('#plan-review-status');
   reviewStatus.hidden = !stale;
   reviewStatus.textContent = !stale ? '' : review.needsRefresh
-    ? 'Progress or goal details changed. Make a new plan before using these weeks.'
+    ? (familyPlan ? `${review.changes.map((c) => c.message).join(' ')} Propose the family schedule again before using these weeks.`
+      : 'Progress or goal details changed. Make a new plan before using these weeks.')
     : 'This plan stays in use. Make a new plan to change the remaining weeks.';
   const shortfall = $('#plan-shortfall');
   const notes = [];
-  if (!plan.totals.feasible) notes.push(`This schedule is ${money(plan.totals.shortfallCents)} short of the goal. Raise the weekly amount, move the date, or edit the weeks below.`);
+  if (!plan.totals.feasible) {
+    notes.push(familyPlan
+      ? `This family schedule is ${money(plan.totals.shortfallCents)} short of the goal by ${dateLabel(plan.contributions.at(-1).date)}.${familyPlan.finishDate ? ` At these offers the earliest finish is ${dateLabel(familyPlan.finishDate)}; a later date is the family’s choice.` : ''} No one’s offer is raised.`
+      : `This schedule is ${money(plan.totals.shortfallCents)} short of the goal. Raise the weekly amount, move the date, or edit the weeks below.`);
+  }
   notes.push(...(plan.warnings ?? []));
   shortfall.hidden = notes.length === 0;
   shortfall.replaceChildren(...notes.map((n) => h('p', { style: 'margin:0 0 4px' }, n)));
@@ -1060,19 +1091,31 @@ function renderPlanForm() {
     $('#plan-schedule').replaceChildren(...plan.contributions.map((c) => h('tr', { class: reachWeeks.has(c.week) ? 'reaches' : '' },
       h('td', {}, `Week ${c.week}`),
       h('td', {}, dateLabel(c.date)),
-      h('td', {}, h('span', { class: 'money' }, h('input', {
-        class: 'week-amount', inputmode: 'decimal', value: centsToInput(c.amountCents), 'data-week': c.week, 'aria-label': `Week ${c.week} amount`,
-      }))))));
+      // A family schedule's weeks are fixed by the offers: shown as text, with the one-off note or each adult's share.
+      familyPlan ? h('td', {}, h('span', { class: 'schedule-amount' }, money(c.amountCents)), familyWeekNote(familyPlan, c) ? h('small', { class: 'schedule-share' }, familyWeekNote(familyPlan, c)) : null)
+        : h('td', {}, h('span', { class: 'money' }, h('input', {
+          class: 'week-amount', inputmode: 'decimal', value: centsToInput(c.amountCents), 'data-week': c.week, 'aria-label': `Week ${c.week} amount`,
+        }))))));
     $('#plan-total').textContent = money(plan.totals.plannedCents);
   }
   $('#plan-cautions').replaceChildren(...plan.cautions.map((c) => h('li', {}, c)));
   $('#plan-schedule-help').hidden = stale;
+  $('#plan-schedule-help').textContent = familyPlan ? '— from each adult’s own offer; nothing is paid or held' : '— change any week, then save';
   for (const input of $$('#plan-schedule .week-amount')) input.readOnly = stale;
+  $('#save-edits').hidden = Boolean(familyPlan);
   $('#save-edits').disabled = !ui.scheduleDirty || stale;
   const accepted = state.acceptedPlanId === plan.id;
   const accept = $('#accept-plan');
   accept.disabled = accepted || ui.scheduleDirty || Boolean(review?.needsRefresh);
   accept.textContent = accepted ? 'Plan in use ✓' : 'Use this plan';
+}
+
+// One family-schedule week's line: what goes to the one-off expense, then each adult's share of the goal amount.
+function familyWeekNote(familyPlan, c) {
+  const week = familyPlan.weeks[c.week - 1];
+  const names = new Map(familyPlan.offers.map((o) => [o.memberId, o.name]));
+  const shares = week?.goalCents ? week.perMember.filter((p) => p.cents > 0).map((p) => `${names.get(p.memberId) ?? 'An adult'} ${money(p.cents)}`).join(' · ') : '';
+  return [c.note, shares].filter(Boolean).join(' ');
 }
 
 const planFieldValues = (s) => ({ 'goal-name-input': s.goal.name, 'goal-target': centsToInput(s.goal.targetCents), 'goal-starting': centsToInput(s.progress.startingCents), 'goal-weekly': centsToInput(s.goal.weeklyBudgetCents), 'goal-date': s.goal.targetDate, 'goal-project': s.goal.projectKind });
@@ -1127,33 +1170,79 @@ const goalNameFor = (title) => {
 };
 function renderGoalDraft() {
   const draft = ui.goalDraft, box = $('#goal-draft');
+  // A draft from "Review this choice" belongs to the comparison it was checked against. Once another member changes the
+  // choices, offers or goal, it must be reviewed again (the server refuses to save it as well).
+  if (draft?.familyChoice && state.familyChoices && state.familyChoices.revision !== draft.familyChoice.revision) draft.choicesChanged = true;
+  // A kit draft belongs to the kit and figures it was checked against, in the same way.
+  if (draft?.kitReview && (state.kitPlan?.revision !== draft.kitReview.revision || state.familyChoices?.revision !== draft.kitReview.choicesRevision)) draft.choicesChanged = true;
   box.hidden = !draft;
   $('#goal-draft-review').hidden = !draft?.needsReview;
   $('#goal-draft-search').hidden = !draft?.expired;
-  $('#goal-draft-save').disabled = ui.goalDraftBusy || Boolean(draft?.needsReview || draft?.expired);
+  $('#goal-draft-save').disabled = ui.goalDraftBusy || Boolean(draft?.needsReview || draft?.expired || draft?.choicesChanged);
   $('#goal-draft-review').disabled = ui.goalDraftBusy;
   $('#goal-draft-discard').disabled = ui.goalDraftBusy;
   $('#ask-planner').disabled = Boolean(draft); // one explicit decision at a time: save or discard the draft first
   planCheck?.update(); // programmatic market selections must clear calculations for the previous goal immediately
-  const item = state.goalItem;
+  const item = state.goalItem, kit = state.goalKit;
   const line = $('#goal-item');
-  line.hidden = Boolean(draft) || !item;
+  line.hidden = Boolean(draft) || !(item || kit);
   if (item && !draft) {
     line.replaceChildren(`${item.title} · ${formatCents(item.priceCents, item.currency)} saved price. `,
       h('button', { type: 'button', class: 'link-button', onclick: (e) => merchant.openSaved(e.currentTarget) }, 'Check item'));
+  } else if (kit && !draft) {
+    line.replaceChildren(`Saved from the chosen kit: ${kit.lineCount} ${kit.lineCount === 1 ? 'item' : 'items'} to get, ${formatCents(kit.totalCents, kit.currency)} listed total (tax and shipping not included).`);
   }
   if (!draft) return;
   const image = $('#goal-draft-image');
   image.hidden = !draft.image;
   if (draft.image && image.getAttribute('src') !== draft.image.url) image.setAttribute('src', draft.image.url);
   $('#goal-draft-name').textContent = draft.title;
-  $('#goal-draft-facts').textContent = ` ${resultFacts(draft).join(' · ')} · Channel3, checked ${timeLabel(draft.checkedAt)}`;
+  $('#goal-draft-facts').textContent = draft.kind === 'kit'
+    ? ` ${draft.kit.lines.map((l) => `${l.name}: ${l.listings} × ${l.title} (${l.merchant})`).join(' · ')} · Channel3 listings, checked within the last half hour`
+    : ` ${resultFacts(draft).join(' · ')} · Channel3, checked ${timeLabel(draft.checkedAt)}`;
   const { goal, progress } = state;
-  const effects = [`Not saved yet. Saving replaces “${goal.name}” (${money(goal.targetCents)}) with the name and amount below`];
+  const effects = [draft.kind === 'kit' ? `Not saved yet. Saving sets “${goal.name}” (${money(goal.targetCents)}) to the kit’s listed total below, with the kit as its source`
+    : `Not saved yet. Saving replaces “${goal.name}” (${money(goal.targetCents)}) with the name and amount below`];
   if (progress.progressCents > 0) effects.push(`; the ${money(progress.progressCents)} already tracked stays and counts toward the new amount`);
   if (state.plan) effects.push('; the current plan is set aside, so make a new one afterwards');
-  effects.push('. The price excludes tax and shipping; nothing is bought.');
+  if (draft.familyPlan) {
+    const p = draft.familyPlan;
+    effects.push(`. ${draft.kind === 'kit' ? 'From the family’s figures' : 'From family choices'}: up to ${money(p.weeklyBudgetCents)} a week from the adults’ offers, `
+      + (p.targetDate !== p.deadline ? `with the target date moved from ${dateLabel(p.deadline)} to ${dateLabel(p.targetDate)}, the earliest finish at those offers` : `by ${dateLabel(p.targetDate)}`)
+      + (p.reserveCents ? `, allowing for the one-off ${money(p.reserveCents)} you tried` : ''));
+  }
+  if (draft.familyPlan?.need) effects.push(`. ${needSummary(draft.familyPlan.need, { money, date: shortDate }).replace(/\.$/, '')}`);
+  if (draft.choicesChanged) effects.push(draft.kind === 'kit' ? '. The kit or the family’s figures changed after this review: discard this draft and review the kit again'
+    : '. The family’s choices or offers changed after this review: discard this draft and review the choice again');
+  effects.push(draft.kind === 'kit' ? '. The listed total excludes tax and shipping; stock is not reserved and nothing is bought.' : '. The price excludes tax and shipping; nothing is bought.');
   $('#goal-draft-effect').textContent = effects.join('');
+  renderDraftSchedule();
+}
+// The weeks "Review this choice" returned, as a preview. "Save goal and propose this schedule" sends only the one-off amount
+// and this schedule's revision; the server recomputes every figure and refuses the whole save if one differs.
+const shortDate = (iso) => { const [y, m, d] = iso.split('-').map(Number); return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' }); };
+function draftScheduleEdited(draft) {
+  const r = draft.familyPlan?.reviewed;
+  return Boolean(r) && (parseAmountToCents($('#goal-target').value) !== r.targetCents || $('#goal-date').value !== r.targetDate
+    || parseAmountToCents($('#goal-weekly').value) !== r.weeklyBudgetCents || parseAmountToCents($('#goal-starting').value) !== r.startingCents);
+}
+function renderDraftSchedule() {
+  const draft = ui.goalDraft, schedule = draft?.familyPlan?.schedule ?? null;
+  const propose = $('#goal-draft-propose');
+  $('#goal-draft-schedule').hidden = !schedule;
+  propose.hidden = !schedule?.proposable;
+  $('#goal-draft-save').classList.toggle('primary', !schedule?.proposable);
+  if (!schedule) return;
+  const names = new Map(schedule.offers.map((o) => [o.memberId, o.name]));
+  $('#goal-draft-weeks').replaceChildren(...scheduleLines(schedule.rows, { money, date: shortDate, names }).map((line) => h('li', {}, line)));
+  const edited = draftScheduleEdited(draft);
+  const covers = schedule.feasible ? `These weeks cover the ${money(schedule.remainingCents)} still needed by ${shortDate(schedule.finishDate)}.`
+    : `These weeks cover ${money(schedule.plannedCents)} of the ${money(schedule.remainingCents)} still needed by ${shortDate(schedule.targetDate)}, ${money(schedule.shortfallCents)} short.`;
+  $('#goal-draft-schedule-note').textContent = !schedule.proposable ? schedule.reason
+    : edited ? 'You changed the amount, date, weekly amount or starting report, so these weeks no longer apply. Review the choice again to propose its schedule, or save the goal alone.'
+      : draft.scheduleChanged ? 'These weeks no longer match the family’s records. Discard this draft and review the choice again.'
+        : `${covers} Saving proposes them; “Use this plan” is still a separate choice. Nothing is paid or held.`;
+  propose.disabled = ui.goalDraftBusy || Boolean(draft.needsReview || draft.expired || draft.choicesChanged || draft.scheduleChanged || edited);
 }
 function useMerchantItem(item) {
   // Bind to the Plan fields the family actually saw. A search may start after another tab changed the goal;
@@ -1168,6 +1257,53 @@ function useMerchantItem(item) {
   renderGoalDraft();
   $('#goal-draft-title').focus();
 }
+// "Review this choice": the server-checked item, its price as the goal amount, and the date and weekly amount from the
+// family's comparison, as the same unsaved draft a Market Town result makes. The adult reviews it, may change any field,
+// and saves it with "Save as our goal" (or discards it).
+function useFamilyChoice(review) {
+  useMerchantItem({ ...review.item, goalId: state.goal.id, goalRevision: state.merchantGoalRevision });
+  ui.goalDraft = { ...ui.goalDraft, goalId: state.goal.id, goalRevision: state.merchantGoalRevision,
+    familyChoice: { choiceId: review.choiceId, revision: review.revision },
+    familyPlan: { weeklyBudgetCents: review.goal.weeklyBudgetCents, targetDate: review.goal.targetDate, deadline: review.deadline, reserveCents: review.reserveCents,
+      schedule: review.schedule ?? null, reviewed: { ...review.goal, startingCents: review.startingCents }, need: review.need ?? null } };
+  ui.planGoalId = state.goal.id; ui.planGoalRevision = state.merchantGoalRevision;
+  $('#goal-date').value = review.goal.targetDate;
+  $('#goal-weekly').value = centsToInput(review.goal.weeklyBudgetCents);
+  renderGoalDraft();
+}
+// "Review this kit": the server-checked chosen kit, its listed total as the goal amount, and the date and weekly amount from
+// the family's figures, as an unsaved draft in the same Plan form. The goal keeps its name; the adult may change any field.
+function useKitReview(review) {
+  const count = review.kit.lines.length;
+  ui.goalDraft = { kind: 'kit', title: `Chosen kit: ${count} ${count === 1 ? 'item' : 'items'} to get`, image: null, kit: review.kit,
+    goalId: state.goal.id, goalRevision: state.merchantGoalRevision,
+    kitReview: { revision: review.revision, choicesRevision: review.choicesRevision },
+    familyPlan: { weeklyBudgetCents: review.goal.weeklyBudgetCents, targetDate: review.goal.targetDate, deadline: review.deadline, reserveCents: review.reserveCents,
+      schedule: review.schedule ?? null, reviewed: { ...review.goal, startingCents: review.startingCents }, need: null } };
+  ui.planGoalId = state.goal.id; ui.planGoalRevision = state.merchantGoalRevision;
+  ui.planFormDirty = true;
+  $('#goal-name-input').value = state.goal.name;
+  $('#goal-target').value = centsToInput(review.goal.targetCents);
+  $('#goal-date').value = review.goal.targetDate;
+  $('#goal-weekly').value = centsToInput(review.goal.weeklyBudgetCents);
+  for (const field of ['#goal-name-input', '#goal-target']) $(field).removeAttribute('aria-invalid');
+  setStatus('#plan-status', '', '');
+  selectTab('plan', { focus: false });
+  renderGoalDraft();
+  $('#goal-draft-title').focus();
+}
+// "Add for <item>" in Market Town: the server copies its own shown result; the page sends references and the adult's count.
+async function addKitListing({ draftId, lineId, perListing }) {
+  const res = await api.post('/api/kit/listings', { draftId, lineId, perListing, revision: state.kitPlan.revision, ...(state.access ? {} : { memberId: persona()?.id }) });
+  applyState(res.state);
+  return res;
+}
+// "Add to family choices" in Market Town: the server copies its own shown result; the page sends only references.
+async function shortlistItem({ draftId, expectedGoalId, replaceId }) {
+  const res = await api.post('/api/family-choices', { draftId, expectedGoalId, ...(replaceId ? { replaceId } : {}), ...(state.access ? {} : { memberId: persona()?.id }) });
+  applyState(res.state);
+  return res;
+}
 function discardGoalDraft() {
   ui.goalDraft = null;
   ui.planFormDirty = false;
@@ -1175,27 +1311,44 @@ function discardGoalDraft() {
   setStatus('#plan-status', 'info', 'Draft discarded. The goal is unchanged.');
   $('#goal-name-input').focus();
 }
-async function saveGoalDraft() {
+// "Save as our goal", or "Save goal and propose this schedule" (the same goal save plus the reviewed family schedule as a
+// proposal, in one server transaction). Neither puts a plan in use: that stays "Use this plan".
+async function saveGoalDraft(event) {
   const draft = ui.goalDraft;
+  const propose = event?.currentTarget?.id === 'goal-draft-propose';
   if (!draft || ui.goalDraftBusy || draft.needsReview || draft.expired) return;
+  if (propose && (!draft.familyPlan?.schedule?.proposable || draft.scheduleChanged || draftScheduleEdited(draft))) return;
   const { goal, errors } = readGoalFields();
   if (errors.length) { setStatus('#plan-status', 'error', 'Please fix these first:', { issues: errors }); return; }
   ui.goalDraftBusy = true;
   renderGoalDraft();
-  setStatus('#plan-status', 'working', 'Saving the goal…');
+  setStatus('#plan-status', 'working', propose ? 'Saving the goal and proposing the family schedule…' : 'Saving the goal…');
   try {
-    const res = await api.post('/api/merchant/goal', { draftId: draft.draftId, goalId: draft.goalId, expectedGoalRevision: draft.goalRevision, goal });
+    const schedule = propose ? { schedule: { reserveCents: draft.familyPlan.reserveCents, revision: draft.familyPlan.schedule.revision } } : {};
+    const res = draft.kind === 'kit'
+      // A kit: the goal, the kit as its source and (when proposing) its schedule, in one server transaction.
+      ? await api.post('/api/kit/adopt', { goalId: draft.goalId, expectedGoalRevision: draft.goalRevision, goal, kit: draft.kitReview, ...schedule, ...(state.access ? {} : { memberId: persona()?.id }) })
+      : await api.post('/api/merchant/goal', { draftId: draft.draftId, goalId: draft.goalId, expectedGoalRevision: draft.goalRevision, goal,
+        ...(draft.familyChoice ? { familyChoice: draft.familyChoice } : {}),
+        ...(propose ? { ...schedule, ...(state.access ? {} : { memberId: persona()?.id }) } : {}) });
     if (ui.goalDraft !== draft) { applyState(res.state); return; }
     ui.goalDraft = null;
     ui.planFormDirty = false;
     applyState(res.state);
-    setStatus('#plan-status', 'ok', `Goal saved: ${res.state.goal.name}, ${money(res.state.goal.targetCents)}. Make a plan when you are ready.`);
-    $('#goal-name-input').focus();
+    if (propose && res.plan) {
+      setStatus('#plan-status', 'ok', `Goal saved and the family schedule proposed. Check its weeks below, then choose “Use this plan”. Nothing is paid.`);
+      $('#plan-headline').focus();
+    } else {
+      setStatus('#plan-status', 'ok', `Goal saved: ${res.state.goal.name}, ${money(res.state.goal.targetCents)}. Make a plan when you are ready.`);
+      $('#goal-name-input').focus();
+    }
   } catch (error) {
     if (ui.goalDraft !== draft) return;
     setStatus('#plan-status', 'error', error.message); // a refused save changes nothing; the draft stays for review
     if (error.code === 'merchant_draft_expired') draft.expired = true;
     if (error.code === 'goal_changed') draft.needsReview = true;
+    if (['choices_changed', 'kit_plan_changed', 'kit_needs_check', 'kit_not_chosen', 'kit_kept_unavailable'].includes(error.code)) draft.choicesChanged = true;
+    if (error.code === 'schedule_changed') draft.scheduleChanged = true;
   } finally {
     ui.goalDraftBusy = false;
     renderGoalDraft();
@@ -1509,11 +1662,14 @@ function renderReceipt() {
   const capture = c.captures[0];
   const approver = state.members.find((m) => m.id === c.approvedBy);
   const completed = ['completed', 'refunded', 'partially_refunded'].includes(c.status);
+  const story = storyOf(c);
   box.hidden = false;
   box.replaceChildren(
     h('span', { class: `stamp ${c.simulated ? 'simulated' : 'sandbox'}` }, c.simulated ? 'Simulated · example mode · no PayPal transaction' : 'PayPal sandbox · test money'),
     h('h4', { id: 'receipt-title' }, completed ? 'Contribution receipt' : 'Contribution pending'),
     h('p', { class: 'big' }, `${money(c.amountCents)} ${c.currency}`),
+    // The same sentence, from the same records, as the Ledger receipt for this contribution.
+    h('p', { class: 'counts', 'data-counts': storyKey(story) }, countsSentence(story, money)),
     h('dl', {},
       h('dt', {}, 'Status'), h('dd', {}, receiptStatus(c)),
       h('dt', {}, 'Toward'), h('dd', {}, state.goal.name),
@@ -1539,6 +1695,27 @@ function receiptStatus(c) {
     case 'refunded': return 'Refunded — goal progress reduced by the same amount';
     case 'partially_refunded': return 'Partly refunded — goal progress reduced by the refunded amount';
     default: return c.statusDetail ?? c.status;
+  }
+}
+
+// What a contribution has done to this goal, worked out from the ledger and payment records already on the page.
+const storyOf = (c) => contributionStory(c, { householdId: state.household.id, goalId: state.goal.id, currency: state.goal.currency, entries: state.ledger.goalEntries });
+// One dated line per saved record. A saved PayPal check stays a past result, placed before any record saved after it.
+function storyLine(fact, c) {
+  switch (fact.kind) {
+    case 'order': {
+      const who = state.members.find((m) => m.id === fact.approvedBy)?.name;
+      return `${c.simulated ? 'Simulated order' : 'Order'} recorded${who ? ` · approved by ${who}` : ''}`;
+    }
+    case 'credit': return `${money(fact.cents)} counted toward the goal`;
+    case 'refund': return `${money(fact.cents)} refund recorded and subtracted`;
+    case 'refund_pending': return `${money(fact.cents)} refund pending · not subtracted`;
+    case 'refund_not_counted': return `${money(fact.cents)} refund recorded · nothing was subtracted`;
+    case 'check': {
+      const before = fact.before.includes('refund') ? ', before the later refund' : fact.before.includes('credit') ? ', before it was counted' : '';
+      return `Saved PayPal check${before}${fact.note ? `: ${fact.note}` : ''}`;
+    }
+    default: return null;
   }
 }
 
@@ -1682,9 +1859,20 @@ function renderLedgerRecord() {
         ? h('button', { type: 'button', class: 'danger', onclick: () => refund(capture.captureId, c.simulated) }, `Confirm refund of ${money(left)}`)
         : h('button', { type: 'button', onclick: () => { ui.refundArm = capture.captureId; renderLedger(); } }, c.simulated ? 'Simulate refund' : 'Refund in sandbox'));
     }
-    return h('li', { 'data-contribution': c.id, tabindex: -1 },
+    // How much still counts, from this contribution's own ledger rows. The breakdown and dated records wait inside the
+    // existing Payment details disclosure; with nothing counted, or nothing more than the order to date, they are left out.
+    const story = storyOf(c);
+    const breakdown = story.known && story.recordedCents > 0 ? h('dl', { class: 'breakdown' },
+      h('dt', {}, 'Recorded contribution'), h('dd', {}, money(story.recordedCents)),
+      h('dt', {}, 'Completed refunds'), h('dd', {}, story.refundedCents ? `−${money(story.refundedCents)}` : 'None'),
+      h('dt', { class: 'net' }, 'Counts toward the goal'), h('dd', { class: 'net' }, money(story.countsCents))) : null;
+    const facts = story.known ? story.history.map((fact) => [fact, storyLine(fact, c)]).filter(([, text]) => text) : [];
+    const history = facts.length > 1 ? h('ol', { class: 'story', 'aria-label': 'Saved records for this contribution, oldest first' },
+      ...facts.map(([fact, text]) => h('li', {}, h('time', { datetime: fact.at }, timeLabel(fact.at)), ` · ${text}`))) : null;
+    return h('li', { 'data-contribution': c.id, 'data-ledger-record': row.id, tabindex: -1 },
       h('div', { class: 'row' }, h('span', { class: 'amount' }, row.recordEntry?.effect < 0 ? row.amountText : money(c.amountCents)), h('span', {}, STATUS_LABEL[c.status] ?? c.status,
         h('span', { class: `tag ${c.simulated ? 'simulated' : 'sandbox'}` }, c.simulated ? 'simulated' : 'PayPal sandbox'))),
+      h('p', { class: 'counts', 'data-counts': storyKey(story) }, countsSentence(story, money)),
       // The server's record of the last explicit "Check with PayPal": its own reconciliation of PayPal's order, kept across reloads.
       // A record that needs a check carries that action right here; a completed capture with no check says so.
       check.key !== 'none' ? h('p', { class: 'fine last-check', 'data-check': check.key },
@@ -1694,6 +1882,7 @@ function renderLedgerRecord() {
         check.needsCheck ? checkButton : null) : null,
       recordImpact(row),
       h('details', { class: 'record-ids' }, h('summary', {}, 'Payment details'),
+        breakdown, history,
         h('div', { class: 'ids' }, `${timeLabel(c.createdAt)} · order ${c.providerOrderId ?? '—'}${capture ? ` · capture ${capture.captureId}` : ''}${refundId ? ` · refund ${refundId}` : ''}`),
         c.checks?.length > 1 ? h('ul', { class: 'ids check-history', 'aria-label': 'Earlier checks with PayPal' },
           ...c.checks.slice(1).map((k) => h('li', {}, `${timeLabel(k.checkedAt)} · ${k.note}`))) : null),
@@ -1701,7 +1890,15 @@ function renderLedgerRecord() {
       actions.length ? h('div', { class: 'actions' }, actions) : null);
 
   })();
+  // A refresh of the same record (a live update, say) keeps Payment details open, and keyboard focus on its summary, as
+  // the family left them. Nothing is stored: a reload starts closed.
+  const previous = list.firstElementChild;
+  const same = previous?.dataset.ledgerRecord === row.id;
+  const open = same && previous.querySelector('.record-ids')?.open;
+  const focused = same && previous.contains(document.activeElement) && document.activeElement.matches('.record-ids > summary');
   list.replaceChildren(card);
+  if (open) card.querySelector('.record-ids').open = true;
+  if (focused) card.querySelector('.record-ids > summary').focus({ preventScroll: true });
 }
 
 // ---------- House steward (AI, read-only) ----------
@@ -1905,10 +2102,18 @@ function bindEvents() {
     const id = e.currentTarget.dataset.district;
     if (id) openDeedFromMap(id, e.currentTarget);
   });
-  merchant = createMerchantDialog({ getState: () => state, onUse: useMerchantItem });
+  merchant = createMerchantDialog({ getState: () => state, onUse: useMerchantItem, onShortlist: shortlistItem, canShortlist: () => persona()?.role === 'adult',
+    fitSource: () => familyChoices?.fitSource() ?? null, onKitListing: addKitListing });
+  familyChoices = createFamilyChoices({ getState: () => state, actor: persona, openMerchant: (from, options) => merchant.open(from, options), onReview: useFamilyChoice, applyState,
+    onProposed: () => $('#plan-headline').focus() });
+  kitList = createKitList({ getState: () => state, actor: persona, applyState, onRender: () => kitPlan?.render() });
+  kitPlan = createKitPlan({ getState: () => state, actor: persona, applyState, openMerchant: (from, options) => merchant.open(from, options),
+    reserve: () => { const src = familyChoices?.fitSource(); return { cents: src?.reserveCents ?? 0, invalid: Boolean(src?.reserveInvalid) }; },
+    onReview: useKitReview, listEditing: () => kitList?.editing() ?? false });
   for (const opener of [$('#open-merchant'), $('#find-goal-item')]) opener.addEventListener('click', (e) => merchant.open(e.currentTarget));
   $('#visit-campsite').addEventListener('click', visitCampsite);
   $('#goal-draft-save').addEventListener('click', saveGoalDraft);
+  $('#goal-draft-propose').addEventListener('click', saveGoalDraft);
   $('#goal-draft-review').addEventListener('click', reviewGoalDraft);
   $('#goal-draft-search').addEventListener('click', () => {
     if (ui.goalDraft) merchant.open($('#goal-draft-search'), { query: ui.goalDraft.searchQuery ?? ui.goalDraft.title, budgetCents: ui.goalDraft.searchBudgetCents });
@@ -1922,11 +2127,15 @@ function bindEvents() {
     e.preventDefault();
     selectTab(TABS[next]);
   });
-  $('#sound-toggle').addEventListener('click', (e) => {
-    const on = sound.setEnabled(e.currentTarget.getAttribute('aria-pressed') !== 'true');
-    e.currentTarget.setAttribute('aria-pressed', String(on));
-    e.currentTarget.textContent = on ? 'Sound on' : 'Sound off';
+  sound.onChange(({ enabled, message }) => {
+    const toggle = $('#sound-toggle');
+    toggle.setAttribute('aria-pressed', String(enabled));
+    toggle.setAttribute('aria-label', enabled ? 'Sound on. Turn music and sound off' : 'Sound off. Turn music and sound on');
+    toggle.title = enabled ? 'Turn music and sound off' : 'Turn music and sound on';
+    $('#sound-label').textContent = enabled ? 'Sound on' : 'Sound off';
+    $('#sound-status').textContent = message;
   });
+  $('#sound-toggle').addEventListener('click', () => sound.setEnabled(!sound.enabled));
   for (const button of $$('[data-view]')) button.addEventListener('click', () => scene?.adjustView(button.dataset.view));
   // The compass: drag to move across the realm instead of turning it (camera only; nothing is saved).
   $('#map-explore').addEventListener('click', (e) => {
@@ -1953,7 +2162,7 @@ function bindEvents() {
     e.currentTarget.textContent = on ? 'Pixel art' : 'Raw 3D';
     scene?.setPixelMode(on);
   });
-  $('#persona').addEventListener('change', (e) => { ui.personaId = e.target.value; pref.set('persona', ui.personaId); ui.refundArm = null; $('#give-approve').checked = false; ui.approvalBasis = null; renderGive(); renderLedger(); renderNextStep(); });
+  $('#persona').addEventListener('change', (e) => { ui.personaId = e.target.value; pref.set('persona', ui.personaId); ui.refundArm = null; $('#give-approve').checked = false; ui.approvalBasis = null; renderGive(); renderLedger(); renderNextStep(); familyChoices?.render(); kitList?.render(); });
   $('#next-step-go').addEventListener('click', openNextStep);
   $('#deed-visit').addEventListener('click', visitDeed);
   $('#deed-next').addEventListener('click', () => { ui.deeds.index++; renderDeed(); $('#deed-name').focus(); });
@@ -1988,6 +2197,7 @@ function bindEvents() {
   $('#plan-form').addEventListener('input', (e) => {
     if (e.target.dataset.k) ui.commitments[Number(e.target.dataset.i)][e.target.dataset.k] = e.target.value;
     ui.planFormDirty = true;
+    if (ui.goalDraft?.familyPlan?.schedule) renderDraftSchedule(); // an edited amount or date no longer matches the reviewed weeks
   });
   $('#plan-form').addEventListener('change', (e) => { if (e.target.dataset.k) ui.commitments[Number(e.target.dataset.i)][e.target.dataset.k] = e.target.value; });
   $('#commitment-rows').addEventListener('click', (e) => {

@@ -7,14 +7,37 @@
 // Only search words/budget, public product/retailer/variant references and locale leave this server: never household names,
 // members, ledger, bills, other credentials or a user id. Searching is discovery only; nothing here buys, credits
 // money, changes a goal or unlocks an area.
+//
+// Family fit (checked against Channel3's published references at github.com/channel3-ai/skills, commit db55b30, files
+// skills/channel3-api/references/api-reference.md, variants.md and skills/product-discovery/SKILL.md):
+// - GET /v1/categories/search?query=&limit= returns `categories[]` of `{ slug, title, path: [{ slug, title }] }`;
+// - GET /v1/categories/{slug} returns a Category with `attributes[]` of `{ slug, name, values: string[] }`. Values are
+//   empty when there is no enumerated set. Color is filtered by image palette, never by attribute.
+// - POST /v1/search with `filters.category_ids` (descendants included), `filters.attributes` (OR within a key, AND across
+//   keys) and `filters.price.max_price`;
+// - products carry `category` (with its root-to-self path) and `structured_attributes`.
+// Unknown slugs are silently dropped by Channel3, and a provider may ignore filters. Every item is therefore judged
+// here (src/core/family-fit.js), and no filter is relaxed or retried to fill a list. Only the family's own words, public
+// taxonomy values, a price ceiling and the locale are sent: never offers, members, dates, progress or the one-off amount.
+//
+// Listed weight (the kit planner): each offer may carry `dimensions.weight` as `{ number, unit }`, unit one of mg, g, kg,
+// oz or lb, documented as "physical size of this offer, when known" (same reference, ProductOffer/Dimensions). It is read
+// as whole milligrams with the exact unit definitions, or left unknown. It is the offer's listed weight, never a measured
+// one, and never a pack count: how many items one listing gives is not in this contract.
 
 import { randomBytes } from 'node:crypto';
 import { DomainError } from '../household.mjs';
+import { MAX_MUST_HAVES, bySuitableOrder, evaluateFit } from '../../src/core/family-fit.js';
 
 export const CHANNEL3_SEARCH_URL = 'https://api.trychannel3.com/v1/search';
 const CHANNEL3_BASE = 'https://api.trychannel3.com/v1';
 export const MERCHANT_CURRENCY = 'USD'; // The household goal is kept in USD, so searches ask Channel3 for US/USD offers.
 export const MAX_RESULTS = 3;
+export const CATEGORY_RESULTS = 5; // kinds of item offered for one description
+export const FIT_INSPECT_LIMIT = 12; // products inspected from one search page in a family-fit search
+export const FIT_MAX_RESULTS = 3; // suitable items shown at most
+const MAX_ATTRIBUTES = 16; // must-have choices shown for one kind of item
+const MAX_ATTRIBUTE_VALUES = 40;
 export const QUERY_LIMITS = Object.freeze({ min: 2, max: 80 });
 export const BUDGET_LIMITS = Object.freeze({ minCents: 100, maxCents: 10_000_000 }); // Same bounds as a goal amount.
 const DEFAULTS = Object.freeze({
@@ -30,6 +53,8 @@ const DOMAIN = /^(?=.{1,253}$)[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](
 const PRODUCT_ID = /^[A-Za-z0-9_.:-]{1,128}$/;
 const CURRENCY_CODE = /^[A-Z]{3}$/;
 const AVAILABILITY = new Set(['InStock', 'OutOfStock']);
+const CATEGORY_SLUG = /^[A-Za-z0-9][A-Za-z0-9_.-]{0,99}$/;
+const ATTRIBUTE_KEY = /^[a-z0-9][a-z0-9_-]{0,63}$/;
 
 const fail = (status, code, message) => new DomainError(status, code, message);
 
@@ -57,6 +82,22 @@ export function validateSearch({ query, budgetCents } = {}) {
   return { query: text, budgetCents: budget };
 }
 
+/**
+ * The family-fit request body:
+ * - the family's words;
+ * - the chosen catalog category and must-have values, exactly as the catalog listed them;
+ * - the server-derived price ceiling;
+ * - the locale.
+ * It asks for one page of at most twelve products. Nothing about the family is sent.
+ */
+export function fitRequestBody({ query, need, ceilingCents }) {
+  const filters = {};
+  if (need.category) filters.category_ids = [need.category.slug];
+  if (need.mustHaves.length) filters.attributes = Object.fromEntries(need.mustHaves.map((m) => [m.key, [...m.accepted]]));
+  filters.price = { max_price: ceilingCents / 100 };
+  return { query, limit: FIT_INSPECT_LIMIT, filters, config: { country: 'US', currency: MERCHANT_CURRENCY, language: 'en' } };
+}
+
 /** The exact Channel3 request body: the family's words, an optional ceiling and the goal currency. Nothing else. */
 export function searchRequestBody({ query, budgetCents }) {
   const body = { query, limit: MAX_RESULTS, config: { country: 'US', currency: MERCHANT_CURRENCY, language: 'en' } };
@@ -79,6 +120,19 @@ function toCents(amount) {
   return Number.isSafeInteger(cents) ? cents : null;
 }
 
+// Exact unit definitions, in milligrams (the international avoirdupois ounce and pound).
+const MG_PER_UNIT = Object.freeze({ mg: 1, g: 1000, kg: 1_000_000, oz: 28_349.523125, lb: 453_592.37 });
+const MAX_LISTED_MG = 1_000_000_000; // 1,000 kg: above this a listed weight is treated as unknown
+
+/** An offer's listed weight in whole milligrams, or null when it is missing, unreadable or implausible. */
+export function readWeight(raw) {
+  if (!raw || typeof raw !== 'object' || typeof raw.number !== 'number' || !Number.isFinite(raw.number) || raw.number <= 0) return null;
+  const factor = typeof raw.unit === 'string' && Object.hasOwn(MG_PER_UNIT, raw.unit) ? MG_PER_UNIT[raw.unit] : null;
+  if (factor === null) return null;
+  const mg = Math.round(raw.number * factor);
+  return Number.isSafeInteger(mg) && mg >= 1 && mg <= MAX_LISTED_MG ? mg : null;
+}
+
 function readOffer(raw) {
   if (!raw || typeof raw !== 'object') return null;
   const url = safeHttpsUrl(raw.url);
@@ -94,6 +148,7 @@ function readOffer(raw) {
     currency: cents !== null && currency ? currency : null,
     availability: AVAILABILITY.has(raw.availability) ? raw.availability : null,
     condition: raw.condition === 'used' ? 'used' : raw.condition === 'new' ? 'new' : null,
+    weightMg: readWeight(raw.dimensions?.weight),
   };
 }
 
@@ -145,13 +200,13 @@ function blockedSelection(variants) {
  * Turn a Channel3 search response into at most three display rows. Anything malformed is dropped rather than guessed;
  * a missing price stays missing. Throws `merchant_malformed` when the body is not a search response at all.
  */
-export function normalizeSearch(json, { budgetCents = null } = {}) {
+export function normalizeSearch(json, { budgetCents = null, max = MAX_RESULTS, withFacts = false } = {}) {
   if (!json || typeof json !== 'object' || !Array.isArray(json.products)) {
     throw fail(502, 'merchant_malformed', 'Channel3 sent a response this app could not read. Nothing was saved.');
   }
   const results = [];
   for (const product of json.products.slice(0, 30)) {
-    if (results.length >= MAX_RESULTS) break;
+    if (results.length >= max) break;
     if (!product || typeof product !== 'object') continue;
     const productId = typeof product.id === 'string' && PRODUCT_ID.test(product.id) ? product.id : null;
     const title = cleanText(product.title, 90);
@@ -173,15 +228,82 @@ export function normalizeSearch(json, { budgetCents = null } = {}) {
       currency: offer?.currency ?? null,
       availability: variantBlock ? variantBlock.availability : offer?.availability ?? null,
       condition: offer?.condition ?? null,
+      weightMg: offer?.weightMg ?? null,
       selection: readSelection(product.variants?.selected),
       otherOffers: Math.max(0, offers.length - 1),
       overBudget: Boolean(budgetCents !== null && offer?.priceCents !== null && offer?.currency === MERCHANT_CURRENCY && offer.priceCents > budgetCents),
       usable: usable && !variantBlock,
       unusableReason: reason ?? variantBlock?.reason ?? null,
+      // The catalog's own category and structured facts, kept on this server to judge a family's must-haves.
+      ...(withFacts ? { catalog: readCatalogFacts(product) } : {}),
     });
   }
   return results;
 }
+
+// A category summary as the catalog sent it: a safe slug, a title and its root-to-self path. Anything else is dropped.
+function readCategory(raw) {
+  if (!raw || typeof raw !== 'object') return null;
+  const slug = typeof raw.slug === 'string' && CATEGORY_SLUG.test(raw.slug) ? raw.slug : null;
+  const title = cleanText(raw.title, 80);
+  if (!slug || !title) return null;
+  const path = (Array.isArray(raw.path) ? raw.path.slice(0, 8) : []).flatMap((p) => {
+    const ref = typeof p?.slug === 'string' && CATEGORY_SLUG.test(p.slug) ? p.slug : null, name = cleanText(p?.title, 80);
+    return ref && name ? [{ slug: ref, title: name }] : [];
+  });
+  return { slug, title, path };
+}
+
+// Structured facts for must-have checks: bounded plain values under safe keys, color excluded (the catalog's contract).
+function readCatalogFacts(product) {
+  const category = readCategory(product.category);
+  const attributes = {};
+  const raw = product.structured_attributes;
+  if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
+    for (const [key, values] of Object.entries(raw).slice(0, 40)) {
+      if (!ATTRIBUTE_KEY.test(key) || key === 'color' || !Array.isArray(values)) continue;
+      const clean = [...new Set(values.slice(0, 20).map((v) => cleanText(v, 60)).filter(Boolean))].slice(0, 10);
+      if (clean.length) attributes[key] = clean;
+      if (Object.keys(attributes).length >= 24) break;
+    }
+  }
+  return { category: category ? { slug: category.slug, title: category.title, path: category.path.map((p) => p.slug) } : null, attributes };
+}
+
+/** Category search results: at most five safe summaries in the catalog's order, each with its readable path. */
+export function normalizeCategories(json) {
+  if (!json || typeof json !== 'object' || !Array.isArray(json.categories)) {
+    throw fail(502, 'merchant_malformed', 'Channel3 sent a category list this app could not read. Nothing was saved.');
+  }
+  const categories = [];
+  for (const raw of json.categories.slice(0, 20)) {
+    if (categories.length >= CATEGORY_RESULTS) break;
+    const c = readCategory(raw);
+    if (c && !categories.some((x) => x.slug === c.slug)) categories.push(c);
+  }
+  return categories;
+}
+
+/**
+ * One category's must-have choices: its enumerated attributes other than color, each with the catalog's own allowed
+ * values. An attribute without listed values cannot be chosen between and is left out.
+ */
+export function normalizeCategory(json, slug) {
+  const summary = readCategory(json);
+  if (!summary || summary.slug !== slug) throw fail(502, 'merchant_malformed', 'Channel3 returned a different category. Nothing was changed.');
+  const attributes = [];
+  for (const a of (Array.isArray(json.attributes) ? json.attributes.slice(0, 60) : [])) {
+    if (attributes.length >= MAX_ATTRIBUTES) break;
+    const key = typeof a?.slug === 'string' && ATTRIBUTE_KEY.test(a.slug) ? a.slug : null;
+    const name = cleanText(a?.name, 60);
+    if (!key || !name || key === 'color' || attributes.some((x) => x.key === key)) continue;
+    const values = [...new Set((Array.isArray(a.values) ? a.values.slice(0, 200) : []).map((v) => cleanText(v, 60)).filter(Boolean))].slice(0, MAX_ATTRIBUTE_VALUES);
+    if (values.length) attributes.push({ key, name, values });
+  }
+  return { slug, title: summary.title, path: summary.path, attributes };
+}
+
+const publicCategory = (c) => ({ slug: c.slug, title: c.title, path: c.path.map((p) => p.title) });
 
 // Persist only the selected labels, never provider HTML or an arbitrary lookup URL. A changed/relaxed variant cannot
 // silently stand in for the one the family selected. Older saved items have no selection and require fresh review.
@@ -195,10 +317,17 @@ function readSelection(value) {
 
 // Public offer identity, never a family identifier. Another retailer/condition/variant remains a separate choice.
 const offerKey = (item) => JSON.stringify([item.productId, item.merchant, item.condition ?? null, readSelection(item.selection)]);
+// The listed weight is one of them: a kit compared by weight must not rest on a weight a newer read contradicted.
 const offerFacts = (item) => item === null ? null : JSON.stringify([
-  item.merchant, item.priceCents, item.currency, item.availability, item.condition ?? null, readSelection(item.selection), item.usable,
+  item.merchant, item.priceCents, item.currency, item.availability, item.condition ?? null, readSelection(item.selection), item.usable, item.weightMg ?? null,
 ]);
 const expiredDraft = () => fail(410, 'merchant_draft_expired', 'That merchant result has expired. Search again for a fresh price before saving.');
+// What the catalog reports about an item's kind and facts, whatever the order: the category's slug and path, and each
+// attribute's values as a set. Titles, pictures and links are not among these facts.
+const kindOf = (c) => (c?.category ? [c.category.slug, [...(c.category.path ?? [])].sort()] : null);
+const catalogFacts = (c) => JSON.stringify(c ? [kindOf(c), Object.keys(c.attributes ?? {}).sort().map((k) => [k, [...c.attributes[k]].sort()])] : null);
+// The facts a family-fit judgement rests on: the kind of item when the need names one, and each must-have's values.
+const supportingFacts = (c, need) => JSON.stringify([need.category ? kindOf(c) : null, need.mustHaves.map((m) => [m.key, [...(c?.attributes?.[m.key] ?? [])].sort()])]);
 
 export function normalizeProduct(json, reference) {
   if (json?.id !== reference.productId) throw fail(502, 'merchant_malformed', 'Channel3 returned a different item. Nothing was changed.');
@@ -206,7 +335,7 @@ export function normalizeProduct(json, reference) {
     const offer = readOffer(o);
     return offer?.merchant === reference.merchant && (!reference.condition || offer.condition === reference.condition);
   }) : [];
-  const row = normalizeSearch({ products: [{ ...json, offers }] })[0];
+  const row = normalizeSearch({ products: [{ ...json, offers }] }, { withFacts: true })[0];
   if (!row) throw fail(502, 'merchant_malformed', 'Channel3 sent an item this app could not read.');
   const wanted = readSelection(reference.selection);
   const changed = wanted.some((v) => !row.selection.some((r) => r.name === v.name && r.label === v.label));
@@ -259,6 +388,17 @@ export function createChannel3Client({ apiKey, fetch = globalThis.fetch, timeout
   }
   return {
     search: (input) => request(CHANNEL3_SEARCH_URL, searchRequestBody(input)),
+    fitSearch: (body) => request(CHANNEL3_SEARCH_URL, body),
+    categories: (query) => {
+      const url = new URL(`${CHANNEL3_BASE}/categories/search`);
+      url.searchParams.set('query', query);
+      url.searchParams.set('limit', String(CATEGORY_RESULTS));
+      return request(url.href);
+    },
+    category: (slug) => {
+      if (!CATEGORY_SLUG.test(slug)) throw fail(400, 'invalid_category', 'Choose one of the kinds of item shown.');
+      return request(`${CHANNEL3_BASE}/categories/${encodeURIComponent(slug)}`);
+    },
     similar: (productId, budgetCents) => request(`${CHANNEL3_BASE}/similar`, {
       product_id: productId, limit: MAX_RESULTS,
       filters: { price: { max_price: budgetCents / 100 } },
@@ -284,8 +424,12 @@ export function createMerchant({ apiKey = null, fetch, clock, ...options } = {})
   const client = apiKey ? createChannel3Client({ apiKey, fetch, timeoutMs: opts.timeoutMs }) : null;
   const cache = new Map(); // key -> { at, value }
   const inflight = new Map(); // key -> Promise
-  const drafts = new Map(); // draftId -> { expiresAt, item, offerKey, facts }
-  const observations = new Map(); // offerKey -> { version, facts, at }; bounded catalog knowledge, not search history
+  const drafts = new Map(); // draftId -> { expiresAt, item, offerKey, facts, basis? (the facts a fit judgement rests on) }
+  // offerKey -> { version, facts, catalog, at }: the newest read of each offer. Bounded public catalog knowledge, never a
+  // family's need, context or search history.
+  const observations = new Map();
+  const shownCategories = new Map(); // slug -> at: kinds of item this server was given by the catalog (public taxonomy)
+  const categoryDetails = new Map(); // slug -> { at, detail }: their must-have lists, the only ones a fit search accepts
   let readVersion = 0; // Start order, so an older slow response cannot revive an offer a newer lookup contradicted.
   let recent = []; // timestamps of provider calls in the last minute
 
@@ -303,6 +447,10 @@ export function createMerchant({ apiKey = null, fetch, clock, ...options } = {})
     while (cache.size > opts.maxCacheEntries) cache.delete(cache.keys().next().value);
     while (drafts.size > opts.maxDrafts) drafts.delete(drafts.keys().next().value);
     while (observations.size > opts.maxDrafts * 2) observations.delete(observations.keys().next().value);
+    for (const [slug, seen] of shownCategories) if (at - seen > opts.draftTtlMs) shownCategories.delete(slug);
+    for (const [slug, entry] of categoryDetails) if (at - entry.at > opts.draftTtlMs) categoryDetails.delete(slug);
+    while (shownCategories.size > opts.maxDrafts) shownCategories.delete(shownCategories.keys().next().value);
+    while (categoryDetails.size > opts.maxCacheEntries) categoryDetails.delete(categoryDetails.keys().next().value);
     recent = recent.filter((t) => at - t < 60_000);
   }
 
@@ -311,24 +459,49 @@ export function createMerchant({ apiKey = null, fetch, clock, ...options } = {})
     const latest = observations.get(key);
     if (latest && latest.version > version) {
       if (latest.facts !== facts) throw expiredDraft();
-      return; // Same offer facts; retain the later read's ordering.
+      return; // Same offer facts; retain the later read's ordering and its catalog facts (see replacedBy).
     }
+    const catalog = row?.catalog ?? null;
     observations.delete(key);
-    observations.set(key, { version, facts, at: now() });
+    observations.set(key, { version, facts, catalog, at: now() });
     // A draft is not a reserved price. Once the catalog contradicts it, the family must review another result.
     // Keep equal offers usable: a new tracking URL or a title/image change alone does not invalidate consent.
-    for (const [id, entry] of drafts) if (entry.offerKey === key && entry.facts !== facts) drafts.delete(id);
+    for (const [id, entry] of drafts) {
+      if (entry.offerKey !== key) continue;
+      if (entry.facts !== facts) { drafts.delete(id); continue; }
+      if (!row || catalogFacts(entry.item.catalog) === catalogFacts(catalog)) continue;
+      // This newer read reports another kind of item or other facts (an order alone is no change). A family-fit result
+      // whose suitability rests on a contradicted fact expires. Any other result keeps its offer, but no longer carries
+      // the replaced facts, so they can never again support a family's need.
+      if (entry.basis !== undefined && entry.basis !== supportingFacts(catalog, entry.item.fit.needSpec)) drafts.delete(id);
+      else entry.item = { ...entry.item, catalog: null };
+    }
     // Cached results carry the same short-lived references. Never return a list whose references just expired.
     for (const [query, entry] of cache) if (entry.value.results.some((r) => !drafts.has(r.referenceId))) cache.delete(query);
     prune(now());
   }
 
+  // The newest read of a row's offer, when it is newer than the row's own answer and reports other catalog facts.
+  function replacedBy(row) {
+    const seen = observations.get(offerKey(row));
+    return seen && seen.facts === offerFacts(row) && catalogFacts(seen.catalog) !== catalogFacts(row.catalog) ? seen : null;
+  }
+  // A judgement must not rest on a fact a newer read of the same offer contradicted: that older answer is refused.
+  function refuseContradicted(row, need) {
+    const newer = replacedBy(row);
+    if (newer && supportingFacts(newer.catalog, need) !== supportingFacts(row.catalog, need)) throw expiredDraft();
+  }
+
   function remember(row, checkedAt, query = '') {
     // Every shown product has a bounded reference for explicit refresh/similar; only usable products have goal drafts.
     const referenceId = `c3d_${randomBytes(12).toString('hex')}`;
-    drafts.set(referenceId, { expiresAt: now() + opts.draftTtlMs, item: { ...row, checkedAt, query }, offerKey: offerKey(row), facts: offerFacts(row) });
+    // An answer older than the newest read of the same offer keeps its offer, but not the facts that read replaced.
+    const item = { ...row, ...(replacedBy(row) ? { catalog: null } : {}), checkedAt, query };
+    const basis = row.fit ? supportingFacts(row.catalog, row.fit.needSpec) : undefined;
+    drafts.set(referenceId, { expiresAt: now() + opts.draftTtlMs, item, offerKey: offerKey(row), facts: offerFacts(row), basis });
     prune(now());
-    return { ...row, draftId: row.usable ? referenceId : null, referenceId, checkedAt };
+    const { catalog, ...shown } = row; // the catalog's raw facts stay here; a family-fit result shows its judgement instead
+    return { ...shown, draftId: row.usable ? referenceId : null, referenceId, checkedAt };
   }
 
   async function bounded(key, run) {
@@ -344,7 +517,8 @@ export function createMerchant({ apiKey = null, fetch, clock, ...options } = {})
 
   async function refresh(reference) {
     const key = `product:${reference.productId}:${reference.merchant}:${reference.condition}:${JSON.stringify(readSelection(reference.selection))}`;
-    const result = await bounded(key, async () => {
+    // Shared between identical concurrent look-ups: only the public catalog call, reading it and recording the observation.
+    const page = await bounded(key, async () => {
       const version = ++readVersion;
       let json;
       try { json = await client.product(reference); } catch (error) {
@@ -355,11 +529,17 @@ export function createMerchant({ apiKey = null, fetch, clock, ...options } = {})
       const row = normalizeProduct(json, reference);
       observe(reference, row, version);
       if (!row.selectionChanged && row.merchant && offerKey(row) !== offerKey(reference)) observe(row, row, version);
-      const checkedAt = new Date(now()).toISOString();
-      return { status: 'ok', provider: 'Channel3', checkedAt, results: [remember(row, checkedAt, reference.query)] };
+      return { row, checkedAt: new Date(now()).toISOString() };
     });
-    // A saved item and a newer search can share the lookup but have different comparison prices.
-    return { ...result, results: result.results.map((row) => ({ ...row, previousPriceCents: reference.priceCents })) };
+    // Each caller's own: a family-fit result is judged again against that caller's need and ceiling, and it keeps that
+    // caller's context, in a draft of its own. If it no longer meets a must-have, it says so; it never keeps an earlier
+    // "suitable". A saved item and a newer search can share the look-up but have different comparison prices.
+    const row = { ...page.row };
+    if (reference.fit) {
+      refuseContradicted(row, reference.fit.needSpec); // an older answer cannot restore a fact a newer read contradicted
+      row.fit = { ...evaluateFit(row, reference.fit.needSpec, { ceilingCents: reference.fit.context.ceilingCents }), needSpec: reference.fit.needSpec, context: reference.fit.context };
+    }
+    return { status: 'ok', provider: 'Channel3', checkedAt: page.checkedAt, results: [{ ...remember(row, page.checkedAt, reference.query), previousPriceCents: reference.priceCents }] };
   }
 
   async function alternatives(reference, budgetCents) {
@@ -371,7 +551,7 @@ export function createMerchant({ apiKey = null, fetch, clock, ...options } = {})
       const version = ++readVersion;
       const json = await client.similar(reference.productId, ceiling);
       // Provider filters are not a guarantee: enforce the budget, stock, currency and source exclusion locally too.
-      const rows = normalizeSearch(json, { budgetCents: ceiling }).filter((r) => r.productId !== reference.productId && r.usable && r.availability === 'InStock' && r.priceCents <= ceiling);
+      const rows = normalizeSearch(json, { budgetCents: ceiling, withFacts: true }).filter((r) => r.productId !== reference.productId && r.usable && r.availability === 'InStock' && r.priceCents <= ceiling);
       for (const row of rows) observe(row, row, version);
       const checkedAt = new Date(now()).toISOString();
       return { status: 'ok', provider: 'Channel3', budgetCents: ceiling, checkedAt, results: rows.map((r) => remember(r, checkedAt, reference.query)) };
@@ -392,7 +572,7 @@ export function createMerchant({ apiKey = null, fetch, clock, ...options } = {})
     const pending = (async () => {
       const version = ++readVersion;
       const json = await client.search(request);
-      const rows = normalizeSearch(json, { budgetCents: request.budgetCents });
+      const rows = normalizeSearch(json, { budgetCents: request.budgetCents, withFacts: true });
       for (const row of rows) observe(row, row, version);
       at = now();
       const checkedAt = new Date(at).toISOString();
@@ -406,6 +586,96 @@ export function createMerchant({ apiKey = null, fetch, clock, ...options } = {})
     try { return await pending; } finally { inflight.delete(key); }
   }
 
+  /** Kinds of item for the family's own words: up to five catalog categories, as explicit choices. */
+  async function findCategories(input = {}) {
+    const { query } = validateSearch({ query: input.query });
+    if (!client) throw fail(503, 'merchant_not_connected', 'Product search is not connected, so no catalog categories can be looked up.');
+    return bounded(`categories:${query.toLowerCase()}`, async () => {
+      const categories = normalizeCategories(await client.categories(query));
+      const at = now();
+      for (const c of categories) { shownCategories.delete(c.slug); shownCategories.set(c.slug, at); }
+      prune(at);
+      return { status: 'ok', provider: 'Channel3', query, categories: categories.map(publicCategory) };
+    });
+  }
+
+  /** One shown category's must-have choices. Only a category the catalog listed here can be opened. */
+  async function category(slug) {
+    if (typeof slug !== 'string' || !shownCategories.has(slug)) throw fail(409, 'category_unknown', 'Look up the kind of item again, then choose one of the categories shown.');
+    prune(now());
+    const cached = categoryDetails.get(slug);
+    if (cached) return { status: 'ok', provider: 'Channel3', category: publicDetail(cached.detail), cached: true };
+    return bounded(`category:${slug}`, async () => {
+      const detail = normalizeCategory(await client.category(slug), slug);
+      categoryDetails.delete(slug);
+      categoryDetails.set(slug, { at: now(), detail });
+      prune(now());
+      return { status: 'ok', provider: 'Channel3', category: publicDetail(detail) };
+    });
+  }
+  const publicDetail = (d) => ({ slug: d.slug, title: d.title, path: d.path.map((p) => p.title), attributes: d.attributes.map((a) => ({ ...a, values: [...a.values] })) });
+
+  /**
+   * The family's need, built only from a category this server opened and its listed values:
+   * { category: { slug, title, path } | null, mustHaves: [{ key, name, accepted, allowed }] }. A key or value the
+   * catalog did not list is refused, never guessed. With no category, only the price and date are checked.
+   */
+  function buildNeed({ category: slug = null, mustHaves = [] } = {}) {
+    if (!Array.isArray(mustHaves) || mustHaves.length > MAX_MUST_HAVES) throw fail(400, 'invalid_need', `Choose up to ${MAX_MUST_HAVES} must-haves.`);
+    if (slug === null || slug === '') {
+      if (mustHaves.length) throw fail(400, 'invalid_need', 'Choose a kind of item before its must-haves.');
+      return { category: null, mustHaves: [] };
+    }
+    prune(now());
+    const entry = typeof slug === 'string' ? categoryDetails.get(slug) : null;
+    if (!entry) throw fail(409, 'category_needs_check', 'Show the must-haves for this kind of item again before searching.');
+    const used = new Set();
+    const list = mustHaves.map((m) => {
+      const attribute = entry.detail.attributes.find((a) => a.key === m?.key);
+      if (!attribute || used.has(attribute.key)) throw fail(400, 'invalid_need', 'Choose must-haves from the list the catalog gives for this kind of item.');
+      used.add(attribute.key);
+      const values = Array.isArray(m.values) ? m.values : [];
+      if (!values.length || values.length > attribute.values.length || values.some((v) => typeof v !== 'string' || !attribute.values.includes(v)) || new Set(values).size !== values.length) {
+        throw fail(400, 'invalid_need', `Choose one or more of the listed values for ${attribute.name}.`);
+      }
+      return { key: attribute.key, name: attribute.name, accepted: attribute.values.filter((v) => values.includes(v)), allowed: [...attribute.values] };
+    });
+    return { category: { slug, title: entry.detail.title, path: entry.detail.path.map((p) => p.title) }, mustHaves: list };
+  }
+
+  /**
+   * A family-fit search: one page of at most twelve products. Each is judged here, whatever the provider filtered.
+   * Only suitable items become results, at most three, lowest price first. Unsuitable and unknown items are counted with
+   * one reason each, never filled in.
+   * @param context { ceilingCents, targetDate, reserveCents, on }: the family facts this ceiling came from (kept with drafts)
+   */
+  async function fitSearch({ query, need, ceilingCents, context }) {
+    const request = validateSearch({ query, budgetCents: ceilingCents });
+    if (!client) throw fail(503, 'merchant_not_connected', 'Product search is not connected, so no search was made.');
+    const body = fitRequestBody({ query: request.query, need, ceilingCents });
+    // Shared between identical concurrent searches: only the public catalog page, reading it and recording observations.
+    const page = await bounded(`fit:${JSON.stringify(body)}`, async () => {
+      const version = ++readVersion;
+      const rows = normalizeSearch(await client.fitSearch(body), { budgetCents: ceilingCents, max: FIT_INSPECT_LIMIT, withFacts: true });
+      for (const row of rows) observe(row, row, version);
+      return { rows, checkedAt: new Date(now()).toISOString() };
+    });
+    // Each caller's own: the judgement against its need and ceiling, its private planning context, and drafts of its own.
+    // One family's context or references therefore never reach another caller of the same search.
+    // An answer that arrived after a newer read of one of its items contradicted a must-have or the kind is refused.
+    for (const row of page.rows) refuseContradicted(row, need);
+    const judged = page.rows.map((row) => ({ row, fit: evaluateFit(row, need, { ceilingCents }) }));
+    const suitable = judged.filter((j) => j.fit.status === 'suitable').sort((a, b) => bySuitableOrder(a.row, b.row));
+    const shown = suitable.slice(0, FIT_MAX_RESULTS);
+    return {
+      status: 'ok', provider: 'Channel3', checkedAt: page.checkedAt, query: request.query, inspected: page.rows.length, moreSuitable: suitable.length - shown.length, need,
+      results: shown.map(({ row, fit }) => remember({ ...row, fit: { ...fit, needSpec: need, context } }, page.checkedAt, request.query)),
+      others: judged.filter((j) => j.fit.status !== 'suitable').map(({ row, fit }) => ({
+        productId: row.productId, title: row.title, priceCents: row.priceCents, currency: row.currency, status: fit.status, reason: fit.problems[0],
+      })),
+    };
+  }
+
   /** The stored result for a draft the server showed, or a clear error once it has expired. Does not consume it. */
   function draft(draftId) {
     prune(now());
@@ -414,5 +684,5 @@ export function createMerchant({ apiKey = null, fetch, clock, ...options } = {})
     return entry.item;
   }
 
-  return { connected, status, search, draft, refresh, alternatives };
+  return { connected, status, search, draft, refresh, alternatives, findCategories, category, buildNeed, fitSearch };
 }

@@ -1,0 +1,82 @@
+{
+  "capturedAt": "2026-11-09T08:54:20Z to 2026-11-09T08:58:23Z",
+  "sourceCommit": "8461902f9cfe046a2cf345816e96159a5afc3856",
+  "environment": "Playwright 1.64.1 / Chromium 156.0.8078.4 headless, macOS arm64 with SwiftShader; phone is the 390 x 844 touch-emulated project at device scale 2",
+  "fixture": "Disposable in-memory family-mode household. Rowan (owner, adult), Ash (adult) and Wren (child) each sign in with their own virtual passkey. The real kit-list photo reader runs over a fake OpenAI transport (test/helpers/fake-openai.mjs) whose reply is written into the test: 4-person tent 1, sleeping bag 3 (misread), torch 2, stove with no count. The photo is an invented test document, a white card reading \"Camping kit (invented test list)\" and the four lines, drawn by the test browser. None of this is a person’s list or evidence of how well a model reads a photo.",
+  "spec": "test/e2e/kit-list.spec.mjs — a family makes its kit list from typed text or a photo, fixes what was misread, and every member reads the saved list",
+  "steps": [
+    "Rowan types the list and chooses Check this list; enters Have 2 for the torch (capture: phone typed draft); Save this list",
+    "Start a new list, choose the photo; a reading held until Rowan types is not used; Read the photo with OpenAI again",
+    "The draft shows the misread 3 and the blank stove count; Save is refused; then the capture of the draft’s top (desktop photo draft)",
+    "Rowan corrects both counts, enters Have 2 for the torch and saves; Ash, Wren and a reload read the same list (captures: desktop saved, phone child view)",
+    "Ash edits while Rowan saves a change: Ash keeps their typing, sees the deliberate choice, keeps the draft and saves"
+  ],
+  "checks": {
+    "openAiCallsInTheWholeJourney": 2,
+    "otherRecordsUnchanged": true,
+    "kitRevisionsSaved": 4
+  },
+  "sources": {
+    "index.html": "9cddba68f6107b0a214de69ac22bc567fccd874d0dd027a4697943d993a51b7e",
+    "app.css": "22fe45a8be73aea05d36cf9182a2980e17fe3714cb122fabe4c13da29b8a9365",
+    "src/app/main.js": "77248f27d04d5de89887a0d8c8a5255c2f6489e1a17b60631dd4c85c63b2db3a",
+    "src/app/kit-list.js": "e086b9234c259f656c92e50d325edf5fab1c0023cc368f39f0f17f94043d288d",
+    "src/app/api.js": "569e1f3914fff4434a46ca647467e9d2b054d4849dc1a186d623b90825f88ba7",
+    "src/core/kit-list.js": "42a9f22175cc2427184909d27ff389b08a5081a2e6c98420259a954ba110348a",
+    "server/app.mjs": "14c223f4034f5a119f2dc2b450b5e8c0b98b1a2821b03edda317cdebc6a9f1f8",
+    "server/kit/list.mjs": "f67c369bbab39ea1b78c468cc36f18d2d6d8d35fccf33cd66243fcdd8d6e71e3",
+    "server/kit/reader.mjs": "5a440658d91506435123a186897e683e973ca5e57371d072818b82a3305a457e",
+    "server/config.mjs": "c8106051023faa8b78203ea28c0f0a0c11a992598b3cf5effcc0085db81bcb90",
+    "server/db.mjs": "74cf9bc48061a48260c20f7c910c9d92a698da999f59b11f3def810a619e6ada",
+    "server/access/policy.mjs": "2b1dc957faddaa73d63db1c5d73d6b529a2241934ac5aebe12afd5af4c3a8813",
+    "test/e2e/kit-list.spec.mjs": "a3574df330f4bcf90377885f50b2c220454cb6ab573fb910414724cb893a9c4f",
+    "test/e2e/support/family.mjs": "3ffd529926abfc42463c0b2b6b15f702aa2e71106c8d5f5f0e0f53152ef991fd",
+    "test/helpers/fake-openai.mjs": "7592f813daecd9951094dbe7868dd0deae6f2f19dd35d6e6ff0fe2e0b2aa90d2"
+  },
+  "images": [
+    {
+      "path": "docs/screenshots/kit-list-desktop-photo-draft.png",
+      "sha256": "301bdb65b56d36302adb76b65784338196507cbcd852f09a60527b3b74dbbfbf",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "region": "#kit-draft (Plan journal, Kit list)",
+      "story": "Rowan read the invented test photo with the fake OpenAI transport. The draft, marked not saved, shows the photo beside its first three lines, including the fake reading’s misread count: Need 3 for sleeping bag, where the photo says 2. The stove line, with its blank count flagged \"How many are needed? Enter a number.\", is further down the draft and outside this capture; the browser test asserts it, and that Save this list was refused just before this capture.",
+      "mode": "fake OpenAI transport with an invented reading; invented list text and a photo of it drawn by the test browser; family mode, in-memory data; no real provider"
+    },
+    {
+      "path": "docs/screenshots/kit-list-desktop-saved.png",
+      "sha256": "3948fab7231641aff5df413c7459668026d67a40347288331676559d51ea9eae",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "region": "#kit-list (Plan journal)",
+      "story": "After the corrections (2 sleeping bags, 1 stove, 2 torches already at home) and Save this list, then a reload: the saved list reads To get 1, 2, 0 and 1, read from a photo and checked by Rowan.",
+      "mode": "fake OpenAI transport with an invented reading; invented list text and a photo of it drawn by the test browser; family mode, in-memory data; no real provider"
+    },
+    {
+      "path": "docs/screenshots/kit-list-phone-typed-draft.png",
+      "sha256": "90c4bddaa314187f92e8dba5a045a5a6fdefc505e55180dd71b543d3c8954e4d",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "region": "#kit-list (Plan journal, Kit list)",
+      "story": "The typed list \"1 x 4-person tent; 2 x sleeping bag; 2 x torch; 1 x stove\" after Check this list on a 390px phone, with Have 2 entered for the torch: Need, Have and To get for each line, not yet saved.",
+      "mode": "fake OpenAI transport with an invented reading; invented list text and a photo of it drawn by the test browser; family mode, in-memory data; no real provider"
+    },
+    {
+      "path": "docs/screenshots/kit-list-phone-child-saved.png",
+      "sha256": "2a947ba9352bd6301916c2275a3a00021228b078715f930b9d042abece1ca810",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "region": "#kit-list (Plan journal)",
+      "story": "Wren, a child, reads the same saved list by live update on a 390px phone, with no editing actions.",
+      "mode": "fake OpenAI transport with an invented reading; invented list text and a photo of it drawn by the test browser; family mode, in-memory data; no real provider"
+    }
+  ]
+}

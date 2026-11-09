@@ -1,0 +1,72 @@
+{
+  "capturedAt": "2026-11-08T17:45:17Z",
+  "sourceCommit": "a3c47a8afde979fcc1bdef31be496ea4d57b3bca",
+  "environment": "Playwright 1.64.1 / Chromium 156.0.8078.4 headless, macOS arm64 with SwiftShader; phone is the 390 x 844 touch-emulated project at device scale 2",
+  "fixture": "Disposable in-memory sandbox household ($60.00 of $300.00 at the start) with the stateful fake PayPal and no keys. Stories made through the real payment service with a fixture clock moved on between steps: $12.00 checked after it counted; $15.00 checked, then a verified $5.00 refund webhook; $18.00 refunded in full from the app; $20.00 held as pending",
+  "spec": "test/e2e/receipt-breakdown.spec.mjs — each receipt says how much still counts…",
+  "steps": [
+    "Load the app and open the Ledger (AG Grid)",
+    "For each story, search its PayPal order id and choose its record; open the existing Payment details disclosure",
+    "Capture the viewport with the selected record scrolled into view"
+  ],
+  "readOnlyCapture": {
+    "requestsWhileChoosingAndOpening": [],
+    "writes": [],
+    "outside": [],
+    "errors": [],
+    "providerRequestsUnchanged": true,
+    "browserStorageUnchanged": true
+  },
+  "sources": {
+    "index.html": "6498089882bb0dfed4655fcd9b3ca7dd92ed48d78a532ebb029b1f2eaee113e6",
+    "app.css": "e878569d84de5a98140b7372c71f0b509a95d5dd6f15a71adeb2055b6a543f84",
+    "src/app/main.js": "7f4a3045e74a794b9ea0a11755a763210fb4b8893f89b0f5fcf128ecc69d0595",
+    "src/core/contribution-story.js": "db8964165c00250ba0a59b4662a19d3272b8e95100a1b5e38539790f9bc518da"
+  },
+  "images": [
+    {
+      "path": "docs/screenshots/receipt-breakdown-desktop-partial.png",
+      "sha256": "cac18d77da90f15d938240730e78a2e00f6adfa1b76ecdc01b9d318daf1b3369",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "region": "#ledger-selected-record",
+      "story": "$15.00 recorded, $5.00 refunded: $10.00 counts; Payment details open",
+      "mode": "fake PayPal sandbox fixture; no real PayPal transaction"
+    },
+    {
+      "path": "docs/screenshots/receipt-breakdown-phone-partial.png",
+      "sha256": "6ac58f5f27147a002eb78a86d01ce888e28830236b6c630550003ce0f8bc5397",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "region": "#ledger-selected-record",
+      "story": "$15.00 recorded, $5.00 refunded: $10.00 counts; Payment details open",
+      "mode": "fake PayPal sandbox fixture; no real PayPal transaction"
+    },
+    {
+      "path": "docs/screenshots/receipt-breakdown-phone-pending.png",
+      "sha256": "7e4e4a89eae52c62492239082acd1527588d859575df460638cc28306c0ac28c",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "region": "#ledger-selected-record",
+      "story": "$20.00 capture still pending: nothing counted yet; no breakdown or timeline",
+      "mode": "fake PayPal sandbox fixture; no real PayPal transaction"
+    },
+    {
+      "path": "docs/screenshots/receipt-breakdown-desktop-completed.png",
+      "sha256": "8dda1fb648917a52106a5476eccab0c7fbb5d40e10b7852c68382398464c8f7c",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "region": "#ledger-selected-record",
+      "story": "$12.00 completed and checked afterwards: all of it counts; Payment details open",
+      "mode": "fake PayPal sandbox fixture; no real PayPal transaction"
+    }
+  ]
+}

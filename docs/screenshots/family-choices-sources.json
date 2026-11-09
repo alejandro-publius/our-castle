@@ -1,0 +1,50 @@
+{
+  "feature": "Family choices",
+  "base": "7329b8f6f64c8d75e5da7b1c15aed6c7ca4775fd",
+  "inheritedImplementation": "9f754405aab5b32f4926f87bf29495e3e59e4a62",
+  "verifiedImplementation": "53b2d4981ef90183bebfcae41b077cbeedb033a8",
+  "captureWorkingTreeHead": "bd707385d8a2b13699465317bf867e79b220d0b3",
+  "captureSourceNote": "Refreshed during the passing final browser run after the in-flight review correction, with that correction present but not yet committed. Every listed source byte was then committed as 53b2d4981ef90183bebfcae41b077cbeedb033a8. Source files were not edited during the run; this does not claim the later commit existed at capture time.",
+  "command": "node node_modules/@playwright/test/cli.js test --config test-results/family-choice-finish-20261108/playwright.config.mjs test/e2e/family-choices.spec.mjs --project=desktop --project=phone --trace=off --reporter=list",
+  "browserResult": "2 passed, 0 failed, 0 skipped",
+  "data": "In-memory family with two adults and a child, virtual passkeys, invented tent products over fake Channel3; no actual provider call, real payment, saved owner data or human participant.",
+  "sourceSHA256": {
+    "app.css": "05b7965340385f8c175f540a2daa634dc6fab3de31c47b630101960807a95e48",
+    "index.html": "950d5e1a2c8b6ad9336a8192fb79dd881179c306a99526fe677ffe764772e57e",
+    "server/access/policy.mjs": "339d16e4b88dc2757b1582380e81ac353131e897d88073af80b79d42952263e6",
+    "server/app.mjs": "6382da6c0396fde59ecf8ab208dd248843659bd2f71bb48f1e4d6ee67cdf9d78",
+    "server/db.mjs": "d4f290cd9c882f791bc2e21e85ac89f13faee2bf4119e7f2c3a0d09fd02d5004",
+    "server/family-choices.mjs": "3065ddef095e29f74cc1b50695f5801a702004a9ae9725da4d185c8ff7c6d676",
+    "src/app/family-choices.js": "85c71611376a8eb8e433b9470dfd447efe648a5e7ba5189d3210309d89fa8437",
+    "src/app/main.js": "771d1c567163bfdf9c25b6d5ad1100e5f23bfe19ba63c007de89866c4190132a",
+    "src/app/merchant.js": "114b0675d73744dd93ac02c6ba75212f9ee3a8d97baf60f7ccd734c7f5db894a",
+    "src/core/family-choices.js": "24d96d5cab9fec2433155d7fcb69f998afaef2784c0b76106caba47f78a8336d",
+    "test/e2e/family-choices.spec.mjs": "e4920cd8ddf7f565d998a963a047af035e496f00b565b0f5b4c57ca7ebaca7ce",
+    "test/unit/family-access.test.mjs": "384e2984b6ec2218b7e717473163a751e61b8c5c75168cadbac0f8337b24bb49",
+    "test/unit/family-choices-core.test.mjs": "8e13896906adcb5851775f71b087d9b0c3e48315865881e910acd49ca964dc25",
+    "test/unit/family-choices.test.mjs": "46506ffa361a207c421fe3c51c0635d21189705f672159b8a2fa70baa423be06",
+    "test/unit/migration-integration.test.mjs": "9f2caea3bff77bb02f26a92875daf0f78d1c42aba9040f834d0c295a96385875"
+  },
+  "images": [
+    {
+      "path": "docs/screenshots/family-choices-desktop-three.png",
+      "sha256": "930f5d37f3114b29399b95542f96b66a10e5618879b259e20cff147172381d53",
+      "captureMtimeUtc": "2026-11-08T19:55:02.162557+00:00"
+    },
+    {
+      "path": "docs/screenshots/family-choices-desktop-one-off.png",
+      "sha256": "bccd6beea943460cc981474dfcbdeb525b322363a3c154b9bdd73082fdd450f0",
+      "captureMtimeUtc": "2026-11-08T19:55:02.364426+00:00"
+    },
+    {
+      "path": "docs/screenshots/family-choices-phone-three.png",
+      "sha256": "ffc711103252af58727ccebea4eaa00bb666b244140effcc315143fd145238a5",
+      "captureMtimeUtc": "2026-11-08T19:55:48.693396+00:00"
+    },
+    {
+      "path": "docs/screenshots/family-choices-phone-one-off.png",
+      "sha256": "b9d5debc450baa98cf8414aac6a1f65274a438208ecc5f47b8eccaebaa2c23bb",
+      "captureMtimeUtc": "2026-11-08T19:55:48.942542+00:00"
+    }
+  ]
+}

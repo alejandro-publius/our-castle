@@ -1,0 +1,14 @@
+{
+  "title": "Welcome to the Item Shop",
+  "author": "congusbongus",
+  "source": "https://opengameart.org/content/welcome-to-the-item-shop",
+  "download": "https://opengameart.org/sites/default/files/welcome_to_the_item_shop_1.ogg",
+  "license": "CC0-1.0",
+  "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "retrievedAt": "2026-11-07",
+  "originalSha256": "a3b783d367a7d1299bc3c34d7d7e1e7a7e23c3e91a89cf63223c6a6af82efd03",
+  "file": "welcome-to-the-item-shop.mp3",
+  "sha256": "265a6d9ce7f7fd3ec6802f5037b91aa3ecdba2cb4a112f70b4ce5395bbfd2491",
+  "bytes": 2038012,
+  "transformation": "Converted the original 44.1 kHz stereo Vorbis recording to 128 kbps MP3 using ffmpeg/libmp3lame for browser compatibility; no melody edits."
+}

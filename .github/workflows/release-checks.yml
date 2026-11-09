@@ -4,7 +4,10 @@
 #   2. a bounded browser selection of existing end-to-end tests, tagged @release, on the desktop and 390 px phone
 #      projects. It covers the connected Merchant -> reviewed Plan -> simulated contribution -> world -> Treasury and
 #      reload journey, checkout and receipt safety, one shared-family boundary, and recovery when an optional Treasury
-#      script never answers. List it with `npx playwright test --grep @release --list`.
+#      script never answers. List it with `npx playwright test --grep @release --list`;
+#   3. the complete-kit solver in Rust (solver/): built and tested with the pinned compiler and the locked crates, then
+#      required by the unit tests (KIT_SOLVER_REQUIRED=1 fails them if the build is missing) and by the kit planner's
+#      own browser journey (tagged @kit-planner), which runs in its own job so the @release selection keeps its budget.
 # Every check runs on in-memory or temporary example/family data with the tests' own fake transports. No repository or
 # provider secret is used, and nothing is deployed or published.
 name: Release checks
@@ -42,7 +45,15 @@ jobs:
         run: npm ci
       - name: Original art, palette, renderer and syntax guard
         run: npm run check
-      - name: Unit tests
+      - name: Rust compiler pinned by solver/rust-toolchain.toml
+        working-directory: solver
+        run: rustup toolchain install 1.99.1 --profile minimal && rustc --version && cargo --version
+      - name: Rust solver tests and release build (locked crates)
+        working-directory: solver
+        run: cargo test --locked && cargo build --release --locked
+      - name: Unit tests (the compiled solver is required)
+        env:
+          KIT_SOLVER_REQUIRED: '1'
         run: npm run test:unit
 
   browser:
@@ -68,6 +79,41 @@ jobs:
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: release-check-traces
+          path: test-results/artifacts/
+          retention-days: 7
+          if-no-files-found: ignore
+
+  kit-planner:
+    name: Kit planner journey with the Rust solver (desktop and 390 px phone)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '26'
+          package-manager-cache: false
+      - name: Install the locked dependencies
+        run: npm ci
+      - name: Rust compiler pinned by solver/rust-toolchain.toml
+        working-directory: solver
+        run: rustup toolchain install 1.99.1 --profile minimal && rustc --version
+      - name: Build the Rust solver (locked crates)
+        working-directory: solver
+        run: cargo build --release --locked
+      - name: Install Chromium and its system dependencies
+        run: npx playwright install --with-deps chromium
+      - name: Run the @kit-planner journey (the compiled solver is required)
+        env:
+          KIT_SOLVER_REQUIRED: '1'
+        run: npx playwright test --grep @kit-planner --project=desktop --project=phone --global-timeout=900000
+      - name: Keep failure traces (fake data only)
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: kit-planner-traces
           path: test-results/artifacts/
           retention-days: 7
           if-no-files-found: ignore

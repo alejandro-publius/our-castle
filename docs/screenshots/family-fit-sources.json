@@ -1,0 +1,101 @@
+{
+  "capturedAt": "2026-11-09T04:58:25Z",
+  "sourceCommit": "1ecde4908f6c74f2ce16cf92f51061ba7a77b009",
+  "environment": "Playwright 1.64.1 / Chromium 156.0.8078.4 headless, macOS arm64 with SwiftShader; phone is the 390 x 844 touch-emulated project at device scale 2",
+  "fixture": "Disposable in-memory family-mode household. Rowan (owner, adult), Ash (adult) and Wren (child) each sign in with their own virtual passkey. The real Channel3 merchant code runs over a fake transport (test/helpers/fit-catalog.mjs). That transport returns an invented \"Tents (test fixture)\" category whose \"Sleeps (test fixture)\" attribute lists 1, 2, 4 and 6 person, and eight invented products. Its search ignores every filter. The server day is Nov 8, 2026; the goal is $300.00 with $60.00 reported, $30.00 a week and a Dec 20 date; offers are Rowan $20.00 and Ash $10.00. None of this is Channel3’s live taxonomy.",
+  "spec": "test/e2e/family-fit.spec.mjs — a family finds options that fit its needs and date, keeps why it chose one, and carries it into the family schedule",
+  "steps": [
+    "Rowan tries a one-off $90.00 and chooses Find options that fit: the planning limit is $150.00 by Dec 20",
+    "Explicit look-ups: Find kinds of item (category search), then Show must-haves (category detail); Rowan accepts 4 or 6 person",
+    "Find options that fit: capture the two suggested tents and why each fits",
+    "A provider answer held until Ash changed his offer is refused; Ash restores it",
+    "A one-off $120.00 and another explicit search suggest tent A only (Dec 20); Rowan updates the family choice: capture its reason",
+    "Review this choice, then Save goal and propose this schedule, then Use this plan: capture the plan in use with its reason"
+  ],
+  "checks": {
+    "catalogCallsInTheWholeJourney": [
+      "GET /v1/categories/search",
+      "GET /v1/categories/fixture-tents",
+      "POST /v1/search",
+      "POST /v1/search",
+      "POST /v1/search"
+    ],
+    "moneyRowsUnchanged": true,
+    "offersAfter": [
+      2000,
+      1000
+    ]
+  },
+  "sources": {
+    "index.html": "ef99793981d11d54509d4909cac9fb11fb8ac4611f6d5e0e10eb63c1630287ff",
+    "app.css": "8e9e678fda7693b4c5c5d657eceef8f90440c3d0840ef4212c5b99e4f7e4b87b",
+    "src/app/main.js": "0a7e0e7a4b6332cedfd298d68e61afa2c5bab3f5806612af1956dce02482c274",
+    "src/app/merchant.js": "85bafc916e04eb17bdd1f877c4ef7f719fe2808d5a8b83937107e41646300944",
+    "src/app/family-choices.js": "e1fb66abbb6ca6f0bf09386388385d7c2d609861fb2b4f056e19c50b83b8d7ee",
+    "src/core/family-fit.js": "11d09409b301ca010a308848b61ae584d2007d204e31acb14c4d5c857a8989d6",
+    "src/core/family-choices.js": "9640a8d3f85f950f3a1480c0d9e79b4572262bf1a1132c8058f990e13946b064",
+    "server/merchant/channel3.mjs": "71f0227e1a7c1d2d9a118f09e78140a8bdcfd060325ed3eafa5e5c00fc794da4",
+    "server/family-choices.mjs": "3d4b087cf04335aa00d694e61c8131ed8fb5d714c7f8ca212a6831b791110769",
+    "server/app.mjs": "4505dfe3d374053498a355b6204d16daecb707078b74cd998324049b991a003f",
+    "server/planner/index.mjs": "6935e10e353eb0af6ae21f601eaeb9845caa89795b2d023a1427f1784a2847a2",
+    "test/e2e/family-fit.spec.mjs": "d26dae3f1e27823a5591a642413e8ce4d8be3ab7a296ab36089e051cfcb46673",
+    "test/helpers/fit-catalog.mjs": "a5a1b24a054a1c7bc2f40afcd5edc961766e2b13a7207dfe6cd501c745c71106"
+  },
+  "images": [
+    {
+      "path": "docs/screenshots/family-fit-desktop-results.png",
+      "sha256": "b421bbecd38f7a8d6a18c01947ea252703bebb212bb6567b31305f73c4bcdd89",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "region": "#merchant-dialog (Market Town, family-fit mode)",
+      "story": "With a one-off $90.00 tried, the planning limit is $150.00 by Dec 20. The adult chose the fixture kind \"Tents (test fixture)\" and the must-have \"Sleeps (test fixture)\": 4 person or 6 person. Two of eight checked items are suggested, each with why it fits: tent A $120.00 finishing Dec 13, and tent B $150.00 finishing Dec 20.",
+      "mode": "fake Channel3 transport with an invented fixture taxonomy and products; simulated family payments; no real provider"
+    },
+    {
+      "path": "docs/screenshots/family-fit-phone-results.png",
+      "sha256": "56136d3c543c773e8cbc797bafa5210c8b626ab17cd45542c5d79644107834da",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "region": "#merchant-dialog (Market Town, family-fit mode)",
+      "story": "The same family-fit search on a 390px phone.",
+      "mode": "fake Channel3 transport with an invented fixture taxonomy and products; simulated family payments; no real provider"
+    },
+    {
+      "path": "docs/screenshots/family-fit-desktop-need.png",
+      "sha256": "060fe3eb0dea79daa27eac888c0e2fd05017bbe252ac6fa07be2b1ec9a14fcb1",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "region": "#family-options (Plan journal)",
+      "story": "After a one-off $120.00 and another explicit search, tent A, updated in Family choices, shows why it was chosen: it meets the family’s needs and was found within $120.00 for Dec 20.",
+      "mode": "fake Channel3 transport with an invented fixture taxonomy and products; simulated family payments; no real provider"
+    },
+    {
+      "path": "docs/screenshots/family-fit-desktop-plan.png",
+      "sha256": "294d483c3e0643dafe48abc0697c8d5034d16f3730c66c984860bb4bce7da50c",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "region": "#plan-result (Plan journal)",
+      "story": "After \"Review this choice\", \"Save goal and propose this schedule\" and \"Use this plan\": the family schedule in use carries the chosen item and why it was chosen.",
+      "mode": "fake Channel3 transport with an invented fixture taxonomy and products; simulated family payments; no real provider"
+    },
+    {
+      "path": "docs/screenshots/family-fit-phone-plan.png",
+      "sha256": "81e20fd1d5b44bf1fcb23ec1b4d32a18cefb415fd2f5c8114a53a459243befef",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "region": "#plan-result (Plan journal)",
+      "story": "The plan in use with its reason, on a 390px phone.",
+      "mode": "fake Channel3 transport with an invented fixture taxonomy and products; simulated family payments; no real provider"
+    }
+  ]
+}

@@ -1,5 +1,5 @@
-// Synthesized sound for the board (Web Audio API): no samples, no downloads, no third-party music.
-// Silent until a person turns it on, because browsers only allow audio after a gesture.
+// Optional local CC0 music and synthesized board cues. See assets/music/README.md.
+// Every page starts silent; neither the audio file nor an AudioContext is created before opt-in.
 // The board and the payment flow never call this directly; main.js routes bus events here.
 
 let ctx = null;
@@ -7,6 +7,71 @@ let master = null;
 let wet = null;
 let enabled = false;
 const played = [];
+let music = null;
+let playRequest = 0;
+const listeners = new Set();
+const MUSIC_URL = '/assets/music/welcome-to-the-item-shop.mp3';
+
+function notify(message = '') {
+  for (const listener of listeners) listener({ enabled, message });
+}
+
+function pauseSounds() {
+  playRequest++;
+  if (music) { music.muted = true; music.pause(); }
+  // Closing the cue context stops a fanfare immediately and prevents stale notes resuming later.
+  if (ctx) { ctx.close().catch(() => {}); ctx = null; master = null; wet = null; }
+}
+
+function turnOff(message = '') {
+  enabled = false;
+  pauseSounds();
+  notify(message);
+}
+
+function playMusic() {
+  if (!enabled || document.hidden) return;
+  try {
+    if (!music) {
+      const audio = new Audio();
+      audio.preload = 'none';
+      audio.loop = true;
+      audio.volume = 0.16;
+      audio.addEventListener('error', () => {
+        if (music !== audio || !enabled) return;
+        turnOff('Sound could not start. Try the Sound button again.');
+        music = null; // A fresh element on retry can recover from a failed media load.
+      });
+      audio.src = MUSIC_URL;
+      music = audio;
+    }
+    const audio = music, request = ++playRequest;
+    audio.muted = false;
+    Promise.resolve(audio.play()).then(() => {
+      // A delayed play promise must never make an off or hidden page audible.
+      if (!enabled || document.hidden) { audio.muted = true; audio.pause(); }
+    }).catch(() => {
+      if (music === audio && request === playRequest && enabled && !document.hidden)
+        turnOff('Sound could not start. Try the Sound button again.');
+    });
+  } catch {
+    turnOff('Sound is unavailable in this browser.');
+  }
+}
+
+function resumeSounds() {
+  if (!enabled || document.hidden) return;
+  try { ensureContext(); } catch { /* Music can still play when synthesized cues are unavailable. */ }
+  playMusic();
+}
+
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) pauseSounds();
+  else resumeSounds();
+});
+window.addEventListener('pagehide', pauseSounds);
+window.addEventListener('pageshow', (event) => { if (event.persisted) resumeSounds(); });
+
 
 // D major pentatonic, so every cue sounds like part of the same small world.
 const NOTE = { D4: 293.66, E4: 329.63, Fs4: 369.99, A4: 440, B4: 493.88, D5: 587.33, E5: 659.25, Fs5: 739.99, A5: 880, D6: 1174.66 };
@@ -85,16 +150,25 @@ export const sound = {
   get enabled() { return enabled; },
   /** Turn sound on or off. Must be called from a user gesture the first time. */
   setEnabled(on) {
-    enabled = Boolean(on) && Boolean(ensureContext());
-    if (enabled) CUES.chime(ctx.currentTime + 0.02);
+    if (!on) { turnOff(); return false; }
+    if (enabled) return true;
+    enabled = true;
+    try { if (!document.hidden && ensureContext()) CUES.chime(ctx.currentTime + 0.02); } catch { /* Cues are optional. */ }
+    notify();
+    playMusic();
     return enabled;
   },
   cue(name, detail) {
-    if (!enabled || !ctx || !CUES[name]) return false;
+    if (!enabled || document.hidden || !ctx || !CUES[name]) return false;
     CUES[name](ctx.currentTime + 0.01, detail);
     played.push(name);
     if (played.length > 50) played.shift();
     return true;
+  },
+  onChange(listener) {
+    listeners.add(listener);
+    listener({ enabled, message: '' });
+    return () => listeners.delete(listener);
   },
   /** Test hook: names of the most recent cues played. */
   played: () => [...played],

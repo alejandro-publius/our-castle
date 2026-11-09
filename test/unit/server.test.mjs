@@ -11,11 +11,11 @@ import { createFakePayPal, webhookHeaders } from '../helpers/fake-paypal.mjs';
 import { FIXED_NOW } from '../helpers/setup.mjs';
 
 const root = fileURLToPath(new URL('../../', import.meta.url));
-const SECRETS = { PAYPAL_CLIENT_SECRET: 'paypal-secret-value-7f3a91', AI_API_KEY: 'sk-ant-api-secret-value-0c1d' };
+const SECRETS = { PAYPAL_CLIENT_SECRET: 'paypal-secret-value-7f3a91', AI_API_KEY: 'sk-ant-api-secret-value-0c1d', KIT_OPENAI_API_KEY: 'kit-openai-secret-value-5b2e', KIT_COHERE_API_KEY: 'kit-cohere-secret-value-9d4c' };
 
 async function startServer({ sandbox = false, paypalOptions = {} } = {}) {
   const env = sandbox
-    ? { PAYPAL_CLIENT_ID: 'public-sandbox-client-id', PAYPAL_CLIENT_SECRET: SECRETS.PAYPAL_CLIENT_SECRET, PAYPAL_WEBHOOK_ID: 'WH-TEST', AI_API_KEY: SECRETS.AI_API_KEY }
+    ? { PAYPAL_CLIENT_ID: 'public-sandbox-client-id', PAYPAL_CLIENT_SECRET: SECRETS.PAYPAL_CLIENT_SECRET, PAYPAL_WEBHOOK_ID: 'WH-TEST', AI_API_KEY: SECRETS.AI_API_KEY, KIT_OPENAI_API_KEY: SECRETS.KIT_OPENAI_API_KEY, KIT_COHERE_API_KEY: SECRETS.KIT_COHERE_API_KEY }
     : {};
   const config = loadConfig(env, { root });
   const fake = sandbox ? createFakePayPal(paypalOptions) : null;
@@ -217,4 +217,63 @@ test('member appearance HTTP changes one cosmetic field and cannot grant adult a
     assert.equal(rejected.json.error.code,'adult_approval_required');
     assert.equal((await s.call('GET','/api/state')).json.contributions.length,0);
   } finally {await s.close();}
+});
+
+// A contribution names its household, goal and request by id, and the server never guesses one. Without a session to
+// supply them (example-persona mode), a missing or non-text id must be a refusal, not an internal error.
+test('malformed example contributions are refused with a 4xx and record nothing; a well-formed one still counts once', async () => {
+  const s = await startServer();
+  try {
+    await setup(s);
+    const { household, goal } = (await s.call('GET', '/api/state')).json;
+    const valid = { householdId: household.id, goalId: goal.id, amountCents: 1500, approverId: 'm_rowan', approvalConfirmed: true };
+    const records = async () => { const state = (await s.call('GET', '/api/state')).json; return { progress: state.progress.progressCents, contributions: state.contributions.length }; };
+    const before = await records();
+    let n = 0;
+    const id = () => `malformed-request-${String(++n).padStart(3, '0')}`;
+    for (const [label, body, status, code] of [
+      ['no household', { ...valid, householdId: undefined, requestId: id() }, 400, 'invalid_owner'],
+      ['no goal', { ...valid, goalId: undefined, requestId: id() }, 400, 'invalid_owner'],
+      ['neither id', { ...valid, householdId: undefined, goalId: undefined, requestId: id() }, 400, 'invalid_owner'],
+      ['null household', { ...valid, householdId: null, requestId: id() }, 400, 'invalid_owner'],
+      ['numeric household', { ...valid, householdId: 7, requestId: id() }, 400, 'invalid_owner'],
+      ['null goal', { ...valid, goalId: null, requestId: id() }, 400, 'invalid_owner'],
+      ['object goal', { ...valid, goalId: { id: goal.id }, requestId: id() }, 400, 'invalid_owner'],
+      ['empty household', { ...valid, householdId: '', requestId: id() }, 404, 'not_found'],
+      ['no request id', { ...valid }, 400, 'invalid_request_id'],
+      ['numeric request id', { ...valid, requestId: 12345678 }, 400, 'invalid_request_id'],
+    ]) {
+      const res = await s.call('POST', '/api/example/contributions', body);
+      assert.deepEqual([res.status, res.json?.error?.code], [status, code], label);
+    }
+    assert.deepEqual(await records(), before, 'nothing was recorded for any malformed request');
+    const good = { ...valid, requestId: 'well-formed-request-001' };
+    assert.equal((await s.call('POST', '/api/example/contributions', good)).json.outcome, 'completed');
+    assert.equal((await s.call('POST', '/api/example/contributions', good)).json.outcome, 'already_processed');
+    // A malformed retry of that same request id is still the existing conflict, never a second record.
+    assert.equal((await s.call('POST', '/api/example/contributions', { ...good, householdId: undefined })).json.error.code, 'request_conflict');
+    assert.deepEqual(await records(), { progress: before.progress + 1500, contributions: before.contributions + 1 });
+  } finally { await s.close(); }
+});
+
+test('a malformed sandbox order is refused with a 4xx before any PayPal request', async () => {
+  const s = await startServer({ sandbox: true });
+  try {
+    const { json: initial } = await setup(s);
+    const valid = { householdId: initial.state.household.id, goalId: initial.state.goal.id, amountCents: 1500, approverId: 'm_rowan', approvalConfirmed: true };
+    const requests = s.fake.requests.length;
+    for (const [label, body, code] of [
+      ['no household', { ...valid, householdId: undefined, requestId: 'sandbox-malformed-001' }, 'invalid_owner'],
+      ['null goal', { ...valid, goalId: null, requestId: 'sandbox-malformed-002' }, 'invalid_owner'],
+      ['no request id', { ...valid }, 'invalid_request_id'],
+    ]) {
+      const res = await s.call('POST', '/api/paypal/orders', body);
+      assert.deepEqual([res.status, res.json?.error?.code], [400, code], label);
+    }
+    assert.equal(s.fake.requests.length, requests, 'no PayPal request, not even OAuth');
+    assert.equal((await s.call('GET', '/api/state')).json.contributions.length, 0);
+    const order = await s.call('POST', '/api/paypal/orders', { ...valid, requestId: 'sandbox-well-formed-01' });
+    assert.equal(order.status, 200);
+    assert.equal(s.fake.orders.size, 1);
+  } finally { await s.close(); }
 });

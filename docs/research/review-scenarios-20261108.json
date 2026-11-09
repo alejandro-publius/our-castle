@@ -1,0 +1,796 @@
+{
+  "version": 1,
+  "collectedOn": "2026-11-08",
+  "country": "US",
+  "productionSourceInspected": "579b4f6995a407796b38cdda1f9600e80bb32e2f",
+  "purpose": "Generate Our Castle test scenarios and product hypotheses, not prevalence estimates or current competitor audits.",
+  "selection": "Mixed convenience sample: 15 newest Greenlight feed reviews plus first 10 unique dated reviews in each public YNAB, Goodbudget and Splitwise page display order. Include every rating; exact public structured dates used; no inferred years.",
+  "coding": "Codex qualitative coding; one coder; multiple themes allowed; no inter-rater reliability claim. Signal records the selected passage, not the star rating. Direct means the problem pattern transfers, not that Our Castle has that defect. Adjacent requires a new hypothesis. Out-of-scope records are retained to avoid selecting only favorable comparisons.",
+  "amendments": [
+    {
+      "reason": "Honeydue and YNAB feeds returned no entries; attempted Goodbudget and Splitwise feeds, also empty. Alternate public no-page RSS returned no entries for all four. Empty does not prove service closure or absent reviews.",
+      "artifacts": [
+        "honeydue-raw.json",
+        "ynab-raw.json",
+        "goodbudget-raw.json",
+        "splitwise-raw.json",
+        "honeydue-nopage-raw.json",
+        "ynab-nopage-raw.json",
+        "goodbudget-nopage-raw.json",
+        "splitwise-nopage-raw.json"
+      ]
+    },
+    {
+      "reason": "Public pages expose dated historical reviews. Changed rule before reading the remaining page content: 10 first displayed dated reviews each plus Greenlight15. This is not the originally intended 45 uniformly recent reviews.",
+      "samplingPlanArtifact": "test-results/review-mining-20261108/sampling-plan.json"
+    }
+  ],
+  "sources": {
+    "greenlight": {
+      "app": "Greenlight",
+      "appId": "1049340702",
+      "source": "https://itunes.apple.com/us/rss/customerreviews/page=1/id=1049340702/sortBy=mostRecent/json",
+      "retrievedAt": "2026-11-08T06:11:49.015794+00:00",
+      "sha256": "5c9f3af3b67d2a054dfe244d3004d0b4cfa531fd6a04efa6133961cb05549974",
+      "selection": "first-15-mostRecent-feed",
+      "count": 15,
+      "dateRange": [
+        "2026-10-23",
+        "2026-11-06"
+      ]
+    },
+    "ynab": {
+      "app": "YNAB",
+      "appId": "1010865877",
+      "source": "https://apps.apple.com/us/app/id1010865877?see-all=reviews",
+      "retrievedAt": "2026-11-08T06:13:56.384655+00:00",
+      "sha256": "9411080274691bec5ff85e49aa4fb39e3d031e9fdbc35e38ad18d7fcaf140b19",
+      "selection": "first-10-public-page-display-order",
+      "count": 10,
+      "dateRange": [
+        "2018-07-25",
+        "2025-11-22"
+      ]
+    },
+    "goodbudget": {
+      "app": "Goodbudget",
+      "appId": "471112395",
+      "source": "https://apps.apple.com/us/app/id471112395?see-all=reviews",
+      "retrievedAt": "2026-11-08T06:13:56.302136+00:00",
+      "sha256": "bb32a4edcf6de32f26c56616a66a882ffacd30bfa3f052702912ff7b040b8888",
+      "selection": "first-10-public-page-display-order",
+      "count": 10,
+      "dateRange": [
+        "2018-09-21",
+        "2024-04-04"
+      ]
+    },
+    "splitwise": {
+      "app": "Splitwise",
+      "appId": "458023433",
+      "source": "https://apps.apple.com/us/app/id458023433?see-all=reviews",
+      "retrievedAt": "2026-11-08T06:13:56.332441+00:00",
+      "sha256": "85919c0a9d8df6789c4ec35916070d843a87745355015445bdbaf869ec72b743",
+      "selection": "first-10-public-page-display-order",
+      "count": 10,
+      "dateRange": [
+        "2018-11-20",
+        "2026-08-04"
+      ]
+    }
+  },
+  "codebook": {
+    "access": "Sign-in, first setup or needing others to join.",
+    "navigation": "Finding information or stable controls.",
+    "payment-meaning": "Pending/complete/reversal or amount attribution.",
+    "records": "Find a record and see what was checked.",
+    "shared-context": "Other family members see a consistent understandable account.",
+    "learning": "Initial concepts or instructions required.",
+    "at-a-glance": "Useful remaining amounts without mental arithmetic.",
+    "affordability": "Reserve for real commitments before an optional goal.",
+    "simplicity": "Keep routine bookkeeping easy.",
+    "draft-continuity": "Interrupted unsaved work survives.",
+    "device-parity": "Core tasks available on smaller/alternate screens.",
+    "motivation": "Interest and usefulness, not evidence of learning outcomes.",
+    "pricing": "Limits, subscriptions or ads.",
+    "card-services": "Card issuance, authorizations, ATM or debit-card utility.",
+    "custody": "Holding or withdrawing balances.",
+    "automation": "Automatic money movement request.",
+    "support": "Human operational support.",
+    "schedule": "Different income/contribution cadences.",
+    "goal-organization": "Organizing future purposes."
+  },
+  "summary": {
+    "count": 45,
+    "bySignal": {
+      "complaint": 18,
+      "strength": 14,
+      "request": 3,
+      "mixed": 10
+    },
+    "byApplicability": {
+      "direct": 22,
+      "adjacent": 13,
+      "out-of-scope": 10
+    },
+    "byTheme": {
+      "access": 4,
+      "navigation": 6,
+      "payment-meaning": 8,
+      "card-services": 6,
+      "support": 1,
+      "motivation": 3,
+      "automation": 1,
+      "custody": 2,
+      "shared-context": 6,
+      "learning": 4,
+      "records": 7,
+      "affordability": 3,
+      "at-a-glance": 4,
+      "goal-organization": 2,
+      "device-parity": 3,
+      "simplicity": 3,
+      "schedule": 1,
+      "pricing": 6,
+      "draft-continuity": 1
+    }
+  },
+  "reviews": [
+    {
+      "sampleId": "GL01",
+      "app": "Greenlight",
+      "reviewId": "14758906809",
+      "date": "2026-11-06T12:32:16-07:00",
+      "rating": 1,
+      "sourceKey": "greenlight",
+      "paraphrase": "Login requires too much effort.",
+      "signal": "complaint",
+      "applicability": "direct",
+      "themes": [
+        "access"
+      ]
+    },
+    {
+      "sampleId": "GL02",
+      "app": "Greenlight",
+      "reviewId": "14752010441",
+      "date": "2026-11-04T18:11:56-07:00",
+      "rating": 1,
+      "sourceKey": "greenlight",
+      "paraphrase": "Finding information requires excessive navigation.",
+      "signal": "complaint",
+      "applicability": "direct",
+      "themes": [
+        "navigation"
+      ]
+    },
+    {
+      "sampleId": "GL03",
+      "app": "Greenlight",
+      "reviewId": "14741421375",
+      "date": "2026-11-02T03:50:17-07:00",
+      "rating": 1,
+      "sourceKey": "greenlight",
+      "paraphrase": "Card restrictions obscure why purchases fail.",
+      "signal": "complaint",
+      "applicability": "adjacent",
+      "themes": [
+        "payment-meaning",
+        "card-services"
+      ]
+    },
+    {
+      "sampleId": "GL04",
+      "app": "Greenlight",
+      "reviewId": "14738852887",
+      "date": "2026-11-01T10:50:02-07:00",
+      "rating": 3,
+      "sourceKey": "greenlight",
+      "paraphrase": "Navigation feels cumbersome.",
+      "signal": "complaint",
+      "applicability": "direct",
+      "themes": [
+        "navigation"
+      ]
+    },
+    {
+      "sampleId": "GL05",
+      "app": "Greenlight",
+      "reviewId": "14732014306",
+      "date": "2026-10-30T19:45:13-07:00",
+      "rating": 1,
+      "sourceKey": "greenlight",
+      "paraphrase": "Urgent card support fails during travel.",
+      "signal": "complaint",
+      "applicability": "out-of-scope",
+      "themes": [
+        "support",
+        "card-services"
+      ]
+    },
+    {
+      "sampleId": "GL06",
+      "app": "Greenlight",
+      "reviewId": "14725998464",
+      "date": "2026-10-29T07:59:33-07:00",
+      "rating": 5,
+      "sourceKey": "greenlight",
+      "paraphrase": "Teaching money habits feels valuable.",
+      "signal": "strength",
+      "applicability": "adjacent",
+      "themes": [
+        "motivation"
+      ]
+    },
+    {
+      "sampleId": "GL07",
+      "app": "Greenlight",
+      "reviewId": "14724132454",
+      "date": "2026-10-28T20:11:58-07:00",
+      "rating": 5,
+      "sourceKey": "greenlight",
+      "paraphrase": "Children eagerly anticipate using their cards.",
+      "signal": "strength",
+      "applicability": "out-of-scope",
+      "themes": [
+        "card-services"
+      ]
+    },
+    {
+      "sampleId": "GL08",
+      "app": "Greenlight",
+      "reviewId": "14723098856",
+      "date": "2026-10-28T13:35:23-07:00",
+      "rating": 1,
+      "sourceKey": "greenlight",
+      "paraphrase": "Funding delays undermine expectations.",
+      "signal": "complaint",
+      "applicability": "adjacent",
+      "themes": [
+        "payment-meaning"
+      ]
+    },
+    {
+      "sampleId": "GL09",
+      "app": "Greenlight",
+      "reviewId": "14722579242",
+      "date": "2026-10-28T10:42:35-07:00",
+      "rating": 1,
+      "sourceKey": "greenlight",
+      "paraphrase": "Initial account setup does not work.",
+      "signal": "complaint",
+      "applicability": "direct",
+      "themes": [
+        "access"
+      ]
+    },
+    {
+      "sampleId": "GL10",
+      "app": "Greenlight",
+      "reviewId": "14711287273",
+      "date": "2026-10-25T14:44:17-07:00",
+      "rating": 1,
+      "sourceKey": "greenlight",
+      "paraphrase": "Daily automatic allowance is requested.",
+      "signal": "request",
+      "applicability": "out-of-scope",
+      "themes": [
+        "automation"
+      ]
+    },
+    {
+      "sampleId": "GL11",
+      "app": "Greenlight",
+      "reviewId": "14709863333",
+      "date": "2026-10-25T07:45:33-07:00",
+      "rating": 2,
+      "sourceKey": "greenlight",
+      "paraphrase": "Closed-account withdrawals remain unresolved.",
+      "signal": "complaint",
+      "applicability": "out-of-scope",
+      "themes": [
+        "custody"
+      ]
+    },
+    {
+      "sampleId": "GL12",
+      "app": "Greenlight",
+      "reviewId": "14707587514",
+      "date": "2026-10-24T17:56:03-07:00",
+      "rating": 5,
+      "sourceKey": "greenlight",
+      "paraphrase": "Debit-card usefulness earns praise.",
+      "signal": "strength",
+      "applicability": "out-of-scope",
+      "themes": [
+        "card-services"
+      ]
+    },
+    {
+      "sampleId": "GL13",
+      "app": "Greenlight",
+      "reviewId": "14707207107",
+      "date": "2026-10-24T15:27:02-07:00",
+      "rating": 1,
+      "sourceKey": "greenlight",
+      "paraphrase": "Unexpected reversals confuse parent and child.",
+      "signal": "complaint",
+      "applicability": "adjacent",
+      "themes": [
+        "payment-meaning",
+        "shared-context"
+      ]
+    },
+    {
+      "sampleId": "GL14",
+      "app": "Greenlight",
+      "reviewId": "14702708006",
+      "date": "2026-10-23T13:54:44-07:00",
+      "rating": 5,
+      "sourceKey": "greenlight",
+      "paraphrase": "A child enjoys using the service.",
+      "signal": "strength",
+      "applicability": "adjacent",
+      "themes": [
+        "motivation"
+      ]
+    },
+    {
+      "sampleId": "GL15",
+      "app": "Greenlight",
+      "reviewId": "14702225928",
+      "date": "2026-10-23T11:13:12-07:00",
+      "rating": 5,
+      "sourceKey": "greenlight",
+      "paraphrase": "Cards help children access money.",
+      "signal": "strength",
+      "applicability": "out-of-scope",
+      "themes": [
+        "card-services"
+      ]
+    },
+    {
+      "sampleId": "YN01",
+      "app": "YNAB",
+      "reviewId": "7966863933",
+      "date": "2021-10-29T16:38:05.000Z",
+      "rating": 5,
+      "sourceKey": "ynab",
+      "paraphrase": "Setup takes learning; daily review becomes manageable.",
+      "signal": "mixed",
+      "applicability": "direct",
+      "themes": [
+        "learning",
+        "records"
+      ]
+    },
+    {
+      "sampleId": "YN02",
+      "app": "YNAB",
+      "reviewId": "13426636732",
+      "date": "2025-11-22T06:13:18.000Z",
+      "rating": 5,
+      "sourceKey": "ynab",
+      "paraphrase": "Changing controls disrupt familiar navigation.",
+      "signal": "complaint",
+      "applicability": "direct",
+      "themes": [
+        "navigation"
+      ]
+    },
+    {
+      "sampleId": "YN03",
+      "app": "YNAB",
+      "reviewId": "10944895739",
+      "date": "2024-02-16T12:56:11.000Z",
+      "rating": 5,
+      "sourceKey": "ynab",
+      "paraphrase": "Future expenses become easier to anticipate.",
+      "signal": "strength",
+      "applicability": "direct",
+      "themes": [
+        "affordability"
+      ]
+    },
+    {
+      "sampleId": "YN04",
+      "app": "YNAB",
+      "reviewId": "3865999442",
+      "date": "2019-03-10T15:35:42.000Z",
+      "rating": 5,
+      "sourceKey": "ynab",
+      "paraphrase": "Shared visibility improves household coordination.",
+      "signal": "strength",
+      "applicability": "direct",
+      "themes": [
+        "shared-context"
+      ]
+    },
+    {
+      "sampleId": "YN05",
+      "app": "YNAB",
+      "reviewId": "2967147984",
+      "date": "2018-07-25T13:22:59.000Z",
+      "rating": 5,
+      "sourceKey": "ynab",
+      "paraphrase": "Import delays complicate keeping records current.",
+      "signal": "mixed",
+      "applicability": "adjacent",
+      "themes": [
+        "payment-meaning",
+        "records"
+      ]
+    },
+    {
+      "sampleId": "YN06",
+      "app": "YNAB",
+      "reviewId": "10945442237",
+      "date": "2024-02-16T15:46:09.000Z",
+      "rating": 4,
+      "sourceKey": "ynab",
+      "paraphrase": "Goals help; credit-card setup needs explanation.",
+      "signal": "mixed",
+      "applicability": "adjacent",
+      "themes": [
+        "affordability",
+        "learning",
+        "card-services"
+      ]
+    },
+    {
+      "sampleId": "YN07",
+      "app": "YNAB",
+      "reviewId": "8848933453",
+      "date": "2022-07-07T07:11:57.000Z",
+      "rating": 5,
+      "sourceKey": "ynab",
+      "paraphrase": "Clear visual allocation reduces mental arithmetic.",
+      "signal": "strength",
+      "applicability": "direct",
+      "themes": [
+        "at-a-glance"
+      ]
+    },
+    {
+      "sampleId": "YN08",
+      "app": "YNAB",
+      "reviewId": "10169997389",
+      "date": "2023-07-22T17:55:28.000Z",
+      "rating": 5,
+      "sourceKey": "ynab",
+      "paraphrase": "Planning distinguishes earned money from future income.",
+      "signal": "strength",
+      "applicability": "direct",
+      "themes": [
+        "affordability"
+      ]
+    },
+    {
+      "sampleId": "YN09",
+      "app": "YNAB",
+      "reviewId": "8418182254",
+      "date": "2022-03-04T06:01:17.000Z",
+      "rating": 5,
+      "sourceKey": "ynab",
+      "paraphrase": "Separate budgets organize different family responsibilities.",
+      "signal": "strength",
+      "applicability": "adjacent",
+      "themes": [
+        "shared-context",
+        "goal-organization"
+      ]
+    },
+    {
+      "sampleId": "YN10",
+      "app": "YNAB",
+      "reviewId": "3714518356",
+      "date": "2019-01-31T01:55:43.000Z",
+      "rating": 4,
+      "sourceKey": "ynab",
+      "paraphrase": "Tablet layout sacrifices useful information density.",
+      "signal": "complaint",
+      "applicability": "adjacent",
+      "themes": [
+        "device-parity",
+        "at-a-glance"
+      ]
+    },
+    {
+      "sampleId": "GB01",
+      "app": "Goodbudget",
+      "reviewId": "6894389629",
+      "date": "2021-01-21T02:15:00.000Z",
+      "rating": 5,
+      "sourceKey": "goodbudget",
+      "paraphrase": "Searchable records make past purchases easier to retrieve.",
+      "signal": "strength",
+      "applicability": "direct",
+      "themes": [
+        "records"
+      ]
+    },
+    {
+      "sampleId": "GB02",
+      "app": "Goodbudget",
+      "reviewId": "3635286841",
+      "date": "2019-01-10T22:54:20.000Z",
+      "rating": 5,
+      "sourceKey": "goodbudget",
+      "paraphrase": "Simple overview helps; returns require awkward steps.",
+      "signal": "mixed",
+      "applicability": "adjacent",
+      "themes": [
+        "simplicity",
+        "payment-meaning"
+      ]
+    },
+    {
+      "sampleId": "GB03",
+      "app": "Goodbudget",
+      "reviewId": "3479054471",
+      "date": "2018-12-01T00:16:36.000Z",
+      "rating": 5,
+      "sourceKey": "goodbudget",
+      "paraphrase": "Flexible schedules support shared financial reviews.",
+      "signal": "strength",
+      "applicability": "direct",
+      "themes": [
+        "schedule",
+        "shared-context"
+      ]
+    },
+    {
+      "sampleId": "GB04",
+      "app": "Goodbudget",
+      "reviewId": "3686697867",
+      "date": "2019-01-23T22:53:59.000Z",
+      "rating": 5,
+      "sourceKey": "goodbudget",
+      "paraphrase": "Verification marks and mobile transaction search are missing.",
+      "signal": "request",
+      "applicability": "direct",
+      "themes": [
+        "records",
+        "device-parity"
+      ]
+    },
+    {
+      "sampleId": "GB05",
+      "app": "Goodbudget",
+      "reviewId": "7088892568",
+      "date": "2021-03-11T01:22:21.000Z",
+      "rating": 4,
+      "sourceKey": "goodbudget",
+      "paraphrase": "Learning and subscription barriers complicate getting started.",
+      "signal": "mixed",
+      "applicability": "direct",
+      "themes": [
+        "learning",
+        "pricing"
+      ]
+    },
+    {
+      "sampleId": "GB06",
+      "app": "Goodbudget",
+      "reviewId": "11118767191",
+      "date": "2024-04-04T00:49:31.000Z",
+      "rating": 4,
+      "sourceKey": "goodbudget",
+      "paraphrase": "Core use is simple; reports remain hard to discover.",
+      "signal": "mixed",
+      "applicability": "direct",
+      "themes": [
+        "navigation",
+        "simplicity"
+      ]
+    },
+    {
+      "sampleId": "GB07",
+      "app": "Goodbudget",
+      "reviewId": "4130339162",
+      "date": "2019-05-10T20:40:42.000Z",
+      "rating": 5,
+      "sourceKey": "goodbudget",
+      "paraphrase": "Shared updates and progress support daily decisions.",
+      "signal": "strength",
+      "applicability": "direct",
+      "themes": [
+        "shared-context",
+        "at-a-glance"
+      ]
+    },
+    {
+      "sampleId": "GB08",
+      "app": "Goodbudget",
+      "reviewId": "9735176219",
+      "date": "2023-03-21T02:06:20.000Z",
+      "rating": 4,
+      "sourceKey": "goodbudget",
+      "paraphrase": "Navigation is approachable; sign-in and learning need work.",
+      "signal": "mixed",
+      "applicability": "direct",
+      "themes": [
+        "access",
+        "learning",
+        "motivation"
+      ]
+    },
+    {
+      "sampleId": "GB09",
+      "app": "Goodbudget",
+      "reviewId": "8883762201",
+      "date": "2022-07-17T16:48:28.000Z",
+      "rating": 3,
+      "sourceKey": "goodbudget",
+      "paraphrase": "Remaining funds should be visible without arithmetic.",
+      "signal": "mixed",
+      "applicability": "direct",
+      "themes": [
+        "at-a-glance",
+        "navigation"
+      ]
+    },
+    {
+      "sampleId": "GB10",
+      "app": "Goodbudget",
+      "reviewId": "3215059362",
+      "date": "2018-09-21T22:27:15.000Z",
+      "rating": 5,
+      "sourceKey": "goodbudget",
+      "paraphrase": "Reconciliation makes planned allocations more trustworthy.",
+      "signal": "strength",
+      "applicability": "direct",
+      "themes": [
+        "records",
+        "goal-organization"
+      ]
+    },
+    {
+      "sampleId": "SW01",
+      "app": "Splitwise",
+      "reviewId": "3438062658",
+      "date": "2018-11-20T03:29:58.000Z",
+      "rating": 4,
+      "sourceKey": "splitwise",
+      "paraphrase": "Requiring everyone to join blocks group adoption.",
+      "signal": "request",
+      "applicability": "direct",
+      "themes": [
+        "access",
+        "shared-context"
+      ]
+    },
+    {
+      "sampleId": "SW02",
+      "app": "Splitwise",
+      "reviewId": "12385335835",
+      "date": "2025-03-05T16:50:43.000Z",
+      "rating": 5,
+      "sourceKey": "splitwise",
+      "paraphrase": "Phone and tablet receipt workflows feel inconsistent.",
+      "signal": "mixed",
+      "applicability": "adjacent",
+      "themes": [
+        "device-parity",
+        "records"
+      ]
+    },
+    {
+      "sampleId": "SW03",
+      "app": "Splitwise",
+      "reviewId": "14387858982",
+      "date": "2026-08-04T18:20:33.000Z",
+      "rating": 2,
+      "sourceKey": "splitwise",
+      "paraphrase": "Paywalls and delays obstruct basic record entry.",
+      "signal": "complaint",
+      "applicability": "out-of-scope",
+      "themes": [
+        "pricing"
+      ]
+    },
+    {
+      "sampleId": "SW04",
+      "app": "Splitwise",
+      "reviewId": "4597715552",
+      "date": "2019-08-10T18:09:34.000Z",
+      "rating": 5,
+      "sourceKey": "splitwise",
+      "paraphrase": "Charts need records and clearer amount ownership.",
+      "signal": "mixed",
+      "applicability": "direct",
+      "themes": [
+        "records",
+        "payment-meaning"
+      ]
+    },
+    {
+      "sampleId": "SW05",
+      "app": "Splitwise",
+      "reviewId": "8416982527",
+      "date": "2022-03-03T20:50:45.000Z",
+      "rating": 1,
+      "sourceKey": "splitwise",
+      "paraphrase": "Switching apps loses an unfinished expense.",
+      "signal": "complaint",
+      "applicability": "direct",
+      "themes": [
+        "draft-continuity",
+        "navigation"
+      ]
+    },
+    {
+      "sampleId": "SW06",
+      "app": "Splitwise",
+      "reviewId": "10698876435",
+      "date": "2023-12-15T23:35:19.000Z",
+      "rating": 1,
+      "sourceKey": "splitwise",
+      "paraphrase": "Entry limits disrupt occasional batch bookkeeping.",
+      "signal": "complaint",
+      "applicability": "out-of-scope",
+      "themes": [
+        "pricing"
+      ]
+    },
+    {
+      "sampleId": "SW07",
+      "app": "Splitwise",
+      "reviewId": "11561048507",
+      "date": "2024-08-01T21:12:56.000Z",
+      "rating": 2,
+      "sourceKey": "splitwise",
+      "paraphrase": "Simple bookkeeping feels buried under paid features.",
+      "signal": "complaint",
+      "applicability": "adjacent",
+      "themes": [
+        "simplicity",
+        "pricing"
+      ]
+    },
+    {
+      "sampleId": "SW08",
+      "app": "Splitwise",
+      "reviewId": "11371269348",
+      "date": "2024-06-12T02:49:22.000Z",
+      "rating": 1,
+      "sourceKey": "splitwise",
+      "paraphrase": "Limits and settlement details confuse shared totals.",
+      "signal": "complaint",
+      "applicability": "adjacent",
+      "themes": [
+        "pricing",
+        "payment-meaning"
+      ]
+    },
+    {
+      "sampleId": "SW09",
+      "app": "Splitwise",
+      "reviewId": "13138401822",
+      "date": "2025-09-14T23:25:51.000Z",
+      "rating": 1,
+      "sourceKey": "splitwise",
+      "paraphrase": "Pending funds and withdrawal trouble erode trust.",
+      "signal": "complaint",
+      "applicability": "out-of-scope",
+      "themes": [
+        "payment-meaning",
+        "custody"
+      ]
+    },
+    {
+      "sampleId": "SW10",
+      "app": "Splitwise",
+      "reviewId": "10960523156",
+      "date": "2024-02-20T16:52:29.000Z",
+      "rating": 1,
+      "sourceKey": "splitwise",
+      "paraphrase": "Occasional users reject restrictive subscription limits.",
+      "signal": "complaint",
+      "applicability": "out-of-scope",
+      "themes": [
+        "pricing"
+      ]
+    }
+  ]
+}

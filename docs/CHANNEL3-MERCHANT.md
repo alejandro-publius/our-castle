@@ -159,3 +159,41 @@ The visit flow already re-reads the product and refuses a 404 before opening any
 ### Selected configuration stock — November 6 PST
 
 The current public product/variant documentation separates listing stock from `variants.options[].values[].{exists,available}` for the effective `variants.selected` configuration. The adapter now refuses a selected size/colour explicitly out of stock or no longer present, even if the overall retailer offer says **In stock**. Unselected sizes and unknown stock do not block an otherwise usable result. This uses the existing compact result, refresh, stale-draft recovery and explicit goal confirmation. [Reproduction, focused checks and contract evidence](MERCHANT-VARIANT-REVIEW.md). No live-provider retest or automatic lookup was added.
+
+## Family fit: kinds of item, must-haves and the family's date — November 8
+
+From Plan → Family choices, **Find options that fit** opens this merchant in a family-fit mode. Ordinary search, opened anywhere else, is unchanged. [How a family uses it](FAMILY-CHOICES.md#find-options-that-fit).
+
+**Contract source.** Channel3's published references at github.com/channel3-ai/skills, commit `db55b30bb42e0f6306d47a9857bf1cd6482ecb48`:
+- `skills/channel3-api/references/api-reference.md`;
+- `skills/channel3-api/references/variants.md`;
+- `skills/product-discovery/SKILL.md`.
+
+The official docs index was not fetched again. No CLI, MCP or skill was installed or run. The shapes used:
+- **`GET /v1/categories/search?query=<words>&limit=5`** returns `{ categories: [{ slug, title, path: [{ slug, title }], has_children }] }`. At most five safe summaries are kept, in the catalog's order.
+- **`GET /v1/categories/{slug}`** returns a `Category` whose `attributes` are `[{ slug, name, values: string[] }]`, with `values` empty when the catalog lists no set. The app keeps only enumerated attributes other than `color`: at most 16, with at most 40 values each. Per the contract, color is filtered by image palette, never as an attribute.
+- **`POST /v1/search`** gets the family's words, `limit: 12`, `filters.category_ids` (descendants included), `filters.attributes` (OR within a key, AND across keys) and `filters.price.max_price`, with `config` `US`/`USD`/`en`.
+- **From each product** the app also reads `category` (slug, title and root-to-self path) and `structured_attributes`.
+
+The example request below is a test fixture, not a live category:
+
+```json
+{ "query": "tent", "limit": 12, "filters": { "category_ids": ["fixture-tents"], "attributes": { "fixture-capacity": ["4 person", "6 person"] }, "price": { "max_price": 150 } }, "config": { "country": "US", "currency": "USD", "language": "en" } }
+```
+
+**What leaves the server:** the family's words, catalog taxonomy values the adult chose from the catalog's own lists, the price ceiling and the locale. Nothing else is sent: no offers, members, dates, progress, one-off amount or `x-user-id`.
+
+**Checks on the server:**
+- **Ceiling:** derived from the server's own records (see the family-choices document). The page sends only the one-off amount it is trying and the comparison revision it shows.
+- **Observed lists only:** a kind of item is accepted only if this server's category search listed it, and a must-have only if that category's detail listed the key and value. Both lists expire after 30 minutes.
+- **Look-ups:** each is an explicit action within the existing limit of six catalog operations a minute, with the 8-second timeout and redirect refusal.
+- **Every item is judged here**, because unknown slugs are silently dropped by Channel3 and a provider may ignore filters. Kind of item, each must-have (match, mismatch, missing or unclear), a usable USD price within the ceiling and in-stock all count. Missing or unclear facts make an item unknown, never suitable. A title word is never evidence.
+- **Display:** at most three suitable items, lowest price first. Every other item is counted with one reason.
+- **Identical searches share only public work.** Searches with the same words, kind, must-haves and ceiling at the same moment share one catalog call and its reading. Each caller is then judged against its own need and ceiling, and keeps its own planning context in drafts of its own. One family's date, one-off amount or references never reach another family's search. Price checks of one item work the same way.
+- **Newer facts win.** A newer read of the same offer (retailer, price, stock and selection) may report another kind of item or other must-have values. An earlier fit result resting on them then expires; a title, picture, link, value order or unused fact does not count. An older answer than that read cannot bring them back. A fit search or check resting on them is refused, and an ordinary result keeps its offer without those facts.
+- **No loosening:** no filter is relaxed, retried or replaced to fill the list. Agentic mode, browse, pagination and conversations are not used.
+- **Catalog facts stay on the server.** The page receives only the judgement.
+
+**Re-checking.** An explicit price check judges a fit item again against the same need. An item that no longer meets a must-have says so.
+
+**Evidence:** fake Channel3 transports only, with invented fixture taxonomy, handles, values and products. No live category, attribute set or search was called for this feature. How well real categories expose the facts a family needs is untested; when a fact is missing, the app says it cannot confirm that need.

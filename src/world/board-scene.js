@@ -616,8 +616,12 @@ export function createBoardScene(container, { reducedMotion = false, isOccluded 
     update(next, { animate = true } = {}) {
       queue = queue.then(async () => {
         if (disposed) return;
+        const updated = { ...state, ...next, crest: { ...state.crest, ...(next.crest ?? {}) } };
+        // Plan and ledger refreshes can carry the same board. Check inside the queue, after any earlier movement,
+        // so those refreshes reuse the rendered world without rebuilding route meshes or issuing another frame.
+        if (JSON.stringify(updated) === JSON.stringify(state)) return;
         const prev = state;
-        state = { ...state, ...next, crest: { ...state.crest, ...(next.crest ?? {}) } };
+        state = updated;
         const crestChanged = prev.crest.field !== state.crest.field || prev.crest.charge !== state.crest.charge;
         if (crestChanged || prev.playMode !== state.playMode || JSON.stringify(prev.members) !== JSON.stringify(state.members)) buildToken();
         if (prev.gardens !== state.gardens) buildGardens();

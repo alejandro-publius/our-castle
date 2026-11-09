@@ -274,6 +274,148 @@ export const MIGRATIONS = Object.freeze([
     // tables only, so the example household never has accounts.
     ensure(db) { db.exec(FAMILY_ACCESS_TABLES); },
   }),
+  Object.freeze({
+    id: 'deferred-refunds',
+    // Verified completed refunds that arrived before their capture was recorded. References and amounts only,
+    // private until a validated capture binds them to an owned order; never household progress by themselves.
+    ensure(db) { db.exec(`
+      CREATE TABLE IF NOT EXISTS deferred_refunds (
+        refund_id TEXT PRIMARY KEY,
+        capture_id TEXT NOT NULL,
+        amount_cents INTEGER NOT NULL CHECK (amount_cents > 0),
+        currency TEXT NOT NULL CHECK (length(currency) = 3),
+        received_at TEXT NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS deferred_refunds_capture ON deferred_refunds (capture_id, received_at, refund_id);
+    `); },
+  }),
+  Object.freeze({
+    id: 'family-choices',
+    // Shared buying choices for the active goal, planning facts only. Three tables:
+    // - family_choices: up to three merchant results an adult saved from this server's own shown results;
+    // - family_offers: each adult's own weekly planning offer;
+    // - family_preferences: each member's one preference.
+    // No amount here is money, a payment, an approval or a reserved price. Removing a choice removes its preferences.
+    ensure(db) { db.exec(`
+      CREATE TABLE IF NOT EXISTS family_choices (
+        id TEXT PRIMARY KEY,
+        household_id TEXT NOT NULL REFERENCES households(id) ON DELETE CASCADE,
+        goal_id TEXT NOT NULL REFERENCES goals(id) ON DELETE CASCADE,
+        product_id TEXT NOT NULL,
+        title TEXT NOT NULL,
+        merchant TEXT NOT NULL,
+        url TEXT NOT NULL,
+        price_cents INTEGER NOT NULL CHECK (price_cents > 0),
+        currency TEXT NOT NULL CHECK (length(currency) = 3),
+        availability TEXT,
+        condition TEXT,
+        selection_json TEXT NOT NULL DEFAULT '[]',
+        checked_at TEXT NOT NULL,
+        draft_id TEXT,
+        added_by TEXT NOT NULL REFERENCES members(id) ON DELETE CASCADE,
+        added_at TEXT NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS family_choices_goal ON family_choices (goal_id, added_at);
+      CREATE TABLE IF NOT EXISTS family_offers (
+        goal_id TEXT NOT NULL REFERENCES goals(id) ON DELETE CASCADE,
+        member_id TEXT NOT NULL REFERENCES members(id) ON DELETE CASCADE,
+        weekly_cents INTEGER NOT NULL CHECK (weekly_cents > 0),
+        updated_at TEXT NOT NULL,
+        PRIMARY KEY (goal_id, member_id)
+      );
+      CREATE TABLE IF NOT EXISTS family_preferences (
+        goal_id TEXT NOT NULL REFERENCES goals(id) ON DELETE CASCADE,
+        member_id TEXT NOT NULL REFERENCES members(id) ON DELETE CASCADE,
+        choice_id TEXT NOT NULL REFERENCES family_choices(id) ON DELETE CASCADE,
+        updated_at TEXT NOT NULL,
+        PRIMARY KEY (goal_id, member_id)
+      );
+    `); },
+  }),
+  Object.freeze({
+    id: 'family-choice-needs',
+    // Why a family choice was chosen, kept with it:
+    // - the catalog category and must-haves the family set;
+    // - what the catalog reported for the item when it was found, and at its latest explicit check;
+    // - the planning price ceiling and date of that search.
+    // Planning facts only, and NULL for an ordinary choice. No row or other column changes.
+    ensure(db) { if (!hasColumn(db, 'family_choices', 'need_json')) db.exec('ALTER TABLE family_choices ADD COLUMN need_json TEXT;'); },
+  }),
+  Object.freeze({
+    id: 'kit-lists',
+    // The family's confirmed kit checklist for a goal, one row per goal: up to eight things to bring, each with how many
+    // are needed, how many the family says it already has and whether it was typed or read from a photo, plus the
+    // list's revision and who saved it when. Planning facts only: no price, purchase, money, photo or model answer.
+    // A new table only; no existing row or column changes.
+    ensure(db) { db.exec(`
+      CREATE TABLE IF NOT EXISTS kit_lists (
+        goal_id TEXT PRIMARY KEY REFERENCES goals(id) ON DELETE CASCADE,
+        household_id TEXT NOT NULL REFERENCES households(id) ON DELETE CASCADE,
+        revision INTEGER NOT NULL CHECK (revision > 0),
+        items_json TEXT NOT NULL,
+        saved_by TEXT NOT NULL REFERENCES members(id) ON DELETE CASCADE,
+        saved_at TEXT NOT NULL
+      );
+    `); },
+  }),
+  Object.freeze({
+    id: 'kit-planner',
+    // Comparing complete kits for the kit list. Planning facts only: no money moves, nothing is bought or reserved.
+    // - kit_candidates: up to three catalog listings an adult added for one line still to get, copied from this server's
+    //   own shown result. Each keeps the line it was added for (as named then), and how many items one listing gives:
+    //   the adult's own count (per_listing_by), never a catalog fact.
+    // - kit_selections: the family's chosen listing per line, and whether an adult kept it (kept lines stay fixed).
+    // - goal_kits: the kit a goal was saved from: every line's real listing, quantity and price, and its listed total.
+    // New tables only; no existing row or column changes.
+    ensure(db) { db.exec(`
+      CREATE TABLE IF NOT EXISTS kit_candidates (
+        id TEXT PRIMARY KEY,
+        household_id TEXT NOT NULL REFERENCES households(id) ON DELETE CASCADE,
+        goal_id TEXT NOT NULL REFERENCES goals(id) ON DELETE CASCADE,
+        line_id TEXT NOT NULL,
+        line_name TEXT NOT NULL,
+        line_needs TEXT,
+        product_id TEXT NOT NULL,
+        title TEXT NOT NULL,
+        merchant TEXT NOT NULL,
+        url TEXT NOT NULL,
+        price_cents INTEGER NOT NULL CHECK (price_cents > 0),
+        currency TEXT NOT NULL CHECK (length(currency) = 3),
+        availability TEXT,
+        condition TEXT,
+        selection_json TEXT NOT NULL DEFAULT '[]',
+        weight_mg INTEGER CHECK (weight_mg IS NULL OR weight_mg > 0),
+        per_listing INTEGER NOT NULL CHECK (per_listing BETWEEN 1 AND 100),
+        per_listing_by TEXT NOT NULL REFERENCES members(id) ON DELETE CASCADE,
+        need_json TEXT,
+        checked_at TEXT NOT NULL,
+        draft_id TEXT,
+        added_by TEXT NOT NULL REFERENCES members(id) ON DELETE CASCADE,
+        added_at TEXT NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS kit_candidates_goal ON kit_candidates (goal_id, line_id, added_at);
+      CREATE TABLE IF NOT EXISTS kit_selections (
+        goal_id TEXT NOT NULL REFERENCES goals(id) ON DELETE CASCADE,
+        line_id TEXT NOT NULL,
+        candidate_id TEXT NOT NULL REFERENCES kit_candidates(id) ON DELETE CASCADE,
+        kept INTEGER NOT NULL DEFAULT 0 CHECK (kept IN (0, 1)),
+        chosen_by TEXT NOT NULL REFERENCES members(id) ON DELETE CASCADE,
+        chosen_at TEXT NOT NULL,
+        PRIMARY KEY (goal_id, line_id)
+      );
+      CREATE TABLE IF NOT EXISTS goal_kits (
+        goal_id TEXT PRIMARY KEY REFERENCES goals(id) ON DELETE CASCADE,
+        household_id TEXT NOT NULL REFERENCES households(id) ON DELETE CASCADE,
+        kit_revision INTEGER NOT NULL CHECK (kit_revision > 0),
+        total_cents INTEGER NOT NULL CHECK (total_cents > 0),
+        currency TEXT NOT NULL CHECK (length(currency) = 3),
+        lines_json TEXT NOT NULL,
+        goal_name TEXT NOT NULL,
+        saved_by TEXT NOT NULL REFERENCES members(id) ON DELETE CASCADE,
+        saved_at TEXT NOT NULL
+      );
+    `); },
+  }),
 ]);
 
 export function openDatabase(file) {
@@ -289,7 +431,7 @@ export function openDatabase(file) {
   // Schemas 5 and 6 exist only in databases a pre-integration branch build opened, and mean different things there.
   // Re-check every step from 5 against the actual tables rather than trusting that number.
   const shared = MIGRATIONS.findIndex((step) => typeof step !== 'string');
-  const start = version > shared && version < MIGRATIONS.length ? shared : version;
+  const start = version === 5 || version === 6 ? shared : version;
   if (start !== version) console.warn(`[our-castle] database schema ${version} came from a pre-integration branch build; checking steps ${shared + 1}–${MIGRATIONS.length} against its tables.`);
   for (let i = start; i < MIGRATIONS.length; i++) {
     transaction(db, () => {

@@ -7,6 +7,9 @@ import { createClock } from './household.mjs';
 import { createPayPalSdkClient } from './payments/paypal-sdk-client.mjs';
 import { createPayPalReadTools } from './steward/paypal-tools.mjs';
 import { createAnthropicPlanner } from './planner/anthropic-provider.mjs';
+import { createKitReader } from './kit/reader.mjs';
+import { createKitReranker } from './kit/rerank.mjs';
+import { createKitSolver } from './kit/solver.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const { env, envFileLoaded } = readEnvironment({ root });
@@ -23,7 +26,14 @@ const live = config.ai.mode === 'live';
 const aiProvider = live ? createAnthropicPlanner({ apiKey: config.ai.apiKey, model: config.ai.model }) : null;
 const stewardAi = live ? { apiKey: config.ai.apiKey, model: config.ai.model } : null;
 
-const app = createApp({ config, db, clock: createClock(), paypal, aiProvider, stewardAi, paypalTools, root });
+// Kit list photo reading: only with the server's own KIT_OPENAI_API_KEY. Typing a list never needs it.
+const kitReader = config.kit.mode === 'live' ? createKitReader({ apiKey: config.kit.apiKey, model: config.kit.model }) : null;
+// Complete-kit comparison: the Rust solver built from solver/ when present (OUR_CASTLE_KIT_SOLVER=native requires it).
+const kitSolver = createKitSolver({ root, engine: config.kitSolver.mode });
+// Ordering kits that fit by a family preference: only with the server's own KIT_COHERE_API_KEY.
+const kitReranker = config.kitRank.mode === 'live' ? createKitReranker({ apiKey: config.kitRank.apiKey, model: config.kitRank.model }) : null;
+
+const app = createApp({ config, db, clock: createClock(), paypal, aiProvider, stewardAi, paypalTools, kitReader, kitSolver, kitReranker, root });
 const server = http.createServer(app.handler);
 
 server.listen(config.port, config.host, () => {
@@ -36,6 +46,8 @@ server.listen(config.port, config.host, () => {
     : 'EXAMPLE mode — simulated, no PayPal calls'}`);
   console.log(`  Planner: ${config.ai.mode === 'live' ? `AI via ${config.ai.provider} (${config.ai.model})` : 'EXAMPLE mode — built-in rules, no AI'}`);
   console.log(`  Merchant: ${config.merchant.mode === 'live' ? 'Channel3 product search (CHANNEL3_API_KEY set, server-side only)' : 'off — Channel3 not connected (needs CHANNEL3_API_KEY)'}`);
+  console.log(`  Kit photos: ${config.kit.mode === 'live' ? `read by OpenAI (${config.kit.model}) only when an adult asks (KIT_OPENAI_API_KEY, server-side only)` : 'off — typing a kit list still works (photo reading needs KIT_OPENAI_API_KEY)'}`);
+  console.log(`  Kit comparison: ${kitSolver.engine === 'native' ? 'Rust solver (solver/target/release/kit-solver)' : 'built-in reference solver (build solver/ with cargo for the Rust one)'}; preference ordering ${config.kitRank.mode === 'live' ? `by Cohere (${config.kitRank.model}) only when an adult asks (KIT_COHERE_API_KEY, server-side only)` : 'off (needs KIT_COHERE_API_KEY)'}`);
   console.log(`  Treasury: ${config.studio ? 'AG Studio evaluation licence set (local evaluation only)' : 'AG Studio unlicensed (local trial watermark)'}`);
   console.log(`  Steward: ${live ? `AI (${config.ai.model})${sandbox ? ' with read-only PayPal Agent Toolkit tools' : ', ledger only (payments in example mode)'}` : 'off — needs AI_API_KEY'}`);
   console.log(`  Data: ${dbFile}`);

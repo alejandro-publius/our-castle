@@ -43,6 +43,8 @@ export function saveGoalFromItem(db, { householdId, goalId, expectedGoalId, expe
         price_cents = excluded.price_cents, currency = excluded.currency, availability = excluded.availability, checked_at = excluded.checked_at,
         goal_name = excluded.goal_name, saved_at = excluded.saved_at, selection_json = excluded.selection_json, condition = excluded.condition`)
       .run(goal.id, item.productId, item.title, item.merchant, item.url, item.priceCents, item.currency, item.availability, item.checkedAt, saved.name, clock.iso(), JSON.stringify(item.selection ?? []), item.condition ?? null);
+    // One item is now the goal's source, so a kit it was saved from earlier no longer describes it.
+    db.prepare('DELETE FROM goal_kits WHERE goal_id = ?').run(goal.id);
     return saved;
   });
 }

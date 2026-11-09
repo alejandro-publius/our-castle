@@ -7,7 +7,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { MIGRATIONS, openDatabase } from '../../server/db.mjs';
 
 // The integrated build's one migration sequence, from every schema a real database can have: main's 4, the two
-// different 5s that the goal-project and sponsor branches wrote, the access branch's 6, this build's 7, and a newer one.
+// different 5s that the goal-project and sponsor branches wrote, the access branch's 6, the integrated 7, this build's schema, and a newer one.
 // Each branch's database is rebuilt here from the same statements that branch ran (checked against each branch's own
 // openDatabase when this was written: identical schemas). Every path must reach exactly a fresh database's schema,
 // keep its rows, and be safe to open again.
@@ -18,15 +18,16 @@ const BRANCHES = {
   'goal projects (5: project kind)': { version: 5, steps: [...MAIN, step('goal-project-kind')] },
   'sponsor depth (5: merchant selection)': { version: 5, steps: [...MAIN, step('merchant-selection')] },
   'family access (6: project kind, access tables)': { version: 6, steps: [...MAIN, step('goal-project-kind'), step('family-access')] },
-  'integrated (7)': { version: 7, steps: MIGRATIONS },
+  'integrated (7)': { version: 7, steps: MIGRATIONS.slice(0, 7) },
+  'current': { version: MIGRATIONS.length, steps: MIGRATIONS },
 };
 const schema = (db) => db.prepare("SELECT type, name, sql FROM sqlite_master WHERE name NOT LIKE 'sqlite_%' ORDER BY type, name").all()
   .map((r) => `${r.type} ${r.name} ${r.sql}`).join('\n');
 const version = (db) => db.prepare('PRAGMA user_version').get().user_version;
 
-test('one sequence: main 4 has four SQL steps, then three checked steps, seven in all', () => {
+test('one sequence: main 4 has four SQL steps, then eight checked steps, twelve in all', () => {
   assert.equal(MAIN.length, 4);
-  assert.deepEqual(MIGRATIONS.slice(4).map((s) => s.id), ['goal-project-kind', 'merchant-selection', 'family-access']);
+  assert.deepEqual(MIGRATIONS.slice(4).map((s) => s.id), ['goal-project-kind', 'merchant-selection', 'family-access', 'deferred-refunds', 'family-choices', 'family-choice-needs', 'kit-lists', 'kit-planner']);
   assert.ok(MIGRATIONS.every(Object.isFrozen));
 });
 

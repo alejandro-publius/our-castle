@@ -1,5 +1,1244 @@
 # Validation
 
+## Complete kits: review correction 001 — November 9, 2026
+
+Codex's review of `1dfca06` (PR #58) reproduced five production defects, R1–R5, in the complete-kit planner. Commits on the same branch:
+- `39833fe`: the five fixes, the chosen-kit wording, and a regression for each;
+- the commit after it: these notes, the reframed screenshot and its provenance.
+
+**What was wrong, and what changed:**
+- **R1. Ordering went on after access or the facts changed.** `/api/kit/prefer` waited for the solver, then went on to the quota and Cohere without checking again. In the root probe, a member signed out while the solver was held: the request ended 401, but the fake ranker was still called once.
+  - The route now checks the session, and the family's kit and figures, as soon as the solver answers.
+  - That check comes before any answer (including "nothing to order"), the minute's quota and any Cohere call.
+- **R2. A failed ordering came back for old figures.** When Cohere failed after the figures changed, the route returned 200 with the old revision. A failure is now shown with the kits only while they are still current; otherwise it is refused (`kit_plan_changed`), like a late success.
+- **R3. An empty ranking was reported as a match.** `readRanking` appended every kit Cohere left out, so a reply that ranked nothing still labelled a match.
+  - It now returns only the kits Cohere ranked. A reply that ranks none is a failure (`kit_rank_empty`), with no match.
+  - A reply that ranks some still names Cohere's first choice. The answer says how many it ranked of how many were sent (`ordered`, `sent`), and the page then says "Cohere ordered 1 of the 5 lowest-total kits…". The sentence for a complete ranking is unchanged.
+- **R4. Standard error was unbounded.** `SOLVER_LIMITS.maxErrorBytes` (4 KiB) was declared but not enforced: a program that wrote 4,097 bytes, then a valid answer, was accepted.
+  - Standard error is now counted and discarded. Past the bound the program is stopped and its answer refused (`kit_solver_failed`). Nothing it wrote is kept or logged.
+  - The time limit, cancellation and the two-at-once limit are unchanged.
+- **R5. Counts were sent to Cohere.** Each kit description began with the family's listing count ("1 × …", "20 × …"). Descriptions are now public titles and shops only; the counts stay in the solver and on the family's page.
+- **The chosen kit's date** (Codex's clarity point). Wren saw the chosen $180 kit finish Dec 6; Rowan, trying a private $90 one-off, saw Dec 27.
+  - The note now ends "This page’s estimate, with no one-off tried here." or "…, after the one-off $90.00 tried here."
+  - A child tries none and never sees an adult's trial. The financial arithmetic is unchanged.
+
+**Before:** the new tests ran on `1dfca06`'s production code, with an empty production diff. The three kit unit files ran **36 tests: 23 passed and 13 failed**, on both Node 22.16.0 and 26.0.0. The failures reproduced each finding:
+- **R1:**
+  - a stale "nothing to order" answer came back 200, with the old revision;
+  - a stale ordering, and a signed-out member's, each made one Cohere call;
+  - those two calls used up quota, so a current request was refused as busy at its fifth ordering.
+- **R2:** a Cohere failure after Ash changed an offer returned 200, with the old revision.
+- **R3:** an empty reply came back `ok`, with five ordered and the lowest-total kit labelled the match. The adapter also padded a partial reply with unranked kits.
+- **R4:** the 4,097-byte program's answer was accepted.
+- **R5:** the documents began "1 × …" and "2 × …". The test of one listing against twenty showed descriptions that differed only by the count.
+
+The two R2 cases that already held on `1dfca06` passed: a late success is refused, and a failure for current figures keeps the kits.
+
+**After, on exactly `39833fe`.** Every check used fake catalog and Cohere transports, invented data and disposable databases, with `.env` loading off and non-loopback transport denied. `KIT_SOLVER_REQUIRED=1` required the compiled solver; its sources are unchanged since `dfcfa7a`, and the binary's sha256 is `79feaabe…`.
+- **Unit:** `kit-solver`, `kit-planner` and `kit-rerank` passed **36/36 on Node 22.16.0 and 26.0.0** (29 tests and 7 subtests).
+  - Six development runs on Node 26 also passed 36/36. They ran before one test fixture's text was updated to the new description format.
+  - In all eight runs, the whole standard-error test took 0.44–0.65 seconds. Its last program would otherwise have waited out the 4-second limit.
+- **Browser:** the kit journey passed **2/2**, on desktop 1440×1000 and the 390×844 phone. It now also checks:
+  - that no Cohere document carries a count or other figure;
+  - the sentence for a complete ranking;
+  - Rowan's and Wren's page estimates;
+  - that Wren's page never shows $90.00.
+- **Guard:** `npm run check` passed (47 copied art/runtime files, the 90-colour palette, renderer wiring and syntax).
+
+**Screenshots** (provenance in `docs/screenshots/kit-planner-sources.json`):
+- **Unchanged:** `kit-planner-desktop-kits-compared.png`, `kit-planner-desktop-smallest-change.png` and `kit-planner-phone-listings.png` keep their `dfcfa7a` stamps. The final run on `39833fe` captured each of these views byte-identical, and none shows changed copy.
+  - Of that run's ten captures, six were byte-identical to `dfcfa7a`'s.
+  - The other four are uncommitted: the two child views show the new note, and the two goal drafts differ only inside the journal panel, with the same text.
+- **Replaced:** `kit-planner-phone-child-chosen.png` (`c65f1c34b9b6`) is stamped on `39833fe`. It shows Wren's read-only chosen kit, centred, ending "This page’s estimate, with no one-off tried here."
+  - The first recapture (`d728b32fb775`, from the final run) was top-aligned: the frame began at the kit's top rule, and two thirds of it was the goal form. The review read it as starting below the heading, so it was replaced. It is kept locally.
+  - The replacement came from a capture-only copy of the `39833fe` journey spec. It ran on the phone from the worktree, with every tracked source identical to `39833fe`, and passed (1 test).
+  - The copy differs only in its import paths, capture folder and centred framing. Its hash and diff are recorded.
+- **Not used:** in that run, the listings view was captured at a later scroll position, with focus back on "Add a listing for stove" after the Market Town dialog closed. The committed listings image is unchanged.
+
+**Not run locally:**
+- the full unit suite;
+- the 50 existing browser specs, green on `dfcfa7a` (this correction changes only kit files);
+- the Rust build and tests, since the solver sources are unchanged since `dfcfa7a`.
+
+The hosted Release checks run on the final head; the result is in the PR.
+
+**Limits:**
+- **Cohere:** every reply was invented by a fake transport. No live Cohere or Channel3 call was made, and no ranking quality was measured.
+- **Partial rankings:** the "1 of the 5" sentence is covered only through the server's answer in a unit test, not in a browser.
+- **Capture timing:** the listings capture helper can race with returning focus. This affects evidence framing only; no test failed.
+- **Not covered:** human, physical-device, accessibility-audit or performance evidence.
+
+**Evidence:** kept local and ignored, in `test-results/kit-planner-20261109/corrections-019/`:
+- `before/` and `dev/`;
+- `final-39833fe/`: unit, guard and browser logs, and captures;
+- `reframe-39833fe/`: the capture-only copy, its diff, config, log and captures;
+- `superseded/`;
+- the two provenance scripts, with `SHA256SUMS.txt`.
+
+## Complete kits for the kit list — November 9, 2026
+
+Branch `claude/kit-planner`, from the reviewed PR #57 head `11fc98d` (unmerged, stacked on #56 → … → #49). Commits:
+- `dfcfa7a`: the complete-kit planner, the Rust solver, the optional Cohere adapter, migration 12 and their tests;
+- the commit after it: these notes, the screenshots and their provenance.
+
+The owner asked for this product feature (task 019), after 018's reviewed kit list. No person has used it. [How it works and its limits](KIT-PLANNER.md).
+
+**What was built:**
+- **Listings per item:** for each item still to get, an adult adds up to three Market Town listings, with their own count of items per listing (`kit_candidates`, migration 12). Items already at home are skipped.
+- **Comparison:** `POST /api/kit/compare` is read-only and makes no catalog or model call. It builds one bounded request from the server's records and runs the Rust solver (`solver/`) or, without a build, the reference. It checks every answer and recomputes each shown kit with the family's own arithmetic. It shows up to three distinct kits that fit, or what is missing or short.
+- **Chosen kit, kept lines and the smallest change:** `kit_selections` holds the chosen kit; kept lines stay fixed, and the repair comes first when the chosen kit no longer fits.
+- **Review and adoption:** `/api/kit/review` is read-only. `/api/kit/adopt` saves the goal, the kit's provenance (`goal_kits`) and the family schedule proposal in one transaction, after a fresh-catalog check of every chosen listing.
+- **Preference ordering (optional):** Cohere Rerank (`server/kit/rerank.mjs`), with its own key, a fixed preference sentence and public titles only.
+- **Listed weight** is read from Channel3's documented offer `dimensions.weight`, and is part of the facts 017's read-version guard protects.
+
+**Toolchain (task-local, not installed on the Mac):**
+- rustup-init 1.29.3 for aarch64-apple-darwin, from `static.rust-lang.org`, its SHA-256 matching the published `.sha256` (`63752a19…20f9f`).
+- Installed with `--no-modify-path --profile minimal` into the worktree's ignored `test-results/toolchain/`, with no sudo and no profile or PATH change. rustc and cargo 1.99.1 (2026-10-13) are pinned in `solver/rust-toolchain.toml`.
+- One crate dependency, `serde_json` 1.0.154 (it compiles `serde_core`, `itoa`, `memchr` and `zmij`), with every build and test `--locked`.
+
+**Checks on `dfcfa7a`** (fake catalog and Cohere transports, invented data, disposable databases, `.env` loading off, non-loopback transport denied):
+- **Rust:** a clean `cargo test --locked` passed 9/9, and `cargo build --release --locked` succeeded.
+  - The tests cover the eight literal combinations and both one-off amounts, the retailer-set trap and the $160 → $140 repair.
+  - They also cover whole listings and spares, unknown weights, the largest valid request (6,561 kits, no overflow) and every refused request.
+- **Unit:** 19 files passed **191/191 on Node 22.16.0 and 26.0.0**, with `KIT_SOLVER_REQUIRED=1`, so the compiled solver had to be present.
+  - **New (24 tests).**
+    - `kit-solver`: the reference against the literal examples. The compiled Rust solver equals the reference on 403 cases (the three acceptance ceilings and 400 seeded random kits, over 10,000 complete kits). It also covers tampered answers refused whole and the native boundary: no shell, an empty environment, a fixed folder, timeout, crash, garbage, flood, a refusal, a wrong total, concurrency, cancellation and an oversized kit.
+    - `kit-planner` (HTTP): listings with the adult's count, owned lines skipped, and one search per line.
+      - The literal comparison: $150 by Dec 20 and $180 by Dec 27; at $120 only $150 fits, and the $180 kit finishes Jan 3.
+      - The kept-tent repair, plus incomplete, nothing-fits and nothing-to-buy lists.
+      - Fresh-catalog review, one-transaction adoption, and staleness after a price change.
+      - Child, foreign-household and foreign-id refusals; late and failed solves; and hard needs from family fit.
+      - Cohere ordering: only public text sent, failure kept, six a minute. Migration 11 → 12.
+    - `kit-rerank`: the request, reply validation (including code-point spans), errors and config isolation.
+  - **Affected (167 tests).** `kit-list`, `kit-list-page`, `family-access`, `family-choices`, `family-fit`, `family-fit-core`, `channel3-merchant`, `channel3-fit`, `merchant-freshness`, `migration-integration`, `household-snapshot`, `server`, `family-schedule`, `family-live`, `planning-revision` and `goal-projects`.
+    - Five migration tests pinned step 11 and were updated for step 12.
+    - The Cohere key was added to the check that no secret reaches the browser.
+- **Browser:**
+  - **The new journey** (`test/e2e/kit-planner.spec.mjs`, `@kit-planner`) passed **2/2** on desktop 1440×1000 and the 390×844 phone, on exactly `dfcfa7a` with the compiled solver.
+    - Rowan adds two listings for each of three items, with three catalog searches and none for the torches at home.
+    - At a $90 one-off, two kits are shown; an explicit Cohere ordering (one fake call) labels the $180 kit.
+    - Rowan chooses that kit and keeps the stove; Ash and Wren see it live, Wren with no buttons.
+    - A $120 one-off recomputes with no catalog or model call: the chosen kit would finish Jan 3, and the repair switches only the tent.
+    - Rowan chooses the repair, reviews it, and saves the goal with its family schedule proposed.
+    - No payment, ledger, offer or family-choice record changed, and no page error or outside request occurred.
+  - **The existing specs this touches** (kit-list, family-choices, family-fit, family-schedule, Market Town, area cards and the connected journey) passed **50, with 2 designed skips and 0 failures**, on desktop and phone, on the same app sources.
+- **Guard:** `npm run check` passed.
+- **Snapshot rehearsal:** a fresh throwaway example server ran on port 3190, with no keys and `.env` off; it reported the Rust solver at start.
+  - Steps: one simulated $15 contribution and one typed kit list.
+  - `npm run snapshot` gave schema 12 · integrity ok · foreign keys ok · 27 tables · 75 pages. The server was then stopped.
+- **During development, each fixed before the final runs:**
+  - the shared chosen-kit lines came back in primary-key order rather than the list's order (caught by the repair test);
+  - the native bridge waited for a killed program's inherited output pipe; it now settles the moment it stops a program (caught by a 5.9-second boundary test);
+  - the five migration tests failed as expected at step 12;
+  - the browser test expected "Jan 3" where the page rightly shows "Jan 3, 2027".
+
+**Not run locally:** the full unit suite and the other browser specs (green at the reviewed base). The hosted Release checks run the whole selection, the Rust build and tests, and the new journey in its own job on the final head; the result is in the PR.
+
+**Screenshots** (invented listings, fake catalog and Cohere order; full provenance in `docs/screenshots/kit-planner-sources.json`). They were captured by that final run on exactly `dfcfa7a`, with every one of the 29 recorded sources byte-identical to it, and the compiled solver's hash is recorded:
+- `kit-planner-desktop-kits-compared.png` (`e8f4bf9db42d`): two kits that fit after the $90 one-off, the $180 one also the preference match;
+- `kit-planner-desktop-smallest-change.png` (`d20c65343f0b`): after the $120 one-off, the repair that switches only the tent, with the kept stove;
+- `kit-planner-phone-listings.png` (`25eb6cdc2920`): the listings for each item, with the adult's count per listing;
+- `kit-planner-phone-child-chosen.png` (`98fefb953a3a`): the child's read-only chosen kit. Replaced in review correction 001, above.
+
+**Limits:**
+- **Pool, not market:** exact only within the listings an adult added (at most three per item). Prices, stock and weights are as the catalog last reported them.
+- **Counts per listing** are the adult's reading of the listing; the catalog contract has no pack count.
+- **Cohere:** every reply here was invented by a fake transport. No ranking quality or preference fit was measured, and no live Channel3 or Cohere call was made.
+- **Speed:** no speed claim. The small timing figures in the raw logs are not a comparison.
+- **Not covered:** human, physical-device, accessibility-audit or performance evidence.
+
+**Evidence:** kept local and ignored, in `test-results/kit-planner-20261109/`: toolchain, cargo, unit and browser logs with commands, raw captures with `SHA256SUMS.txt`, and the schema-12 snapshot rehearsal.
+
+## Kit list review correction 002 — November 9, 2026
+
+Codex's review of `4642e94` found one remaining input-preservation error, F3. Correction 001 had recorded it as an unchanged limit; the root reviewer then authorized fixing it. The fix is `e6b1943`; these notes are the commit after it.
+
+**What was wrong:**
+- While the kit list was still empty, its typing box showed without being opened explicitly.
+- If an adult had typed a list there, or chosen a photo, and another adult in the same household and goal saved the first list meanwhile, a live update hid the box.
+- The entry stayed only in the hidden box, and **Start a new list** then erased it.
+
+Codex reproduced this through the module, and the probe kept with correction 001's evidence recorded the same.
+
+**The fix,** in `src/app/kit-list.js`: when such a save arrives while the box is shown with typed text or a chosen photo, the box stays open.
+- **What stays:** the entry and its focus. The new saved list shows above it to compare, and **Start a new list** is not offered meanwhile.
+- **What is sent:** nothing on its own. Only the adult's own **Check this list** and **Save this list** replace that list. The draft says "Saving replaces the saved list.", and the save goes through the existing revision check against the list the adult has seen.
+- **Unchanged:** with nothing entered, the box closes as before. A change of household, goal or person still drops everything (correction 001).
+
+**Regression tests:**
+- **`test/unit/kit-list-page.test.mjs`** gains one test with three cases, on the same minimal DOM:
+  - **typed text:** kept with its focus beside Ash's list, with nothing sent until Check and Save. The save is sent against revision 1; the box then closes and stays closed on a re-read.
+  - **a chosen photo:** still shown and still readable, with nothing sent. The browser's image decoding and canvas are replaced by stand-ins in the test.
+  - **nothing entered:** the box closes and the saved list's actions show, as before.
+- **`test/e2e/kit-list.spec.mjs`**, the existing journey: Ash now types `2 x torch; 1 x stove` into the empty box while Rowan makes and saves the first list.
+  - Ash's text and focus stay, and Rowan's list shows.
+  - Ash sends nothing until Check and Save. Ash's list then replaces Rowan's for every member.
+  - The rest of the journey is unchanged; the kit ends at revision 5 instead of 4.
+
+**Before and after** (Node 22.16.0 and 26.0.0, `.env` loading off, non-loopback transport denied):
+
+| Source | Page tests, on each Node version | Kit journey |
+| --- | --- | --- |
+| `4642e94`, with the new tests | 17 results: 14 pass, 3 fail (the typed and photo cases and their parent) | Desktop: failed at Ash's box (expected visible, received hidden) |
+| The fix, `e6b1943` | 17 of 17 pass | 2/2, desktop and 390 px phone |
+
+The failures before the fix were the reported ones: "the typing box is still shown" and "the chosen photo is still shown" were false. The nothing-entered case and every correction-001 test passed both before and after.
+
+**Other checks:** `npm run check` passed. The full unit suite and the other Plan specs were not run locally. The hosted Release checks run the whole selection on the final head; the result is in the PR.
+
+**Screenshots:** unchanged and still stamped at `8461902`; none of them shows this case. The extended journey's own capture of the saved list matches the committed one except for the save time.
+
+**Limits:**
+- **Photo case:** checked only in the module test, with stand-ins for image decoding. The browser journey covers typed text.
+- **No notice** says that another adult saved while this adult was typing. The saved list appears above the box, and the draft's "Saving replaces the saved list." is the warning before any save.
+- **Earlier limits:** the test DOM is not a browser, and the earlier kit-list limits still apply.
+
+**Evidence:** kept local and ignored, in `test-results/kit-checklist-20261109/correction-002/`: the before, after and final logs, the guard and browser logs, commands and `SHA256SUMS.txt`.
+
+## Kit list review correction 001 — November 9, 2026
+
+Codex's review of PR #57 (`8461902` and `d39ae12`) found two scope-boundary errors in the page's kit list, `src/app/kit-list.js`. It reproduced both by calling the exported module with invented states over a minimal DOM. The fix is `b3f8377`; these notes are the commit after it. The [kit-list record](#kit-list-from-text-or-a-photo--november-9-2026) below is unchanged.
+
+**What was wrong:**
+- **F1:** the saved list was redrawn only when its revision, save time, the viewer's adult status or the saver's name changed. A second household's or goal's list that matched on all of these kept showing the first one's lines.
+- **F2:** a change of household, goal or person dropped an open draft and photo, but left the typed text in the box. The next empty list's typing box still showed it.
+- **Found while fixing F2:** a message about the previous list, such as "Saved for the family. Nothing was bought or paid.", also stayed under the next one.
+
+**Where these can happen in the app:**
+- **Only through the module:** a household keeps one goal (editing it keeps its id), and a page never shows a second household. A family sign-in reloads the page, and a state for another household or member is refused. So these were reached only by calling the module directly, as in the review:
+  - F1;
+  - F2's household and goal cases;
+  - the leftover message, which is misleading only under another goal or household.
+- **In the app:** F2's person case happens through the example persona switch, which draws the kit list for the newly chosen person (`src/app/main.js`). This path was exercised in the module test, not in a browser. The switch now also clears the previous person's message.
+
+**The fix,** in `src/app/kit-list.js`:
+- **Redraw key:** the saved list's redraw key now includes whose list it is: household, goal and person. Another list is always drawn, and an unchanged re-read of the same list still keeps its nodes and focus.
+- **On a change of household, goal or person,** the page now also clears the typed text and any message about the old list.
+  - It says "The draft was for another person or goal, so it was discarded. Nothing was saved." only when a draft or photo was open, or the typing box was in use.
+  - Text left in the hidden box after a save is not reported as discarded.
+
+**Regression test:** `test/unit/kit-list-page.test.mjs` runs the real page module over `test/helpers/mini-dom.mjs`, a minimal DOM built from the kit-list markup in `index.html`.
+- It uses invented states and no browser, server, database or network; its one save goes to a fake transport inside the test.
+- It has 5 tests with 8 subtests, 13 results in all:
+  - **F1**, for another household and for another goal, each with the same line id, revision, save time and saver name;
+  - **F2**, for another household and person, another goal, and another adult (the persona switch), each with and without a checked draft open;
+  - **the leftover message** after a save;
+  - **two same-scope checks:** an unchanged re-read keeps the drawn list and its focus, and keeps typed text and an open draft, with focus in the line being edited.
+
+**Before and after** (Node 22.16.0 and 26.0.0, `.env` loading off, non-loopback transport denied):
+
+| Source | Result on each Node version |
+| --- | --- |
+| `d39ae12`'s `kit-list.js`, with the final test | 13 results: 2 pass (the same-scope checks), 11 fail |
+| The fix, `b3f8377` | 13 of 13 pass |
+
+Each failure before the fix was the one reported:
+- the first household's "PRIVATE TEST TENT" still shown instead of "SECOND HOUSE BAG";
+- "PRIVATE FIRST FAMILY UNSAVED LIST" still in the next person's box, in all six F2 cases;
+- "Saved for the family…" left under the next goal.
+
+During development, the first version of the fix failed the leftover-message test: it reported text left in the hidden box after a save as a discarded draft. It was corrected before committing.
+
+**Other checks on the fix:**
+- **Guard:** `npm run check` passed.
+- **Browser:** the existing kit-list journey passed 2/2, on desktop and the 390 px phone. It covers same-person live updates keeping focus and edits, and Escape closing the journal without losing the draft.
+- **Not run locally:** the other Plan specs and the full unit suite. No other test imports the page module. The hosted Release checks run the whole selection on the final head; the result is in the PR.
+
+**Screenshots:** they stay as captured at `8461902` and recorded in `docs/screenshots/kit-list-sources.json`, and were not recaptured or restamped. The fix changes nothing drawn for a single person. The corrected browser run's own capture of the saved list matches the committed one except for the save time. That capture is ignored, in `test-results/kit-list/`.
+
+**Limits:**
+- **The test DOM is not a browser.** It models only what the module uses, and approximates layout by the `hidden` attribute and closed `<details>`.
+- **Unchanged, pre-existing (same person).** Suppose another adult saves a list while someone is typing into the empty list's box:
+  - a live update hides the box;
+  - the text is kept only in the hidden box, with no message;
+  - **Start a new list** clears it.
+  This correction keeps same-person behavior as it was; a throwaway probe recorded it. It was fixed afterwards, by [review correction 002](#kit-list-review-correction-002--november-9-2026).
+- **Earlier limits still apply.** Everything in the kit-list record below holds: no live OpenAI call, and no human, device, accessibility-audit or performance evidence.
+
+**Evidence:** kept local and ignored, in `test-results/kit-checklist-20261109/correction-001/`: the before, first-attempt, after and final logs, the guard and browser logs, the probe, commands and `SHA256SUMS.txt`.
+
+## Kit list from text or a photo — November 9, 2026
+
+Branch `claude/kit-checklist`, from the reviewed PR #56 head `afbe13f` (unmerged, stacked on #55 → #54 → … → #49). Commits:
+- `8461902`: the kit list, its optional photo reader, migration 11 and their tests;
+- the commit after it: these notes, the screenshots and their provenance.
+
+The owner asked for this product feature (task 018). It is the first of two stages: this one ends at a checked, saved family checklist. Comparing complete kits against the family's planning limit is stage 019 and is not implemented here. No person has used it. [How it works, privacy and limits](KIT-LIST.md).
+
+**What was built:**
+- **Typed lists** are parsed on the page by `src/core/kit-list.js`, using literal separators and written counts only. `4-person tent` stays a name, and an unknown count stays blank until the adult fills it in.
+- **Photo reading** (`server/kit/reader.mjs`) is optional and needs the server's own `KIT_OPENAI_API_KEY`. It makes one OpenAI Responses call per explicit read, with a strict schema, `store: false`, no tools, bounded output, a 60-second timeout, no redirects and no retries. An independent local check follows.
+- **A draft** shows Need, Have and To get for each line, with each problem in words. Only **Save this list** writes, through `PUT /api/kit`: one revision-checked transaction into the new `kit_lists` table (migration 11).
+- **The photo** is resized and re-encoded on the page, and the server checks its type, bytes and size. Only `POST /api/kit/read` accepts up to 2 MiB; every other route keeps 64 KiB. Neither the photo nor the model's answer is stored or logged.
+
+**Checks on `8461902`** (fake OpenAI transport, invented data, disposable databases, `.env` loading off, non-loopback transport denied):
+- **Unit:** 12 files passed **111/111 on Node 22.16.0 and 26.0.0**.
+  - **New (22 tests).** `kit-list-core` (parsing and bounds), `kit-reader` (request serialization, the strict schema, refusals, unfinished, malformed and oversized answers, HTTP errors, timeout, no retry) and `kit-list` (HTTP, config, body limits and migration). The HTTP cases include:
+    - the typed path, with zero model calls;
+    - one fake photo read, with the misread counts corrected before saving;
+    - the other adult, the child and a reload reading the same list;
+    - stale revisions; a child, a spoofed member, a missing CSRF token, another household or a borrowed reading refused;
+    - invalid counts and images refused before any call;
+    - a refusal or no reader leaving typing available;
+    - a held reading refused after access ended;
+    - four photo readings a minute per household.
+  - **Affected (89 tests).** `server`, `family-access`, `family-live`, `family-fit`, `family-choices`, `channel3-merchant`, `goal-projects`, `migration-integration` and `household-snapshot`. Four of these pinned the previous last migration step or table set and were updated for step 11, which they then pass. The kit key was added to the existing check that no secret reaches the browser.
+- **Body limit:** every write route in the app was sent 70 kB. All returned 413 except the photo route, which also refuses more than 2 MiB.
+- **Browser:** **8/8 passed** on desktop 1440×1000 and the 390×844 phone. The new journey `test/e2e/kit-list.spec.mjs` (`@release`) covers:
+  - typed draft and save, then the child's read-only view;
+  - a held reading dropped after the adult typed;
+  - a photo draft with a misread and a blank count fixed before saving;
+  - a reload;
+  - another adult's edits kept through a live update behind "Keep my draft".
+  It checks that only the kit list was written, made 2 fake OpenAI calls and no other provider call, and that Escape keeps closing the journal without losing the draft. The three other Plan-journal specs in the release selection (`family-choices`, `family-fit`, `family-schedule`) passed alongside it.
+- **Guard:** `npm run check` passed.
+- **Snapshot rehearsal:** a fresh throwaway example server (port 3189, no keys, `.env` off) saved one kit list after a simulated $15 contribution. `npm run snapshot` gave schema 11 · integrity ok · foreign keys ok · 24 tables. The server was then stopped.
+- **During development:**
+  - The first browser runs found three things in my own work, each fixed before the final run:
+    - a wrong expectation about Escape (in the existing journal it closes the journal);
+    - focus lost when an unchanged saved list was redrawn by its own live update;
+    - draft rows too cramped in the 370 px journal, changed to two lines per item after inspecting the captures.
+  - The four migration tests above failed as expected when step 11 was added.
+
+**Not run locally:** the other browser specs and the full unit suite (green at the reviewed base). The hosted Release checks run the whole selection on the final head; the result is in the PR.
+
+**Screenshots** (invented list and photo, fake OpenAI reading; full provenance in `docs/screenshots/kit-list-sources.json`). Captured by that final run on exactly `8461902`, with every one of the 15 recorded sources byte-identical to it:
+- `kit-list-desktop-photo-draft.png` (`301bdb65b56d`): the draft beside its photo, with the misread 3 sleeping bags to correct;
+- `kit-list-desktop-saved.png` (`3948fab72316`): the saved list after a reload, To get 1, 2, 0 and 1;
+- `kit-list-phone-typed-draft.png` (`90c4bddaa314`): the typed draft with Have 2 for the torch;
+- `kit-list-phone-child-saved.png` (`2a947ba9352b`): the child's read-only view.
+
+**Limits:**
+- **Accuracy:** how well any model reads a real family's photo is untested. No live OpenAI call was made, and the fake reading proves only what is sent and how answers are handled.
+- **Typed text:** the parser follows literal rules, so unusual wording may need correcting in the draft.
+- **Have:** a family report, never verified.
+- **Not covered:** human, physical-device, accessibility-audit or performance evidence.
+
+**Evidence:** kept local and ignored, in `test-results/kit-checklist-20261109/`: the development and final logs with commands, raw captures with `SHA256SUMS.txt`, and the schema-11 snapshot rehearsal (`runbook/`).
+
+## Family fit: options that meet the family's needs by its date — November 8, 2026
+
+Branch `claude/family-fit-search`, from the reviewed PR #55 head `9ba5e38`. That head is still unmerged, stacked on PR #54 → #53 → #52 → #51 → #50 → #49. The commits are:
+- `09ee37e`: the feature-gap demonstration;
+- `1ecde49`: the implementation and its tests;
+- `245ee2c`: these screenshots and this note;
+- `ea9463a`: review correction 001 (below), with its notes in `73655d2`;
+- `4f95216`: review correction 002 (below), with its notes in the commit after it.
+
+The owner asked for this product iteration. It is a hypothesis about better buying decisions, not evidence of demand. No person has used it.
+
+**Review correction 001** (Codex review of `245ee2c`; fix `ea9463a`). Both findings were reproduced before any change.
+
+- **F1 (P1).** Two simultaneous family-fit searches with the same public request (words, kind, must-haves, ceiling) shared one whole judged result. Codex observed caller B receive caller A's Dec 20 date, one-off $90.00 and draft reference, from one fake catalog call. Families on one server could therefore receive each other's private planning fields. A fit item's price check had the same pattern.
+- **F1 fix.** Identical searches now share only the public catalog work: the provider call, reading its answer and recording observations. Each caller is then judged against its own need and ceiling, and keeps its own context in drafts of its own. Price checks work the same way. There is still one catalog call, and the limits, version ordering and access checks are unchanged.
+- **F1 regressions**, each failing on `245ee2c` first:
+  - **adapter:** simultaneous fit searches, and simultaneous price checks of one fit item. On `245ee2c` both gave caller B the context caller A sent.
+  - **HTTP:** two families on one server, both with a $150.00 ceiling, searching at once through one shared catalog call. On `245ee2c` Family B's results carried Family A's Dec 20 and $90.00. Now:
+    - each family gets its own date, one-off amount and finish dates (Dec 13 and Dec 20; Dec 27 and Jan 3);
+    - each saved choice stores its own search;
+    - no reference is shared, and Family B using a reference shown only to Family A gets 410;
+    - searching writes nothing, and apart from the two explicit family choices no money, goal, item, plan, deed or offer record changes.
+- **F2 (source concern).** Reproduced in the browser on desktop with actual input:
+  - with two results shown, typing a lower price limit left them on screen;
+  - with the catalog held, unticking "6 person" before its answer arrived still showed the two results judged for "4 or 6 person".
+- **F2 fix.** In family-fit mode, changing the words, the price limit, the kind of item or a must-have clears shown results and drops a search in flight. The page then says "The search changed. Choose “Find options that fit” to see options for it." Nothing is sent until the next explicit search, and focus stays in the edited field. Outside family-fit mode the handler returns at once, so ordinary search is unchanged. The browser case covers the price limit (including focus and that no request is sent) and an accepted value; the other edits use the same handler.
+- **Checks on `ea9463a`:**
+  - the six affected unit files (`channel3-fit`, `family-fit`, `channel3-merchant`, `merchant-freshness`, `family-choices`, `family-fit-core`) passed 57/57 on Node 22.16.0 and 26.0.0;
+  - the family-fit browser journey, now with both F2 cases, passed 2/2 on desktop and the 390 px phone;
+  - `npm run check` passed.
+
+  Other suites were green at review and were not rerun locally.
+- **Screenshots.** That run re-captured all five, each byte-identical (full SHA-256) to the committed file, so they keep their `1ecde49` provenance and are not relabelled. The new message appears only after the captured steps; it is asserted by the browser case, not captured.
+- **Hosted.** One Release checks run on the final head; its result is in the PR.
+
+**Review correction 002** (Codex addendum on `ea9463a`, unchanged at `73655d2`; fix `4f95216`). Reproduced before any change.
+
+- **F3 (P2).** A fit result rests on what the catalog reported for its item, but only the retailer, price, stock and selection could expire it. After an explicit check of the same offer reported "sleeps 2", the earlier draft still said suitable, "sleeps 4". On `73655d2`, with the fake catalog and disposable data:
+  - re-adding that earlier reference made the choice "meets" again. The schedule that check had made out of date could be put in use again (409, then 200), and the goal could be saved from it;
+  - an older fit search, or an older check of the fit item, answered after the newer read, still showed the item as suitable with "sleeps 4";
+  - an ordinary result read before the check brought "meets" back when added to the choice. So did a slower price check answered after the choice was updated from a newer search.
+- **Fix.** A newer read of an offer also replaces its catalog facts: the kind of item and each attribute's values, compared as sets.
+  - A fit draft whose kind of item or must-have values it contradicts expires (410). Any other draft keeps its offer without the replaced facts.
+  - An older answer cannot restore them. A fit search or fit check resting on a contradicted fact is refused (410), and an ordinary answer carries no catalog facts.
+  - A family choice keeps its latest need check when a result carries no current facts.
+  - Unchanged: titles, pictures, links and value order do not count, and a fact the need does not use does not expire a fit draft. Ordinary results stay usable. The shared record of reads holds public catalog facts only, never a family's need or context.
+- **Regressions,** each failing on `73655d2` first:
+  - four adapter cases: the addendum's case (harmless and order-only changes kept), an older fit search, an older fit-item check and an ordinary result;
+  - three HTTP cases: the earlier fit reference, an ordinary result and a slower price check.
+- **Checks on `4f95216`:** the eight unit files that build the merchant or use family choices passed 73/73 on Node 22.16.0 and 26.0.0, and `npm run check` passed. No page code changed, so no browser case ran locally, and the screenshots are unchanged.
+- **Limits:**
+  - **The newest read decides.** If Channel3's search and product detail report different facts for one item, the later-started read wins. This is untested against the live catalog.
+  - **Strict expiry.** Any change to a must-have's values expires a fit draft, even when the new value is also acceptable; the family checks or searches again.
+  - **Choice not rechecked.** A choice is not re-judged from a result whose facts were replaced, so it keeps its latest check until its own price check.
+
+**The gap, shown on `9ba5e38` before any change** (invented fake catalog data, documented as a missing feature, not a broken promise):
+- Ordinary search took only words and a budget the family had to work out by hand.
+- It showed the first three catalog products, the cheap two-person tent first. All were "usable", none carried a capacity fact or date, and the request carried only words and price.
+- No category or must-have discovery and no fit search existed: the HTTP demonstration got 404 for the category route.
+
+**What a family can do now:**
+- **Find options that fit** (Plan → Family choices, adults, with Market Town connected) opens Market Town with the planning limit for the goal's date.
+- **Optional:**
+  - **Find kinds of item** and **Show must-haves** fetch the catalog's own categories and that category's enumerated non-color facts, each by an explicit click;
+  - the adult ticks every acceptable value, for up to two must-haves.
+- **The search** inspects one page of at most twelve items and suggests at most three, lowest price first.
+  - Each suggestion shows why it fits and when it would finish at the adults' offers.
+  - Every other item gets one reason: a known mismatch first, then what is unknown.
+  - Nothing is loosened or retried to fill the list, and fewer than three is shown as it is.
+- **Add to family choices** (or **Update this family choice**) keeps why the item was chosen. Members, the goal review, the schedule proposal and the plan in use show it.
+- **An explicit price check** judges the item again. One that no longer meets a must-have says so, and a schedule proposal resting on it is refused.
+
+**Arithmetic and judgement** (`src/core/family-fit.js`: pure, deterministic, server-authoritative):
+- **Ceiling:** P + max(0, N × C − R), from the same weekly arithmetic as the comparison and saved schedule (`weeklyCapacity`):
+  - P is recorded progress;
+  - N is the weeks to the goal's date, at most 52;
+  - C is the lower of the household amount and the sum of active adults' offers;
+  - R is the one-off amount, taken once from the first weeks.
+  It is capped by a lower typed limit and the $100,000 bound. The page sends only R and the comparison revision; the server reads everything else from its own records.
+- **No ceiling:** no offers, a $0 household amount, a date under a week away or less than $1.00 are refused plainly.
+- **Kind of item:** it must be the chosen category or below it.
+- **Each must-have:**
+  - match: every reported value is accepted;
+  - mismatch: every reported value is listed but not accepted;
+  - missing;
+  - unclear: mixed values, or a value the category does not list.
+- **Suitable** additionally needs a usable USD price within the ceiling and in-stock from the retailer. Missing or unclear facts are unknown, never suitable. A title word is never evidence.
+- **The task's example** (invented fixtures; Nov 8; $60 recorded; offers $20 + $10; Dec 20; needs 4 or 6 person):
+  - a $90 one-off gives $150, suggesting the $120 and $150 tents (Dec 13, Dec 20);
+  - a $120 one-off gives $120, suggesting the $120 tent (Dec 20); the two-person tent never substitutes.
+
+**Data and access:**
+- **Storage:** migration 10 adds one nullable `need_json` column to `family_choices`, a planning snapshot. No table, payment record or other column changes.
+- **What the snapshot holds:** the need, what the catalog reported at the latest check, and the search's ceiling, date and one-off amount.
+- **Where it comes from:** the server's judged draft only; a forged `fit` in the page's request is ignored.
+- **Routes:** three new adult-only routes in the fail-closed policy:
+  - `POST /api/merchant/categories`;
+  - `POST /api/merchant/category`;
+  - `POST /api/family-choices/fit`.
+  None writes a household record. The fit route re-reads the family's figures after Channel3 answers and rechecks access. A late answer after a change is refused, not shown as current.
+- **Channel3:** only the words, taxonomy values the adult chose from the catalog's lists, the ceiling and the locale are sent (see the merchant notes).
+
+**Checks on `1ecde49`:**
+- **Demonstration first:** on `9ba5e38` the HTTP case recorded the unchanged ordinary search, then failed (1 test, 1 failure: 404 on the category route).
+- **`test/unit/family-fit-core.test.mjs`** (5 tests): literal expectations for:
+  - the ceiling (P + max(0, N×C − R)): $150.00, $120.00, a typed $130.00, the household cap, the 52-week and amount bounds;
+  - the no-ceiling outcomes and their words;
+  - match, mismatch, missing and unclear, including descendant categories and title-free judgement;
+  - suitable, unknown and not suitable, with the first reason ordered;
+  - the stored-need sentences.
+- **`test/unit/channel3-fit.test.mjs`** (4 tests):
+  - bounded, sanitized category and attribute parsing, with color and empty value sets dropped;
+  - the exact fit request, with the ordinary request unchanged;
+  - at most twelve inspected and three shown, from one provider call with no relaxed retry;
+  - catalog facts kept off the page;
+  - observed-only categories and reuse of their must-have lists.
+- **`test/unit/family-fit.test.mjs`** (8 tests, real HTTP, family mode over a fake transport that ignores filters, plus example mode):
+  - the example flow, with exact outbound requests and nothing written;
+  - every other item's reason;
+  - the $120.00 one-off and a typed limit;
+  - the handoff through choice, review, schedule proposal and use, with a reload and a second member, a forged page claim ignored and offers unchanged;
+  - a price check losing a must-have, with the proposal then refused;
+  - child, other-family, impersonation, CSRF, signed-out, stale-revision, schema and enum refusals, all before any provider call;
+  - the no-ceiling refusals;
+  - a late answer after an offer change refused;
+  - the 9 → 10 migration on a disposable file;
+  - example personas.
+- **Existing tests changed only where the schema bump requires:** the migration step list, and the family-choices migration test reading the current schema length.
+- **Unit runs:** the 17 new and affected unit files passed 162/162 on Node 22.16.0 and 26.0.0.
+- **`test/e2e/family-fit.spec.mjs`** (`@release`), desktop 1440×1000 and 390×844 phone: 2/2 passed. Two adults and a child each use their own passkey context.
+  - The limit line, explicit kind and must-have look-ups, the two suggested tents, and the six reasons.
+  - Add to family choices, with every member reading why.
+  - A held provider answer refused after Ash's offer change.
+  - The $120.00 one-off and the updated reason.
+  - Review, the schedule proposal and use, then a reload and the other adult.
+  - Five catalog calls in all; no payment, steward, model or ordinary-plan request; money rows unchanged; offers back to $20.00 and $10.00.
+- **Affected existing browser specs** (`channel3-merchant`, `connected-journey`, `area-cards`, `family-choices`, `family-schedule`, `family-journey`, `journey`, `plan-check`, `shared-live`) with the new spec, on `1ecde49`, desktop and phone: 113 passed, 11 designed project skips, 0 failed.
+- **Guard:** `npm run check` passed: 47 copied art/runtime files, the original 90-colour palette, the renderer wiring and syntax.
+- **Runbook:** the snapshot example now comes from a real rehearsal on a fresh schema-10 example database (23 tables).
+- **Isolation:** every check used disposable in-memory data, empty synthetic configuration and a preload that refuses non-loopback app transport.
+- **Hosted:** one Release checks run is required on the final PR head. Its actual result is recorded in the PR, so no docs-only run is needed.
+
+**Limits:**
+- **Catalog facts:** how well real Channel3 categories expose the facts a family needs is untested. No live category, attribute set or search was called for this feature, and every taxonomy and product here is an invented fixture. A missing fact is shown as not confirmed.
+- **Planning limit:** a limit, not money in hand. Offers are planning ceilings the adults chose, not income or an approval. Recorded progress is not spendable funds.
+- **Prices:** Channel3 catalog prices as last checked; the retailer's price and stock may differ, and tax and shipping are extra.
+- **Ranking:** only the first twelve items of one page are judged; suitable items further down are not found, and the lowest price shown first is not a quality ranking.
+- **Scope:** fake providers, simulated payments, virtual passkeys and disposable data only. This is not human, device or real-provider evidence.
+
+| Options that fit, desktop | The same search, 390 px phone | Why it was chosen, in Family choices |
+| --- | --- | --- |
+| ![Market Town in family-fit mode: up to $150.00 by Dec 20, tents sleeping 4 or 6, two suggested with why each fits](screenshots/family-fit-desktop-results.png) | ![The family-fit search on a phone](screenshots/family-fit-phone-results.png) | ![Tent A in Family choices: meets the family's needs, found within $120.00 for Dec 20](screenshots/family-fit-desktop-need.png) |
+
+| The plan in use keeps the reason, desktop | The same on a 390 px phone |
+| --- | --- |
+| ![The family schedule in use with the chosen tent and why it was chosen](screenshots/family-fit-desktop-plan.png) | ![The plan in use with its reason on a phone](screenshots/family-fit-phone-plan.png) |
+
+The captures are from the passing `@release` journey on `1ecde49`, using an invented fixture taxonomy and products over a fake Channel3 transport. Provenance, step notes and hashes, with every listed source verified against `1ecde49`, are in [family-fit-sources.json](screenshots/family-fit-sources.json).
+
+**Evidence:** kept local and ignored, in `test-results/family-fit-search-20261108/`. It holds:
+- the gap demonstration log;
+- the development and final logs, with the commands;
+- the raw captures with `SHA256SUMS.txt`;
+- the schema-10 snapshot rehearsal output.
+## Family schedule: the reviewed expense and each adult's share, saved and used — November 8, 2026
+
+Branch `claude/family-choice-schedule`, from the reviewed PR #54 head `d0d2dda`. That head is still unmerged, stacked on PR #53 → #52 → #51 → #50 → #49. The commits are:
+- `4752432`: the failing reproduction;
+- `f55e1ba`: the implementation and its tests;
+- the commit after it: these screenshots and this note.
+
+The owner authorized this follow-through. It is a planning aid. No person has used it, and nothing here shows that families save more.
+
+**The gap, reproduced on `d0d2dda` before any change:**
+- **HTTP** (`test/unit/family-schedule.test.mjs` as committed in `4752432`):
+  - The reviewed comparison held the one-off $90.00: weeks 1–3 went to the expense.
+  - "Review this choice" said the draft allowed for it.
+  - After "Save as our goal", the page's plan button and "Use this plan", the accepted weeks were `[1500, 1500, 1500, 1500, 1500, 1500]` instead of `[0, 0, 0, 3000, 3000, 3000]`.
+- **Browser probe** (desktop and 390 px phone) of the same steps: $15.00 in each of the six weeks, and a next step of $15.00 on Nov 15, a week the comparison had given to the expense.
+
+**What a family can do now:**
+- **Preview.** "Review this choice" still fills the unsaved goal draft. It also lists the weeks it would propose: dates, the goal amount, the part each week gives to the one-off expense, and each adult's share. Typing a trial or reviewing writes nothing.
+- **Propose.** **Save goal and propose this schedule** sends only the one-off amount and the preview's revision.
+  - In one transaction, the server saves the goal through the existing goal save, recomputes every figure from its own records and stores the schedule as a proposal.
+  - Any differing figure refuses the whole request, so the goal is never saved without its proposal or the other way round. An edited amount, date, weekly amount or starting report is one such figure.
+  - The plain **Save as our goal** is unchanged and proposes nothing.
+- **Use.** The existing **Use this plan** puts it in use. Before that it is refused, with the change named, when any of these changed: an adult's offer, a removed adult, the source choice's price after an explicit check, the goal, progress or the day.
+- **Propose later.** **Propose this schedule** on the current goal makes a new proposal without changing the goal. Any one-off amount must be entered again, and an accepted schedule stays in use until another is accepted.
+
+**Reused, not rewritten:** the next planned contribution (`planNextStep`) already skipped $0 weeks, and the Treasury already summed the accepted plan's dated amounts. Both now read the stored family weeks:
+- the next positive contribution is week 4, Dec 6, $30.00;
+- the Treasury plans $0.00 in an expense week and $30.00 in the week of Dec 6;
+- plan milestones follow the stored amounts (the Keep on Dec 6, the Castle on Dec 20).
+
+**Arithmetic:** `familySchedule` in `src/core/family-choices.js`. It is pure, works in whole cents and is shared with the page. It reuses the comparison's earliest-finish weeks and its proportional cent-remainder split.
+- **Rows:** one per week up to the goal's date, at most 52.
+- **Each week:**
+  - the goal amount is at or below both the household's weekly amount and the sum of active adults' own offers;
+  - no share exceeds that adult's offer;
+  - the final week takes exactly what remains.
+- **The one-off expense:** taken once, from the earliest weeks. It never comes out of tracked progress and is never repeated.
+- **The task's example** (test data: Nov 8; $60.00 tracked; a $150.00 item; $30.00 a week; $20.00 + $10.00 offers; a $90.00 one-off; Dec 20):
+  - weeks `[0, 0, 0, 3000, 3000, 3000]`, with shares `[0, 0]` for weeks 1–3 and `[2000, 1000]` for weeks 4–6;
+  - $90.00 in all, finishing Dec 20.
+- **The $180.00 item at Dec 20:** $30.00 short. Its review offers Dec 27, the earliest finish at the same offers, only as a draft the adult saves explicitly. No offer is raised.
+- **Nothing to schedule** is refused plainly: no offers, a $0 household amount, a goal already reached, a date under a week away, or a one-off taking every week.
+
+**Data and access:**
+- **Storage:** no migration and no new table. A family schedule is an ordinary `plans` row with `source = 'rules'` (deterministic, no AI) and `plan_json.kind = 'family'`.
+  - `plan_json.family`: every dated week, the shares, the offers and the one-off amount.
+  - `basis_json.family`: the offers and source-choice price it rests on.
+  - Existing AI, built-in and household-edited plans, their labels and the untrusted AI plan schema are unchanged. A family schedule is not edited week by week (`409 family_schedule_fixed`).
+- **Routes:**
+  - `POST /api/merchant/goal` gains an optional `schedule` object.
+  - One new route, `POST /api/plans/family`, is adult-only in the fail-closed policy.
+  - Session scope, CSRF, origin checks and the access recheck are unchanged.
+
+**Checks on `f55e1ba`:**
+- **Reproduction first:** on `d0d2dda` the HTTP test failed (1 test, 1 failure, with actual weeks `[1500 ×6]`). The browser probe failed on desktop and phone (2 failures, $15.00 in every week).
+- **`test/unit/family-choices-core.test.mjs`** (16 tests, 6 new). Literal expectations for:
+  - the example's dated rows: goal amounts, the expense's share of each week, and each adult's share;
+  - the $180.00 item, $30.00 short with Dec 27 as its earliest finish;
+  - a partly covered week, and a final $20.00 week split $13.33 + $6.67;
+  - a household amount below the offers;
+  - the 52-week limit;
+  - every nothing-to-schedule outcome;
+  - the dated lines the page shows.
+- **`test/unit/family-schedule.test.mjs`** (6 HTTP tests, family mode with a fake Channel3 transport, plus one in example mode):
+  - the reproduction, now passing through propose and accept, with every member reading the same weeks;
+  - every money table compared row by row, and only the existing goal save's deeds;
+  - the ordinary built-in plan still `[1500 ×6]`, leaving the accepted family schedule in use;
+  - a reload and clock advances to Nov 15 and Dec 1: the stored plan row stays byte-identical, the Treasury plans $0.00 then $30.00, and a $30.00 contribution moves the next step to week 5;
+  - child, foreign-family, impersonation, signed-out, CSRF, expired-session and invalid-amount refusals, with nothing written;
+  - a refused combined save undone whole: an edited amount or date, or a different one-off amount;
+  - refusals at "Use this plan" after a price check, an offer change, a removed adult, a goal edit or a contribution;
+  - the nothing-to-schedule refusals, and the $180.00 choice.
+- **Unit runs:** the 16 new and affected unit files passed 160/160 on Node 22.16.0 and 26.0.0.
+- **`test/e2e/family-schedule.spec.mjs`** (`@release`), desktop and 390 px phone: 2/2 passed. Two adults and a child each use their own passkey context.
+  - The existing shortlist, offers and $90.00 trial, with no request while typing.
+  - The preview, including that an edited amount disables the combined action.
+  - "Save goal and propose this schedule", the proposal arriving live on the other adult's page, and the child unable to use it.
+  - "Use this plan": a suggested contribution of $30.00 and a next step of Dec 6.
+  - The same weeks after a reload, and on Ash's page after the server day moves to Nov 15 (Treasury $0.00) and Dec 1 (Treasury $30.00).
+  - A later proposal with no one-off amount.
+  - Throughout: one provider call (the search); no payment, steward, model or ordinary-plan request; every money row unchanged.
+- **Affected existing browser specs** (`channel3-merchant`, `connected-journey`, `family-choices`, `family-journey`, `plan-check`, `journey`, `shared-live`), desktop and phone: 91 passed, 9 designed viewport skips, 0 failed, on exactly the source of `f55e1ba`.
+- **Guard:** `npm run check` passed: 47 copied art/runtime files, the original 90-colour palette, the renderer wiring and syntax.
+- **Isolation:** every check used disposable in-memory data, empty synthetic configuration and a preload that refuses non-loopback app transport.
+- **Hosted:** one Release checks run is required on the final PR head. Its actual result is recorded in the PR, so no docs-only run is needed.
+
+**Limits:**
+- **Offers:** a family-visible planning ceiling an adult chose, not a promise, income, a held balance, a mandate or a PayPal approval. Each contribution still needs an adult's approval.
+- **The one-off expense:** a planning assumption. The app does not know whether it was paid and never assumes so. An accepted schedule keeps its dates; a later proposal needs the amount entered again.
+- **Ordinary plans:** built-in and AI plans still spread contributions and include no one-off amount. Choosing one later replaces nothing until it is used.
+- **Prices:** Channel3 catalog prices as last checked. Tax and shipping are extra.
+- **Scope:** fake providers, simulated payments, virtual passkeys and disposable data only. This is not human, device or real-provider evidence.
+
+| Preview in the goal draft | Family schedule in use | Treasury a week later |
+| --- | --- | --- |
+| ![The unsaved draft lists weeks 1–3 at $0.00 for the $90.00 expense, then $30.00 a week, Rowan $20.00 · Ash $10.00](screenshots/family-schedule-desktop-preview.png) | ![The accepted family schedule: three $0.00 weeks for the expense, then three $30.00 weeks with each adult's share](screenshots/family-schedule-desktop-in-use.png) | ![The Treasury's week of Nov 9 plans $0.00, a week the schedule gives to the expense](screenshots/family-schedule-desktop-treasury.png) |
+
+| Preview, 390 px phone | In use, 390 px phone |
+| --- | --- |
+| ![The schedule preview and the two explicit save actions on a phone](screenshots/family-schedule-phone-preview.png) | ![The accepted family schedule on a phone](screenshots/family-schedule-phone-in-use.png) |
+
+The captures are from the passing `@release` journey on `f55e1ba`, using invented tents over a fake Channel3 transport. Provenance, step notes and hashes, with every listed source verified against `f55e1ba`, are in [family-schedule-sources.json](screenshots/family-schedule-sources.json).
+
+**Evidence:** kept local and ignored, in `test-results/family-choice-schedule-20261108/`. It holds the red reproduction logs and probe, the development and final logs, the raw captures with `SHA256SUMS.txt` and the commands.
+
+## Family choices completion: visible expense tradeoffs — November 8, 2026
+
+Codex completed the interrupted family-choice feature in a separate branch, from Claude's implementation 9f75440. The completed implementation is 53b2d49; PR #53 at 7329b8f remains the exact unmerged base. Claude's source checkout and usage-limit prompt were left untouched.
+
+The existing comparison now keeps the finish date without the one-off expense beside the revised result. For the $150 example, it says: “Without this expense: Nov 29. This trial adds 3 weeks.” An amount above $100,000 is marked invalid, keeps the last valid preview and blocks review until corrected. The browser regression failed before this correction and passes afterwards. A second controlled browser regression reproduced an older review reopening the draft after an invalid edit; editing or clearing the trial now cancels that in-flight review.
+
+**Final focused checks on the content committed as 53b2d49:**
+- 16 unit/HTTP tests pass on Node 22.16.0 and 26.0.0: ten pure arithmetic/text cases and six family HTTP/migration cases. The route-policy consistency assertions also pass.
+- The two-adult-and-child browser journey passes on desktop 1440×1000 and emulated phone 390×844: 2 passed, 0 failed, 0 skipped. It covers shared choices/offers/preferences, the $90 trial, the invalid-amount recovery, before/after text, cancelled in-flight review, stale review refusal, explicit goal save and reload.
+- The original-art, palette, renderer and syntax guard passes. No full local browser suite was repeated.
+- Every new app check used disposable in-memory family records and fake providers, with empty synthetic configuration and non-loopback transport denied. Comparing and typing made no requests; no payment/refund/model record changed from planning actions.
+- One hosted Release checks run is required on the final PR head; its actual result is recorded in the PR, avoiding a docs-only CI rerun.
+
+The screenshots below were refreshed from this passing journey. Their provenance records the capture-time working-tree head and verifies every changed source file against 53b2d49; no claim is made that this later commit already existed at capture time.
+
+Local ignored evidence: test-results/family-choice-finish-20261108/ (red/green logs, hermetic test configuration and transport guard), plus test-results/family-buying-plan/ (four raw captures). [Product walkthrough and research](FAMILY-CHOICES.md).
+
+
+## Family choices: offers, preferences and a one-off trial — November 8, 2026
+
+Branch `claude/family-buying-plan`, from the reviewed PR #53 head `7329b8f` (still unmerged: PR #53 → #52 → #51 → #50 → #49). The feature and its tests are `9f75440`; the screenshots and this note follow it.
+
+The owner authorized this direction. It is a planning aid, not evidence that families decide better or save more. No human playtest has been recorded for this feature.
+
+**What a family can do** (Plan → Family choices; Market Town → Add to family choices):
+- **Shortlist:** an adult saves up to three Market Town results.
+  - The server copies its own shown draft: price, currency, retailer, condition, variant and check time. The page sends only references.
+  - The same item again refreshes its line, and a full list needs an explicit replacement.
+- **Offers:** each adult saves or withdraws only their own weekly amount, which the family can see. It is a ceiling that adult chose, not income, a balance or anyone else's consent.
+- **Preferences:** every member, child or adult, holds one preference and can change or remove it. It is not an approval.
+- **Comparison:** the current goal and each choice, with:
+  - total price and earliest finish;
+  - fit with the goal's date, or the shortfall by then;
+  - each adult's weekly share and who prefers it.
+
+  Feasibility and preference are separate facts, and nothing is ranked.
+- **One-off trial:** an adult types an amount, and it comes out of the first weeks' amounts once, until covered. It stays on the page only: no request, no saved record, and recorded progress is untouched.
+- **Review this choice:**
+  - The server re-checks the comparison revision and the item's live draft, and recomputes with the trial amount.
+  - It then fills the existing unsaved goal draft with the price, the weekly amount the offers allow, and a date: the goal's date, or the earliest finish if the choice is late.
+  - Only **Save as our goal** changes the goal, and it verifies the same revision again.
+
+**Arithmetic** (`src/core/family-choices.js`: pure, whole cents, shared by the server and the page):
+- **Weekly capacity:** the lower of the household's weekly amount and the sum of active adult offers. The two are never added together.
+- **Earliest finish at those ceilings:**
+  - every week's full open amount goes to the choice, and the last week takes exactly what remains;
+  - week 1 is seven days after today, and the existing 52-week limit holds.
+- **Weekly split:** each week is split in proportion to the offers. Each adult first gets the whole-cent floor of their share, and leftover cents go to the largest remainders, ties to the earlier member. It is a rounding rule, not a judgement of fairness, and no share exceeds its offer.
+- **One-off amount:** it comes out of capacity once, from the earliest weeks. It never comes out of recorded progress, never counts as a refund, and is never taken weekly.
+- **The task's example (test data):** Nov 8, $60.00 tracked, $30.00 a week, offers of $20.00 and $10.00, and items at $120/$150/$180, with a Dec 20 date (week 6).
+  - The items finish Nov 22, Nov 29 and Dec 6.
+  - With a one-off $90.00 they finish in weeks 5, 6 and 7 (Dec 13, Dec 20, Dec 27), and the $180 item is $30.00 short.
+
+**Data and access:**
+- **Storage:** migration step 9 adds `family_choices`, `family_offers` and `family_preferences`, keyed to goal and member. Removing a choice removes its preferences.
+- **Routes:** eight new routes, all in the fail-closed policy. Adults change choices, check prices, review, and save their own offer; any member sets their own preference.
+- **Who acts:** the session's member. In example mode it is the labelled persona, which must be a member of the household.
+- **Removed members:** their offers and preferences stop counting.
+- **Review:** read-only, so it does not move the live revision.
+
+**Inherited checks on `9f75440`, before the Codex completion above:**
+- **`test/unit/family-choices-core.test.mjs` (8 tests):** literal example cents and dates; splits, including every total from 0 to 300 cents; zero capacity; the 52-week limit; a passed date; an uncovered one-off amount; inputs left unchanged.
+- **`test/unit/family-choices.test.mjs` (6 tests):** real HTTP in family mode with a fake Channel3 transport, plus a disposable migration.
+  - Own offers and own preferences, child refusals and impersonation.
+  - A full shortlist and its replacement.
+  - Invalid, foreign, stale and signed-out requests.
+  - Draft expiry and the explicit price check, and revision checks at review and at save.
+  - A removed member and example personas.
+  - Schema 8 → 9 with every earlier row kept.
+- **Existing tests:** changed only where the new tables require it (the access-upgrade table list and the migration sequence names).
+- **Unit runs:** the new and affected unit files (14 files) passed 121/121 on Node 22.16.0 and 26.0.0.
+- **`test/e2e/family-choices.spec.mjs` (`@release`), desktop and 390 px phone:** 2/2 passed. Two adults and a child each use their own passkey context.
+  - Shortlist of three and offers of $20 + $10, arriving live, plus preference changes.
+  - The $90 trial with zero requests and unchanged money, plan and goal records.
+  - A review, then a refusal of the stale draft after another adult changes their offer, a fresh review, the explicit save and a reload.
+  - One provider call (the search), and no payment, plan, steward or entry write.
+- **Affected existing browser specs** (`channel3-merchant`, `plan-check`, `goal-projects`, `keeper`, `connected-journey`, `shared-live`): 65 passed, plus 7 designed viewport skips.
+  - That run preceded two small page edits: the persona switch re-renders family choices, and the trial resets when the member changes.
+  - `journey`, `member-avatars` and the new spec then passed on `9f75440`: 35 passed, plus 1 designed skip.
+- **Guard:** `npm run check` passed.
+- **Runbook:** the snapshot example comes from a real rehearsal on a fresh schema-9 database (23 tables).
+
+**Limits:**
+- **Offers:** unverified planning estimates. Bills listed in Plan stay context; nothing checks income or affordability.
+- **Progress:** tracked progress is a record, not money to spend or proof an item can be bought.
+- **Prices:** Channel3 catalog prices as last checked. The retailer's price and stock may differ, and tax and shipping are extra. A choice checked more than 30 minutes ago, or whose draft has expired, needs an explicit price check before review.
+- **Saving a cheaper item:** the existing goal save may record milestones that already-tracked progress reaches under the new amount (an existing rule). A preview, offer or preference grants nothing.
+- **Earliest finish:** it assumes each week's full open amount. After saving, the existing planner's own schedule may spread contributions evenly. *(Resolved for a reviewed choice by the family schedule in the section above; ordinary plans still spread contributions and include no one-off amount.)*
+- **Scope:** fake providers and disposable data only. This is not human, device or real-provider evidence.
+
+| Three choices, desktop | One-off $90.00, desktop | Three choices, 390 px phone | One-off $90.00, phone |
+| --- | --- | --- | --- |
+| ![Three tents compared at $20.00 + $10.00 a week, finishing Nov 22, Nov 29 and Dec 6, with preferences](screenshots/family-choices-desktop-three.png) | ![With a one-off $90.00 tried, the $180.00 tent finishes Dec 27, $30.00 short of Dec 20](screenshots/family-choices-desktop-one-off.png) | ![The three choices on a phone](screenshots/family-choices-phone-three.png) | ![The one-off trial on a phone](screenshots/family-choices-phone-one-off.png) |
+
+The refreshed captures use invented tents over a fake Channel3 transport and include the completion above. Provenance and hashes are in [family-choices-sources.json](screenshots/family-choices-sources.json).
+
+**Evidence:** kept local and ignored, in `test-results/family-buying-plan-20261108/`. It holds the pre-commit and final logs, raw captures with `SHA256SUMS.txt`, the snapshot rehearsal, the HTTP smoke script and the commands.
+
+## Readable contribution receipts — November 8, 2026
+
+Branch `claude/receipt-breakdown`, from the reviewed PR #52 head `ecb6323` (still unmerged: PR #52 → #51 → #50 → #49). The implementation and tests are `a3c47a8`; the screenshots and this note follow it.
+
+This is a feature the owner authorized, not a fix for an observed defect. Whether it helps a family understand a payment is a hypothesis. No person was asked, and nothing here measures understanding or savings.
+
+**What a receipt now says.** The selected Ledger receipt and the Contribute receipt each add one sentence, written by the same function:
+- after a $15.00 credit and a completed $5.00 refund: "$10.00 of this contribution counts toward the goal.";
+- after a full refund: "All $18.00 was refunded, so none of this contribution counts toward the goal.";
+- while pending or awaiting approval: "No contribution has been counted yet.";
+- once declined, rejected or failed: "No contribution has been counted.";
+- when the records disagree: "How much of this counts can’t be shown from the saved records."
+
+The existing Payment details disclosure gains the recorded contribution, the completed refunds and the amount that counts toward the goal. Below them come the dated saved records:
+- the order recorded, with its approver;
+- each credit;
+- each refund: recorded, pending, or not subtracted;
+- the latest saved PayPal check, marked "before the later refund" when a refund followed it.
+
+**What stayed the same.** The original amount, source badge, status, saved-check line, earlier checks, ids and actions are unchanged. There is no new panel, button, column, endpoint, schema, provider call or dependency.
+
+**Source of truth** (`src/core/contribution-story.js`, pure):
+- **What counts:** only ledger rows with the exact reference the server writes. That is `paypal-capture:` and `paypal-refund:`, or the `simulated-` pair. Each row must match in kind, direction, amount and currency, with exactly one row per credited capture or applied refund.
+- **What never counts:** an uncredited capture, a pending or unapplied refund, reported starting progress, bills, gifts and other contributions. Each refund is subtracted once, from its reversal row.
+- **No number, breakdown or timeline** in any of these cases:
+  - another household, goal or currency;
+  - a missing, duplicated or mismatched row;
+  - a capture whose refunded total differs from its reversal rows;
+  - a settled status without a credit, or a credit under an unsettled status.
+- **Dates:** only from the order's creation, the ledger rows, a refund's own record and the saved check. They never come from the order's last update or from the time the receipt is opened.
+
+**Design.**
+- **Kept:** the existing receipt layout, parchment, ink, font and quiet status colors.
+- **Borrowed from `task-014-design-research.json`, structure only:** PayPal's refunded-transaction hierarchy (original amount, refund and net kept apart) and Open Collective's labelled rows.
+- **Behavior:** nothing opens by itself. A same-record live refresh keeps the disclosure open and its summary focused. That state is held in memory only, so a reload starts closed.
+
+| Partial refund, desktop | Partial refund, 390 px phone | Pending, phone | Completed, desktop |
+| --- | --- | --- | --- |
+| ![$15.00 contribution, $5.00 refunded: $10.00 counts, with Payment details open](screenshots/receipt-breakdown-desktop-partial.png) | ![The same partial-refund receipt on a 390px phone](screenshots/receipt-breakdown-phone-partial.png) | ![A $20.00 pending payment: no contribution has been counted yet](screenshots/receipt-breakdown-phone-pending.png) | ![A $12.00 completed contribution, checked afterwards](screenshots/receipt-breakdown-desktop-completed.png) |
+
+The captures come from a disposable fake-PayPal sandbox fixture, with no real transaction. Provenance, source hashes and image hashes are in [receipt-breakdown-sources.json](screenshots/receipt-breakdown-sources.json).
+
+**Checks on `a3c47a8`:**
+- **`test/unit/contribution-story.test.mjs`:** 8 tests, with literal expected cents. With the existing ledger-trail tests, 11/11 passed on Node 22.16.0 and 26.0.0. They cover:
+  - completed and never-credited contributions;
+  - a $15.00 − $5.00 = $10.00 partial refund, a full refund and a pending refund;
+  - simulated records, exact identity and scope;
+  - 25 malformed or conflicting inputs;
+  - history times, including a check saved before a refund;
+  - inputs left unchanged.
+- **The projection over real service output** (fake sandbox):
+
+  | Story | Recorded / refunded / counts (cents) |
+  | --- | --- |
+  | Completed | 1500 / 0 / 1500 |
+  | Partial refund | 1500 / 500 / 1000 |
+  | Full refund | 1500 / 1500 / 0 |
+  | Pending refund | 1500 / 0 / 1500 |
+  | Pending | nothing counted |
+  | Declined | nothing counted |
+- **`test/e2e/receipt-breakdown.spec.mjs`, desktop 1440 px and phone 390 px:** 8/8 passed. It covers:
+  - the four stories, with each history line's time matching its saved record;
+  - choosing and opening four receipts, which made zero requests, provider calls, writes or storage changes;
+  - a reload;
+  - the plain table when Grid and Studio never load, where a late load leaves the open receipt alone;
+  - the Contribute and Ledger receipts agreeing before and after a refund;
+  - another adult's refund updating the owner's open receipt live, with the disclosure still open and focused and no write from the owner's page.
+- **Affected existing browser specs** (`payment-recheck`, `treasury-status`, `treasury`, `journey`, `earned-realm`), both viewports: 58 passed, plus 2 designed desktop-only skips.
+- **`npm run check`:** passed.
+
+**Limits:**
+- **Scope:** emulated Chromium, fake providers and disposable data only. This is not real-PayPal, physical-device, accessibility-audit or human evidence.
+- **Not shown:** the records carry no time for a pending capture, so none is shown. Earlier saved checks stay in their existing list.
+- **Unchanged association:** `ledgerTrail` still links a row to its contribution by an id suffix. The numbers themselves use exact identities.
+
+**Evidence:** kept local and ignored, in `test-results/receipt-breakdown-20261108/`. It holds logs, raw captures with `SHA256SUMS.txt`, the real-service output and the commands.
+
+## Two app servers on one database — November 8, 2026
+
+Branch `claude/two-server-payment-races`, from the reviewed PR #51 head `5aa58ee` (still unmerged: PR #51 → #50 → #49). Harness and schedules: `d7dd30b`. Late-refusal regression and fix: `d309e58`.
+
+**The gap.** The seeded payment model is sequential and runs in one process, and the restart proof kills one child. Within one process, concurrent captures of an order join one in-flight provider call. Two servers on one database do not share that: each sends its own capture with the same PayPal-Request-Id, and both commit through SQLite (`BEGIN IMMEDIATE`, WAL, 3 s busy timeout).
+
+**The harness** (`test/unit/payment-two-servers.test.mjs`):
+- **Processes:** two test-owned processes of the existing `payment-app-child.mjs` share one fresh disposable SQLite file. Each runs the real server, payment service and SDK transport with an empty environment, explicit fake credentials and non-loopback dispatch refused.
+- **Fake PayPal:** the stateful fake runs in the parent on loopback and outlives the servers. Every start made zero provider requests (22 starts per run).
+- **Shared helper:** `startApp` and `end` moved unchanged to `test/helpers/payment-app-process.mjs`. The restart file imports them, and its startup-cleanup regression still passes.
+- **Controlled windows (no sleeps):**
+  - a provider answer held at the fake, or lost as a 503 after the fake acted;
+  - the SQLite write lock held by the harness until both servers announce their write transaction (an opt-in child trace, written synchronously to stderr) and nothing has committed;
+  - SIGKILL of one owned server while the other serves.
+- **Oracle:** a small integer-and-identity model in the test, never production helpers. Ledger rows with their source refs, captures, refunds, held refunds, deeds, order status and webhook events are read directly through a read-only connection, and every result must be an array of complete rows.
+
+**14 schedules:**
+
+| Schedules | Window | Result |
+| --- | --- | --- |
+| S1–S3 | A's and B's captures of one order both held at the fake. Released B first (S1), A first (S2), or both under the write lock with SQLite choosing (S3) | 2 attempts, 1 request id, 1 provider capture, 1 credit |
+| S4–S5 | A's capture answer is lost (503) after PayPal captured, before (S4) or after (S5) B captures | 1 credit; the order ends completed and is never reopened |
+| S6–S7 | A's capture is refused (not approved, or declined) and the refusal is held; B's attempt with the same key captures | **Counterexample**, below |
+| S8 | One completion event to both servers: signature checks held, then released under the write lock; then A's capture answer | 1 credit, 1 event row |
+| S9 | A dashboard refund's event reaches B before A's capture answer | Held, then applied with the credit in one transaction: net $60.00, no deed |
+| S10–S11 | A stale order read (A) and a stale completion (B), held across a refund | Nothing changes; the Manor deed is kept |
+| S12 | Both servers refund one capture; both attempts held, then released under the write lock | 2 attempts, 1 key, 1 provider refund, 1 reversal |
+| S13–S14 | A is killed with its capture answer held, then with its refund answer held; B carries on; A restarts | 1 credit, 1 reversal; the restarted A's retries make no provider request (409 `already_refunded`) |
+
+**Counterexample (S6–S7, reproduced on the unchanged `5aa58ee`).** After B credited $15.00, A's held refusal reopened the order as `created` (not approved) or `declined`, while the credit still counted. A later explicit check did not repair it. Money was unaffected.
+- **Why it needs two servers:** within one process, the in-flight map joins both attempts.
+- **Assumption:** it relies on the fake's idempotency model, in which a refusal is not stored under the request id, so a later attempt with that key can capture. That is also the assumption behind the app's own "try again" answers.
+
+**Fix (`d309e58`).** One guard in `server/payments/contributions.mjs` (5 lines added, 1 changed): the two refusal branches re-read the canonical status, like the other status writes after a provider call, and answer `already_completed` for a settled order. There is no schema, API, provider or dependency change.
+
+**Local results:**
+- **Before the fix** (`server/` at `5aa58ee`; the final test file, except for one HTTP-status assertion added to S8 afterwards): 8 passed; S6 and S7 failed. Five more runs failed the same two only.
+- **On the clean `d309e58`, Node 22.16.0 and 26.0.0:**
+  - the new file: 10/10, and 10/10 in each of 5 repeats;
+  - `payment-restart`, `payments` and `paypal-cancel-status`: 52 tests, 51 passed, 1 designed skip;
+  - `npm run check`: passed.
+- **Commit races:** S3 and S12 went to A on both versions; S8 went to A on 22.16.0 and to B on 26.0.0. Every ordering satisfied the oracle.
+- **Cleanup, on success and on deliberate failure:**
+  - all 22 owned servers ended: SIGKILL by their own handle, and a signal-0 probe gets ESRCH;
+  - held answers are destroyed and no sockets stay open;
+  - the fake is closed and no lock stays open.
+
+**Limits:**
+- **Not exercised:** windows inside one synchronous step (between two SQLite statements) cannot be held from outside. The guarded status writes, the new one included, still read and then write in two statements.
+- **Scope:** fake providers and disposable data only. This is not deterministic simulation, load, power-loss, real-PayPal, or human or device evidence.
+- **Harness fix:** a cleanup race in the harness's own socket check was found and fixed during development; its raw log is kept.
+
+**Evidence:** kept local and ignored, in `test-results/two-server-races-20261108/`. It holds the before-fix runs and the persistence probe, the `final-d309e58` logs, per-scenario JSON traces, the repeats and the exact commands.
+
+## Malformed contribution ids get a 4xx — November 8, 2026
+
+Branch `claude/contribution-input-validation`, from the reviewed PR #50 head `59ad514`; the fix is `32e1155`. Task 010 had seen `POST /api/example/contributions` answer HTTP 500 when `householdId` and `goalId` were missing.
+
+**Reproduced first, on the unchanged `59ad514`.** A disposable example server (no keys, no `.env`, non-loopback fetches refused) received a 12-case malformed matrix:
+- **9 answered 500:** a missing, `null` or non-text household or goal id, and a missing or non-text request id.
+- **Nothing was recorded** in any case.
+- **The cause:** each request reached SQLite with an id it cannot bind, in `getHousehold`, `getGoal`, or the retry lookup `orderByRequestId`, which runs before `validateRequest`.
+- **Same failure elsewhere:** new HTTP regressions failed the same way on the sandbox order route and, for a missing request id, in family mode.
+
+**The fix**, in `server/payments/contributions.mjs`:
+- **Household and goal:** `validateRequest` refuses a non-text household or goal id with 400 `invalid_owner`.
+- **Request id:** both creation methods check the request id's type before the retry lookup, giving the existing 400 `invalid_request_id`.
+
+**Not changed:**
+- no id is defaulted or inferred;
+- `owner()`, family scoping and the spoofing and child refusals are untouched;
+- an empty id still gets the existing 404;
+- a malformed retry of a known request is still `request_conflict`;
+- approval, adult, amount and request-id format checks are as before.
+
+| Check | Actual result |
+| --- | --- |
+| The same matrix at `32e1155` | Every former 500 is a 400 with a code; the empty id and approver answers are unchanged; nothing was recorded. The well-formed control credits once and its retry is `already_processed`. Unexpected-error log lines: 9 before, 0 after |
+| The new regressions before the fix (`server.test.mjs` ×2, `family-access.test.mjs` ×1) | All 3 failed on `[500, 'server_error']` |
+| `server.test.mjs`, `family-access.test.mjs`, `payments.test.mjs` and `failure-diagnostics.test.mjs`, on the tree committed unchanged as `32e1155`, Node 22.16.0 and 26.0.0 | **68 passed, 1 existing skip** (the SDK manages its own OAuth token), 0 failed on each |
+| `npm run check` | Passed |
+
+What the regressions cover:
+- **Example persona:** the matrix records nothing, a well-formed contribution counts once, and a malformed retry is a conflict.
+- **Sandbox:** malformed orders reach no PayPal request, not even OAuth.
+- **Family:** a missing or non-text request id is refused, while a body with no ids still succeeds from the session and counts once.
+
+These are fake providers and disposable data, not production evidence. The hosted result is reported on the pull request. Raw evidence is ignored and stays local in `test-results/contribution-input-20261108/`:
+- the request and row results: `before-59ad514.*` and `after-32e1155.*`;
+- the server logs;
+- the failing and passing test logs;
+- `repro-stacks-59ad514.log`, which records the failing statements;
+- the scripts.
+
+## The castle keeper's tour — November 8, 2026
+
+Branch `claude/keeper-walkthrough`, from the reviewed PR #49 head `fd49188`; the implementation is `678d9df`. [The castle keeper](KEEPER-GUIDE.md) is an optional authored tour of the example demo, in a bottom dialogue box. Its decision ledger, copy and limits are in that note. It adds no dependency, server, API or database change, model call or credential step. The crest rendering, the art and the portrait bytes are unchanged.
+
+| Local check, at `678d9df` | Actual result |
+| --- | --- |
+| `test/e2e/keeper.spec.mjs`, desktop and 390 px phone, from a fresh copy with a new example database and tracing off | **10 passed** (5 scenarios × 2 viewports), 0 failed. The scenarios cover the whole tour over a pre-approved form, with no write or outside request and with drafts, amount, approval and progress unchanged; keys and reduced motion; `?tour=1`, Skip and replay; a deed card pausing the keeper; and layout and overlap |
+| `test/e2e/family-access.spec.mjs` (families with simulated payments also show the entry) | 5 passed, 5 skipped by the spec's existing desktop/phone split, 0 failed |
+| `test/unit/keeper-guide.test.mjs`, Node 22.16.0 and 26.0.0 | 2 passed on each |
+| `npm run check` | Passed: 47 copied art/runtime files, the original 90-color palette, the renderer wiring and JavaScript syntax |
+
+The first runs exposed two mistakes in my test setup, not in the keeper:
+- **Founding moves the journal:** founding a house moves the journal on to Plan, so the helper now returns to House.
+- **A scroll race:** on a phone, a measurement raced the keeper's own smooth scroll, so the layout scenario now uses reduced motion. A direct measurement showed every Contribute control 8 px clear of the docked keeper.
+
+The screenshots and their hashes are in [keeper-sources.json](screenshots/keeper-sources.json). They are automated Chromium captures with phone emulation; there has been no human playtest, physical phone or screen-reader session. The hosted result is reported on the pull request. Raw evidence is ignored and stays local in `test-results/keeper-guide-20261108/`:
+- `browser-678d9df.log`, `unit-keeper-node*-678d9df.log` and `check-678d9df.log`;
+- the earlier `spec-run-*.log` runs;
+- the capture and debug scripts.
+
+## Release integration candidate — November 8, 2026
+
+Branch `claude/release-integration-20261108`, from the reviewed main `579b4f6`, which had not moved. It is a candidate for Codex's final review. Merging it into main, the safe activation of the 3010/3021 apps with backups, and any video are separate steps, and none of them is done here. Neither web submission nor family playtesting is part of this work.
+
+**What merged.** Five normal merges, in this order, each of the exact reviewed head. None had a conflict:
+
+| Merge | Reviewed head | What it adds |
+| --- | --- | --- |
+| `9ec3f24` | PR #47 `3294e2c` | The seeded payment model, with its stack: PR #48 `002d229` (deferred refunds, schema 8), PR #46 `eefae41` (refund ordering), PR #43 `ce3ec65` (restart proof) and PR #40 `e3bc6ff` (the snapshot command) |
+| `eba9080` | PR #41 `2d8f3a3` | Reuse of unchanged scene state |
+| `65908c6` | PR #42 `4903beb` | Opt-in, default-muted CC0 retro music, with its provenance and notice |
+| `b9d01c3` | PR #44 `fe80d5f` | Truthful post-commit failure diagnostics. Git combined `server/app.mjs` (PR #42's `.mp3` MIME entry with PR #44's error handling) and `docs/RUNBOOK.md` (PR #47's snapshot section with PR #44's failure section) automatically |
+| `f5e1d38` | PR #45 `d572e3d` | Sourced review research |
+
+Then `18e2578` corrects the runbook's snapshot example. It printed schema 7 and 19 tables. It now shows the real output of the documented rehearsal on this candidate: a throwaway example server with no keys, one simulated contribution through the browser's own API, and the snapshot taken while the server ran. That output is schema 8, 20 tables and 57 pages, and the example says which values vary. The snapshot command and the PR #40 evidence below are unchanged.
+
+**Integrity checks:**
+- **Ancestry:** all nine original heads, and main, are ancestors.
+- **No hand edits:** every file that only one PR changed is byte-identical to that PR's head.
+- **Dependencies:** `package-lock.json` is identical to main. `package.json` adds only PR #40's `snapshot` script. `@paypal/paypal-server-sdk` stays pinned at 2.5.0.
+- **Assets:** the only asset changes are PR #42's three music files.
+
+| Local check | Actual result |
+| --- | --- |
+| `npm run check` | Passed: 47 copied art/runtime files, the original 90-color palette, the renderer wiring and JavaScript syntax |
+| `git diff --check` against main | Clean |
+| The app-level integration points on Node 22.16.0 and 26.0.0: PR #44's diagnostics and the restart proof, which runs the real app with PR #44's handler | **7 passed on each.** One of them checks that "an error after a committed contribution does not tell the family that no payment was credited" |
+| Browser, at `18e2578`: scene lifecycle (PR #41) and music (PR #42), desktop and 390 px phone, run from a fresh copy with a new example database and tracing off | **12 passed, 4 designed skips** (the scene-lifecycle tests run on desktop only), 0 failed. The music spec's own `@release` test confirms the music is opt-in and opens silent again after a reload |
+
+**Not rerun locally:**
+- **Payment units:** the payment-model, refund-ordering and deferred-refund tests depend only on files that are byte-identical to the reviewed PR #47 head, and no other PR touches them. The hosted full unit run covers them, with the browser `@release` selection.
+- **Where the hosted result goes:** it is reported on the pull request, to avoid a docs-only CI loop.
+
+**An observation, not changed.** A hand-written request to `POST /api/example/contributions` without `householdId` and `goalId` gets HTTP 500 instead of a refusal:
+- **Pre-existing:** the same happens on main `579b4f6`.
+- **No effect:** nothing is committed, and PR #44's message stays truthful.
+- **Not reachable from the app:** the app always sends both ids.
+
+This came from the first, malformed rehearsal request.
+
+**Isolation:**
+- **Data and providers:** only disposable data and fake providers were used, with explicit empty configuration, no `.env`, and non-loopback fetches refused in the rehearsal server.
+- **Owner apps:** the apps on 3010 and 3021 and their data were not touched.
+- **External actions:** no provider call, order, login, recording or deployment was made.
+
+Raw evidence is ignored and stays local in `test-results/release-integration-20261108/`:
+- `check-f5e1d38.log` and `diff-check-f5e1d38.log`;
+- `runbook-snapshot-rehearsal.log`;
+- `integration-units-node22.16.0-18e2578.log` and `integration-units-node26.0.0-18e2578.log`;
+- `browser-scene-music-18e2578.log`.
+
+## Seeded payment sequences against an independent model — November 7, 2026
+
+Branch `claude/seeded-payment-model` ([PR #47](https://github.com/alejandro-publius/our-castle/pull/47)). It now stacks on Codex's two reviewed fixes for the ordering defects this test found:
+- **The stack:** [PR #48](https://github.com/alejandro-publius/our-castle/pull/48) (`codex/refund-before-capture` at `002d229`), on [PR #46](https://github.com/alejandro-publius/our-castle/pull/46) (`codex/refund-delivery-order` at `eefae41`), on PR #43 (`ce3ec65`), on PR #40 (`e3bc6ff`). Main `579b4f6` contains none of them yet.
+- **The merges:** `eefae41` and `002d229` came in unchanged, by the normal merges `55b500a` and `6c45c86`.
+- **What this branch changes:** only the model test and these docs. The production changes are PR #46's ([refund ordering](REFUND-ORDERING.md)) and PR #48's ([deferred refunds](DEFERRED-REFUNDS.md)).
+
+**What was missing.** The payment tests are named scenarios, each covering one path. Nothing combined captures, retries, lost answers, late webhooks, dashboard refunds and reopening in varied orders, or compared the result with a model of what PayPal holds.
+
+**The method** follows TigerBeetle's [VOPR](https://github.com/tigerbeetle/tigerbeetle/blob/main/docs/internals/vopr.md) at a much smaller scale: a seed fixes every choice, faults are injected on purpose, and separate checks compare the outcome with a model. It is not a deterministic simulator of the whole app.
+- **What runs:** the real contribution service on a disposable SQLite file, with the existing stateful fake PayPal. The fake answers every request in memory, and any other fetch is refused. Credentials are synthetic and no `.env` is read.
+- **Two client paths:**
+  - `rest` is the production REST client (OAuth, `PayPal-Request-Id`, JSON and error mapping) over an in-memory fetch.
+  - `sdk` is the production SDK adapter over `fakeSdkControllers`. Those stand in for the SDK's controllers, so **the SDK's own serialization, OAuth and HTTP transport are not exercised here**; `paypal-sdk-transport` and `payment-restart` cover them.
+  - Webhook verification goes through the REST client on both paths.
+- **Two refund scopes,** both run by CI over the same 24 seeds and both paths:
+  - `credited`: dashboard refunds reach only captures credited here;
+  - `any`: a refund can also reach a capture that PayPal completed before this server saw the completion. That is the space where all three ordering defects lived.
+- **Each seed runs 30–60 actions, with at most 6 orders:**
+  - adult-approved orders of 100–2,500 cents;
+  - first captures, which PayPal completes or holds, and same-order retries, which PayPal answers with its first answer for the same request id;
+  - PayPal completing a held capture, and partial and full dashboard refunds;
+  - verified webhooks delivered late, out of order, again, under a new event id, or never;
+  - explicit checks of an order;
+  - closing and reopening the database and service, then loading the contributions;
+  - refusals: no approval, a child approver, an invalid amount, one cent over the goal, an order not created here, another household, and revoked access.
+- **Faults:**
+  - a capture request that never reaches PayPal, or PayPal's answer lost after it acted, with the read that follows sometimes lost too;
+  - a check whose answer is lost;
+  - a webhook that fails verification, or whose verification answer is lost.
+- **The model** is plain integers and sets. PayPal's side (each order's amount, capture status, first answer and refunds) is kept apart from what the app has been shown:
+  - the captures it has been told of;
+  - those shown completed;
+  - every verified completed refund it has been told of, by id, even before it knew the capture. The app must hold each one durably, as a refund record or as evidence awaiting its capture, and each counts against its capture from the moment that capture is credited;
+  - the webhook event ids it has handled.
+
+  It never calls production code or reads the service's answers to predict anything; `progressFor` is only read to observe.
+- **The one documented exception:** a capture first seen on an order read that already lists it **fully** refunded, before any completion was shown, is not credited. It nets to zero either way. A later completion credits it and reverses its refunds together. A partially refunded capture is never an exception: its remainder must count.
+- **After every action, the app must match the model exactly, in both scopes:**
+  - tracked progress;
+  - the ledger's credits and reversals, as counts and cents, read with SQL;
+  - the credited capture ids and the reversed refund ids;
+  - each capture's net and refunded cents;
+  - the recorded captures, and the held completed refunds: `payment_refunds` and `deferred_refunds` read together with SQL `UNION`;
+  - the local orders.
+- **Rules checked on every action:**
+  - **A bound that holds whatever the app has seen:** a capture's net credit never exceeds what PayPal verified for it, less the completed refunds of it that the app holds, recorded or awaiting their capture.
+  - **Every answer must be the model's.** A completion answers `refunded` when it applies refunds already shown, otherwise `completed`; the documented exception answers `not_credited`; a repeated event id answers `duplicate_event`.
+  - **No-dispatch rules:** a retry of an order settled here, a refusal, reopening and loading must not reach PayPal.
+- **At the end**, an explicit check of every order, after which the app must agree with PayPal's own record. Only the documented exception may be recorded without a credit, at the same net zero.
+
+**Replay one seed, adapter and scope,** for example `PAYMENT_MODEL_SEED=2 PAYMENT_MODEL_ADAPTER=rest PAYMENT_MODEL_REFUNDS=credited node --test test/unit/payment-model.test.mjs`. Seeds are 1–4294967295, adapters `rest` or `sdk`, and scopes `credited` or `any`; each one left unset runs them all. Invalid input is refused before anything runs.
+
+A failure prints the seed, adapter, scope and source commit, the failing action and its checks, the replay command with its scope, the whole action trace (at most 61 entries) and PayPal's record. A pass prints one summary line per adapter and scope.
+
+The generator consults the model, so a seed's actions depend on the model version as well as the seed: a seed and commit replay exactly.
+
+### The final integrated result, at `2d2f3bd`
+
+This adds PR #48 (`6c45c86`) and one observation change (`2d2f3bd`). The expected held refunds are every verified completed refund delivered, replacing the old rule that counted only refunds whose capture the app already knew. The observer reads both tables, and the bound counts both. Money still waits for the capture's completion, and every other check is unchanged and strict in both scopes.
+
+| Check | Actual result |
+| --- | --- |
+| The 5 model tests, PR #46's 12 refund-ordering regressions and PR #48's 12 deferred-refund regressions, on Node 22.16.0 and 26.0.0 | **29 passed on each**, with none skipped or failed. The seeded summaries are identical on both versions, and identical to `9396c06`'s: the change is in what is observed, not in the sequences |
+| The four-variant directed probe, run once | **Corrected on both paths, for the 500-cent partial and the 1,500-cent full refund.** The refund held before its capture was recorded is applied when the older completion arrives, which answers `refunded`. Tracking shows 7,000 or 6,000 cents, PayPal's own net, with no tier award. The repeated delivery and the explicit check change nothing |
+| `npm run check` | Passed: 47 copied art/runtime files, the original 90-color palette, the renderer wiring and JavaScript syntax |
+| `git diff --check` | Clean |
+
+The hosted release checks for the exact final head are reported on PR #47.
+
+### With PR #46 only, at `9396c06` (history)
+
+| Check | Actual result |
+| --- | --- |
+| The model test on Node 22.16.0 and 26.0.0: four seeded runs (two scopes × two paths) and the sensitivity test | **5 passed on each**, with identical summaries. Per path: **`credited`** ran 1,103 actions with 133 injected faults, and PayPal ended with 85 completed and 10 pending captures. **`any`** ran 1,103 actions with 140 faults, and PayPal ended with 86 completed and 7 pending captures; 4 of the completed ones are recorded here without a credit, at net zero (the documented exception). These 24 seeds produced no `refunded` or `not_credited` capture answer; the scan below did |
+| PR #46's 12 refund-ordering regressions, on both versions | 12 passed on each |
+| The five representative seeds that failed before the fix (159, 2, 71, 181 and 21), `any`, both paths, both versions | **The current model: 20 of 20 passed. The before-fix model** (the `3f86614` test file, which replays their recorded failing sequences exactly) against a scratch copy of this tree, whose service matches `eefae41`: **20 of 20 passed** |
+| One bounded scan of seeds 1–200, `any`, `rest` | **200 of 200 passed**: 8,895 actions and 1,103 injected faults. Capture answers matched the model, including 2 `refunded` and 10 `not_credited`. 41 captures in 40 seeds ended recorded without a credit at net zero. The 31 seeds that failed before the fix pass; after the model's first changed decision, their actions differ from the recorded before-fix traces |
+| `npm run check` | Passed: 47 copied art/runtime files, the original 90-color palette, the renderer wiring and JavaScript syntax |
+| `git diff --check` | Clean |
+
+### The further counterexample, and its resolution in PR #48
+
+**Found with PR #46 only**, at `9396c06` (the reviewed head `5774c0d` changed docs only). A verified refund webhook can arrive before this server has recorded the capture at all. That happens when the capture's answer and the read that follows were both lost.
+- **What happened then:**
+  - the refund webhook was answered `ignored_unknown_capture` and marked handled, and no refund row was kept, because refund rows need a recorded capture;
+  - the older COMPLETED webhook then credited the full amount, and that gross credit awarded the first tier;
+  - repeating the refund webhook was a duplicate;
+  - only an explicit check applied the refund, and the tier award stayed, because awards are keepsakes.
+- **Why the scans missed it:** PR #46's regressions covered refunds of captures already recorded. The 24 fixed seeds and the 200 scanned seeds never generated this exact order of events: both losses, then a refund delivered before any capture evidence, then a completion before any check.
+
+**Resolved by PR #48 (`002d229`), now integrated.** Codex reproduced the four cases independently. Schema 8 holds verified completed refunds that arrive before their capture in `deferred_refunds`: references and amounts only, with no household attribution or progress. Ordinary capture validation then adopts them through the existing refund pipeline, and the credit, reversals and milestone decision share one transaction. PR #48's 12 regressions now exercise the exact prefix the seeds missed.
+
+The directed probe is `test-results/seeded-payments-20261108/integrated/probe-unrecorded-refund.mjs`. It ran on both paths, for a 500-cent partial refund and a 1,500-cent full refund of a 1,500-cent capture, and each run matched the rows below:
+
+| Step | At `9396c06` (PR #46 only) | At `2d2f3bd` (PR #48 integrated) |
+| --- | --- | --- |
+| 1. Capture: PayPal completes it, and both the answer and the follow-up read are lost | `unknown`; 6,000 | `unknown`; 6,000 |
+| 2. Dashboard refund; its verified REFUNDED webhook arrives first | `ignored_unknown_capture`; 6,000; the refund is dropped | `ignored_unknown_capture`; 6,000 |
+| 3. The older verified COMPLETED webhook | `completed`; **7,500**, where PayPal nets 7,000 or 6,000; **`tier:1` awarded** | `refunded`; **7,000 or 6,000**, PayPal's net; no tier award |
+| 4. The same REFUNDED webhook again | `duplicate_event`; 7,500 | `duplicate_event`; unchanged |
+| 5. An explicit check | `refunded`; 7,000 or 6,000; `tier:1` remains | `already_completed`; unchanged; no tier award |
+
+### Before the fix, at `ce3ec65` (history)
+
+The test's first version (`3f86614`) ran only the `credited` scope in CI. It passed there. It compared only money in the wider scope, where it treated any capture first seen refunded as a documented exception.
+
+**Six service mutations,** applied only in a scratch copy of the `ce3ec65` tree and restored with a matching SHA-256:
+- **The model test** failed on all six.
+- **The 11 named payment test files** (111 passing tests and 1 designed skip unmutated) failed on five. They missed M2, a retry that treats only `completed` as settled and so asks PayPal again for a refunded order; the model reported "a capture of an order settled here asked PayPal".
+- **The other five:** crediting a pending capture; ignoring refunds listed on the order; processing an unverified webhook; refusing a refund of exactly the remaining amount; and reporting a lost capture answer as failed.
+- **Not repeated:** these comparisons were not repeated after the fix.
+
+**`PAYMENT_MODEL_REFUNDS=any` then found two money divergences:**
+- **Fixed seeds:** 44 of 48 runs passed; seeds 2 and 21 failed on both paths.
+- **Seeds 1–200 on `rest`:** 169 passed and 31 failed, all from two causes.
+- **Reproduction:** five representatives were identical on both paths and on Node 22.16.0 and 26.0.0.
+
+1. **Over-credit after refunds on record (18 of 200 seeds).**
+   - **What happened:** a refund of a capture not yet credited here was recorded but not applied. When the capture was credited later, the full amount counted, until the next explicit check.
+   - **When:** after a late COMPLETED webhook (16 seeds), or after a retry that PayPal answered with its first, completed answer (2 seeds).
+   - **Example:** seed 159. A 300-cent capture was held, completed and fully refunded; the REFUNDED webhook came first, and the app tracked +300 cents where PayPal netted 0.
+2. **Under-credit after first seeing a partial refund (13 of 200 seeds).**
+   - **What happened:** a capture first seen `PARTIALLY_REFUNDED`, on an explicit check or on the read after a lost capture answer, was never credited, even after the final sweep.
+   - **Example:** seed 181. A 21.68 capture was held and completed, then 0.13 refunded; the app tracked 0 where PayPal held 21.55.
+
+**How PR #46 resolved them** (Codex reproduced both independently):
+- **For the over-credit:** the first credit now replays the completed refunds already on record, in the same transaction and before milestones.
+- **For the under-credit:** an order read now recovers a partial remainder, but only from validated completed refund evidence.
+- **Unchanged:** a capture first seen fully refunded without a completion still adds no progress, which is the documented exception above.
+
+### Limits and evidence
+
+**Limits.**
+- **The fake:** the provider is the existing stateful fake, not PayPal.
+  - It repeats any earlier answer for the same request id indefinitely, whereas real PayPal keeps request ids for a limited time.
+  - Dashboard refunds edit the fake's order record, as the existing reconciliation tests do.
+  - Verification is the fake's answer, not a signature.
+  - A redelivery under a new event id is a stronger duplicate than PayPal's same-id retries.
+- **Scope:**
+  - one process and one request at a time; concurrent requests are covered by `payment-dispatch-access`;
+  - USD only, the example household and goal, and at most 6 orders.
+- **Not covered:**
+  - lost answers are raised transport errors, not timeouts or stalled bodies, which `paypal-reconciliation` covers;
+  - no app-initiated refunds, declines, cancels, or amount and currency mismatches, which named tests cover; the brief excludes malformed provider behavior.
+- **Held-refund coverage in the seeds:** refunds held before their capture is recorded are exercised by PR #48's regressions and the directed probe. How often the 24 fixed seeds reach that state was not measured.
+- **Reopening and transport:** reopening is not process death (`payment-restart` covers SIGKILL), and the `sdk` path is not SDK serialization.
+- **Not real-world evidence:** this is not real PayPal reliability, device or production evidence, and not a human playtest.
+
+Raw evidence is ignored and stays local in `test-results/seeded-payments-20261108/`:
+- **Final, with PR #48 (`deferred/`):**
+  - `29-cases-node22.16.0.log` and `29-cases-node26.0.0.log`;
+  - `probe-unrecorded-refund-at-2d2f3bd.log`;
+  - `check.log` and `diff-check.log`.
+- **With PR #46 only (`integrated/`):**
+  - `model-node22.16.0.log`, `model-node26.0.0.log`, `refund-ordering-node22.16.0.log` and `refund-ordering-node26.0.0.log`;
+  - `representatives.log` and `representatives-before-fix-model.log`;
+  - `scan-1-200-rest-any.log`;
+  - `probe-unrecorded-refund.mjs`, and `probe-unrecorded-refund.log`, the probe's run at `9396c06`;
+  - `check.log`.
+- **Before the fix (the folder's top level):**
+  - `final-*.log`;
+  - `widened-any-refunds.log`, `widened-scan-1-200-rest.log` and `widened-representatives.log`;
+  - `mutations.log` and `mutations.json`, with `mutate-009.mjs` and `contributions.original.mjs`;
+  - `replay-input.log` and `check.log`.
+
+## Payment recovery across an abrupt process restart — November 7, 2026
+
+Branch `claude/payment-restart-recovery`, at the reviewed PR #40 head `e3bc6ff` (main `579b4f6` does not contain it yet). There is **no production change**: the current code already holds these crash windows, so this adds evidence and one fake-PayPal fidelity fix.
+
+**What was missing.**
+- **No abrupt process death:** clean close and reopen, and same-process dropped-response recovery, were already tested. No test killed the app process at the windows between PayPal's answer and the local credit.
+- **Other process tests:** `demo.test` stops the demo with SIGINT, and the family runner restarts with SIGTERM. Neither touches a payment.
+
+**The harness:**
+- **`test/unit/payment-restart.test.mjs` (the parent)** runs the existing stateful fake PayPal on 127.0.0.1. Its orders and captures therefore survive the app's death.
+- **`test/helpers/payment-app-child.mjs` (the app)** runs the real server and payment service on a disposable database in a child process:
+  - it is forked with an empty environment, explicit fake credentials and no `.env`;
+  - it uses the production PayPal SDK adapter, with real SDK auth, controllers and serialization, through its existing transport seam;
+  - that transport reaches only the parent. Every non-loopback dispatch is refused.
+- **Killing:** each child is killed with SIGKILL, so no shutdown code runs. Only the test's own children are signalled.
+- **Gates, waits and cleanup:** a gate in the parent holds PayPal's answer, and a gate in the child's harness wrapper withholds the app's answer. Every wait is bounded, and each test removes only its own temporary folder and children.
+
+| Scenario | What happened | Fake PayPal counters | Recovered records |
+| --- | --- | --- | --- |
+| 1. Killed while PayPal's capture answer was held | No credit was invented: the order was still `created`, with no capture or entry and $60.00. The restarted process did nothing by itself, making 0 provider calls at startup. The existing same-order retry sent the **same `PayPal-Request-Id`**, and PayPal replayed its first answer. The explicit check saved a `match` | 2 tokens (one per process), 1 order created, **2 capture requests with 1 request id**, 1 order read, **1 provider capture** | Order `completed`; 1 capture credited; 1 contribution of $15.00; 1 saved check (`match`); $75.00 |
+| 2. Killed after the credit was committed but before the answer reached the client | The retry returned `already_completed` **without calling PayPal**. The same webhook event returned `duplicate_event`; a new event for the capture returned `already_completed` | **1 capture request**, 0 order reads, 3 webhook verifications, 1 provider capture | 1 capture credited; 1 contribution; $75.00 |
+| 3. A dashboard refund made while the app was down, with no webhook | Nothing was reconciled at startup. The explicit check recorded the refund once, and a second check returned `already_completed`. The late refund event returned `duplicate_refund`, then `duplicate_event` | 1 capture request, 2 order reads, 2 webhook verifications, 1 provider capture | Order `refunded`; 1 contribution and 1 refund of $15.00; refunded $15.00; $60.00, debited once |
+
+**A fidelity fix to the fake.** The real SDK OAuth path had never run against the shared fake. Its token answer lacked `token_type`, which real PayPal sends and the installed SDK 2.5.0's `oAuthToken` schema requires. So the first harness run could not create an order: every scenario failed with a 502 before any payment logic ran. The fake now answers with `token_type: 'Bearer'`.
+
+| Check | Actual result |
+| --- | --- |
+| The restart tests on Node 22.16.0, 26.0.0 and 26.13.0 | 3 passed on each |
+| Deliberate service mutations, restored with a matching hash: an unstable capture request id; a settled retry that calls PayPal | Each fails its scenario's own assertion: "one PayPal-Request-Id for the order" and "the settled order is answered without calling PayPal" |
+| Affected suites on the three versions: the restart tests, payments, paypal-reconciliation, paypal-unknown-outcome, payment-dispatch-access, shared-capture-access, paypal-sdk, paypal-sdk-transport, migration-integration, ledger and household-snapshot | 116 tests: 115 passed, 1 existing designed skip, 0 failed on each |
+| The other unit files that use the changed fake (family-live, family-runtime-boundaries, planning-revision, server), on Node 22.16.0 and 26.13.0 | 42 passed on each |
+| `npm run check` | Passed: 47 copied art/runtime files, the original 90-color palette, the renderer wiring and JavaScript syntax |
+| `git diff --check` | Clean |
+
+**A correction after review: startup cleanup in the harness.** Codex found that `startApp` waited for its child to report ready before `scenario` recorded that child. A child that never became ready was therefore left running when the helper gave up. Codex reproduced this on `a257557` with a child that sends no ready message: 1 child was still alive after the rejection.
+
+The fix:
+- **Exit tracking:** the helper now listens for its child's exit the moment the child is forked.
+- **Cleanup on failure:** if readiness fails or times out, the helper ends its own child before passing the error on. It sends SIGKILL only if the child is still running; a child that has already ended, or is ending, is only waited for. The normal kill uses the same path.
+
+A fourth test runs that actual helper with two children of its own: one that never becomes ready, and one that exits before it is ready. Both rejections match, and each child has ended and no longer exists.
+
+Without the cleanup, this test fails on "its own child has ended". Its leftover child also kept the test process from exiting until that one child was ended by its own process id.
+
+With the fix, the four restart tests pass on Node 22.16.0, 26.0.0 and 26.13.0, and `npm run check` passes. This changes only the test harness; there is no production change.
+
+The test command is `node --test test/unit/payment-restart.test.mjs`. The existing full unit command picks it up, so the hosted release checks run it on Node 22.16.0, 24 and 26; that result is reported on the PR.
+
+**Limits.**
+- **What "abrupt" means here:** killing a process is not power loss, a disk failure or an operating-system crash. It is not real PayPal reliability or device evidence, and not a playtest.
+- **The fake:** the provider is the existing stateful fake, with gates that model a held answer; it is not network-fault injection. The refund scenario edits the fake's order record, as the existing reconciliation test does.
+- **Unchanged:** approval, access checks, amount, currency and household matching, the read-only steward, mode separation and the existing recovery semantics. Nothing captures or reconciles at startup.
+
+Raw evidence is ignored and stays local in `test-results/payment-restart-20261107/`:
+- the first runs: `first-run-node26.log` (the 502 from the incomplete fake token) and `second-run-node26.log` (passing after the fix);
+- `debug-transport.mjs`, the probe that found the missing `token_type`;
+- the mutation logs, and `contributions.original.mjs`, the file they were restored from;
+- the `affected-*.log`, `fake-users-*.log` and `final-*.log` files, and `check.log`;
+- for the startup correction: the `correction-*.log` files for each Node version, `startup-before-fix.log` (the new test failing without the cleanup) and `check-correction.log`.
+
+No owner household, credential, real order, paid model or provider call, recording, deployment or submission was used.
+
+## Household snapshots — November 7, 2026
+
+Branch `claude/household-snapshots`, from main `579b4f6`. That commit contains the reviewed PR #38 head `f4bf89c` and every earlier reviewed head.
+
+**The gap, reproduced on `579b4f6` before any change.** No backup or snapshot command existed, and `server/db.mjs` opens every database file in WAL mode. The fixture was an isolated example database in a fresh temporary folder, with no network. The $60 seed was checkpointed. Then one simulated $15 contribution was committed with the writer still open:
+
+| Observation | Node 22.16.0, SQLite 3.49.1 | Node 26.0.0, SQLite 3.53.4 |
+| --- | --- | --- |
+| WAL holding the commit | 53,592 bytes | 53,592 bytes |
+| Copy of the main file only | $60.00 | $60.00 |
+| `sqlite.backup()` from a read-only connection | $75.00; integrity ok; 0 foreign-key violations; 1 credited capture; 1 simulated entry | The same |
+| Source after that read-only backup | $75.00, WAL still 53,592 bytes | The same |
+
+The same probes found three more behaviours on both versions:
+- **Overwrite:** `backup()` replaced an existing SQLite destination; the caller's table was gone.
+- **Interruption:** a throwing progress callback left a 0-byte file at the destination.
+- **Sidecar files:** a read-only open leaves `-wal` and `-shm` files beside the file it opens.
+
+**The command.** `npm run snapshot -- <existing.sqlite> <new.sqlite>` runs `scripts/snapshot.mjs`:
+- **Copy:** it opens the source read-only, then makes a one-step SQLite online backup into a private temporary file with mode `0600`.
+- **Checks:** the copy must pass integrity, foreign-key and schema checks.
+- **Publishing:** a hard link, which never replaces a file. Lock waits are bounded (5 s by default).
+- **Output:** a counts-only summary, with the runtime SQLite version and a SHA-256 that identifies the file but is not a correctness check.
+- **Not included:** no dependency, endpoint, UI, scheduler, upload or restore.
+
+The details and limits are in the [runbook](RUNBOOK.md#household-snapshots).
+
+| Check | Actual result |
+| --- | --- |
+| New `test/unit/household-snapshot.test.mjs`, 6 tests, on Node 22.16.0, 26.0.0 and 26.13.0 | 6 passed on each |
+| Deliberate mutations of the tool, each restored with a matching hash: copying the main file instead of the backup; an overwriting rename instead of the hard link; no validation. Repeated on the corrected tool | 3, 1 and 1 tests fail respectively, both times |
+| The new tests with `migration-integration`, `ledger`, `payments` (both PayPal adapters) and `paypal-reconciliation`, on Node 22.16.0, 26.0.0 and 26.13.0 | 59 tests: 58 passed, 1 existing designed skip, 0 failed on each |
+| Command run on a disposable example file | Written at `0600`; an existing destination refused with exit 1; no paths gives usage and exit 2 |
+| `npm run check` | Passed: 47 copied art/runtime files, the original 90-color palette, the renderer wiring and JavaScript syntax |
+| `git diff --check` | Clean |
+
+**A portability defect found by the first hosted run, and its correction.** Run [42411119299](https://github.com/alejandro-publius/our-castle/actions/runs/42411119299) tested `0186ef7`:
+- **Node 22.16.0:** 367 unit tests passed, with 1 skip.
+- **Browser selection:** 19 passed, with 1 designed skip.
+- **Node 24.22.2 and 26.13.0:** 5 of the 6 new tests failed, all of those that reach the copy. The command asked `backup()` for `rate: -1`, which those releases refuse as "must be a positive integer"; Node 22.16.0 and 26.0.0 accept it.
+
+This was reproduced locally on checksum-verified Node 26.13.0, which bundles SQLite 3.54.0. The command now passes `2**31 - 1`, the largest rate that every tested release accepts, and still copies every page in one step. The hosted result for the corrected head is on the PR.
+
+**What the six tests show:**
+1. **WAL content:** with the app's writer open and a committed contribution in its WAL, a main-file copy reads $60.00. The snapshot reopens at $75.00 with the same simulated labels. The source's rows, main-file bytes and WAL size are unchanged, and the snapshot has mode `0600`. Repeating the request on the reopened copy returns `already_processed`.
+2. **Sandbox, with the stateful fake PayPal:** one order, one credited capture, one contribution credit, the saved check and the recorded webhook event all survive unchanged. On the reopened copy:
+   - the same event returns `duplicate_event`;
+   - a new event for that capture, and a repeated capture, return `already_completed`;
+   - progress stays at $75.00, and the original database never sees those replays.
+3. **Refused sources, creating nothing:** a schema of 8 against this build's 7, a SQLite file that isn't Our Castle's, a text file, and a missing source, which is not created.
+4. **Never replaced:**
+   - an existing destination;
+   - the source itself, its `-wal` path, and a case-folded `-shm` path;
+   - a destination whose `-wal` already exists;
+   - a missing folder.
+
+   A file that appears at the destination after validation is left exactly as it was.
+5. **Not published:**
+   - a source under another connection's exclusive lock, refused within the bounded wait;
+   - an interruption before publishing;
+   - a copy with a damaged table page, which fails SQLite's integrity check.
+
+   No partial file remains.
+6. **Family fixture, through the command:** the command ran as a separate process against a family database that the in-process server was serving.
+   - The copy reports schema 7 with integrity ok.
+   - Its accounts, passkeys, memberships, invitations and sessions rows are identical.
+   - The output contains none of these: the invitation token, the session cookie, the token and CSRF hashes, the passkey ids, the user handles or the names.
+   - Missing paths exit 2 with usage.
+
+**Limits.**
+- **Point in time:** later PayPal captures or refunds are not recreated offline.
+- **Access state:** serving restored family access state needs a separate, explicit recovery procedure. A snapshot is not permission to reactivate old sessions.
+- **No restore:** there is no restore command and no app start on a snapshot.
+- **SQLite version:** Node 22.16.0's SQLite 3.49.1 is within the WAL-reset bug's affected range. The command's connection only reads and never checkpoints, and the runtime was not upgraded.
+- **How the faults were made:** a lock taken by exclusive locking mode, corruption by overwriting one page header, and interruption by a test hook. Hardware failure, power loss and a full disk were not tested.
+- **Hosted result:** the PR's existing release-checks workflow runs the full unit suite on Node 22.16.0, 24 and 26. That result is reported on the PR, not here.
+
+Raw evidence is ignored and stays local in `test-results/household-snapshots-20261107/`:
+- the reproduction scripts and their JSON results: `repro*.mjs`, `repro-node22.16.0.json`, `repro-node26.json`, `repro-overwrite.json`, `repro-rate-lock.json` and `repro-corrupt.json`;
+- the test logs `new-tests-*.log`, `mutation-*.log` and `focused-unit-*.log`;
+- `check.log`;
+- `snapshot.original.mjs` and `snapshot.corrected.mjs`, the exact files the mutations were restored from;
+- the downloaded log of hosted run 42411119299 and `repro-rate.json`, which records the rates each tested Node accepts.
+
+No owner household, credential, real order, paid model or provider call, recording, deployment or submission was used. No database file is committed.
+
 ## Release checks workflow — November 7, 2026
 
 Stacked on PR #37 (`claude/treasury-stall-fallback` at `2cd641d`), which is itself stacked on PR #36 (`a3f262d`, from main `01fb478`). The reviewed candidate had extensive unit and Playwright tests but no committed workflow. `.github/workflows/release-checks.yml` now runs the existing scripts and tests on every pull request, stacked ones included, and on pushes to main.
