@@ -114,7 +114,7 @@ It is a planning limit, not money in hand. It never raises an offer or moves the
 - what the catalog reported for the item;
 - the limit and date of the search.
 
-An explicit price check judges the item again. If it no longer meets a must-have, Family choices says "No longer meets the family's needs", and a schedule proposal resting on it is refused until the family reviews it again.
+An explicit price check judges the item again. If it no longer meets a must-have, Family choices says "No longer meets the family's needs", and a schedule proposal resting on it is refused until the family reviews it again. No result read before that check can make it suitable again.
 
 **Research basis.** These are inferences from public sources, not claims about those teams or proof of demand:
 - [CrawlerPal](https://developer.paypal.com/community/blog/winners-dev-days-hackathon/) placed first at PayPal Dev Days 2025 as "a paywall AI agent assistant built with PayPal APIs": one complete task.

@@ -6,8 +6,8 @@ Branch `claude/family-fit-search`, from the reviewed PR #55 head `9ba5e38`. That
 - `09ee37e`: the feature-gap demonstration;
 - `1ecde49`: the implementation and its tests;
 - `245ee2c`: these screenshots and this note;
-- `ea9463a`: review correction 001 (below);
-- the commit after it: that correction's notes.
+- `ea9463a`: review correction 001 (below), with its notes in `73655d2`;
+- `4f95216`: review correction 002 (below), with its notes in the commit after it.
 
 The owner asked for this product iteration. It is a hypothesis about better buying decisions, not evidence of demand. No person has used it.
 
@@ -34,6 +34,26 @@ The owner asked for this product iteration. It is a hypothesis about better buyi
   Other suites were green at review and were not rerun locally.
 - **Screenshots.** That run re-captured all five, each byte-identical (full SHA-256) to the committed file, so they keep their `1ecde49` provenance and are not relabelled. The new message appears only after the captured steps; it is asserted by the browser case, not captured.
 - **Hosted.** One Release checks run on the final head; its result is in the PR.
+
+**Review correction 002** (Codex addendum on `ea9463a`, unchanged at `73655d2`; fix `4f95216`). Reproduced before any change.
+
+- **F3 (P2).** A fit result rests on what the catalog reported for its item, but only the retailer, price, stock and selection could expire it. After an explicit check of the same offer reported "sleeps 2", the earlier draft still said suitable, "sleeps 4". On `73655d2`, with the fake catalog and disposable data:
+  - re-adding that earlier reference made the choice "meets" again. The schedule that check had made out of date could be put in use again (409, then 200), and the goal could be saved from it;
+  - an older fit search, or an older check of the fit item, answered after the newer read, still showed the item as suitable with "sleeps 4";
+  - an ordinary result read before the check brought "meets" back when added to the choice. So did a slower price check answered after the choice was updated from a newer search.
+- **Fix.** A newer read of an offer also replaces its catalog facts: the kind of item and each attribute's values, compared as sets.
+  - A fit draft whose kind of item or must-have values it contradicts expires (410). Any other draft keeps its offer without the replaced facts.
+  - An older answer cannot restore them. A fit search or fit check resting on a contradicted fact is refused (410), and an ordinary answer carries no catalog facts.
+  - A family choice keeps its latest need check when a result carries no current facts.
+  - Unchanged: titles, pictures, links and value order do not count, and a fact the need does not use does not expire a fit draft. Ordinary results stay usable. The shared record of reads holds public catalog facts only, never a family's need or context.
+- **Regressions,** each failing on `73655d2` first:
+  - four adapter cases: the addendum's case (harmless and order-only changes kept), an older fit search, an older fit-item check and an ordinary result;
+  - three HTTP cases: the earlier fit reference, an ordinary result and a slower price check.
+- **Checks on `4f95216`:** the eight unit files that build the merchant or use family choices passed 73/73 on Node 22.16.0 and 26.0.0, and `npm run check` passed. No page code changed, so no browser case ran locally, and the screenshots are unchanged.
+- **Limits:**
+  - **The newest read decides.** If Channel3's search and product detail report different facts for one item, the later-started read wins. This is untested against the live catalog.
+  - **Strict expiry.** Any change to a must-have's values expires a fit draft, even when the new value is also acceptable; the family checks or searches again.
+  - **Choice not rechecked.** A choice is not re-judged from a result whose facts were replaced, so it keeps its latest check until its own price check.
 
 **The gap, shown on `9ba5e38` before any change** (invented fake catalog data, documented as a missing feature, not a broken promise):
 - Ordinary search took only words and a budget the family had to work out by hand.
