@@ -271,8 +271,9 @@ export function createKitList({ getState, actor, applyState }) {
   // ---- What everyone sees: the saved list ----
   function drawSaved(kit) {
     const box = $('kit-saved');
-    // Redraw only when what it shows changed, so a live re-read never moves focus or scrolls a list being read.
-    const shownKey = JSON.stringify([kit.revision, kit.savedAt, adult(), nameOf(kit.savedBy)]);
+    // Redraw only when what it shows changed, so a live re-read never moves focus or scrolls a list being read. The key
+    // names whose list it is (household, goal and person): another one's list is always drawn, whatever it shares.
+    const shownKey = JSON.stringify([scopeKey(), kit.revision, kit.savedAt, adult(), nameOf(kit.savedBy)]);
     if (box.dataset.shown === shownKey) return;
     box.dataset.shown = shownKey;
     if (!kit.items.length) {
@@ -294,11 +295,15 @@ export function createKitList({ getState, actor, applyState }) {
     if (!state?.kit) return;
     const key = scopeKey();
     if (ui.scope !== key) {
-      // Another person, goal or household: an open draft or photo belonged to the old one and is dropped, unsaved.
-      const dropped = ui.scope !== null && (ui.draft || ui.photo);
+      // Another person, goal or household: typed text, an open draft or a photo belonged to the old one and is dropped,
+      // unsaved, and so is a message about the old one's list. Text is unsaved work only while its box was shown, not
+      // what a save or a discard left in the hidden box.
+      const typing = !$('kit-source').hidden && $('kit-text').value.trim() !== '';
+      const dropped = ui.scope !== null && Boolean(ui.draft || ui.photo || typing);
       ui.scope = key;
       finish();
-      if (dropped) say('info', 'The draft was for another person or goal, so it was discarded. Nothing was saved.');
+      $('kit-text').value = '';
+      say(dropped ? 'info' : '', dropped ? 'The draft was for another person or goal, so it was discarded. Nothing was saved.' : '');
     }
     const kit = state.kit;
     const toGet = kit.items.filter((i) => i.remaining > 0).length;
