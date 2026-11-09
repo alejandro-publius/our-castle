@@ -10,6 +10,7 @@ import { api } from './api.js';
 import { RESERVE_LIMITS, choicesInput, compareChoices, describeComparison, familySchedule } from '../core/family-choices.js';
 import { ceilingText, fitCeiling, needSummary } from '../core/family-fit.js';
 import { formatCents, parseAmountToCents } from '../core/rules.js';
+import { catalogueOf } from '../core/catalogue.js';
 
 const $ = (id) => document.getElementById(id);
 function h(tag, attrs = {}, ...children) {
@@ -109,7 +110,7 @@ export function createFamilyChoices({ getState, actor, openMerchant, onReview, a
       onReview(res);
     } catch (error) {
       if (mine !== ui.review) return;
-      const action = error.code === 'choice_needs_check' && getState().modes?.merchant?.mode === 'live'
+      const action = error.code === 'choice_needs_check' && catalogueOf(getState()).open
         ? h('button', { type: 'button', class: 'link-button', onclick: () => check(choice) }, `Check ${choice.title}’s price`) : null;
       say('error', error.message, action);
     }
@@ -164,7 +165,7 @@ export function createFamilyChoices({ getState, actor, openMerchant, onReview, a
   function render() {
     const s = getState();
     if (!s?.familyChoices) return;
-    const fc = s.familyChoices, me = actor(), adult = me?.role === 'adult', merchantOn = s.modes?.merchant?.mode === 'live';
+    const fc = s.familyChoices, me = actor(), adult = me?.role === 'adult', merchantOn = catalogueOf(s).open;
     if (ui.offerActor !== (me?.id ?? null)) { ui.offerActor = me?.id ?? null; ui.offerDirty = false; }
     // A one-off trial belongs to the member, household and goal it was typed for; it never carries over to another.
     if (ui.scope !== scopeKey()) {

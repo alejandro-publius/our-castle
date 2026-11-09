@@ -25,6 +25,7 @@ import { createKitList } from './kit-list.js';
 import { createKitPlan } from './kit-plan.js';
 import { scheduleLines } from '../core/family-choices.js';
 import { needSummary } from '../core/family-fit.js';
+import { catalogueOf } from '../core/catalogue.js';
 import { createTreasury } from './treasury.js';
 import { FAMILY_PROJECT_SITE, PROJECT_KINDS, projectKind, projectLabel, projectStage } from '../core/family-project.js';
 import { CONFIRMATION_HISTORY_QUESTION, NEEDS_CHECK_QUESTION, isLocalQuestion, isNeedsCheckQuestion } from '../core/steward-questions.js';
@@ -624,14 +625,15 @@ function renderHeader() {
   const { household, modes, members } = state;
   $('#brand-crest').innerHTML = crestSvg(household.crest, { title: `${household.name} crest` });
   $('#house-eyebrow').textContent = household.setupComplete
-    ? household.name
+    ? `${household.name}${state.example ? ' · example family' : ''}`
     : 'Your household';
-  $('#mode-badges').replaceChildren(
+  $('#mode-badges').replaceChildren(...[
     h('li', { class: `mode-badge ${modes.payments.mode === 'sandbox' ? 'live' : 'example'}`, title: modes.payments.mode === 'sandbox' ? 'Real PayPal sandbox API calls with test money' : 'No PayPal calls; payments are simulated and labeled' },
       modes.payments.mode === 'sandbox' ? 'PayPal sandbox' : 'Simulated payments'),
     h('li', { class: `mode-badge ${modes.ai.mode === 'live' ? 'live' : 'example'}`, title: modes.ai.mode === 'live' ? `Plans are written by ${modes.ai.model} and checked by the server` : 'Plans come from built-in rules; no AI is called' },
       modes.ai.mode === 'live' ? 'AI planner' : 'Built-in planner'),
-  );
+    catalogueOf(state).sample ? h('li', { class: 'mode-badge example', title: 'Market Town answers from an example catalogue on this computer: invented shops, listings and prices. Channel3 is not contacted.' }, 'Example catalogue') : null,
+  ].filter(Boolean));
   const select = $('#persona');
   select.closest('.persona').hidden = Boolean(state.access);
   $('#signed-in').hidden = !state.access;
@@ -1013,7 +1015,27 @@ async function saveHouse() {
 }
 
 // ---------- 2. Plan ----------
-function renderPlan() { renderPlanForm(); familyChoices?.render(); kitList?.render(); merchant?.refreshFit(); lockPlanForChildren(); }
+function renderPlan() { renderPlanForm(); renderExampleEntry(); familyChoices?.render(); kitList?.render(); merchant?.refreshFit(); lockPlanForChildren(); }
+// An authored example (npm run demo -- --family-trip) says what is invented, with one way into the existing planning
+// surface and a link each way between its two parts: the one-off expense in Family choices and Complete kits in the Kit
+// list. They open those sections and move focus; they press no control, fill no field and write nothing.
+function renderExampleEntry() {
+  const example = state.example ?? null;
+  $('#example-entry').hidden = !example;
+  for (const id of ['#example-to-kits', '#example-to-trial']) $(id).hidden = !example;
+  if (!example) return;
+  $('#example-entry-text').textContent = `${example.title}: an invented family, two sample shops and invented prices.`;
+  // Adults try an expense and compare; a child reads the list and the chosen kit.
+  $('#example-entry-go').textContent = persona()?.role === 'adult' ? 'Try a one-off expense' : 'See the kit list';
+}
+function openExample(e) {
+  for (const id of ['#family-choices', '#kit-list']) $(id).open = true;
+  // Children read the kits; adults try an expense (Family choices) and compare (Complete kits).
+  const wanted = e.currentTarget.id === 'example-to-kits' ? $('#kit-plan-compare') : $('#family-trial-input');
+  const target = wanted.closest('[hidden]') ? $('#kit-list summary') : wanted;
+  target.focus({ preventScroll: true });
+  (target.closest('fieldset, .actions') ?? target).scrollIntoView({ block: 'center', behavior: e.detail === 0 || matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' });
+}
 // A child in a shared family sees the goal and plan and may try a weekly amount or date with the read-only check, but
 // changes neither; the server refuses those requests anyway.
 function lockPlanForChildren() {
@@ -1198,8 +1220,8 @@ function renderGoalDraft() {
   if (draft.image && image.getAttribute('src') !== draft.image.url) image.setAttribute('src', draft.image.url);
   $('#goal-draft-name').textContent = draft.title;
   $('#goal-draft-facts').textContent = draft.kind === 'kit'
-    ? ` ${draft.kit.lines.map((l) => `${l.name}: ${l.listings} × ${l.title} (${l.merchant})`).join(' · ')} · Channel3 listings, checked within the last half hour`
-    : ` ${resultFacts(draft).join(' · ')} · Channel3, checked ${timeLabel(draft.checkedAt)}`;
+    ? ` ${draft.kit.lines.map((l) => `${l.name}: ${l.listings} × ${l.title} (${l.merchant})`).join(' · ')} · ${catalogueOf(state).sample ? 'Invented example listings' : 'Channel3 listings'}, checked within the last half hour`
+    : ` ${resultFacts(draft).join(' · ')} · ${catalogueOf(state).sample ? 'Invented example listing' : 'Channel3'}, checked ${timeLabel(draft.checkedAt)}`;
   const { goal, progress } = state;
   const effects = [draft.kind === 'kit' ? `Not saved yet. Saving sets “${goal.name}” (${money(goal.targetCents)}) to the kit’s listed total below, with the kit as its source`
     : `Not saved yet. Saving replaces “${goal.name}” (${money(goal.targetCents)}) with the name and amount below`];
@@ -2078,7 +2100,8 @@ function renderFooter() {
   const { modes } = state;
   const sandbox = modes.payments.mode === 'sandbox';
   // A shared family signs in with passkeys; the example household's members are demo profiles.
-  const mode = sandbox ? 'PayPal sandbox · test money only.' : state.access ? 'Simulated payments.' : 'Demo mode · simulated payments.';
+  const mode = sandbox ? 'PayPal sandbox · test money only.' : state.access ? 'Simulated payments.'
+    : state.example ? `${state.example.title} · the family, shops, listings and prices are invented · simulated payments.` : 'Demo mode · simulated payments.';
   const people = state.access ? 'Each member signs in with their own passkey.' : 'Demo profiles, not sign-in.';
   $('#honesty').textContent = `${mode} ${people} Reported savings and bills are unverified; progress is not a bank balance.`;
 }
@@ -2112,6 +2135,7 @@ function bindEvents() {
     onReview: useKitReview, listEditing: () => kitList?.editing() ?? false });
   for (const opener of [$('#open-merchant'), $('#find-goal-item')]) opener.addEventListener('click', (e) => merchant.open(e.currentTarget));
   $('#visit-campsite').addEventListener('click', visitCampsite);
+  for (const id of ['#example-entry-go', '#example-to-kits', '#example-to-trial']) $(id).addEventListener('click', openExample);
   $('#goal-draft-save').addEventListener('click', saveGoalDraft);
   $('#goal-draft-propose').addEventListener('click', saveGoalDraft);
   $('#goal-draft-review').addEventListener('click', reviewGoalDraft);
@@ -2162,7 +2186,7 @@ function bindEvents() {
     e.currentTarget.textContent = on ? 'Pixel art' : 'Raw 3D';
     scene?.setPixelMode(on);
   });
-  $('#persona').addEventListener('change', (e) => { ui.personaId = e.target.value; pref.set('persona', ui.personaId); ui.refundArm = null; $('#give-approve').checked = false; ui.approvalBasis = null; renderGive(); renderLedger(); renderNextStep(); familyChoices?.render(); kitList?.render(); });
+  $('#persona').addEventListener('change', (e) => { ui.personaId = e.target.value; pref.set('persona', ui.personaId); ui.refundArm = null; $('#give-approve').checked = false; ui.approvalBasis = null; renderGive(); renderLedger(); renderNextStep(); renderExampleEntry(); familyChoices?.render(); kitList?.render(); });
   $('#next-step-go').addEventListener('click', openNextStep);
   $('#deed-visit').addEventListener('click', visitDeed);
   $('#deed-next').addEventListener('click', () => { ui.deeds.index++; renderDeed(); $('#deed-name').focus(); });
