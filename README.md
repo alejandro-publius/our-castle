@@ -49,6 +49,8 @@ In **Plan → Family choices**, shortlist up to three Market Town items, let eac
 
 This source-branch feature is awaiting integration into the preserved Mac demos. The capture uses invented tents and fake provider responses. [Walkthrough, worked example and research](docs/FAMILY-CHOICES.md).
 
+**Plan → Kit list** keeps a short checklist of things to bring for the goal: each item, how many are needed and how many the family already has. An adult types or pastes it, or reads a photo of a written list with OpenAI (optional, with its own server key). Either way the result is a draft the adult checks before **Save this list**. It moves no money and changes no goal or plan. [How it works, privacy and limits](docs/KIT-LIST.md).
+
 ![A family compares three purchase options beside the woodland](docs/screenshots/family-choices-desktop-three.png)
 
 ## Three sponsor integrations

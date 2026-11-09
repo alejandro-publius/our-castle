@@ -1,5 +1,64 @@
 # Validation
 
+## Kit list from text or a photo — November 9, 2026
+
+Branch `claude/kit-checklist`, from the reviewed PR #56 head `afbe13f` (unmerged, stacked on #55 → #54 → … → #49). Commits:
+- `8461902`: the kit list, its optional photo reader, migration 11 and their tests;
+- the commit after it: these notes, the screenshots and their provenance.
+
+The owner asked for this product feature (task 018). It is the first of two stages: this one ends at a checked, saved family checklist. Comparing complete kits against the family's planning limit is stage 019 and is not implemented here. No person has used it. [How it works, privacy and limits](KIT-LIST.md).
+
+**What was built:**
+- **Typed lists** are parsed on the page by `src/core/kit-list.js`, using literal separators and written counts only. `4-person tent` stays a name, and an unknown count stays blank until the adult fills it in.
+- **Photo reading** (`server/kit/reader.mjs`) is optional and needs the server's own `KIT_OPENAI_API_KEY`. It makes one OpenAI Responses call per explicit read, with a strict schema, `store: false`, no tools, bounded output, a 60-second timeout, no redirects and no retries. An independent local check follows.
+- **A draft** shows Need, Have and To get for each line, with each problem in words. Only **Save this list** writes, through `PUT /api/kit`: one revision-checked transaction into the new `kit_lists` table (migration 11).
+- **The photo** is resized and re-encoded on the page, and the server checks its type, bytes and size. Only `POST /api/kit/read` accepts up to 2 MiB; every other route keeps 64 KiB. Neither the photo nor the model's answer is stored or logged.
+
+**Checks on `8461902`** (fake OpenAI transport, invented data, disposable databases, `.env` loading off, non-loopback transport denied):
+- **Unit:** 12 files passed **111/111 on Node 22.16.0 and 26.0.0**.
+  - **New (22 tests).** `kit-list-core` (parsing and bounds), `kit-reader` (request serialization, the strict schema, refusals, unfinished, malformed and oversized answers, HTTP errors, timeout, no retry) and `kit-list` (HTTP, config, body limits and migration). The HTTP cases include:
+    - the typed path, with zero model calls;
+    - one fake photo read, with the misread counts corrected before saving;
+    - the other adult, the child and a reload reading the same list;
+    - stale revisions; a child, a spoofed member, a missing CSRF token, another household or a borrowed reading refused;
+    - invalid counts and images refused before any call;
+    - a refusal or no reader leaving typing available;
+    - a held reading refused after access ended;
+    - four photo readings a minute per household.
+  - **Affected (89 tests).** `server`, `family-access`, `family-live`, `family-fit`, `family-choices`, `channel3-merchant`, `goal-projects`, `migration-integration` and `household-snapshot`. Four of these pinned the previous last migration step or table set and were updated for step 11, which they then pass. The kit key was added to the existing check that no secret reaches the browser.
+- **Body limit:** every write route in the app was sent 70 kB. All returned 413 except the photo route, which also refuses more than 2 MiB.
+- **Browser:** **8/8 passed** on desktop 1440×1000 and the 390×844 phone. The new journey `test/e2e/kit-list.spec.mjs` (`@release`) covers:
+  - typed draft and save, then the child's read-only view;
+  - a held reading dropped after the adult typed;
+  - a photo draft with a misread and a blank count fixed before saving;
+  - a reload;
+  - another adult's edits kept through a live update behind "Keep my draft".
+  It checks that only the kit list was written, made 2 fake OpenAI calls and no other provider call, and that Escape keeps closing the journal without losing the draft. The three other Plan-journal specs in the release selection (`family-choices`, `family-fit`, `family-schedule`) passed alongside it.
+- **Guard:** `npm run check` passed.
+- **Snapshot rehearsal:** a fresh throwaway example server (port 3189, no keys, `.env` off) saved one kit list after a simulated $15 contribution. `npm run snapshot` gave schema 11 · integrity ok · foreign keys ok · 24 tables. The server was then stopped.
+- **During development:**
+  - The first browser runs found three things in my own work, each fixed before the final run:
+    - a wrong expectation about Escape (in the existing journal it closes the journal);
+    - focus lost when an unchanged saved list was redrawn by its own live update;
+    - draft rows too cramped in the 370 px journal, changed to two lines per item after inspecting the captures.
+  - The four migration tests above failed as expected when step 11 was added.
+
+**Not run locally:** the other browser specs and the full unit suite (green at the reviewed base). The hosted Release checks run the whole selection on the final head; the result is in the PR.
+
+**Screenshots** (invented list and photo, fake OpenAI reading; full provenance in `docs/screenshots/kit-list-sources.json`). Captured by that final run on exactly `8461902`, with every one of the 15 recorded sources byte-identical to it:
+- `kit-list-desktop-photo-draft.png` (`301bdb65b56d`): the draft beside its photo, with the misread 3 sleeping bags to correct;
+- `kit-list-desktop-saved.png` (`3948fab72316`): the saved list after a reload, To get 1, 2, 0 and 1;
+- `kit-list-phone-typed-draft.png` (`90c4bddaa314`): the typed draft with Have 2 for the torch;
+- `kit-list-phone-child-saved.png` (`2a947ba9352b`): the child's read-only view.
+
+**Limits:**
+- **Accuracy:** how well any model reads a real family's photo is untested. No live OpenAI call was made, and the fake reading proves only what is sent and how answers are handled.
+- **Typed text:** the parser follows literal rules, so unusual wording may need correcting in the draft.
+- **Have:** a family report, never verified.
+- **Not covered:** human, physical-device, accessibility-audit or performance evidence.
+
+**Evidence:** kept local and ignored, in `test-results/kit-checklist-20261109/`: the development and final logs with commands, raw captures with `SHA256SUMS.txt`, and the schema-11 snapshot rehearsal (`runbook/`).
+
 ## Family fit: options that meet the family's needs by its date — November 8, 2026
 
 Branch `claude/family-fit-search`, from the reviewed PR #55 head `9ba5e38`. That head is still unmerged, stacked on PR #54 → #53 → #52 → #51 → #50 → #49. The commits are:

@@ -23,7 +23,7 @@ With no `.env` file the app runs in **example mode**: payments are simulated by 
 
 ### Merchant and Treasury settings
 
-Optional `.env` settings: `CHANNEL3_API_KEY` enables search; `AG_STUDIO_LICENSE_KEY` applies a Studio licence. The owner's Mac already has its local settings; none are bundled. The supplied licence is evaluation-only. See [the connected handoff](CONNECTED-HANDOFF.md). APIMatic review adds no runtime credential or screen.
+Optional `.env` settings: `CHANNEL3_API_KEY` enables search; `KIT_OPENAI_API_KEY` (its own key, never `OPENAI_API_KEY`) lets an adult read a photo of a kit list, which works fully typed without it; `AG_STUDIO_LICENSE_KEY` applies a Studio licence. The owner's Mac already has its local settings; none are bundled. The supplied licence is evaluation-only. See [the connected handoff](CONNECTED-HANDOFF.md). APIMatic review adds no runtime credential or screen.
 
 ### Real PayPal sandbox and AI
 
@@ -120,10 +120,10 @@ Rehearse it on a disposable household, never on someone's records:
 OUR_CASTLE_ENV_FILE=none OUR_CASTLE_DATA_DIR=/tmp/castle-rehearsal PAYPAL_CLIENT_ID= PAYPAL_CLIENT_SECRET= AI_API_KEY= PORT=3134 npm start
 # Terminal 2, while it runs:
 npm run snapshot -- /tmp/castle-rehearsal/our-castle-example.sqlite /tmp/castle-snapshot-1.sqlite
-# Output of one such rehearsal on a fresh schema-10 database (23 tables). The page count, rows, SQLite and Node
-# versions and the hash vary with the household and the runtime:
+# Output of one such rehearsal on a fresh schema-11 database (24 tables), after one simulated $15 contribution and
+# one saved kit list. The page count, rows, SQLite and Node versions and the hash vary with the household and runtime:
 # Snapshot written: …/castle-snapshot-1.sqlite
-#   schema 10 · integrity ok · foreign keys ok · 23 tables · 65 pages
+#   schema 11 · integrity ok · foreign keys ok · 24 tables · 67 pages
 #   rows: households 1, ledger_entries 2, payment_orders 1, payment_captures 1
 #   SQLite 3.53.4, Node v26.0.0
 #   sha256 … (identifies this file; it does not replace the checks above)
