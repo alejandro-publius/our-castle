@@ -7,14 +7,32 @@
 // Only search words/budget, public product/retailer/variant references and locale leave this server: never household names,
 // members, ledger, bills, other credentials or a user id. Searching is discovery only; nothing here buys, credits
 // money, changes a goal or unlocks an area.
+//
+// Family fit (checked against Channel3's published references at github.com/channel3-ai/skills, commit db55b30, files
+// skills/channel3-api/references/api-reference.md, variants.md and skills/product-discovery/SKILL.md):
+// - GET /v1/categories/search?query=&limit= returns `categories[]` of `{ slug, title, path: [{ slug, title }] }`;
+// - GET /v1/categories/{slug} returns a Category with `attributes[]` of `{ slug, name, values: string[] }`. Values are
+//   empty when there is no enumerated set. Color is filtered by image palette, never by attribute.
+// - POST /v1/search with `filters.category_ids` (descendants included), `filters.attributes` (OR within a key, AND across
+//   keys) and `filters.price.max_price`;
+// - products carry `category` (with its root-to-self path) and `structured_attributes`.
+// Unknown slugs are silently dropped by Channel3, and a provider may ignore filters. Every item is therefore judged
+// here (src/core/family-fit.js), and no filter is relaxed or retried to fill a list. Only the family's own words, public
+// taxonomy values, a price ceiling and the locale are sent: never offers, members, dates, progress or the one-off amount.
 
 import { randomBytes } from 'node:crypto';
 import { DomainError } from '../household.mjs';
+import { MAX_MUST_HAVES, bySuitableOrder, evaluateFit } from '../../src/core/family-fit.js';
 
 export const CHANNEL3_SEARCH_URL = 'https://api.trychannel3.com/v1/search';
 const CHANNEL3_BASE = 'https://api.trychannel3.com/v1';
 export const MERCHANT_CURRENCY = 'USD'; // The household goal is kept in USD, so searches ask Channel3 for US/USD offers.
 export const MAX_RESULTS = 3;
+export const CATEGORY_RESULTS = 5; // kinds of item offered for one description
+export const FIT_INSPECT_LIMIT = 12; // products inspected from one search page in a family-fit search
+export const FIT_MAX_RESULTS = 3; // suitable items shown at most
+const MAX_ATTRIBUTES = 16; // must-have choices shown for one kind of item
+const MAX_ATTRIBUTE_VALUES = 40;
 export const QUERY_LIMITS = Object.freeze({ min: 2, max: 80 });
 export const BUDGET_LIMITS = Object.freeze({ minCents: 100, maxCents: 10_000_000 }); // Same bounds as a goal amount.
 const DEFAULTS = Object.freeze({
@@ -30,6 +48,8 @@ const DOMAIN = /^(?=.{1,253}$)[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](
 const PRODUCT_ID = /^[A-Za-z0-9_.:-]{1,128}$/;
 const CURRENCY_CODE = /^[A-Z]{3}$/;
 const AVAILABILITY = new Set(['InStock', 'OutOfStock']);
+const CATEGORY_SLUG = /^[A-Za-z0-9][A-Za-z0-9_.-]{0,99}$/;
+const ATTRIBUTE_KEY = /^[a-z0-9][a-z0-9_-]{0,63}$/;
 
 const fail = (status, code, message) => new DomainError(status, code, message);
 
@@ -55,6 +75,22 @@ export function validateSearch({ query, budgetCents } = {}) {
     budget = budgetCents;
   }
   return { query: text, budgetCents: budget };
+}
+
+/**
+ * The family-fit request body:
+ * - the family's words;
+ * - the chosen catalog category and must-have values, exactly as the catalog listed them;
+ * - the server-derived price ceiling;
+ * - the locale.
+ * It asks for one page of at most twelve products. Nothing about the family is sent.
+ */
+export function fitRequestBody({ query, need, ceilingCents }) {
+  const filters = {};
+  if (need.category) filters.category_ids = [need.category.slug];
+  if (need.mustHaves.length) filters.attributes = Object.fromEntries(need.mustHaves.map((m) => [m.key, [...m.accepted]]));
+  filters.price = { max_price: ceilingCents / 100 };
+  return { query, limit: FIT_INSPECT_LIMIT, filters, config: { country: 'US', currency: MERCHANT_CURRENCY, language: 'en' } };
 }
 
 /** The exact Channel3 request body: the family's words, an optional ceiling and the goal currency. Nothing else. */
@@ -145,13 +181,13 @@ function blockedSelection(variants) {
  * Turn a Channel3 search response into at most three display rows. Anything malformed is dropped rather than guessed;
  * a missing price stays missing. Throws `merchant_malformed` when the body is not a search response at all.
  */
-export function normalizeSearch(json, { budgetCents = null } = {}) {
+export function normalizeSearch(json, { budgetCents = null, max = MAX_RESULTS, withFacts = false } = {}) {
   if (!json || typeof json !== 'object' || !Array.isArray(json.products)) {
     throw fail(502, 'merchant_malformed', 'Channel3 sent a response this app could not read. Nothing was saved.');
   }
   const results = [];
   for (const product of json.products.slice(0, 30)) {
-    if (results.length >= MAX_RESULTS) break;
+    if (results.length >= max) break;
     if (!product || typeof product !== 'object') continue;
     const productId = typeof product.id === 'string' && PRODUCT_ID.test(product.id) ? product.id : null;
     const title = cleanText(product.title, 90);
@@ -178,10 +214,76 @@ export function normalizeSearch(json, { budgetCents = null } = {}) {
       overBudget: Boolean(budgetCents !== null && offer?.priceCents !== null && offer?.currency === MERCHANT_CURRENCY && offer.priceCents > budgetCents),
       usable: usable && !variantBlock,
       unusableReason: reason ?? variantBlock?.reason ?? null,
+      // The catalog's own category and structured facts, kept on this server to judge a family's must-haves.
+      ...(withFacts ? { catalog: readCatalogFacts(product) } : {}),
     });
   }
   return results;
 }
+
+// A category summary as the catalog sent it: a safe slug, a title and its root-to-self path. Anything else is dropped.
+function readCategory(raw) {
+  if (!raw || typeof raw !== 'object') return null;
+  const slug = typeof raw.slug === 'string' && CATEGORY_SLUG.test(raw.slug) ? raw.slug : null;
+  const title = cleanText(raw.title, 80);
+  if (!slug || !title) return null;
+  const path = (Array.isArray(raw.path) ? raw.path.slice(0, 8) : []).flatMap((p) => {
+    const ref = typeof p?.slug === 'string' && CATEGORY_SLUG.test(p.slug) ? p.slug : null, name = cleanText(p?.title, 80);
+    return ref && name ? [{ slug: ref, title: name }] : [];
+  });
+  return { slug, title, path };
+}
+
+// Structured facts for must-have checks: bounded plain values under safe keys, color excluded (the catalog's contract).
+function readCatalogFacts(product) {
+  const category = readCategory(product.category);
+  const attributes = {};
+  const raw = product.structured_attributes;
+  if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
+    for (const [key, values] of Object.entries(raw).slice(0, 40)) {
+      if (!ATTRIBUTE_KEY.test(key) || key === 'color' || !Array.isArray(values)) continue;
+      const clean = [...new Set(values.slice(0, 20).map((v) => cleanText(v, 60)).filter(Boolean))].slice(0, 10);
+      if (clean.length) attributes[key] = clean;
+      if (Object.keys(attributes).length >= 24) break;
+    }
+  }
+  return { category: category ? { slug: category.slug, title: category.title, path: category.path.map((p) => p.slug) } : null, attributes };
+}
+
+/** Category search results: at most five safe summaries in the catalog's order, each with its readable path. */
+export function normalizeCategories(json) {
+  if (!json || typeof json !== 'object' || !Array.isArray(json.categories)) {
+    throw fail(502, 'merchant_malformed', 'Channel3 sent a category list this app could not read. Nothing was saved.');
+  }
+  const categories = [];
+  for (const raw of json.categories.slice(0, 20)) {
+    if (categories.length >= CATEGORY_RESULTS) break;
+    const c = readCategory(raw);
+    if (c && !categories.some((x) => x.slug === c.slug)) categories.push(c);
+  }
+  return categories;
+}
+
+/**
+ * One category's must-have choices: its enumerated attributes other than color, each with the catalog's own allowed
+ * values. An attribute without listed values cannot be chosen between and is left out.
+ */
+export function normalizeCategory(json, slug) {
+  const summary = readCategory(json);
+  if (!summary || summary.slug !== slug) throw fail(502, 'merchant_malformed', 'Channel3 returned a different category. Nothing was changed.');
+  const attributes = [];
+  for (const a of (Array.isArray(json.attributes) ? json.attributes.slice(0, 60) : [])) {
+    if (attributes.length >= MAX_ATTRIBUTES) break;
+    const key = typeof a?.slug === 'string' && ATTRIBUTE_KEY.test(a.slug) ? a.slug : null;
+    const name = cleanText(a?.name, 60);
+    if (!key || !name || key === 'color' || attributes.some((x) => x.key === key)) continue;
+    const values = [...new Set((Array.isArray(a.values) ? a.values.slice(0, 200) : []).map((v) => cleanText(v, 60)).filter(Boolean))].slice(0, MAX_ATTRIBUTE_VALUES);
+    if (values.length) attributes.push({ key, name, values });
+  }
+  return { slug, title: summary.title, path: summary.path, attributes };
+}
+
+const publicCategory = (c) => ({ slug: c.slug, title: c.title, path: c.path.map((p) => p.title) });
 
 // Persist only the selected labels, never provider HTML or an arbitrary lookup URL. A changed/relaxed variant cannot
 // silently stand in for the one the family selected. Older saved items have no selection and require fresh review.
@@ -206,7 +308,7 @@ export function normalizeProduct(json, reference) {
     const offer = readOffer(o);
     return offer?.merchant === reference.merchant && (!reference.condition || offer.condition === reference.condition);
   }) : [];
-  const row = normalizeSearch({ products: [{ ...json, offers }] })[0];
+  const row = normalizeSearch({ products: [{ ...json, offers }] }, { withFacts: true })[0];
   if (!row) throw fail(502, 'merchant_malformed', 'Channel3 sent an item this app could not read.');
   const wanted = readSelection(reference.selection);
   const changed = wanted.some((v) => !row.selection.some((r) => r.name === v.name && r.label === v.label));
@@ -259,6 +361,17 @@ export function createChannel3Client({ apiKey, fetch = globalThis.fetch, timeout
   }
   return {
     search: (input) => request(CHANNEL3_SEARCH_URL, searchRequestBody(input)),
+    fitSearch: (body) => request(CHANNEL3_SEARCH_URL, body),
+    categories: (query) => {
+      const url = new URL(`${CHANNEL3_BASE}/categories/search`);
+      url.searchParams.set('query', query);
+      url.searchParams.set('limit', String(CATEGORY_RESULTS));
+      return request(url.href);
+    },
+    category: (slug) => {
+      if (!CATEGORY_SLUG.test(slug)) throw fail(400, 'invalid_category', 'Choose one of the kinds of item shown.');
+      return request(`${CHANNEL3_BASE}/categories/${encodeURIComponent(slug)}`);
+    },
     similar: (productId, budgetCents) => request(`${CHANNEL3_BASE}/similar`, {
       product_id: productId, limit: MAX_RESULTS,
       filters: { price: { max_price: budgetCents / 100 } },
@@ -286,6 +399,8 @@ export function createMerchant({ apiKey = null, fetch, clock, ...options } = {})
   const inflight = new Map(); // key -> Promise
   const drafts = new Map(); // draftId -> { expiresAt, item, offerKey, facts }
   const observations = new Map(); // offerKey -> { version, facts, at }; bounded catalog knowledge, not search history
+  const shownCategories = new Map(); // slug -> at: kinds of item this server was given by the catalog (public taxonomy)
+  const categoryDetails = new Map(); // slug -> { at, detail }: their must-have lists, the only ones a fit search accepts
   let readVersion = 0; // Start order, so an older slow response cannot revive an offer a newer lookup contradicted.
   let recent = []; // timestamps of provider calls in the last minute
 
@@ -303,6 +418,10 @@ export function createMerchant({ apiKey = null, fetch, clock, ...options } = {})
     while (cache.size > opts.maxCacheEntries) cache.delete(cache.keys().next().value);
     while (drafts.size > opts.maxDrafts) drafts.delete(drafts.keys().next().value);
     while (observations.size > opts.maxDrafts * 2) observations.delete(observations.keys().next().value);
+    for (const [slug, seen] of shownCategories) if (at - seen > opts.draftTtlMs) shownCategories.delete(slug);
+    for (const [slug, entry] of categoryDetails) if (at - entry.at > opts.draftTtlMs) categoryDetails.delete(slug);
+    while (shownCategories.size > opts.maxDrafts) shownCategories.delete(shownCategories.keys().next().value);
+    while (categoryDetails.size > opts.maxCacheEntries) categoryDetails.delete(categoryDetails.keys().next().value);
     recent = recent.filter((t) => at - t < 60_000);
   }
 
@@ -328,7 +447,8 @@ export function createMerchant({ apiKey = null, fetch, clock, ...options } = {})
     const referenceId = `c3d_${randomBytes(12).toString('hex')}`;
     drafts.set(referenceId, { expiresAt: now() + opts.draftTtlMs, item: { ...row, checkedAt, query }, offerKey: offerKey(row), facts: offerFacts(row) });
     prune(now());
-    return { ...row, draftId: row.usable ? referenceId : null, referenceId, checkedAt };
+    const { catalog, ...shown } = row; // the catalog's raw facts stay here; a family-fit result shows its judgement instead
+    return { ...shown, draftId: row.usable ? referenceId : null, referenceId, checkedAt };
   }
 
   async function bounded(key, run) {
@@ -343,7 +463,8 @@ export function createMerchant({ apiKey = null, fetch, clock, ...options } = {})
   }
 
   async function refresh(reference) {
-    const key = `product:${reference.productId}:${reference.merchant}:${reference.condition}:${JSON.stringify(readSelection(reference.selection))}`;
+    const judged = reference.fit ? `:${JSON.stringify([reference.fit.needSpec, reference.fit.context?.ceilingCents])}` : '';
+    const key = `product:${reference.productId}:${reference.merchant}:${reference.condition}:${JSON.stringify(readSelection(reference.selection))}${judged}`;
     const result = await bounded(key, async () => {
       const version = ++readVersion;
       let json;
@@ -355,6 +476,9 @@ export function createMerchant({ apiKey = null, fetch, clock, ...options } = {})
       const row = normalizeProduct(json, reference);
       observe(reference, row, version);
       if (!row.selectionChanged && row.merchant && offerKey(row) !== offerKey(reference)) observe(row, row, version);
+      // A family-fit result is judged again against the same need and ceiling. If it no longer meets a must-have, it says
+      // so; it never keeps an earlier "suitable".
+      if (reference.fit) row.fit = { ...evaluateFit(row, reference.fit.needSpec, { ceilingCents: reference.fit.context.ceilingCents }), needSpec: reference.fit.needSpec, context: reference.fit.context };
       const checkedAt = new Date(now()).toISOString();
       return { status: 'ok', provider: 'Channel3', checkedAt, results: [remember(row, checkedAt, reference.query)] };
     });
@@ -371,7 +495,7 @@ export function createMerchant({ apiKey = null, fetch, clock, ...options } = {})
       const version = ++readVersion;
       const json = await client.similar(reference.productId, ceiling);
       // Provider filters are not a guarantee: enforce the budget, stock, currency and source exclusion locally too.
-      const rows = normalizeSearch(json, { budgetCents: ceiling }).filter((r) => r.productId !== reference.productId && r.usable && r.availability === 'InStock' && r.priceCents <= ceiling);
+      const rows = normalizeSearch(json, { budgetCents: ceiling, withFacts: true }).filter((r) => r.productId !== reference.productId && r.usable && r.availability === 'InStock' && r.priceCents <= ceiling);
       for (const row of rows) observe(row, row, version);
       const checkedAt = new Date(now()).toISOString();
       return { status: 'ok', provider: 'Channel3', budgetCents: ceiling, checkedAt, results: rows.map((r) => remember(r, checkedAt, reference.query)) };
@@ -392,7 +516,7 @@ export function createMerchant({ apiKey = null, fetch, clock, ...options } = {})
     const pending = (async () => {
       const version = ++readVersion;
       const json = await client.search(request);
-      const rows = normalizeSearch(json, { budgetCents: request.budgetCents });
+      const rows = normalizeSearch(json, { budgetCents: request.budgetCents, withFacts: true });
       for (const row of rows) observe(row, row, version);
       at = now();
       const checkedAt = new Date(at).toISOString();
@@ -406,6 +530,91 @@ export function createMerchant({ apiKey = null, fetch, clock, ...options } = {})
     try { return await pending; } finally { inflight.delete(key); }
   }
 
+  /** Kinds of item for the family's own words: up to five catalog categories, as explicit choices. */
+  async function findCategories(input = {}) {
+    const { query } = validateSearch({ query: input.query });
+    if (!client) throw fail(503, 'merchant_not_connected', 'Product search is not connected, so no catalog categories can be looked up.');
+    return bounded(`categories:${query.toLowerCase()}`, async () => {
+      const categories = normalizeCategories(await client.categories(query));
+      const at = now();
+      for (const c of categories) { shownCategories.delete(c.slug); shownCategories.set(c.slug, at); }
+      prune(at);
+      return { status: 'ok', provider: 'Channel3', query, categories: categories.map(publicCategory) };
+    });
+  }
+
+  /** One shown category's must-have choices. Only a category the catalog listed here can be opened. */
+  async function category(slug) {
+    if (typeof slug !== 'string' || !shownCategories.has(slug)) throw fail(409, 'category_unknown', 'Look up the kind of item again, then choose one of the categories shown.');
+    prune(now());
+    const cached = categoryDetails.get(slug);
+    if (cached) return { status: 'ok', provider: 'Channel3', category: publicDetail(cached.detail), cached: true };
+    return bounded(`category:${slug}`, async () => {
+      const detail = normalizeCategory(await client.category(slug), slug);
+      categoryDetails.delete(slug);
+      categoryDetails.set(slug, { at: now(), detail });
+      prune(now());
+      return { status: 'ok', provider: 'Channel3', category: publicDetail(detail) };
+    });
+  }
+  const publicDetail = (d) => ({ slug: d.slug, title: d.title, path: d.path.map((p) => p.title), attributes: d.attributes.map((a) => ({ ...a, values: [...a.values] })) });
+
+  /**
+   * The family's need, built only from a category this server opened and its listed values:
+   * { category: { slug, title, path } | null, mustHaves: [{ key, name, accepted, allowed }] }. A key or value the
+   * catalog did not list is refused, never guessed. With no category, only the price and date are checked.
+   */
+  function buildNeed({ category: slug = null, mustHaves = [] } = {}) {
+    if (!Array.isArray(mustHaves) || mustHaves.length > MAX_MUST_HAVES) throw fail(400, 'invalid_need', `Choose up to ${MAX_MUST_HAVES} must-haves.`);
+    if (slug === null || slug === '') {
+      if (mustHaves.length) throw fail(400, 'invalid_need', 'Choose a kind of item before its must-haves.');
+      return { category: null, mustHaves: [] };
+    }
+    prune(now());
+    const entry = typeof slug === 'string' ? categoryDetails.get(slug) : null;
+    if (!entry) throw fail(409, 'category_needs_check', 'Show the must-haves for this kind of item again before searching.');
+    const used = new Set();
+    const list = mustHaves.map((m) => {
+      const attribute = entry.detail.attributes.find((a) => a.key === m?.key);
+      if (!attribute || used.has(attribute.key)) throw fail(400, 'invalid_need', 'Choose must-haves from the list the catalog gives for this kind of item.');
+      used.add(attribute.key);
+      const values = Array.isArray(m.values) ? m.values : [];
+      if (!values.length || values.length > attribute.values.length || values.some((v) => typeof v !== 'string' || !attribute.values.includes(v)) || new Set(values).size !== values.length) {
+        throw fail(400, 'invalid_need', `Choose one or more of the listed values for ${attribute.name}.`);
+      }
+      return { key: attribute.key, name: attribute.name, accepted: attribute.values.filter((v) => values.includes(v)), allowed: [...attribute.values] };
+    });
+    return { category: { slug, title: entry.detail.title, path: entry.detail.path.map((p) => p.title) }, mustHaves: list };
+  }
+
+  /**
+   * A family-fit search: one page of at most twelve products. Each is judged here, whatever the provider filtered.
+   * Only suitable items become results, at most three, lowest price first. Unsuitable and unknown items are counted with
+   * one reason each, never filled in.
+   * @param context { ceilingCents, targetDate, reserveCents, on }: the family facts this ceiling came from (kept with drafts)
+   */
+  async function fitSearch({ query, need, ceilingCents, context }) {
+    const request = validateSearch({ query, budgetCents: ceilingCents });
+    if (!client) throw fail(503, 'merchant_not_connected', 'Product search is not connected, so no search was made.');
+    const body = fitRequestBody({ query: request.query, need, ceilingCents });
+    return bounded(`fit:${JSON.stringify(body)}`, async () => {
+      const version = ++readVersion;
+      const rows = normalizeSearch(await client.fitSearch(body), { budgetCents: ceilingCents, max: FIT_INSPECT_LIMIT, withFacts: true });
+      for (const row of rows) observe(row, row, version);
+      const checkedAt = new Date(now()).toISOString();
+      const judged = rows.map((row) => ({ row, fit: evaluateFit(row, need, { ceilingCents }) }));
+      const suitable = judged.filter((j) => j.fit.status === 'suitable').sort((a, b) => bySuitableOrder(a.row, b.row));
+      const shown = suitable.slice(0, FIT_MAX_RESULTS);
+      return {
+        status: 'ok', provider: 'Channel3', checkedAt, query: request.query, inspected: rows.length, moreSuitable: suitable.length - shown.length, need,
+        results: shown.map(({ row, fit }) => remember({ ...row, fit: { ...fit, needSpec: need, context } }, checkedAt, request.query)),
+        others: judged.filter((j) => j.fit.status !== 'suitable').map(({ row, fit }) => ({
+          productId: row.productId, title: row.title, priceCents: row.priceCents, currency: row.currency, status: fit.status, reason: fit.problems[0],
+        })),
+      };
+    });
+  }
+
   /** The stored result for a draft the server showed, or a clear error once it has expired. Does not consume it. */
   function draft(draftId) {
     prune(now());
@@ -414,5 +623,5 @@ export function createMerchant({ apiKey = null, fetch, clock, ...options } = {})
     return entry.item;
   }
 
-  return { connected, status, search, draft, refresh, alternatives };
+  return { connected, status, search, draft, refresh, alternatives, findCategories, category, buildNeed, fitSearch };
 }

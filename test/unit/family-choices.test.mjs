@@ -276,12 +276,12 @@ test('a schema-8 database gains only the three planning tables, with every earli
     assert.equal(old.prepare('PRAGMA user_version').get().user_version, 8);
     old.close();
     const db = openDatabase(file);
-    assert.equal(db.prepare('PRAGMA user_version').get().user_version, 9);
+    assert.equal(db.prepare('PRAGMA user_version').get().user_version, MIGRATIONS.length); // later steps add no table
     assert.deepEqual(tables(db).filter((t) => !beforeTables.includes(t)), ['family_choices', 'family_offers', 'family_preferences']);
     assert.deepEqual(rows(db, beforeTables), before, 'every earlier table and row identical');
     db.close();
     const again = openDatabase(file); // opening again changes nothing
-    assert.equal(again.prepare('PRAGMA user_version').get().user_version, 9);
+    assert.equal(again.prepare('PRAGMA user_version').get().user_version, MIGRATIONS.length);
     assert.deepEqual(rows(again, beforeTables), before);
     again.close();
   } finally { rmSync(dir, { recursive: true, force: true }); }

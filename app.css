@@ -526,6 +526,31 @@ button { font: inherit; }
 .family-my-offer .field, .family-trial-row .field { margin-bottom:6px; max-width:16em; }
 .family-trial-row { display:flex; flex-wrap:wrap; align-items:flex-end; gap:0 12px; }
 .merchant-shortlist { min-height:44px; }
+/* Family fit: the planning limit line, the optional kind of item and must-haves, and why each option fits. */
+.family-fit { margin:12px 0 0; font-size:14px; }
+.family-fit .link-button { min-height:44px; }
+.family-need { margin:2px 0 0; font-size:13px; color:var(--ink-muted); overflow-wrap:anywhere; }
+.family-need[data-status='misses'] { color:var(--warn); font-weight:500; }
+.plan-chosen-for { margin:0 0 8px; overflow-wrap:anywhere; }
+.merchant-fit-limit { margin:0 4px 10px; padding:8px 10px; border:1px dashed var(--brass-dark); background:var(--paper-3); font-size:14px; line-height:1.4; }
+.merchant-need { margin:10px 4px 0; display:grid; gap:8px; }
+.merchant-need-kind { display:flex; flex-wrap:wrap; align-items:end; gap:4px 12px; }
+.merchant-need-kind .link-button { min-height:44px; }
+.merchant-need-kind .merchant-field { flex:1 1 220px; min-width:0; }
+.merchant-field select { width:100%; min-height:44px; padding:8px 10px; border:1px solid var(--ink-line); border-radius:2px; background:var(--paper-3); color:var(--ink); font:inherit; font-weight:400; }
+.merchant-must-haves { display:grid; gap:8px; }
+.merchant-must-have { display:grid; gap:4px; }
+.merchant-values { margin:0; padding:2px 8px 4px; border:1px solid var(--ink-line); display:flex; flex-wrap:wrap; gap:0 14px; min-width:0; }
+.merchant-values legend { font-size:14px; padding:0 4px; }
+.merchant-value { display:inline-flex; align-items:center; gap:6px; min-height:44px; font-size:15px; cursor:pointer; }
+.merchant-value input { width:20px; height:20px; margin:0; accent-color:var(--brass-dark); color-scheme:light; }
+.merchant-fit-why { list-style:none; margin:4px 0 0; padding:0; font-size:14px; overflow-wrap:anywhere; }
+.merchant-fit-why[data-status='suitable'] li::before { content:'✓ '; color:var(--ok); font-weight:700; }
+.merchant-fit-why[data-status='not_suitable'] li:last-child, .merchant-fit-why[data-status='unknown'] li:last-child { color:var(--warn); font-weight:500; }
+.merchant-fit-others-row { list-style:none; }
+.merchant-fit-others { font-size:14px; color:var(--ink-muted); }
+.merchant-fit-others summary { min-height:44px; display:inline-flex; align-items:center; cursor:pointer; color:var(--ink); text-decoration:underline; text-underline-offset:3px; }
+.merchant-fit-others ul { margin:0; padding-left:18px; overflow-wrap:anywhere; }
 .goal-draft .actions { margin-top:6px; }
 .goal-draft-schedule { margin:0 0 8px; }
 .goal-draft-schedule-title { margin:0; font-size:15px; }

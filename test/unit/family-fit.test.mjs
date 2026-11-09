@@ -1,8 +1,17 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import http from 'node:http';
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { DatabaseSync } from 'node:sqlite';
+import { createApp } from '../../server/app.mjs';
+import { loadConfig } from '../../server/config.mjs';
+import { MIGRATIONS, openDatabase } from '../../server/db.mjs';
 import { createMerchant } from '../../server/merchant/channel3.mjs';
-import { createFakeChannel3, fakeProduct, fakeSearchResponse } from '../helpers/fake-channel3.mjs';
-import { familyWith, mutableClock, startServer } from '../helpers/family-http.mjs';
+import { fitCatalog, fitProduct } from '../helpers/fit-catalog.mjs';
+import { browser, familyWith, mutableClock, startServer } from '../helpers/family-http.mjs';
 
 // Finding a purchase that fits the family, over real HTTP in family mode. The merchant is the real Channel3 code over a
 // FAKE transport. Its taxonomy, attribute handles, values and products are invented test fixtures, labelled as such:
@@ -10,44 +19,17 @@ import { familyWith, mutableClock, startServer } from '../helpers/family-http.mj
 // - local day Nov 8, 2026, goal date Dec 20 (week 6), $60.00 recorded, a household weekly amount of $30.00;
 // - Rowan offers $20.00 a week and Ash $10.00; a one-off $90.00 is tried, so the planning price ceiling is $150.00.
 // Expected cents and dates are written out here, not computed by the code under test.
-const CATEGORY = { slug: 'fixture-tents', title: 'Tents (test fixture)', path: [{ slug: 'fixture-outdoor', title: 'Outdoor (test fixture)' }, { slug: 'fixture-tents', title: 'Tents (test fixture)' }], has_children: false };
-const DETAIL = { ...CATEGORY, description: 'Invented for tests.', children: [], attributes: [
-  { slug: 'color', name: 'Color', values: ['Green', 'Orange'] },
-  { slug: 'fixture-capacity', name: 'Sleeps (test fixture)', values: ['1 person', '2 person', '4 person', '6 person'] },
-  { slug: 'fixture-season', name: 'Season rating (test fixture)', values: ['3-season', '4-season'] },
-  { slug: 'fixture-weight', name: 'Packed weight (test fixture)', values: [] },
-] };
-const tent = (id, title, price, attrs, { currency = 'USD', availability = 'InStock', category = CATEGORY } = {}) => fakeProduct({ id, title,
-  category, structured_attributes: attrs, images: [],
-  offers: [{ url: `https://buy.trychannel3.com/fake/${id}`, domain: 'example-outfitter.com', price: { price, currency }, availability, condition: 'new' }] });
-const TARP_CATEGORY = { slug: 'fixture-tarps', title: 'Tarps (test fixture)', path: [{ slug: 'fixture-outdoor', title: 'Outdoor (test fixture)' }, { slug: 'fixture-tarps', title: 'Tarps (test fixture)' }], has_children: false };
-// The catalog ignores every filter, as a provider may: the server must still check each item itself.
-const PRODUCTS = [
-  tent('fixtureTent2p', 'Test fixture: Two-person tent', 90, { 'fixture-capacity': ['2 person'], color: ['Green'] }),
-  tent('fixtureTent4pA', 'Test fixture: Four-person tent A', 120, { 'fixture-capacity': ['4 person'] }),
-  tent('fixtureTentNoFact', 'Test fixture: Tent with no capacity fact', 130, {}),
-  tent('fixtureTent4pB', 'Test fixture: Four-person tent B', 150, { 'fixture-capacity': ['4 person'] }),
-  tent('fixtureTentEur', 'Test fixture: Four-person tent priced in euros', 110, { 'fixture-capacity': ['4 person'] }, { currency: 'EUR' }),
-  tent('fixtureTentOut', 'Test fixture: Six-person tent, out of stock', 140, { 'fixture-capacity': ['6 person'] }, { availability: 'OutOfStock' }),
-  tent('fixtureTent6p', 'Test fixture: Six-person tent', 180, { 'fixture-capacity': ['6 person'] }),
-  tent('fixtureTarp', 'Test fixture: Four-person tarp shelter', 60, { 'fixture-capacity': ['4 person'] }, { category: TARP_CATEGORY }),
-];
-function catalog() {
-  return createFakeChannel3((url) => {
-    if (url.includes('/v1/categories/search')) return { categories: [CATEGORY, TARP_CATEGORY] };
-    if (url.endsWith('/v1/categories/fixture-tents')) return DETAIL;
-    return fakeSearchResponse(PRODUCTS);
-  });
-}
+const root = fileURLToPath(new URL('../../', import.meta.url));
 const MONEY_TABLES = ['payment_orders', 'payment_captures', 'payment_refunds', 'deferred_refunds', 'order_checks', 'ledger_entries', 'webhook_events'];
 const records = (db) => JSON.stringify([MONEY_TABLES.map((t) => db.prepare(`SELECT * FROM ${t} ORDER BY rowid`).all()), db.prepare('SELECT * FROM goals').all(),
   db.prepare('SELECT * FROM goal_items').all(), db.prepare('SELECT * FROM plans').all(), db.prepare('SELECT * FROM achievements').all(),
   db.prepare('SELECT * FROM family_offers ORDER BY rowid').all(), db.prepare('SELECT * FROM family_choices ORDER BY rowid').all()]);
+const CAPACITY = [{ key: 'fixture-capacity', values: ['4 person', '6 person'] }];
+const titles = (rows) => rows.map((r) => r.title);
 
-async function family() {
-  const fake = catalog();
+async function family({ catalog = fitCatalog() } = {}) {
   const clock = mutableClock('2026-11-08T12:00:00');
-  const s = await startServer({ clock, merchant: createMerchant({ apiKey: 'test-key-not-real', fetch: fake.fetch, clock }) });
+  const s = await startServer({ clock, merchant: createMerchant({ apiKey: 'test-key-not-real', fetch: catalog.fetch, clock }) });
   const people = await familyWith(s, [['Ash', 'adult'], ['Wren', 'child']]);
   const { owner } = people;
   const state = async (b = owner) => (await b.call('GET', '/api/state')).json;
@@ -55,7 +37,14 @@ async function family() {
   assert.equal(goal.status, 200, JSON.stringify(goal.json));
   assert.equal((await owner.call('PUT', '/api/family-choices/offer', { weeklyCents: 2000 })).status, 200);
   assert.equal((await people.Ash.call('PUT', '/api/family-choices/offer', { weeklyCents: 1000 })).status, 200);
-  return { s, fake, clock, ...people, state };
+  // Kinds of item and their must-haves: explicit look-ups the later searches rely on.
+  const ready = async (b = owner) => {
+    assert.equal((await b.call('POST', '/api/merchant/categories', { query: 'tent' })).status, 200);
+    assert.equal((await b.call('POST', '/api/merchant/category', { slug: 'fixture-tents' })).status, 200);
+  };
+  const fit = async (body = {}, b = owner) => b.call('POST', '/api/family-choices/fit', { query: 'tent', category: 'fixture-tents', mustHaves: CAPACITY, reserveCents: 9000,
+    revision: (await state(b)).familyChoices.revision, ...body });
+  return { s, fake: catalog, catalog, clock, ...people, state, ready, fit };
 }
 
 test('a family-fit search recommends only suitable items that fit the family’s date (a feature gap before this branch)', async () => {
@@ -103,5 +92,268 @@ test('a family-fit search recommends only suitable items that fit the family’s
     assert.equal(records(s.db), before, 'looking up categories and searching wrote nothing');
   } finally {
     await s.close();
+  }
+});
+
+test('every other item gets one honest reason; a $120.00 one-off or a lower typed limit lowers the ceiling, and nothing is loosened', async () => {
+  const f = await family();
+  const { s, owner, fake } = f;
+  try {
+    await f.ready();
+    const first = (await f.fit()).json;
+    // Known mismatches first, then what is unknown; the catalog's own facts only, never a title word.
+    assert.deepEqual(first.others.map((o) => [o.title, o.status, o.reason.code]), [
+      ['Test fixture: Two-person tent', 'not_suitable', 'must_have'],
+      ['Test fixture: Tent with no capacity fact', 'unknown', 'must_have_missing'],
+      ['Test fixture: Four-person tent priced in euros', 'not_suitable', 'currency'],
+      ['Test fixture: Six-person tent, out of stock', 'not_suitable', 'out_of_stock'],
+      ['Test fixture: Six-person tent', 'not_suitable', 'over_ceiling'],
+      ['Test fixture: Four-person tarp shelter', 'not_suitable', 'category']]);
+    assert.deepEqual([first.inspected, first.moreSuitable], [8, 0]);
+    const why = first.results[0].fit;
+    assert.deepEqual([why.check.status, why.check.category.status, why.check.mustHaves.map((m) => [m.name, m.found, m.status])], ['meets', 'match', [['Sleeps (test fixture)', ['4 person'], 'match']]]);
+    assert.equal('catalog' in first.results[0], false, 'the catalog’s raw facts stay on the server');
+
+    // R = $120.00: the ceiling is $60.00 + 2 × $30.00 = $120.00. Only the $120.00 tent fits, still finishing Dec 20.
+    const lower = await f.fit({ reserveCents: 12000 });
+    assert.equal(lower.status, 200, JSON.stringify(lower.json));
+    assert.deepEqual([lower.json.ceiling.ceilingCents, lower.json.ceiling.addableCents], [12000, 6000]);
+    assert.deepEqual(lower.json.results.map((r) => [r.title, r.priceCents, r.finishDate]), [['Test fixture: Four-person tent A', 12000, '2026-12-20']]);
+    // Over the lower limit comes first among known mismatches, so it is the reason given even where a fact is also missing.
+    assert.deepEqual(lower.json.others.map((o) => [o.title, o.reason.code]).filter(([, code]) => code === 'over_ceiling').map(([t]) => t),
+      ['Test fixture: Tent with no capacity fact', 'Test fixture: Four-person tent B', 'Test fixture: Six-person tent, out of stock', 'Test fixture: Six-person tent']);
+    assert.equal(titles(lower.json.results).includes('Test fixture: Two-person tent'), false, 'the cheap two-person tent never fills the gap');
+    assert.equal(fake.calls.at(-1).body.filters.price.max_price, 120);
+    f.clock.advance(61_000); // the existing limit allows six catalog calls a minute
+    // A lower price limit the adult typed applies too.
+    const typed = await f.fit({ budgetCents: 13000 });
+    assert.deepEqual([typed.json.ceiling.ceilingCents, typed.json.ceiling.familyCeilingCents, typed.json.ceiling.limitedBy, titles(typed.json.results)],
+      [13000, 15000, 'budget', ['Test fixture: Four-person tent A']]);
+    // Without a kind of item, only price, currency and stock are checked: no must-have is claimed.
+    const plain = await f.fit({ category: null, mustHaves: [] });
+    assert.deepEqual(plain.json.results.map((r) => [r.title, r.fit.check.category.status, r.fit.check.mustHaves.length]),
+      [['Test fixture: Four-person tarp shelter', 'not_chosen', 0], ['Test fixture: Two-person tent', 'not_chosen', 0], ['Test fixture: Four-person tent A', 'not_chosen', 0]]);
+    assert.deepEqual([plain.json.moreSuitable, fake.calls.at(-1).body.filters], [2, { price: { max_price: 150 } }]);
+    // A kind of item with no checkable must-haves is said plainly.
+    assert.deepEqual((await owner.call('POST', '/api/merchant/category', { slug: 'fixture-tarps' })).json.category.attributes, []);
+  } finally {
+    await s.close();
+  }
+});
+
+test('the chosen item keeps why it was chosen through the family choice, review, schedule proposal and use; reload and a second member see it', async () => {
+  const f = await family();
+  const { s, owner, Ash: ash, Wren: wren } = f;
+  try {
+    await f.ready();
+    const found = (await f.fit()).json;
+    const offersBefore = JSON.stringify(s.db.prepare('SELECT member_id, weekly_cents FROM family_offers ORDER BY rowid').all());
+    // The page sends only the draft reference: the need and evidence are the server's own copy of the judged result.
+    const added = await owner.call('POST', '/api/family-choices', { draftId: found.results[0].draftId, expectedGoalId: found.goalId, fit: { status: 'suitable', forged: true } });
+    assert.equal(added.status, 200, JSON.stringify(added.json));
+    const choice = added.json.state.familyChoices.choices[0];
+    assert.deepEqual(choice.need, {
+      category: { slug: 'fixture-tents', title: 'Tents (test fixture)', path: ['Outdoor (test fixture)', 'Tents (test fixture)'] },
+      mustHaves: [{ key: 'fixture-capacity', name: 'Sleeps (test fixture)', accepted: ['4 person', '6 person'], allowed: ['1 person', '2 person', '4 person', '6 person'] }],
+      check: { status: 'meets', category: 'match', mustHaves: [{ key: 'fixture-capacity', found: ['4 person'], status: 'match' }], checkedAt: choice.checkedAt },
+      search: { ceilingCents: 15000, targetDate: '2026-12-20', reserveCents: 9000, on: '2026-11-08' },
+    });
+    // Every member reads the same reason, child included.
+    for (const b of [ash, wren]) assert.deepEqual((await f.state(b)).familyChoices.choices[0].need, choice.need);
+    // Review it with the same one-off amount, then save the goal with the reviewed schedule, then use it.
+    const st = await f.state();
+    const review = await owner.call('POST', '/api/family-choices/review', { choiceId: choice.id, revision: st.familyChoices.revision, reserveCents: 9000 });
+    assert.equal(review.status, 200, JSON.stringify(review.json));
+    assert.deepEqual([review.json.need, 'catalog' in review.json.item, 'fit' in review.json.item], [choice.need, false, false]);
+    const saved = await owner.call('POST', '/api/merchant/goal', { draftId: review.json.item.draftId, goalId: st.goal.id, expectedGoalRevision: st.merchantGoalRevision,
+      goal: { name: 'Four-person tent', targetCents: 12000, startingCents: 6000, weeklyBudgetCents: 3000, targetDate: '2026-12-20' },
+      familyChoice: { choiceId: choice.id, revision: review.json.revision }, schedule: { reserveCents: 9000, revision: review.json.schedule.revision } });
+    assert.equal(saved.status, 200, JSON.stringify(saved.json));
+    assert.deepEqual(saved.json.plan.family.choice.need, choice.need);
+    assert.deepEqual(saved.json.plan.contributions.map((c) => [c.date, c.amountCents]), [['2026-11-15', 0], ['2026-11-22', 0], ['2026-11-29', 0], ['2026-12-06', 3000], ['2026-12-13', 3000], ['2026-12-20', 0]]);
+    const used = await owner.call('POST', `/api/plans/${saved.json.plan.id}/accept`, {});
+    assert.deepEqual([used.status, used.json.state.nextStep.date, used.json.state.nextStep.plannedCents], [200, '2026-12-06', 3000]);
+    for (const b of [owner, ash]) {
+      const seen = await f.state(b); // a reload and the other adult
+      assert.deepEqual([seen.acceptedPlanId, seen.plan.family.choice.need], [saved.json.plan.id, choice.need]);
+    }
+    assert.equal(JSON.stringify(s.db.prepare('SELECT member_id, weekly_cents FROM family_offers ORDER BY rowid').all()), offersBefore, 'no member’s offer changed');
+  } finally {
+    await s.close();
+  }
+});
+
+test('an explicit check that finds a must-have no longer met says so, and a proposal resting on it is refused', async () => {
+  const catalog = fitCatalog();
+  const f = await family({ catalog });
+  const { s, owner } = f;
+  try {
+    await f.ready();
+    const found = (await f.fit()).json;
+    // In Market Town, checking a fit result again judges it again: no old "suitable" label is kept.
+    catalog.lookup.set('fixtureTent4pA', fitProduct('fixtureTent4pA', 'Test fixture: Four-person tent A', 120, { 'fixture-capacity': ['2 person'] }));
+    const again = await owner.call('POST', '/api/merchant/refresh', { referenceId: found.results[0].referenceId, goalId: found.goalId });
+    assert.equal(again.status, 200, JSON.stringify(again.json));
+    assert.deepEqual([again.json.results[0].fit.status, again.json.results[0].fit.problems[0].code, again.json.results[0].fit.check.mustHaves[0].found], ['not_suitable', 'must_have', ['2 person']]);
+    catalog.lookup.clear();
+    // A family choice from the first result, a schedule proposed for the current goal, then the item's facts change.
+    const added = await owner.call('POST', '/api/family-choices', { draftId: found.results[1].draftId, expectedGoalId: found.goalId });
+    const choice = added.json.state.familyChoices.choices[0];
+    assert.equal(choice.need.check.status, 'meets');
+    const st = await f.state();
+    const review = await owner.call('POST', '/api/family-choices/review', { choiceId: choice.id, revision: st.familyChoices.revision, reserveCents: 9000 });
+    const saved = await owner.call('POST', '/api/merchant/goal', { draftId: review.json.item.draftId, goalId: st.goal.id, expectedGoalRevision: st.merchantGoalRevision,
+      goal: { name: 'Four-person tent B', targetCents: 15000, startingCents: 6000, weeklyBudgetCents: 3000, targetDate: '2026-12-20' },
+      familyChoice: { choiceId: choice.id, revision: review.json.revision }, schedule: { reserveCents: 9000, revision: review.json.schedule.revision } });
+    assert.equal(saved.status, 200, JSON.stringify(saved.json));
+    catalog.lookup.set('fixtureTent4pB', fitProduct('fixtureTent4pB', 'Test fixture: Four-person tent B', 150, { 'fixture-capacity': ['2 person'] }));
+    const checked = await owner.call('POST', '/api/family-choices/refresh', { choiceId: choice.id });
+    assert.deepEqual([checked.status, checked.json.usable, checked.json.needStatus], [200, true, 'misses']);
+    const now = checked.json.state.familyChoices.choices[0].need;
+    assert.deepEqual([now.check.status, now.check.mustHaves], ['misses', [{ key: 'fixture-capacity', found: ['2 person'], status: 'mismatch' }]]);
+    assert.deepEqual(now.search, choice.need.search, 'the original search stays as dated context');
+    const stale = await owner.call('POST', `/api/plans/${saved.json.plan.id}/accept`, {});
+    assert.deepEqual([stale.status, stale.json.error.code, stale.json.error.issues.map((i) => i.code)], [409, 'plan_stale', ['need_changed']]);
+    assert.equal((await f.state()).acceptedPlanId, null);
+  } finally {
+    await s.close();
+  }
+});
+
+test('only adults search, from catalog-listed kinds and values; children, other families, stale figures and bad input are refused before any provider call', async () => {
+  const f = await family();
+  const other = await familyWith(f.s);
+  const { s, owner, Ash: ash, Wren: wren, fake } = f;
+  try {
+    await f.ready();
+    const st = await f.state();
+    const before = records(s.db), calls = fake.calls.length;
+    const ownerId = st.access.me.memberId;
+    const base = { query: 'tent', category: 'fixture-tents', mustHaves: CAPACITY, reserveCents: 9000, revision: st.familyChoices.revision };
+    for (const [b, url, body, status, code] of [
+      [wren, '/api/family-choices/fit', base, 403, 'adult_required'],
+      [wren, '/api/merchant/categories', { query: 'tent' }, 403, 'adult_required'],
+      [wren, '/api/merchant/category', { slug: 'fixture-tents' }, 403, 'adult_required'],
+      [ash, '/api/family-choices/fit', { ...base, memberId: ownerId }, 403, 'member_mismatch'],
+      [other.owner, '/api/family-choices/fit', { ...base, goalId: st.goal.id }, 403, 'scope_mismatch'],
+      [owner, '/api/family-choices/fit', { ...base, revision: 'fc1_not_current' }, 409, 'choices_changed'],
+      [owner, '/api/family-choices/fit', { ...base, revision: undefined }, 409, 'choices_changed'],
+      [owner, '/api/family-choices/fit', { ...base, reserveCents: -1 }, 400, 'invalid_one_off'],
+      [owner, '/api/family-choices/fit', { ...base, budgetCents: 99 }, 400, 'invalid_budget'],
+      [owner, '/api/family-choices/fit', { ...base, category: 'fixture-unseen' }, 409, 'category_needs_check'],
+      [owner, '/api/family-choices/fit', { ...base, category: 'fixture-tarps' }, 409, 'category_needs_check'],
+      [owner, '/api/family-choices/fit', { ...base, mustHaves: [{ key: 'color', values: ['Green'] }] }, 400, 'invalid_need'],
+      [owner, '/api/family-choices/fit', { ...base, mustHaves: [{ key: 'fixture-capacity', values: ['4 people'] }] }, 400, 'invalid_need'],
+      [owner, '/api/family-choices/fit', { ...base, mustHaves: [{ key: 'fixture-capacity', values: [] }] }, 400, 'invalid_need'],
+      [owner, '/api/family-choices/fit', { ...base, mustHaves: [{ key: 'fixture-weight', values: ['1 kg'] }] }, 400, 'invalid_need'],
+      [owner, '/api/family-choices/fit', { ...base, mustHaves: [...CAPACITY, { key: 'fixture-season', values: ['4-season'] }, { key: 'fixture-capacity', values: ['6 person'] }] }, 400, 'invalid_need'],
+      [owner, '/api/family-choices/fit', { ...base, category: null }, 400, 'invalid_need'],
+      [owner, '/api/family-choices/fit', { ...base, query: 'tent https://evil.test/a' }, 400, 'invalid_query'],
+      [owner, '/api/merchant/category', { slug: 'fixture-never-listed' }, 409, 'category_unknown'],
+    ]) {
+      const r = await b.call('POST', url, body);
+      assert.deepEqual([r.status, r.json?.error?.code], [status, code], `${url} ${JSON.stringify(body).slice(0, 140)}`);
+    }
+    assert.equal(fake.calls.length, calls, 'no refused request reached the provider');
+    assert.equal(records(s.db), before, 'and none wrote anything');
+    assert.equal((await browser(s.origin).call('POST', '/api/family-choices/fit', base)).status, 401);
+    assert.equal((await owner.call('POST', '/api/family-choices/fit', base, { csrf: false })).json.error.code, 'csrf_failed');
+
+    // Truthful refusals when there is no planning ceiling. Nothing is raised or extended to make one.
+    const refusal = async (body = {}) => { const r = await f.fit(body); return [r.status, r.json?.error?.code]; };
+    assert.deepEqual(await refusal({ reserveCents: 25000 }), [200, undefined]); // the $60.00 recorded alone still covers a $60.00 price
+    assert.equal((await owner.call('POST', '/api/family-choices/offer/withdraw', {})).status, 200);
+    assert.equal((await ash.call('POST', '/api/family-choices/offer/withdraw', {})).status, 200);
+    assert.deepEqual(await refusal(), [409, 'no_offers']);
+    assert.equal((await ash.call('PUT', '/api/family-choices/offer', { weeklyCents: 1000 })).status, 200);
+    let now = await f.state();
+    assert.equal((await owner.call('PUT', '/api/goal', { name: 'Camping gear', targetCents: 30000, startingCents: 0, weeklyBudgetCents: 0, targetDate: '2026-12-20', expectedGoalRevision: now.merchantGoalRevision })).status, 200);
+    assert.deepEqual(await refusal(), [409, 'no_capacity']);
+    now = await f.state();
+    assert.equal((await owner.call('PUT', '/api/goal', { name: 'Camping gear', targetCents: 30000, startingCents: 0, weeklyBudgetCents: 3000, targetDate: '2026-12-20', expectedGoalRevision: now.merchantGoalRevision })).status, 200);
+    assert.deepEqual(await refusal({ reserveCents: 6000 }), [409, 'ceiling_too_low']); // $0 recorded, Ash's $10.00 × 6 weeks all taken by the one-off
+    f.clock.advance(37 * 86_400_000); // Dec 15: the date is under a week away
+    assert.equal((await owner.signIn()).done.status, 200);
+    assert.deepEqual(await refusal({ reserveCents: 0 }), [409, 'date_too_soon']);
+  } finally {
+    await s.close();
+  }
+});
+
+test('a provider answer that arrives after another adult changed their offer is not shown as current', async () => {
+  const catalog = fitCatalog();
+  const f = await family({ catalog });
+  const { s, owner, Ash: ash } = f;
+  try {
+    await f.ready();
+    const release = catalog.hold();
+    const pending = f.fit();
+    while (!catalog.calls.some((c) => c.method === 'POST' && c.url.endsWith('/v1/search'))) await new Promise((resolve) => setImmediate(resolve));
+    assert.equal((await ash.call('PUT', '/api/family-choices/offer', { weeklyCents: 1500 })).status, 200);
+    release();
+    const late = await pending;
+    assert.deepEqual([late.status, late.json.error.code], [409, 'choices_changed']);
+    // Searching again with the current figures uses the new ceiling: $60.00 + 6 × $30.00 − $90.00, the household amount still lower.
+    const fresh = await f.fit();
+    assert.deepEqual([fresh.status, fresh.json.ceiling.ceilingCents], [200, 15000]);
+  } finally {
+    await s.close();
+  }
+});
+
+test('a schema-9 database gains only the need column; every earlier row is unchanged', () => {
+  const dir = mkdtempSync(path.join(tmpdir(), 'our-castle-family-fit-migration-'));
+  const file = path.join(dir, 'before.sqlite');
+  try {
+    const step = MIGRATIONS.findIndex((m) => m.id === 'family-choice-needs');
+    assert.equal(step, 9, 'the family-choice needs are step 10');
+    const old = new DatabaseSync(file);
+    MIGRATIONS.slice(0, step).forEach((m, i) => { if (typeof m === 'string') old.exec(m); else m.ensure(old); old.exec(`PRAGMA user_version = ${i + 1}`); });
+    old.exec(`INSERT INTO households (id, name, play_mode, crest_field, crest_charge, is_example, setup_complete, created_at) VALUES ('hh_old', 'House of Alder', 'family', 'cobalt', 'stag', 0, 1, '2026-11-01T12:00:00.000Z');
+      INSERT INTO members (id, household_id, display_name, role, is_example, sort) VALUES ('m_old', 'hh_old', 'Rowan', 'adult', 0, 0);
+      INSERT INTO goals (id, household_id, name, target_cents, currency, target_date, weekly_budget_cents, created_at) VALUES ('goal_old', 'hh_old', 'Garden', 30000, 'USD', '2026-12-29', 3000, '2026-11-01T12:00:00.000Z');
+      INSERT INTO family_choices (id, household_id, goal_id, product_id, title, merchant, url, price_cents, currency, availability, condition, selection_json, checked_at, draft_id, added_by, added_at)
+        VALUES ('fc_000000000000000000000001', 'hh_old', 'goal_old', 'p1', 'Old choice', 'example-outfitter.com', 'https://buy.trychannel3.com/fake/p1', 12000, 'USD', 'InStock', 'new', '[]', '2026-11-01T12:00:00.000Z', NULL, 'm_old', '2026-11-01T12:00:00.000Z');
+      INSERT INTO family_offers (goal_id, member_id, weekly_cents, updated_at) VALUES ('goal_old', 'm_old', 2000, '2026-11-01T12:00:00.000Z');`);
+    const tables = (d) => d.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name").all().map((r) => r.name);
+    const rows = (d, names) => Object.fromEntries(names.map((t) => [t, d.prepare(`SELECT * FROM "${t}" ORDER BY rowid`).all().map((r) => ({ ...r }))]));
+    const beforeTables = tables(old), before = rows(old, beforeTables);
+    old.close();
+    const db = openDatabase(file);
+    assert.equal(db.prepare('PRAGMA user_version').get().user_version, 10);
+    assert.deepEqual(tables(db), beforeTables, 'no new table');
+    const after = rows(db, beforeTables);
+    assert.deepEqual(after.family_choices, before.family_choices.map((r) => ({ ...r, need_json: null })), 'the old choice gains an empty need');
+    for (const t of beforeTables.filter((n) => n !== 'family_choices')) assert.deepEqual(after[t], before[t], t);
+    db.close();
+    const again = openDatabase(file);
+    assert.equal(again.prepare('PRAGMA user_version').get().user_version, 10);
+    again.close();
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('example mode: the labelled example adult can search for the family’s fit; a child persona cannot', async () => {
+  const catalog = fitCatalog();
+  const clock = mutableClock('2026-11-08T12:00:00');
+  const db = openDatabase(':memory:');
+  const app = createApp({ config: loadConfig({}, { root }), db, clock, root, merchant: createMerchant({ apiKey: 'test-key-not-real', fetch: catalog.fetch, clock }) });
+  const server = http.createServer(app.handler);
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const base = `http://127.0.0.1:${server.address().port}`;
+  const call = async (method, url, body) => { const r = await fetch(base + url, { method, headers: { 'Content-Type': 'application/json', Origin: base }, body: body && JSON.stringify(body) }); return { status: r.status, json: await r.json() }; };
+  try {
+    let st = (await call('GET', '/api/state')).json;
+    assert.equal((await call('PUT', '/api/goal', { name: 'Camping gear', targetCents: 30000, startingCents: 6000, weeklyBudgetCents: 3000, targetDate: '2026-12-20', expectedGoalRevision: st.merchantGoalRevision })).status, 200);
+    assert.equal((await call('PUT', '/api/family-choices/offer', { weeklyCents: 3000, memberId: 'm_rowan' })).status, 200);
+    assert.equal((await call('POST', '/api/merchant/categories', { query: 'tent' })).status, 200);
+    assert.equal((await call('POST', '/api/merchant/category', { slug: 'fixture-tents' })).status, 200);
+    st = (await call('GET', '/api/state')).json;
+    const body = { query: 'tent', category: 'fixture-tents', mustHaves: CAPACITY, reserveCents: 9000, revision: st.familyChoices.revision };
+    assert.equal((await call('POST', '/api/family-choices/fit', { ...body, memberId: 'm_wren' })).json.error.code, 'adult_required');
+    assert.equal((await call('POST', '/api/family-choices/fit', { ...body, memberId: 'm_nobody' })).json.error.code, 'invalid_member');
+    const found = await call('POST', '/api/family-choices/fit', { ...body, memberId: 'm_rowan' });
+    assert.deepEqual([found.status, found.json.ceiling.ceilingCents, titles(found.json.results)], [200, 15000, ['Test fixture: Four-person tent A', 'Test fixture: Four-person tent B']]);
+  } finally {
+    server.closeAllConnections(); await new Promise((resolve) => server.close(resolve)); db.close();
   }
 });

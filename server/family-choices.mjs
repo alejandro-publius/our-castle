@@ -10,6 +10,7 @@ import { createHash, randomBytes } from 'node:crypto';
 import { transaction } from './db.mjs';
 import { DomainError, getGoal, getMembers } from './household.mjs';
 import { MAX_CHOICES, OFFER_LIMITS, RESERVE_LIMITS, choicesInput, compareChoices, familySchedule } from '../src/core/family-choices.js';
+import { fitCeiling, matchNeed } from '../src/core/family-fit.js';
 import { formatCents } from '../src/core/rules.js';
 
 const CHOICE_ID = /^fc_[0-9a-f]{24}$/;
@@ -29,6 +30,34 @@ const selectionOf = (value) => (Array.isArray(value) ? value : []).map((v) => ({
 // The public identity of an offer: another retailer, condition or variant is a different choice.
 const identityOf = (x) => JSON.stringify([x.productId, x.merchant, x.condition ?? null, selectionOf(x.selection)]);
 const rowItem = (r) => ({ productId: r.product_id, merchant: r.merchant, condition: r.condition, selection: JSON.parse(r.selection_json), priceCents: r.price_cents, currency: r.currency, availability: r.availability });
+// The stored "why this was chosen", if the choice came from a family-fit search (see needSnapshot).
+function rowNeed(r) {
+  if (!r?.need_json) return null;
+  try { return JSON.parse(r.need_json); } catch { return null; }
+}
+
+/**
+ * What a family-fit result carries into a family choice. It comes only from this server's draft of a judged search
+ * result, never from the page:
+ * - category and mustHaves: the need the adult set, as the catalog listed it;
+ * - check: what the catalog reported for this item;
+ * - search: the planning price ceiling, date and one-off amount it was found under.
+ */
+function needSnapshot(fit, checkedAt) {
+  const spec = fit.needSpec;
+  return {
+    category: spec.category ? { slug: spec.category.slug, title: spec.category.title, path: [...spec.category.path] } : null,
+    mustHaves: spec.mustHaves.map(({ key, name, accepted, allowed }) => ({ key, name, accepted: [...accepted], allowed: [...allowed] })),
+    check: checkOf(fit.check, checkedAt),
+    search: { ceilingCents: fit.context.ceilingCents, targetDate: fit.context.targetDate, reserveCents: fit.context.reserveCents, on: fit.context.on },
+  };
+}
+const checkOf = (result, checkedAt) => ({
+  status: result.status, category: result.category.status,
+  mustHaves: result.mustHaves.map(({ key, found, status }) => ({ key, found: [...found], status })), checkedAt,
+});
+// The same need checked against newer catalog facts (an explicit price check, or the item seen again).
+const recheckNeed = (need, catalog, checkedAt) => ({ ...need, check: checkOf(matchNeed(catalog, need), checkedAt) });
 const choiceRows = (db, goalId) => db.prepare('SELECT * FROM family_choices WHERE goal_id = ? ORDER BY added_at, rowid').all(goalId);
 const goalOf = (db, householdId, goalId) => {
   const goal = getGoal(db, goalId);
@@ -44,7 +73,7 @@ function needChoiceId(value) {
 /** Opaque optimistic-concurrency token over every input of the comparison except preferences. Not an authorization. */
 export function choicesRevision({ householdId, goal, progressCents, today, choices, offers }) {
   const facts = ['family-choices-v1', householdId, goal.id, goal.name, goal.currency, goal.targetCents, goal.targetDate, goal.weeklyBudgetCents, progressCents, today,
-    choices.map((c) => [c.id, c.priceCents, c.currency, c.availability, c.condition, c.checkedAt, c.selection]), offers.map((o) => [o.memberId, o.weeklyCents])];
+    choices.map((c) => [c.id, c.priceCents, c.currency, c.availability, c.condition, c.checkedAt, c.selection, c.need?.check?.status ?? null]), offers.map((o) => [o.memberId, o.weeklyCents])];
   return `fc1_${createHash('sha256').update(JSON.stringify(facts)).digest('hex').slice(0, 32)}`;
 }
 
@@ -64,6 +93,7 @@ export function familyChoicesView(db, { householdId, goal, progress, today, now,
     id: r.id, productId: r.product_id, title: r.title, merchant: r.merchant, priceCents: r.price_cents, currency: r.currency, availability: r.availability,
     condition: r.condition, selection: JSON.parse(r.selection_json), checkedAt: r.checked_at, addedBy: r.added_by,
     fresh: Boolean(r.draft_id) && now - Date.parse(r.checked_at) <= FRESH_MS,
+    need: rowNeed(r),
   }));
   const offers = activeOffers(db, goal.id, byId);
   const ids = new Set(choices.map((c) => c.id));
@@ -95,12 +125,16 @@ export function addChoice(db, { householdId, goalId, actor, expectedGoalId, item
   const replacing = replaceId === undefined || replaceId === null ? null : needChoiceId(replaceId);
   const facts = [item.title, item.merchant, item.url, item.priceCents, item.currency, item.availability ?? null, item.condition ?? null,
     JSON.stringify(selectionOf(item.selection)), item.checkedAt, draftId];
+  // A family-fit result brings its need and check. An ordinary result for a choice that has a need is checked against it.
+  const found = item.fit ? needSnapshot(item.fit, item.checkedAt) : null;
   return transaction(db, () => {
     const rows = choiceRows(db, goal.id);
     const same = rows.find((r) => identityOf(rowItem(r)) === identityOf(item));
     if (same) {
+      const earlier = rowNeed(same);
+      const need = found ?? (earlier ? recheckNeed(earlier, item.catalog ?? null, item.checkedAt) : null);
       db.prepare(`UPDATE family_choices SET title = ?, merchant = ?, url = ?, price_cents = ?, currency = ?, availability = ?, condition = ?,
-        selection_json = ?, checked_at = ?, draft_id = ? WHERE id = ?`).run(...facts, same.id);
+        selection_json = ?, checked_at = ?, draft_id = ?, need_json = ? WHERE id = ?`).run(...facts, need ? JSON.stringify(need) : null, same.id);
       return { choiceId: same.id, outcome: 'updated' };
     }
     if (replacing) {
@@ -111,8 +145,8 @@ export function addChoice(db, { householdId, goalId, actor, expectedGoalId, item
     }
     const id = `fc_${randomBytes(12).toString('hex')}`;
     db.prepare(`INSERT INTO family_choices (id, household_id, goal_id, product_id, title, merchant, url, price_cents, currency, availability, condition,
-      selection_json, checked_at, draft_id, added_by, added_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
-      .run(id, householdId, goal.id, item.productId, ...facts, actor.memberId, clock.iso());
+      selection_json, checked_at, draft_id, added_by, added_at, need_json) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+      .run(id, householdId, goal.id, item.productId, ...facts, actor.memberId, clock.iso(), found ? JSON.stringify(found) : null);
     return { choiceId: id, outcome: replacing ? 'replaced' : 'added' };
   });
 }
@@ -201,7 +235,8 @@ export function familyFacts(db, { householdId, goalId, family, choiceId = null }
   const offers = activeOffers(db, goalId, membersById(db, householdId, family)).map((o) => ({ memberId: o.memberId, name: o.name, weeklyCents: o.weeklyCents }));
   if (!choiceId) return { offers, choice: null };
   const row = db.prepare('SELECT * FROM family_choices WHERE id = ? AND goal_id = ?').get(choiceId, goalId);
-  return { offers, choice: row ? { id: row.id, title: row.title, identity: identityOf(rowItem(row)), priceCents: row.price_cents, currency: row.currency } : { id: choiceId, removed: true } };
+  return { offers, choice: row ? { id: row.id, title: row.title, identity: identityOf(rowItem(row)), priceCents: row.price_cents, currency: row.currency,
+    needStatus: rowNeed(row)?.check?.status ?? null } : { id: choiceId, removed: true } };
 }
 
 /** What changed in those facts, in plain words. Empty when nothing did. */
@@ -221,8 +256,45 @@ export function describeFamilyChanges(was, now, currency) {
     else if (c.priceCents !== was.choice.priceCents || c.currency !== was.choice.currency) {
       changes.push({ code: 'price_changed', message: `${was.choice.title} now shows ${formatCents(c.priceCents, c.currency)}; this schedule used ${formatCents(was.choice.priceCents, was.choice.currency)}.` });
     }
+    if (c && !c.removed && (c.needStatus ?? null) !== (was.choice.needStatus ?? null)) {
+      changes.push({ code: 'need_changed', message: c.needStatus === 'misses' ? `${was.choice.title} no longer meets the family’s must-haves at its latest check.`
+        : `What the catalog reports for ${was.choice.title}’s must-haves changed at its latest check.` });
+    }
   }
   return changes;
+}
+
+const NO_CEILING = {
+  no_offers: [409, 'no_offers', 'An adult needs to offer a weekly amount before options can be matched to the family’s date. Ordinary search still works.'],
+  no_capacity: [409, 'no_capacity', 'The household’s weekly amount is $0.00, so no price can be planned by the goal’s date. Ordinary search still works.'],
+  date_passed: [409, 'date_too_soon', 'The goal’s date is less than a week away, so no weekly amounts fit before it. Choose a later date first.'],
+  below_minimum: [409, 'ceiling_too_low', 'At these offers and this one-off amount, less than $1.00 can be planned by the goal’s date, so there is nothing to search for.'],
+};
+
+/**
+ * The family-fit context for one search: the comparison the adult saw must be the current one, and the planning price
+ * ceiling comes from the server's own goal, progress, offers and date (fitCeiling), with the one-off amount the adult
+ * entered. The page never supplies the ceiling, the offers or the date. Nothing is written.
+ */
+export function fitContext(db, { householdId, goal, progress, today, now, family, reserveCents, revision, budgetCents = null }) {
+  const reserve = needReserve(reserveCents);
+  if (budgetCents !== null && (!Number.isSafeInteger(budgetCents) || budgetCents < 100 || budgetCents > 10_000_000)) {
+    throw fail(400, 'invalid_budget', 'A price limit must be between $1.00 and $100,000.00, or left empty.');
+  }
+  const view = familyChoicesView(db, { householdId, goal, progress, today, now, family });
+  if (revision !== view.revision) throw fail(409, 'choices_changed', 'The family’s offers, goal or progress changed. Search again with the latest figures.');
+  if (goal.currency !== 'USD') throw fail(409, 'currency_unsupported', 'Market Town searches in USD, and this goal is kept in another currency.');
+  const ceiling = fitCeiling({ today, targetDate: goal.targetDate, progressCents: progress.progressCents, householdLimitCents: goal.weeklyBudgetCents,
+    offers: view.offers, reserveCents: reserve, budgetCents });
+  if (ceiling.outcome !== 'ok') throw fail(...NO_CEILING[ceiling.outcome]);
+  return { view, ceiling, reserveCents: reserve };
+}
+
+/** When a suitable item would be finished at the same offers, one-off amount and date: the comparison's own arithmetic. */
+export function fitFinish({ goal, progress, today, offers, reserveCents }, priceCents) {
+  const s = familySchedule({ today, targetDate: goal.targetDate, progressCents: progress.progressCents, targetCents: priceCents,
+    householdLimitCents: goal.weeklyBudgetCents, currency: goal.currency, offers, reserveCents });
+  return { finishDate: s.outcome === 'reached' ? null : s.finishDate, finishWeek: s.outcome === 'reached' ? 0 : s.finishWeek, covered: s.outcome === 'reached' };
 }
 
 /**
@@ -257,9 +329,10 @@ export function reviewChoice(db, { householdId, goal, progress, today, now, fami
   // the save recomputes it from the server's records and refuses it unless every figure is still the same.
   const schedule = scheduleFor({ goal: { ...goal, ...draftGoal }, progress, today, offers: view.offers, reserveCents: reserve });
   const blocked = unschedulable(schedule);
+  const { catalog, fit, ...shownItem } = item; // the catalog's raw facts stay on the server; the choice's need is shown instead
   return {
-    status: 'ok', saved: false, choiceId: id, revision: view.revision, reserveCents: reserve,
-    item: { ...item, draftId: row.draft_id },
+    status: 'ok', saved: false, choiceId: id, revision: view.revision, reserveCents: reserve, need: choice.need,
+    item: { ...shownItem, draftId: row.draft_id },
     goal: draftGoal, startingCents: progress.startingCents,
     option, deadline: goal.targetDate,
     schedule: { ...schedule, proposable: !blocked, reason: blocked?.message ?? null },
@@ -294,13 +367,19 @@ export async function refreshChoice(db, { householdId, goalId, actor, choiceId, 
     const row = db.prepare('SELECT * FROM family_choices WHERE id = ? AND goal_id = ?').get(id, goalId);
     if (!row) throw fail(409, 'choice_gone', 'That choice was removed while its price was being checked.');
     const usable = fresh?.usable && fresh.draftId && fresh.currency === goal.currency && identityOf(fresh) === identityOf(rowItem(row));
+    // A choice found for the family's need is checked against the catalog's newer facts. If it no longer meets a
+    // must-have, that is what it shows, whether or not the price is still usable.
+    const earlier = rowNeed(row);
+    const need = earlier && fresh && identityOf(fresh) === identityOf(rowItem(row)) ? recheckNeed(earlier, fresh.catalog ?? null, fresh.checkedAt) : earlier;
+    if (need !== earlier) db.prepare('UPDATE family_choices SET need_json = ? WHERE id = ?').run(JSON.stringify(need), id);
+    const needStatus = need?.check?.status ?? null;
     if (!usable) {
       // The last seen price stays, with its own time; it can be chosen only after a check that finds it usable again.
       db.prepare('UPDATE family_choices SET draft_id = NULL WHERE id = ?').run(id);
-      return { choiceId: id, usable: false, reason: fresh?.unusableReason ?? 'This item could not be checked. Choose another item.' };
+      return { choiceId: id, usable: false, reason: fresh?.unusableReason ?? 'This item could not be checked. Choose another item.', needStatus };
     }
     db.prepare('UPDATE family_choices SET title = ?, url = ?, price_cents = ?, availability = ?, checked_at = ?, draft_id = ? WHERE id = ?')
       .run(fresh.title, fresh.url, fresh.priceCents, fresh.availability ?? null, fresh.checkedAt, fresh.draftId, id);
-    return { choiceId: id, usable: true, previousPriceCents: row.price_cents, priceCents: fresh.priceCents };
+    return { choiceId: id, usable: true, previousPriceCents: row.price_cents, priceCents: fresh.priceCents, needStatus };
   });
 }

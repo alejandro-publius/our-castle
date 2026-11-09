@@ -190,6 +190,9 @@
               </div>
               <p class="fine" id="family-trial-note" aria-live="polite"></p>
             </fieldset>
+            <!-- Find options that fit: Market Town with the family's planning price ceiling for the goal's date (offers, the
+                 household's weekly amount and any one-off amount tried above). Searching saves nothing. -->
+            <p class="family-fit" id="family-fit" hidden><span id="family-fit-text"></span> <button type="button" class="link-button" id="family-fit-find" aria-haspopup="dialog" aria-controls="merchant-dialog">Find options that fit</button></p>
             <div class="form-status" id="family-status" role="status" aria-live="polite"></div>
           </details>
           <!-- A Market Town merchant result waiting for the family's confirmation. Nothing is saved until "Save as our goal". -->
@@ -239,6 +242,7 @@
               <h4 id="plan-headline" tabindex="-1"></h4>
             </header>
             <p id="plan-summary"></p>
+            <p id="plan-chosen-for" class="fine plan-chosen-for" hidden></p>
             <p id="plan-review-status" class="fine" hidden></p>
             <div class="callout warn" id="plan-shortfall" hidden></div>
             <h5>Weekly schedule <small id="plan-schedule-help">— change any week, then save</small></h5>
@@ -401,11 +405,23 @@
           <h2 id="merchant-title" tabindex="-1">Market merchant</h2>
           <button type="button" class="merchant-close" id="merchant-close" aria-label="Close the merchant">×</button>
         </header>
+        <!-- Family fit (opened from Family choices only): the server derives the price ceiling; kinds of item and must-haves
+             come from the catalog's own lists, each looked up only when asked. -->
+        <p id="merchant-fit-limit" class="merchant-fit-limit" hidden></p>
         <form id="merchant-form" class="merchant-form" role="search" novalidate>
           <label class="merchant-field merchant-query"><span>What is the family saving for?</span><input id="merchant-query" type="search" maxlength="80" autocomplete="off" spellcheck="false" required></label>
           <label class="merchant-field merchant-budget"><span>Budget <small>(optional)</small></span><span class="money"><input id="merchant-budget" inputmode="decimal" autocomplete="off" maxlength="12"></span></label>
           <button type="submit" id="merchant-search">Search</button>
         </form>
+        <div id="merchant-need" class="merchant-need" hidden>
+          <div class="merchant-need-kind">
+            <button type="button" class="link-button" id="merchant-find-kinds">Find kinds of item</button>
+            <label class="merchant-field" id="merchant-kind-field" hidden><span>Kind of item <small>(optional)</small></span><select id="merchant-kind"></select></label>
+            <button type="button" class="link-button" id="merchant-show-needs" hidden>Show must-haves</button>
+          </div>
+          <div id="merchant-must-haves" class="merchant-must-haves"></div>
+          <p id="merchant-need-note" class="fine" hidden></p>
+        </div>
         <p id="merchant-status" class="merchant-status" role="status" aria-live="polite"></p>
         <ol id="merchant-results" class="merchant-results" aria-label="Merchant results"></ol>
         <p id="merchant-source" class="merchant-source" hidden></p>

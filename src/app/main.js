@@ -22,6 +22,7 @@ import { contributionStory, countsSentence, storyKey } from '../core/contributio
 import { createMerchantDialog, resultFacts } from './merchant.js';
 import { createFamilyChoices } from './family-choices.js';
 import { scheduleLines } from '../core/family-choices.js';
+import { needSummary } from '../core/family-fit.js';
 import { createTreasury } from './treasury.js';
 import { FAMILY_PROJECT_SITE, PROJECT_KINDS, projectKind, projectLabel, projectStage } from '../core/family-project.js';
 import { CONFIRMATION_HISTORY_QUESTION, NEEDS_CHECK_QUESTION, isLocalQuestion, isNeedsCheckQuestion } from '../core/steward-questions.js';
@@ -1008,7 +1009,7 @@ async function saveHouse() {
 }
 
 // ---------- 2. Plan ----------
-function renderPlan() { renderPlanForm(); familyChoices?.render(); lockPlanForChildren(); }
+function renderPlan() { renderPlanForm(); familyChoices?.render(); merchant?.refreshFit(); lockPlanForChildren(); }
 // A child in a shared family sees the goal and plan and may try a weekly amount or date with the read-only check, but
 // changes neither; the server refuses those requests anyway.
 function lockPlanForChildren() {
@@ -1054,6 +1055,9 @@ function renderPlanForm() {
   if (state.acceptedPlanId === plan.id) badge.append(' · in use');
   $('#plan-headline').textContent = plan.headline;
   $('#plan-summary').textContent = plan.summary;
+  const chosen = plan.family?.choice?.need ? plan.family.choice : null;
+  $('#plan-chosen-for').hidden = !chosen;
+  $('#plan-chosen-for').textContent = chosen ? `${chosen.title}: ${needSummary(chosen.need, { money, date: shortDate })}` : '';
   const review = state.planReview;
   const stale = Boolean(review?.factsChanged);
   const reviewStatus = $('#plan-review-status');
@@ -1196,6 +1200,7 @@ function renderGoalDraft() {
       + (p.targetDate !== p.deadline ? `with the target date moved from ${dateLabel(p.deadline)} to ${dateLabel(p.targetDate)}, the earliest finish at those offers` : `by ${dateLabel(p.targetDate)}`)
       + (p.reserveCents ? `, allowing for the one-off ${money(p.reserveCents)} you tried` : ''));
   }
+  if (draft.familyPlan?.need) effects.push(`. ${needSummary(draft.familyPlan.need, { money, date: shortDate }).replace(/\.$/, '')}`);
   if (draft.choicesChanged) effects.push('. The family’s choices or offers changed after this review: discard this draft and review the choice again');
   effects.push('. The price excludes tax and shipping; nothing is bought.');
   $('#goal-draft-effect').textContent = effects.join('');
@@ -1248,7 +1253,7 @@ function useFamilyChoice(review) {
   ui.goalDraft = { ...ui.goalDraft, goalId: state.goal.id, goalRevision: state.merchantGoalRevision,
     familyChoice: { choiceId: review.choiceId, revision: review.revision },
     familyPlan: { weeklyBudgetCents: review.goal.weeklyBudgetCents, targetDate: review.goal.targetDate, deadline: review.deadline, reserveCents: review.reserveCents,
-      schedule: review.schedule ?? null, reviewed: { ...review.goal, startingCents: review.startingCents } } };
+      schedule: review.schedule ?? null, reviewed: { ...review.goal, startingCents: review.startingCents }, need: review.need ?? null } };
   ui.planGoalId = state.goal.id; ui.planGoalRevision = state.merchantGoalRevision;
   $('#goal-date').value = review.goal.targetDate;
   $('#goal-weekly').value = centsToInput(review.goal.weeklyBudgetCents);
@@ -2054,7 +2059,8 @@ function bindEvents() {
     const id = e.currentTarget.dataset.district;
     if (id) openDeedFromMap(id, e.currentTarget);
   });
-  merchant = createMerchantDialog({ getState: () => state, onUse: useMerchantItem, onShortlist: shortlistItem, canShortlist: () => persona()?.role === 'adult' });
+  merchant = createMerchantDialog({ getState: () => state, onUse: useMerchantItem, onShortlist: shortlistItem, canShortlist: () => persona()?.role === 'adult',
+    fitSource: () => familyChoices?.fitSource() ?? null });
   familyChoices = createFamilyChoices({ getState: () => state, actor: persona, openMerchant: (from, options) => merchant.open(from, options), onReview: useFamilyChoice, applyState,
     onProposed: () => $('#plan-headline').focus() });
   for (const opener of [$('#open-merchant'), $('#find-goal-item')]) opener.addEventListener('click', (e) => merchant.open(e.currentTarget));

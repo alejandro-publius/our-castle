@@ -18,7 +18,7 @@ import { publicModes } from './config.mjs';
 import { createMerchant } from './merchant/channel3.mjs';
 import { goalItemFor, merchantGoalRevision, saveGoalFromItem } from './merchant/goal-item.mjs';
 import {
-  addChoice, checkChoiceForSave, familyChoicesView, refreshChoice, removeChoice, removePreference, reviewChoice, saveOffer, setPreference, withdrawOffer,
+  addChoice, checkChoiceForSave, familyChoicesView, fitContext, fitFinish, refreshChoice, removeChoice, removePreference, reviewChoice, saveOffer, setPreference, withdrawOffer,
 } from './family-choices.mjs';
 import { treasuryFor } from './treasury.mjs';
 import { transaction } from './db.mjs';
@@ -116,7 +116,8 @@ function checkHostAndOrigin(req, { write }) {
 
 const str = (v) => (typeof v === 'string' ? v : undefined);
 // Write-method routes that change no household record: calculations, provider look-ups, questions and ceremony steps.
-const UNCHANGING_WRITES = new Set(['/api/plans/preview', '/api/merchant/search', '/api/merchant/refresh', '/api/merchant/alternatives', '/api/family-choices/review', '/api/steward', '/api/paypal/client-token', '/api/auth/passkeys/options', '/api/auth/signout']);
+const UNCHANGING_WRITES = new Set(['/api/plans/preview', '/api/merchant/search', '/api/merchant/refresh', '/api/merchant/alternatives', '/api/merchant/categories', '/api/merchant/category',
+  '/api/family-choices/review', '/api/family-choices/fit', '/api/steward', '/api/paypal/client-token', '/api/auth/passkeys/options', '/api/auth/signout']);
 
 export function createApp({ config, db, clock, paypal = null, aiProvider = null, stewardAi = null, paypalTools = null, stewardFetch, merchant = null, root, live: liveLimits = {} }) {
   // Example mode is the single local example household. Family mode serves only households whose members enrolled their
@@ -294,7 +295,13 @@ export function createApp({ config, db, clock, paypal = null, aiProvider = null,
     ['POST', '/api/family-choices/refresh', async ({ body, scope, assertAccess }) => {
       refuseForeign(body, scope);
       const result = await refreshChoice(db, { householdId: scope.householdId, goalId: scope.goalId, actor: choiceActor(body, scope), choiceId: body.choiceId,
-        refresh: async (reference) => { const found = await shop.refresh(reference); assertAccess(); if (family) rememberDrafts(found, scope); return found; } });
+        refresh: async (reference) => {
+          const found = await shop.refresh(reference);
+          assertAccess();
+          if (family) rememberDrafts(found, scope);
+          // The catalog facts stay on the server; the choice's need is checked against them here.
+          return { ...found, results: found.results.map((r) => ({ ...r, catalog: catalogOf(r.referenceId) })) };
+        } });
       return { ...result, state: state(scope) };
     }],
     // Read-only: re-checks the reviewed comparison against the server's records and returns a goal draft. Saves nothing.
@@ -303,6 +310,42 @@ export function createApp({ config, db, clock, paypal = null, aiProvider = null,
       const goal = getGoal(db, scope.goalId);
       return reviewChoice(db, { ...choiceScope(scope, goal, progressFor(db, goal.id)), actor: choiceActor(body, scope), choiceId: body.choiceId, revision: body.revision, reserveCents: body.reserveCents,
         draftFor: (draftId) => { if (family && !shownTo(draftId, scope)) throw new DomainError(410, 'merchant_draft_expired', 'Expired.'); return shop.draft(draftId); } });
+    }],
+    // ---- Family fit: the kind of item and its must-haves come from the catalog's own lists, one explicit look-up at a time.
+    // Read-only: nothing is saved, and only the family's words, public taxonomy values and a price ceiling go to Channel3. ----
+    ['POST', '/api/merchant/categories', async ({ body, assertAccess }) => {
+      const found = await shop.findCategories({ query: body.query });
+      assertAccess();
+      return found;
+    }],
+    ['POST', '/api/merchant/category', async ({ body, assertAccess }) => {
+      const found = await shop.category(str(body.slug));
+      assertAccess();
+      return found;
+    }],
+    // Up to three suitable options for the family's date. The server derives the price ceiling from its own goal, progress,
+    // offers and date, plus the one-off amount the adult entered, and judges every inspected item itself. The same
+    // family facts must still hold when Channel3 answers, or the options are not shown as current.
+    ['POST', '/api/family-choices/fit', async ({ body, scope, assertAccess }) => {
+      refuseForeign(body, scope);
+      const actor = choiceActor(body, scope);
+      if (actor.role !== 'adult') throw new DomainError(403, 'adult_required', 'Only an adult in the family can search for the family’s options.');
+      const read = () => {
+        const goal = getGoal(db, scope.goalId), progress = progressFor(db, goal.id);
+        return { goal, progress, ...fitContext(db, { ...choiceScope(scope, goal, progress), reserveCents: body.reserveCents, revision: str(body.revision) ?? null, budgetCents: body.budgetCents ?? null }) };
+      };
+      const before = read();
+      const need = shop.buildNeed({ category: body.category ?? null, mustHaves: body.mustHaves ?? [] });
+      const goalRevision = merchantGoalRevision(before.goal, before.progress.startingCents);
+      const found = await shop.fitSearch({ query: body.query, need, ceilingCents: before.ceiling.ceilingCents,
+        context: { ceilingCents: before.ceiling.ceilingCents, targetDate: before.goal.targetDate, reserveCents: before.reserveCents, on: before.ceiling.today } });
+      assertAccess();
+      const after = read(); // refused (409) if the offers, goal, progress or day changed while Channel3 answered
+      if (after.ceiling.ceilingCents !== before.ceiling.ceilingCents) throw new DomainError(409, 'choices_changed', 'The family’s figures changed while searching. Search again with the latest figures.');
+      if (family) rememberDrafts(found, scope);
+      const finish = (cents) => fitFinish({ goal: after.goal, progress: after.progress, today: after.ceiling.today, offers: after.view.offers, reserveCents: after.reserveCents }, cents);
+      const { outcome, today, offeredCents, reservedByDateCents, ...ceiling } = after.ceiling;
+      return { ...found, goalId: after.goal.id, goalRevision, ceiling, results: found.results.map((r) => ({ ...r, ...finish(r.priceCents) })) };
     }],
     ['PUT', '/api/family-choices/offer', ({ body, scope }) => {
       refuseForeign(body, scope);
@@ -438,6 +481,8 @@ export function createApp({ config, db, clock, paypal = null, aiProvider = null,
       requestId: str(body.requestId),
     };
   }
+  // The catalog facts the server kept for a result it showed (for a family need), or null once it expired.
+  const catalogOf = (referenceId) => { try { return shop.draft(referenceId).catalog ?? null; } catch { return null; } };
   // A shown result's ids (its draft and its refresh/similar reference) are usable only by households it was shown to.
   const shownTo = (id, scope) => typeof id === 'string' && Boolean(draftHouseholds.get(id)?.households.has(scope.householdId));
   function rememberDrafts(found, scope) {

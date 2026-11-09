@@ -153,7 +153,7 @@ export function createPlanner({ db, clock, provider = null, family = false }) {
       const choice = facts.choice && !facts.choice.removed ? view.choices.find((c) => c.id === facts.choice.id) : null;
       const plan = finalizePlan(familyPlanBody(basis, schedule), basis, {
         source: 'rules', kind: 'family', sourceLabel: SOURCE_LABELS.family, provider: null, model: null,
-        family: familyPlanDetails(schedule, { choice: choice ? { id: choice.id, title: choice.title, merchant: choice.merchant, priceCents: choice.priceCents, currency: choice.currency } : null }),
+        family: familyPlanDetails(schedule, { choice: choice ? { id: choice.id, title: choice.title, merchant: choice.merchant, priceCents: choice.priceCents, currency: choice.currency, ...(choice.need ? { need: choice.need } : {}) } : null }),
       });
       return store({ goal, source: 'rules', inputs: { family: { reserveCents, choiceId: choice?.id ?? null } }, basis, plan });
     },

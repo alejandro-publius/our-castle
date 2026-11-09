@@ -8,6 +8,7 @@
 // only) saves the dated weeks shown here as a plan proposal; "Use this plan" in the Plan journal stays the decision.
 import { api } from './api.js';
 import { RESERVE_LIMITS, choicesInput, compareChoices, describeComparison, familySchedule } from '../core/family-choices.js';
+import { ceilingText, fitCeiling, needSummary } from '../core/family-fit.js';
 import { formatCents, parseAmountToCents } from '../core/rules.js';
 
 const $ = (id) => document.getElementById(id);
@@ -148,6 +149,8 @@ export function createFamilyChoices({ getState, actor, openMerchant, onReview, a
     return h('li', { class: 'family-option', 'data-choice': c.id, 'data-status': option.status },
       h('div', { class: 'family-option-head' }, h('strong', { class: 'family-option-name' }, c.title), h('span', { class: 'family-option-price' }, money(c.priceCents))),
       h('p', { class: 'family-option-facts' }, facts.join(' · '), c.fresh ? null : h('span', { class: 'family-stale' }, ' · check the price again before choosing it')),
+      // Why it was chosen, when it came from "Find options that fit": what the catalog reported at the latest check.
+      c.need ? h('p', { class: 'family-need', 'data-status': c.need.check?.status ?? 'unknown' }, needSummary(c.need, { money, date })) : null,
       result, change, split,
       h('p', { class: 'family-prefs' }, prefs.length ? `${prefs.length} ${prefs.length === 1 ? 'prefers' : 'prefer'} this: ${prefs.map((p) => nameOf(p.memberId)).join(', ')}` : 'No one has said they prefer this yet.'),
       h('div', { class: 'actions' },
@@ -203,6 +206,27 @@ export function createFamilyChoices({ getState, actor, openMerchant, onReview, a
     }
     $('family-trial').hidden = !adult;
     $('family-trial-note').textContent = reserveCents ? `${text.reserve} Not saved.` : '';
+
+    // "Find options that fit": a preview of the planning price ceiling the server will derive for the search.
+    const preview = adult && merchantOn ? fitPreview() : null;
+    $('family-fit').hidden = !preview;
+    if (preview) {
+      $('family-fit-text').textContent = preview.outcome === 'ok'
+        ? `Options up to ${money(preview.ceilingCents)} can be planned by ${date(preview.targetDate)}${preview.reserveCents ? `, after the one-off ${money(preview.reserveCents)}` : ''}.`
+        : ceilingText(preview, { money, date });
+      $('family-fit-find').hidden = preview.outcome !== 'ok';
+      $('family-fit-find').disabled = ui.reserveInvalid;
+    }
+  }
+
+  // The same arithmetic the server uses, from the figures this page shows; the server derives the ceiling again itself.
+  function fitPreview() {
+    const s = getState(), fc = s?.familyChoices;
+    if (!fc || s.goal.currency !== 'USD') return null;
+    try {
+      return fitCeiling({ today: fc.today, targetDate: s.goal.targetDate, progressCents: s.progress.progressCents, householdLimitCents: s.goal.weeklyBudgetCents,
+        offers: fc.offers, reserveCents: ui.reserveCents });
+    } catch { return null; }
   }
 
   $('family-offer-input').addEventListener('input', () => { ui.offerDirty = true; });
@@ -230,5 +254,11 @@ export function createFamilyChoices({ getState, actor, openMerchant, onReview, a
     $('family-trial-input').focus();
   });
   $('family-find').addEventListener('click', (e) => openMerchant(e.currentTarget, {}));
-  return { render, get reserveCents() { return ui.reserveCents; } };
+  $('family-fit-find').addEventListener('click', (e) => openMerchant(e.currentTarget, { fit: true }));
+  return {
+    render,
+    get reserveCents() { return ui.reserveCents; },
+    // What Market Town's family-fit mode needs from this page: the trial being tried, its preview and who is acting.
+    fitSource: () => (actor()?.role === 'adult' ? { reserveCents: ui.reserveCents, reserveInvalid: ui.reserveInvalid, preview: fitPreview(), memberId: actor()?.id } : null),
+  };
 }

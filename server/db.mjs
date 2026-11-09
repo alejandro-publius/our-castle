@@ -332,6 +332,15 @@ export const MIGRATIONS = Object.freeze([
       );
     `); },
   }),
+  Object.freeze({
+    id: 'family-choice-needs',
+    // Why a family choice was chosen, kept with it:
+    // - the catalog category and must-haves the family set;
+    // - what the catalog reported for the item when it was found, and at its latest explicit check;
+    // - the planning price ceiling and date of that search.
+    // Planning facts only, and NULL for an ordinary choice. No row or other column changes.
+    ensure(db) { if (!hasColumn(db, 'family_choices', 'need_json')) db.exec('ALTER TABLE family_choices ADD COLUMN need_json TEXT;'); },
+  }),
 ]);
 
 export function openDatabase(file) {
