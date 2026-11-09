@@ -301,6 +301,63 @@ test('a provider answer that arrives after another adult changed their offer is 
   }
 });
 
+test('review F1: two families searching at once share one catalog call, but each keeps its own date, one-off amount and references', async () => {
+  const catalog = fitCatalog();
+  const clock = mutableClock('2026-11-08T12:00:00');
+  const shop = createMerchant({ apiKey: 'test-key-not-real', fetch: catalog.fetch, clock });
+  const arrivals = []; // each family-fit search reaching the shared merchant, with its private context
+  const merchant = { ...shop, fitSearch: (args) => { arrivals.push(args.context); return shop.fitSearch(args); } };
+  const s = await startServer({ clock, merchant });
+  try {
+    // Family A: Dec 20, a one-off $90.00. Family B: Jan 3, a one-off $150.00. Both have $60.00 recorded and offers of
+    // $20.00 + $10.00, so both ceilings are $150.00 and both requests to the catalog are identical.
+    const families = [];
+    for (const [date, reserveCents] of [['2026-12-20', 9000], ['2027-01-03', 15000]]) {
+      const people = await familyWith(s, [['Ash', 'adult']]);
+      const st = (await people.owner.call('GET', '/api/state')).json;
+      assert.equal((await people.owner.call('PUT', '/api/goal', { name: 'Camping gear', targetCents: 30000, startingCents: 6000, weeklyBudgetCents: 3000, targetDate: date, expectedGoalRevision: st.merchantGoalRevision })).status, 200);
+      assert.equal((await people.owner.call('PUT', '/api/family-choices/offer', { weeklyCents: 2000 })).status, 200);
+      assert.equal((await people.Ash.call('PUT', '/api/family-choices/offer', { weeklyCents: 1000 })).status, 200);
+      assert.equal((await people.owner.call('POST', '/api/merchant/categories', { query: 'tent' })).status, 200);
+      assert.equal((await people.owner.call('POST', '/api/merchant/category', { slug: 'fixture-tents' })).status, 200);
+      families.push({ ...people, date, reserveCents, revision: (await people.owner.call('GET', '/api/state')).json.familyChoices.revision });
+    }
+    const [a, b] = families;
+    const before = records(s.db), calls = catalog.calls.length;
+    const release = catalog.hold();
+    const search = (f) => f.owner.call('POST', '/api/family-choices/fit', { query: 'tent', category: 'fixture-tents', mustHaves: CAPACITY, reserveCents: f.reserveCents, revision: f.revision });
+    const pending = [search(a), search(b)];
+    while (arrivals.length < 2) await new Promise((resolve) => setImmediate(resolve)); // both are waiting on the one call
+    release();
+    const [foundA, foundB] = (await Promise.all(pending)).map((r) => { assert.equal(r.status, 200, JSON.stringify(r.json)); return r.json; });
+    assert.equal(catalog.calls.length, calls + 1, 'one shared catalog call');
+    assert.deepEqual([foundA.ceiling.targetDate, foundA.ceiling.reserveCents, foundA.ceiling.ceilingCents], ['2026-12-20', 9000, 15000]);
+    assert.deepEqual([foundB.ceiling.targetDate, foundB.ceiling.reserveCents, foundB.ceiling.ceilingCents], ['2027-01-03', 15000, 15000]);
+    // The same two tents, each finishing on its own family's weeks: A's one-off takes three weeks, B's five.
+    assert.deepEqual(foundA.results.map((r) => [r.priceCents, r.finishDate, r.fit.context.targetDate, r.fit.context.reserveCents]), [[12000, '2026-12-13', '2026-12-20', 9000], [15000, '2026-12-20', '2026-12-20', 9000]]);
+    assert.deepEqual(foundB.results.map((r) => [r.priceCents, r.finishDate, r.fit.context.targetDate, r.fit.context.reserveCents]), [[12000, '2026-12-27', '2027-01-03', 15000], [15000, '2027-01-03', '2027-01-03', 15000]]);
+    const refs = (found) => found.results.flatMap((r) => [r.draftId, r.referenceId]);
+    assert.equal(refs(foundA).some((id) => refs(foundB).includes(id)), false, 'no reference is shared between families');
+    assert.equal(records(s.db), before, 'searching wrote nothing');
+    // Each family saves its own result: the stored reason carries its own search, never the other family's.
+    const add = (f, found) => f.owner.call('POST', '/api/family-choices', { draftId: found.results[0].draftId, expectedGoalId: found.goalId });
+    const savedB = await add(b, foundB);
+    assert.equal(savedB.status, 200, JSON.stringify(savedB.json));
+    assert.deepEqual(savedB.json.state.familyChoices.choices[0].need.search, { ceilingCents: 15000, targetDate: '2027-01-03', reserveCents: 15000, on: '2026-11-08' });
+    const savedA = await add(a, foundA);
+    assert.deepEqual(savedA.json.state.familyChoices.choices[0].need.search, { ceilingCents: 15000, targetDate: '2026-12-20', reserveCents: 9000, on: '2026-11-08' });
+    // A family cannot use a reference the server showed only to the other family.
+    const foreign = await b.owner.call('POST', '/api/family-choices', { draftId: foundA.results[1].draftId, expectedGoalId: foundB.goalId });
+    assert.deepEqual([foreign.status, foreign.json.error.code], [410, 'merchant_draft_expired']);
+    // Only the two explicit family choices were written: no money, goal, plan, deed or offer record changed.
+    const [money0, goals0, items0, plans0, deeds0, offers0] = JSON.parse(before), [money1, goals1, items1, plans1, deeds1, offers1, choices1] = JSON.parse(records(s.db));
+    assert.deepEqual([money1, goals1, items1, plans1, deeds1, offers1], [money0, goals0, items0, plans0, deeds0, offers0]);
+    assert.equal(choices1.length, 2);
+  } finally {
+    await s.close();
+  }
+});
+
 test('a schema-9 database gains only the need column; every earlier row is unchanged', () => {
   const dir = mkdtempSync(path.join(tmpdir(), 'our-castle-family-fit-migration-'));
   const file = path.join(dir, 'before.sqlite');

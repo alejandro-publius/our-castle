@@ -463,9 +463,9 @@ export function createMerchant({ apiKey = null, fetch, clock, ...options } = {})
   }
 
   async function refresh(reference) {
-    const judged = reference.fit ? `:${JSON.stringify([reference.fit.needSpec, reference.fit.context?.ceilingCents])}` : '';
-    const key = `product:${reference.productId}:${reference.merchant}:${reference.condition}:${JSON.stringify(readSelection(reference.selection))}${judged}`;
-    const result = await bounded(key, async () => {
+    const key = `product:${reference.productId}:${reference.merchant}:${reference.condition}:${JSON.stringify(readSelection(reference.selection))}`;
+    // Shared between identical concurrent look-ups: only the public catalog call, reading it and recording the observation.
+    const page = await bounded(key, async () => {
       const version = ++readVersion;
       let json;
       try { json = await client.product(reference); } catch (error) {
@@ -476,14 +476,14 @@ export function createMerchant({ apiKey = null, fetch, clock, ...options } = {})
       const row = normalizeProduct(json, reference);
       observe(reference, row, version);
       if (!row.selectionChanged && row.merchant && offerKey(row) !== offerKey(reference)) observe(row, row, version);
-      // A family-fit result is judged again against the same need and ceiling. If it no longer meets a must-have, it says
-      // so; it never keeps an earlier "suitable".
-      if (reference.fit) row.fit = { ...evaluateFit(row, reference.fit.needSpec, { ceilingCents: reference.fit.context.ceilingCents }), needSpec: reference.fit.needSpec, context: reference.fit.context };
-      const checkedAt = new Date(now()).toISOString();
-      return { status: 'ok', provider: 'Channel3', checkedAt, results: [remember(row, checkedAt, reference.query)] };
+      return { row, checkedAt: new Date(now()).toISOString() };
     });
-    // A saved item and a newer search can share the lookup but have different comparison prices.
-    return { ...result, results: result.results.map((row) => ({ ...row, previousPriceCents: reference.priceCents })) };
+    // Each caller's own: a family-fit result is judged again against that caller's need and ceiling, and it keeps that
+    // caller's context, in a draft of its own. If it no longer meets a must-have, it says so; it never keeps an earlier
+    // "suitable". A saved item and a newer search can share the look-up but have different comparison prices.
+    const row = { ...page.row };
+    if (reference.fit) row.fit = { ...evaluateFit(row, reference.fit.needSpec, { ceilingCents: reference.fit.context.ceilingCents }), needSpec: reference.fit.needSpec, context: reference.fit.context };
+    return { status: 'ok', provider: 'Channel3', checkedAt: page.checkedAt, results: [{ ...remember(row, page.checkedAt, reference.query), previousPriceCents: reference.priceCents }] };
   }
 
   async function alternatives(reference, budgetCents) {
@@ -597,22 +597,25 @@ export function createMerchant({ apiKey = null, fetch, clock, ...options } = {})
     const request = validateSearch({ query, budgetCents: ceilingCents });
     if (!client) throw fail(503, 'merchant_not_connected', 'Product search is not connected, so no search was made.');
     const body = fitRequestBody({ query: request.query, need, ceilingCents });
-    return bounded(`fit:${JSON.stringify(body)}`, async () => {
+    // Shared between identical concurrent searches: only the public catalog page, reading it and recording observations.
+    const page = await bounded(`fit:${JSON.stringify(body)}`, async () => {
       const version = ++readVersion;
       const rows = normalizeSearch(await client.fitSearch(body), { budgetCents: ceilingCents, max: FIT_INSPECT_LIMIT, withFacts: true });
       for (const row of rows) observe(row, row, version);
-      const checkedAt = new Date(now()).toISOString();
-      const judged = rows.map((row) => ({ row, fit: evaluateFit(row, need, { ceilingCents }) }));
-      const suitable = judged.filter((j) => j.fit.status === 'suitable').sort((a, b) => bySuitableOrder(a.row, b.row));
-      const shown = suitable.slice(0, FIT_MAX_RESULTS);
-      return {
-        status: 'ok', provider: 'Channel3', checkedAt, query: request.query, inspected: rows.length, moreSuitable: suitable.length - shown.length, need,
-        results: shown.map(({ row, fit }) => remember({ ...row, fit: { ...fit, needSpec: need, context } }, checkedAt, request.query)),
-        others: judged.filter((j) => j.fit.status !== 'suitable').map(({ row, fit }) => ({
-          productId: row.productId, title: row.title, priceCents: row.priceCents, currency: row.currency, status: fit.status, reason: fit.problems[0],
-        })),
-      };
+      return { rows, checkedAt: new Date(now()).toISOString() };
     });
+    // Each caller's own: the judgement against its need and ceiling, its private planning context, and drafts of its own.
+    // One family's context or references therefore never reach another caller of the same search.
+    const judged = page.rows.map((row) => ({ row, fit: evaluateFit(row, need, { ceilingCents }) }));
+    const suitable = judged.filter((j) => j.fit.status === 'suitable').sort((a, b) => bySuitableOrder(a.row, b.row));
+    const shown = suitable.slice(0, FIT_MAX_RESULTS);
+    return {
+      status: 'ok', provider: 'Channel3', checkedAt: page.checkedAt, query: request.query, inspected: page.rows.length, moreSuitable: suitable.length - shown.length, need,
+      results: shown.map(({ row, fit }) => remember({ ...row, fit: { ...fit, needSpec: need, context } }, page.checkedAt, request.query)),
+      others: judged.filter((j) => j.fit.status !== 'suitable').map(({ row, fit }) => ({
+        productId: row.productId, title: row.title, priceCents: row.priceCents, currency: row.currency, status: fit.status, reason: fit.problems[0],
+      })),
+    };
   }
 
   /** The stored result for a draft the server showed, or a clear error once it has expired. Does not consume it. */

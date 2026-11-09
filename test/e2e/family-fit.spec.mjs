@@ -36,7 +36,8 @@ test('a family finds options that fit its needs and date, keeps why it chose one
   test.setTimeout(300_000);
   const catalog = fitCatalog();
   const clock = exampleClock();
-  const s = await familyServer({ clock, merchant: createMerchant({ apiKey: 'fake-e2e-key-not-real', fetch: catalog.fetch, clock }), live: { recheckMs: 1_000 } });
+  // This journey makes seven explicit catalog calls in a few minutes; the per-minute limit itself is covered by unit tests.
+  const s = await familyServer({ clock, merchant: createMerchant({ apiKey: 'fake-e2e-key-not-real', fetch: catalog.fetch, clock, maxSearchesPerMinute: 12 }), live: { recheckMs: 1_000 } });
   const people = [];
   const join = async (name) => { const p = await person(browser, info, name, { origin: s.origin }); people.push(p); return p; };
   const shot = async (p, name, selector, block = 'start') => {
@@ -105,6 +106,36 @@ test('a family finds options that fit its needs and date, keeps why it chose one
     expect(s.db.prepare('SELECT COUNT(*) AS n FROM family_choices').get().n).toBe(0);
     await shot(owner, 'fit-results', '#merchant-fit-limit');
 
+    // Review F2: results answer one exact need. (a) Typing a lower price limit clears them, sending nothing. (b) A search
+    //    answer that arrives after the accepted values changed is not shown. Either way a new explicit search is needed.
+    const fitRequests = () => writes('Rowan').filter((w) => w === 'POST /api/family-choices/fit').length;
+    const searched = fitRequests();
+    await owner.page.locator('#merchant-budget').fill('130');
+    await expect(owner.page.locator('#merchant-results .merchant-item')).toHaveCount(0);
+    await expect(owner.page.locator('#merchant-status')).toHaveText('The search changed. Choose “Find options that fit” to see options for it.');
+    await expect(owner.page.locator('#merchant-budget')).toBeFocused();
+    await owner.page.locator('#merchant-budget').fill('');
+    expect(fitRequests()).toBe(searched);
+    const late = catalog.hold();
+    const calls = catalog.calls.length;
+    await owner.page.locator('#merchant-search').click();
+    await expect.poll(() => catalog.calls.length).toBe(calls + 1);
+    // The page may drop the stale answer when it arrives, or abort the request first; either way it must not be shown.
+    const isFit = (url) => new URL(url).pathname === '/api/family-choices/fit';
+    const answered = new Promise((resolve) => {
+      owner.page.on('response', (r) => { if (isFit(r.url())) resolve(); });
+      owner.page.on('requestfailed', (r) => { if (isFit(r.url())) resolve(); });
+    });
+    await owner.page.locator('#merchant-must-haves').getByLabel('6 person', { exact: true }).uncheck();
+    late();
+    await answered;
+    await owner.page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+    await expect(owner.page.locator('#merchant-results .merchant-item')).toHaveCount(0);
+    await expect(owner.page.locator('#merchant-status')).toHaveText('The search changed. Choose “Find options that fit” to see options for it.');
+    await owner.page.locator('#merchant-must-haves').getByLabel('6 person', { exact: true }).check();
+    await owner.page.locator('#merchant-search').click();
+    await expect(owner.page.locator('#merchant-status')).toHaveText('2 options fit the family’s needs by Dec 20 within $150.00 (8 checked).');
+
     // 4. "Add to family choices" keeps why it was chosen; every member reads it.
     await owner.page.locator('#merchant-results [data-product="fixtureTent4pA"] .merchant-shortlist').click();
     await expect(owner.page.locator('#merchant-status')).toHaveText('Added to the family choices (1 of 3).');
@@ -171,7 +202,7 @@ test('a family finds options that fit its needs and date, keeps why it chose one
     // Only explicit look-ups and searches reached the catalog. No payment, steward, model or ordinary-plan request was made,
     // no money record moved, and only Ash's own explicit edits touched an offer.
     expect(catalog.calls.map((c) => `${c.method} ${c.url.replace('https://api.trychannel3.com', '').split('?')[0]}`)).toEqual([
-      'GET /v1/categories/search', 'GET /v1/categories/fixture-tents', 'POST /v1/search', 'POST /v1/search', 'POST /v1/search']);
+      'GET /v1/categories/search', 'GET /v1/categories/fixture-tents', 'POST /v1/search', 'POST /v1/search', 'POST /v1/search', 'POST /v1/search', 'POST /v1/search']);
     expect(writes('Rowan').filter((w) => /plans|merchant\/goal|family-choices$/.test(w))).toEqual(['POST /api/family-choices', 'POST /api/family-choices', 'POST /api/merchant/goal', expect.stringMatching(/^POST \/api\/plans\/plan_[\w-]+\/accept$/)]);
     for (const p of people) {
       expect(writes(p.name).filter((w) => /paypal|steward|example\/|entries|\/api\/plans$|plans\/rules|plans\/family/.test(w))).toEqual([]);

@@ -71,6 +71,18 @@ export function createMerchantDialog({ getState, onUse, onShortlist = null, canS
     renderFit();
   }
 
+  // In family-fit mode, results answer one exact need. Changing the words, the price limit, the kind of item or a must-have
+  // makes them stale: they are cleared, and a search still in flight is dropped, until the adult searches again. Nothing
+  // is sent by the edit, and focus stays where it is. Ordinary search is unaffected.
+  function needChanged() {
+    if (!fit) return;
+    const shown = list.children.length > 0 || list.getAttribute('aria-busy') === 'true';
+    seq++; controller?.abort(); controller = null;
+    if (!shown) return;
+    list.replaceChildren(); list.removeAttribute('aria-busy'); source.hidden = true;
+    say('', 'The search changed. Choose “Find options that fit” to see options for it.');
+  }
+
   // ---- Family fit: the planning limit line, then the optional kind of item and up to two must-haves ----
   function renderFit() {
     const limit = $('#merchant-fit-limit');
@@ -112,12 +124,12 @@ export function createMerchantDialog({ getState, onUse, onShortlist = null, canS
       const chosen = fit.chosen[i] ?? { key: '', values: new Set() };
       const others = fit.chosen.filter((c, j) => j !== i && c.key).map((c) => c.key);
       const attribute = detail.attributes.find((a) => a.key === chosen.key);
-      const pick = h('select', { 'data-focus-key': `must-${i}`, onchange: (e) => { fit.chosen[i] = { key: e.currentTarget.value, values: new Set() }; if (!e.currentTarget.value) fit.chosen.splice(i); renderNeed(); } },
+      const pick = h('select', { 'data-focus-key': `must-${i}`, onchange: (e) => { fit.chosen[i] = { key: e.currentTarget.value, values: new Set() }; if (!e.currentTarget.value) fit.chosen.splice(i); needChanged(); renderNeed(); } },
         h('option', { value: '' }, 'None'), ...detail.attributes.filter((a) => !others.includes(a.key)).map((a) => h('option', { value: a.key, selected: a.key === chosen.key }, a.name)));
       pick.value = chosen.key;
       const values = attribute ? h('fieldset', { class: 'merchant-values' }, h('legend', {}, `Accepted ${attribute.name}`),
         ...attribute.values.map((v) => h('label', { class: 'merchant-value' }, h('input', { type: 'checkbox', value: v, checked: chosen.values.has(v), 'data-focus-key': `must-${i}-${v}`,
-          onchange: (e) => { if (e.currentTarget.checked) chosen.values.add(v); else chosen.values.delete(v); fit.chosen[i] = chosen; } }), ` ${v}`))) : null;
+          onchange: (e) => { if (e.currentTarget.checked) chosen.values.add(v); else chosen.values.delete(v); fit.chosen[i] = chosen; needChanged(); } }), ` ${v}`))) : null;
       rows.push(h('div', { class: 'merchant-must-have' }, h('label', { class: 'merchant-field' }, h('span', {}, `Must-have ${i + 1} `, h('small', {}, '(optional)')), pick), values));
     }
     box.replaceChildren(...rows);
@@ -134,6 +146,7 @@ export function createMerchantDialog({ getState, onUse, onShortlist = null, canS
       const res = await api.post('/api/merchant/categories', { query });
       if (mine !== kindSeq || !fit) return;
       Object.assign(fit, { kinds: res.categories, kind: '', detail: null, chosen: [] });
+      needChanged();
       renderNeed();
       say(res.categories.length ? '' : 'empty', res.categories.length ? `Choose a kind of item for “${res.query}”, or search on price and date alone.`
         : `The catalog has no kind of item for “${res.query}”. You can still search on price and date alone.`);
@@ -150,6 +163,7 @@ export function createMerchantDialog({ getState, onUse, onShortlist = null, canS
       const res = await api.post('/api/merchant/category', { slug });
       if (mine !== kindSeq || !fit || fit.kind !== slug) return;
       Object.assign(fit, { detail: res.category, chosen: [] });
+      needChanged();
       renderNeed();
       say('', '');
       ($('#merchant-must-haves select') ?? $('#merchant-kind')).focus();
@@ -400,7 +414,8 @@ export function createMerchantDialog({ getState, onUse, onShortlist = null, canS
   form.addEventListener('submit', search);
   $('#merchant-find-kinds').addEventListener('click', findKinds);
   $('#merchant-show-needs').addEventListener('click', showNeeds);
-  $('#merchant-kind').addEventListener('change', (e) => { if (!fit) return; Object.assign(fit, { kind: e.currentTarget.value, detail: null, chosen: [] }); renderNeed(); });
+  $('#merchant-kind').addEventListener('change', (e) => { if (!fit) return; Object.assign(fit, { kind: e.currentTarget.value, detail: null, chosen: [] }); needChanged(); renderNeed(); });
+  for (const field of [$('#merchant-query'), $('#merchant-budget')]) field.addEventListener('input', needChanged);
   // Escape closes the merchant from any field (a search box would otherwise only clear its text).
   dialog.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !e.isComposing) { e.preventDefault(); close(); } });
   $('#merchant-close').addEventListener('click', close);

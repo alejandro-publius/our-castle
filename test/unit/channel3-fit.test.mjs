@@ -82,3 +82,48 @@ test('a category must have been listed by the catalog here; its must-haves are r
   const failing = createMerchant({ apiKey: KEY, fetch: createFakeChannel3((url, init, n) => new Response('{}', { status: 401 })).fetch });
   await rejects(failing.findCategories({ query: 'tent' }), 'merchant_auth');
 });
+
+test('review F1: concurrent fit searches share only the public catalog call; each caller keeps its own context and draft references', async () => {
+  const catalog = fitCatalog();
+  const merchant = createMerchant({ apiKey: KEY, fetch: catalog.fetch });
+  await merchant.findCategories({ query: 'tent' });
+  await merchant.category('fixture-tents');
+  const need = merchant.buildNeed({ category: 'fixture-tents', mustHaves: [{ key: 'fixture-capacity', values: ['4 person', '6 person'] }] });
+  // Identical public request (words, kind, must-haves, ceiling); different private planning context per caller.
+  const contextA = { ceilingCents: 15000, targetDate: '2026-12-20', reserveCents: 9000, on: '2026-11-08' };
+  const contextB = { ceilingCents: 15000, targetDate: '2027-01-03', reserveCents: 15000, on: '2026-11-08' };
+  const calls = catalog.calls.length;
+  const release = catalog.hold();
+  const pendingA = merchant.fitSearch({ query: 'tent', need, ceilingCents: 15000, context: contextA });
+  const pendingB = merchant.fitSearch({ query: 'tent', need, ceilingCents: 15000, context: contextB });
+  release();
+  const [a, b] = await Promise.all([pendingA, pendingB]);
+  assert.equal(catalog.calls.length, calls + 1, 'one public catalog call is still shared');
+  assert.deepEqual(a.results.map((r) => r.fit.context), [contextA, contextA]);
+  assert.deepEqual(b.results.map((r) => r.fit.context), [contextB, contextB]);
+  // Each caller's results are its own drafts: no reference is shared, and each draft keeps its caller's context.
+  const refs = (found) => found.results.flatMap((r) => [r.draftId, r.referenceId]);
+  assert.equal(refs(a).some((id) => refs(b).includes(id)), false);
+  assert.deepEqual(merchant.draft(b.results[0].draftId).fit.context, contextB);
+  assert.deepEqual(merchant.draft(a.results[0].draftId).fit.context, contextA);
+  // The public facts are the same for both.
+  assert.deepEqual(a.results.map((r) => [r.productId, r.priceCents, r.fit.status]), b.results.map((r) => [r.productId, r.priceCents, r.fit.status]));
+});
+
+test('review F1, same pattern in refresh: concurrent checks of one fit item share the look-up, but each keeps its own context and draft', async () => {
+  const catalog = fitCatalog();
+  const merchant = createMerchant({ apiKey: KEY, fetch: catalog.fetch });
+  await merchant.findCategories({ query: 'tent' });
+  await merchant.category('fixture-tents');
+  const need = merchant.buildNeed({ category: 'fixture-tents', mustHaves: [{ key: 'fixture-capacity', values: ['4 person', '6 person'] }] });
+  const contextA = { ceilingCents: 15000, targetDate: '2026-12-20', reserveCents: 9000, on: '2026-11-08' };
+  const contextB = { ceilingCents: 15000, targetDate: '2027-01-03', reserveCents: 15000, on: '2026-11-08' };
+  const a = await merchant.fitSearch({ query: 'tent', need, ceilingCents: 15000, context: contextA });
+  const b = await merchant.fitSearch({ query: 'tent', need, ceilingCents: 15000, context: contextB });
+  const calls = catalog.calls.length;
+  const [ra, rb] = await Promise.all([merchant.refresh(merchant.draft(a.results[0].referenceId)), merchant.refresh(merchant.draft(b.results[0].referenceId))]);
+  assert.equal(catalog.calls.length, calls + 1, 'one shared look-up');
+  assert.deepEqual([ra.results[0].fit.context, rb.results[0].fit.context], [contextA, contextB]);
+  assert.notEqual(ra.results[0].referenceId, rb.results[0].referenceId);
+  assert.deepEqual(merchant.draft(rb.results[0].referenceId).fit.context, contextB);
+});
