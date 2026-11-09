@@ -1,5 +1,80 @@
 # Validation
 
+## Complete kits: review correction 001 — November 9, 2026
+
+Codex's review of `1dfca06` (PR #58) reproduced five production defects, R1–R5, in the complete-kit planner. Commits on the same branch:
+- `39833fe`: the five fixes, the chosen-kit wording, and a regression for each;
+- the commit after it: these notes, the reframed screenshot and its provenance.
+
+**What was wrong, and what changed:**
+- **R1. Ordering went on after access or the facts changed.** `/api/kit/prefer` waited for the solver, then went on to the quota and Cohere without checking again. In the root probe, a member signed out while the solver was held: the request ended 401, but the fake ranker was still called once.
+  - The route now checks the session, and the family's kit and figures, as soon as the solver answers.
+  - That check comes before any answer (including "nothing to order"), the minute's quota and any Cohere call.
+- **R2. A failed ordering came back for old figures.** When Cohere failed after the figures changed, the route returned 200 with the old revision. A failure is now shown with the kits only while they are still current; otherwise it is refused (`kit_plan_changed`), like a late success.
+- **R3. An empty ranking was reported as a match.** `readRanking` appended every kit Cohere left out, so a reply that ranked nothing still labelled a match.
+  - It now returns only the kits Cohere ranked. A reply that ranks none is a failure (`kit_rank_empty`), with no match.
+  - A reply that ranks some still names Cohere's first choice. The answer says how many it ranked of how many were sent (`ordered`, `sent`), and the page then says "Cohere ordered 1 of the 5 lowest-total kits…". The sentence for a complete ranking is unchanged.
+- **R4. Standard error was unbounded.** `SOLVER_LIMITS.maxErrorBytes` (4 KiB) was declared but not enforced: a program that wrote 4,097 bytes, then a valid answer, was accepted.
+  - Standard error is now counted and discarded. Past the bound the program is stopped and its answer refused (`kit_solver_failed`). Nothing it wrote is kept or logged.
+  - The time limit, cancellation and the two-at-once limit are unchanged.
+- **R5. Counts were sent to Cohere.** Each kit description began with the family's listing count ("1 × …", "20 × …"). Descriptions are now public titles and shops only; the counts stay in the solver and on the family's page.
+- **The chosen kit's date** (Codex's clarity point). Wren saw the chosen $180 kit finish Dec 6; Rowan, trying a private $90 one-off, saw Dec 27.
+  - The note now ends "This page’s estimate, with no one-off tried here." or "…, after the one-off $90.00 tried here."
+  - A child tries none and never sees an adult's trial. The financial arithmetic is unchanged.
+
+**Before:** the new tests ran on `1dfca06`'s production code, with an empty production diff. The three kit unit files ran **36 tests: 23 passed and 13 failed**, on both Node 22.16.0 and 26.0.0. The failures reproduced each finding:
+- **R1:**
+  - a stale "nothing to order" answer came back 200, with the old revision;
+  - a stale ordering, and a signed-out member's, each made one Cohere call;
+  - those two calls used up quota, so a current request was refused as busy at its fifth ordering.
+- **R2:** a Cohere failure after Ash changed an offer returned 200, with the old revision.
+- **R3:** an empty reply came back `ok`, with five ordered and the lowest-total kit labelled the match. The adapter also padded a partial reply with unranked kits.
+- **R4:** the 4,097-byte program's answer was accepted.
+- **R5:** the documents began "1 × …" and "2 × …". The test of one listing against twenty showed descriptions that differed only by the count.
+
+The two R2 cases that already held on `1dfca06` passed: a late success is refused, and a failure for current figures keeps the kits.
+
+**After, on exactly `39833fe`.** Every check used fake catalog and Cohere transports, invented data and disposable databases, with `.env` loading off and non-loopback transport denied. `KIT_SOLVER_REQUIRED=1` required the compiled solver; its sources are unchanged since `dfcfa7a`, and the binary's sha256 is `79feaabe…`.
+- **Unit:** `kit-solver`, `kit-planner` and `kit-rerank` passed **36/36 on Node 22.16.0 and 26.0.0** (29 tests and 7 subtests).
+  - Six development runs on Node 26 also passed 36/36. They ran before one test fixture's text was updated to the new description format.
+  - In all eight runs, the whole standard-error test took 0.44–0.65 seconds. Its last program would otherwise have waited out the 4-second limit.
+- **Browser:** the kit journey passed **2/2**, on desktop 1440×1000 and the 390×844 phone. It now also checks:
+  - that no Cohere document carries a count or other figure;
+  - the sentence for a complete ranking;
+  - Rowan's and Wren's page estimates;
+  - that Wren's page never shows $90.00.
+- **Guard:** `npm run check` passed (47 copied art/runtime files, the 90-colour palette, renderer wiring and syntax).
+
+**Screenshots** (provenance in `docs/screenshots/kit-planner-sources.json`):
+- **Unchanged:** `kit-planner-desktop-kits-compared.png`, `kit-planner-desktop-smallest-change.png` and `kit-planner-phone-listings.png` keep their `dfcfa7a` stamps. The final run on `39833fe` captured each of these views byte-identical, and none shows changed copy.
+  - Of that run's ten captures, six were byte-identical to `dfcfa7a`'s.
+  - The other four are uncommitted: the two child views show the new note, and the two goal drafts differ only inside the journal panel, with the same text.
+- **Replaced:** `kit-planner-phone-child-chosen.png` (`c65f1c34b9b6`) is stamped on `39833fe`. It shows Wren's read-only chosen kit, centred, ending "This page’s estimate, with no one-off tried here."
+  - The first recapture (`d728b32fb775`, from the final run) was top-aligned: the frame began at the kit's top rule, and two thirds of it was the goal form. The review read it as starting below the heading, so it was replaced. It is kept locally.
+  - The replacement came from a capture-only copy of the `39833fe` journey spec. It ran on the phone from the worktree, with every tracked source identical to `39833fe`, and passed (1 test).
+  - The copy differs only in its import paths, capture folder and centred framing. Its hash and diff are recorded.
+- **Not used:** in that run, the listings view was captured at a later scroll position, with focus back on "Add a listing for stove" after the Market Town dialog closed. The committed listings image is unchanged.
+
+**Not run locally:**
+- the full unit suite;
+- the 50 existing browser specs, green on `dfcfa7a` (this correction changes only kit files);
+- the Rust build and tests, since the solver sources are unchanged since `dfcfa7a`.
+
+The hosted Release checks run on the final head; the result is in the PR.
+
+**Limits:**
+- **Cohere:** every reply was invented by a fake transport. No live Cohere or Channel3 call was made, and no ranking quality was measured.
+- **Partial rankings:** the "1 of the 5" sentence is covered only through the server's answer in a unit test, not in a browser.
+- **Capture timing:** the listings capture helper can race with returning focus. This affects evidence framing only; no test failed.
+- **Not covered:** human, physical-device, accessibility-audit or performance evidence.
+
+**Evidence:** kept local and ignored, in `test-results/kit-planner-20261109/corrections-019/`:
+- `before/` and `dev/`;
+- `final-39833fe/`: unit, guard and browser logs, and captures;
+- `reframe-39833fe/`: the capture-only copy, its diff, config, log and captures;
+- `superseded/`;
+- the two provenance scripts, with `SHA256SUMS.txt`.
+
 ## Complete kits for the kit list — November 9, 2026
 
 Branch `claude/kit-planner`, from the reviewed PR #57 head `11fc98d` (unmerged, stacked on #56 → … → #49). Commits:
@@ -63,7 +138,7 @@ The owner asked for this product feature (task 019), after 018's reviewed kit li
 - `kit-planner-desktop-kits-compared.png` (`e8f4bf9db42d`): two kits that fit after the $90 one-off, the $180 one also the preference match;
 - `kit-planner-desktop-smallest-change.png` (`d20c65343f0b`): after the $120 one-off, the repair that switches only the tent, with the kept stove;
 - `kit-planner-phone-listings.png` (`25eb6cdc2920`): the listings for each item, with the adult's count per listing;
-- `kit-planner-phone-child-chosen.png` (`98fefb953a3a`): the child's read-only chosen kit.
+- `kit-planner-phone-child-chosen.png` (`98fefb953a3a`): the child's read-only chosen kit. Replaced in review correction 001, above.
 
 **Limits:**
 - **Pool, not market:** exact only within the listings an adult added (at most three per item). Prices, stock and weights are as the catalog last reported them.

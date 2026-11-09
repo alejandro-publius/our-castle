@@ -22,12 +22,13 @@ It is planning only. It buys nothing, moves no money, reserves no price or stock
    - When no complete kit fits, the closest one is shown with what keeping it means (a later finish) and what keeping the date means (a shortfall).
    - When an item has no usable listing, the comparison names the item and shows no total. A missing item is never counted as zero.
 3. **Try a one-off amount** in Family choices: a shown comparison is recomputed for it, with no catalog or model call.
-4. **Order by a preference (optional).** When this server has Cohere set up, **Order with Cohere** orders the kits that fit by one preference from a fixed list (Lighter to carry, Sturdy and long-lasting, Simple to set up, Warm in cold weather). The best match is labelled, with Cohere's quoted match from the listing titles. It is a text match, not a check of quality, weight or price.
+4. **Order by a preference (optional).** When this server has Cohere set up, **Order with Cohere** orders the kits that fit by one preference from a fixed list (Lighter to carry, Sturdy and long-lasting, Simple to set up, Warm in cold weather). The best match is labelled, with Cohere's quoted match from the listing titles. It is a text match, not a check of quality, weight or price. When Cohere ranks none of the kits, or the ordering fails, the page says so and labels no match.
 5. **Choose and keep.** **Choose this kit** saves it as the family's chosen kit. **Keep** fixes one of its lines.
    - Later comparisons hold kept lines as they are.
    - When the chosen kit no longer fits (say, a larger one-off), the **smallest change** comes first: the kit that fits with the fewest switched lines.
    - Each switched line is explained: which listing replaces which, any change in the number of listings, and the line's price before and after.
    - A kept line is never switched, and a kept listing cannot be removed until an adult stops keeping it.
+   - The chosen kit's finish date is **this page's estimate**: the family's saved figures, plus only the one-off tried on this page. A child tries none and never sees an adult's trial, so two pages can show different dates for the same kit.
 6. **Review and save.** **Review this kit** checks the chosen kit against fresh catalog answers and opens an unsaved goal draft in the Plan form, with the family schedule it would propose.
    - The draft holds the kit's listed total, the goal's date (or the later finish, shown as such) and the weekly amount.
    - **Save goal and propose this schedule** saves the goal, the kit as its source and the schedule proposal in one transaction.
@@ -41,7 +42,7 @@ Children read the listings, the chosen kit and what is kept. They cannot add, co
 
 | Listings for each item (390 px phone) | What a child sees (phone) |
 | --- | --- |
-| ![Listings added for the tent, sleeping bags and stove, each with the adult's count per listing and what the line needs](screenshots/kit-planner-phone-listings.png) | ![The chosen kit, read-only, with the kept stove](screenshots/kit-planner-phone-child-chosen.png) |
+| ![Listings added for the tent, sleeping bags and stove, each with the adult's count per listing and what the line needs](screenshots/kit-planner-phone-listings.png) | ![The chosen kit, read-only, with the kept stove and its finish as this page's estimate](screenshots/kit-planner-phone-child-chosen.png) |
 
 All captures use invented data: six test-fixture listings from two invented shops, a fake catalog, a fake Cohere order written into the test, and an invented family. [Provenance and hashes](screenshots/kit-planner-sources.json).
 
@@ -93,7 +94,8 @@ The smallest change follows the production-replanning example: a $160 kit with a
 - **Its boundary.** One JSON request on standard input (at most 64 KiB) and one JSON answer on standard output. It has no network, file, environment, identity or money authority, and sees only cents, counts, milligrams and opaque indices.
 - **How the server runs it** (`server/kit/solver.mjs`):
   - the program path is fixed under the app's root, with `shell: false`, an empty environment and a fixed working folder;
-  - a 2-second limit, at most two at once, bounded output, and cancellation;
+  - a 2-second limit, at most two at once, and cancellation;
+  - bounded output (64 KiB) and standard error (4 KiB). Standard error is counted and discarded, never kept or logged. A program that writes more is stopped then, and its answer, even a valid one, is refused;
   - every answer is checked against its request (`verifySolverAnswer`): each kit's listings, quantities, totals, weights, shops and fit are recomputed, kept lines must be unchanged, and the counts must agree.
   - The server then recomputes each shown kit's finish with the family's own arithmetic (`compareChoices`), and refuses any disagreement.
 - **The reference solver** (`src/core/kit-plan.js`) is a deliberately simple JavaScript enumeration, written independently.
@@ -113,10 +115,12 @@ The smallest change follows the production-replanning example: a $160 kit with a
   - `top_n`, `max_tokens_per_doc: 512`;
   - `relevant_spans` (one span, threshold 0.3).
   - Redirects are refused, there is a 10-second limit, the reply is bounded to 64 KiB, and nothing is retried.
-- **What is sent:** the kits that fit, as public listing titles and shop names only. Never names, members, offers, the one-off amount, dates, prices, the family's own list text or a photo.
+- **What is sent:** the kits that fit, as public listing titles and shop names only (`Test fixture: Tent A, four-person dome (fixture-a.test); …`). Never how many listings or items the family needs, names, members, offers, the one-off amount, dates, prices, weights, the family's own list text or a photo. The counts stay here, in the solver and on the family's page.
 - **Checked here.** Every result index is in range and appears once, and every score is a finite number in [0, 1].
   - A matched span must lie inside its document, in Unicode code points, end exclusive, as the reference states. The quoted match is cut on code points.
   - Anything else is refused whole. The kits stay as they were, and the page says the ordering did not work.
+  - Only kits Cohere ranked count. A reply that ranks none is a failure (`kit_rank_empty`) with no match. A reply that ranks some names Cohere's first choice and says so: "Cohere ordered 1 of the 5 lowest-total kits…".
+- **Checked again before and after Cohere.** Once the solver answers, the request must still have its session, and the family's kit and figures must be the ones compared. Otherwise it is refused before any answer (even "nothing to order"), before the minute's quota, and with no Cohere call. The same check runs after Cohere answers or fails, so neither an order nor a failure is shown for figures that changed meanwhile (`kit_plan_changed`).
 - **Limits on its role.** It can only order kits that already fit: it cannot add, remove or change a kit, price or date. A household may order at most six times a minute. The relevance score is not shown and is not confidence.
 
 ## Data and access
@@ -138,7 +142,7 @@ The smallest change follows the production-replanning example: a $160 kit with a
 
 ## Checks
 
-The checks used fake catalog and Cohere transports, invented data, disposable databases and family-mode servers, the compiled Rust solver, and non-loopback transport denied. [Validation](VALIDATION.md#complete-kits-for-the-kit-list--november-9-2026).
+The checks used fake catalog and Cohere transports, invented data, disposable databases and family-mode servers, the compiled Rust solver, and non-loopback transport denied. [Validation](VALIDATION.md#complete-kits-for-the-kit-list--november-9-2026) and its [review correction 001](VALIDATION.md#complete-kits-review-correction-001--november-9-2026).
 
 ## Limits
 
