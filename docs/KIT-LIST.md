@@ -19,7 +19,7 @@
 | --- | --- | --- |
 | ![Saved list: tent 1 to get, sleeping bags 2, torches 0, stove 1](screenshots/kit-list-desktop-saved.png) | ![Typed draft with Need and Have for each line](screenshots/kit-list-phone-typed-draft.png) | ![The same saved list, read-only](screenshots/kit-list-phone-child-saved.png) |
 
-All captures use invented test data: the camping list `1 x 4-person tent; 2 x sleeping bag; 2 x torch; 1 x stove`, a photo of it drawn by the test browser, and a fake OpenAI transport whose "reading" is written into the test. [Provenance and hashes](screenshots/kit-list-sources.json).
+All captures use invented test data: the camping list `1 x 4-person tent; 2 x sleeping bag; 2 x torch; 1 x stove`, a photo of it drawn by the test browser, and a fake OpenAI transport whose "reading" is written into the test. [Provenance and hashes](screenshots/kit-list-sources.json). They were captured at `8461902`, before [review correction 001](VALIDATION.md#kit-list-review-correction-001--november-9-2026), which changes nothing they show.
 
 **The worked example.** Two torches are already at home, so the four lines still to get are 1, 2, 0 and 1. In the photo test, the fake reading first says 3 sleeping bags and gives no stove count. The adult corrects both before saving, and the other adult, the child and a reload read exactly the corrected list.
 
@@ -71,6 +71,10 @@ All captures use invented test data: the camping list `1 x 4-person tent; 2 x sl
   - `PUT /api/kit` saves in one transaction, against the revision the draft started from. If someone else saved in between, the whole save is refused. The page then shows their list and asks whether to keep the draft or use the saved list. Unsaved fields survive live updates.
 - **"From a photo".** A line is marked this way only with that adult's own current reading id. A reused, foreign or forged id is refused.
 - **Saved fields only.** Any other field sent with a line, such as a price or role, is not stored. A second household can neither read nor change this list, nor use its reading.
+- **One household, goal and person at a time.** When the person, goal or household on the page changes, the page:
+  - drops typed text, a draft or a photo that was not saved, and says so when there was one;
+  - clears any message about the previous list;
+  - draws that one's own saved list.
 - **Next stage.** Stage 019 can use the saved typed lines (ids, Need and Have, with the details as editable text), never a raw reading. Comparing complete kits against the family's planning limit belongs to that stage and is not implemented here.
 
 ## Checks
@@ -81,5 +85,6 @@ Fake OpenAI transport, invented data, disposable databases and family-mode serve
 
 - **Accuracy.** How well any model reads a real family's photo is untested; no live call was made. The fake reading proves only what is sent, how answers are handled, and that the family corrects the draft.
 - **Typed text.** The parser follows the literal rules above, so unusual wording may need a correction in the draft.
+- **Typing while another adult saves.** If another adult saves a list while someone is typing into the empty list's box, the box is hidden. The typed text was not saved and is not shown again.
 - **Have.** A family report, never verified.
 - **Scope.** No human playtest, physical-device, accessibility-audit or performance evidence.

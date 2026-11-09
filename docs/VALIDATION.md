@@ -1,5 +1,67 @@
 # Validation
 
+## Kit list review correction 001 — November 9, 2026
+
+Codex's review of PR #57 (`8461902` and `d39ae12`) found two scope-boundary errors in the page's kit list, `src/app/kit-list.js`. It reproduced both by calling the exported module with invented states over a minimal DOM. The fix is `b3f8377`; these notes are the commit after it. The [kit-list record](#kit-list-from-text-or-a-photo--november-9-2026) below is unchanged.
+
+**What was wrong:**
+- **F1:** the saved list was redrawn only when its revision, save time, the viewer's adult status or the saver's name changed. A second household's or goal's list that matched on all of these kept showing the first one's lines.
+- **F2:** a change of household, goal or person dropped an open draft and photo, but left the typed text in the box. The next empty list's typing box still showed it.
+- **Found while fixing F2:** a message about the previous list, such as "Saved for the family. Nothing was bought or paid.", also stayed under the next one.
+
+**Where these can happen in the app:**
+- **Only through the module:** a household keeps one goal (editing it keeps its id), and a page never shows a second household. A family sign-in reloads the page, and a state for another household or member is refused. So these were reached only by calling the module directly, as in the review:
+  - F1;
+  - F2's household and goal cases;
+  - the leftover message, which is misleading only under another goal or household.
+- **In the app:** F2's person case happens through the example persona switch, which draws the kit list for the newly chosen person (`src/app/main.js`). This path was exercised in the module test, not in a browser. The switch now also clears the previous person's message.
+
+**The fix,** in `src/app/kit-list.js`:
+- **Redraw key:** the saved list's redraw key now includes whose list it is: household, goal and person. Another list is always drawn, and an unchanged re-read of the same list still keeps its nodes and focus.
+- **On a change of household, goal or person,** the page now also clears the typed text and any message about the old list.
+  - It says "The draft was for another person or goal, so it was discarded. Nothing was saved." only when a draft or photo was open, or the typing box was in use.
+  - Text left in the hidden box after a save is not reported as discarded.
+
+**Regression test:** `test/unit/kit-list-page.test.mjs` runs the real page module over `test/helpers/mini-dom.mjs`, a minimal DOM built from the kit-list markup in `index.html`.
+- It uses invented states and no browser, server, database or network; its one save goes to a fake transport inside the test.
+- It has 5 tests with 8 subtests, 13 results in all:
+  - **F1**, for another household and for another goal, each with the same line id, revision, save time and saver name;
+  - **F2**, for another household and person, another goal, and another adult (the persona switch), each with and without a checked draft open;
+  - **the leftover message** after a save;
+  - **two same-scope checks:** an unchanged re-read keeps the drawn list and its focus, and keeps typed text and an open draft, with focus in the line being edited.
+
+**Before and after** (Node 22.16.0 and 26.0.0, `.env` loading off, non-loopback transport denied):
+
+| Source | Result on each Node version |
+| --- | --- |
+| `d39ae12`'s `kit-list.js`, with the final test | 13 results: 2 pass (the same-scope checks), 11 fail |
+| The fix, `b3f8377` | 13 of 13 pass |
+
+Each failure before the fix was the one reported:
+- the first household's "PRIVATE TEST TENT" still shown instead of "SECOND HOUSE BAG";
+- "PRIVATE FIRST FAMILY UNSAVED LIST" still in the next person's box, in all six F2 cases;
+- "Saved for the family…" left under the next goal.
+
+During development, the first version of the fix failed the leftover-message test: it reported text left in the hidden box after a save as a discarded draft. It was corrected before committing.
+
+**Other checks on the fix:**
+- **Guard:** `npm run check` passed.
+- **Browser:** the existing kit-list journey passed 2/2, on desktop and the 390 px phone. It covers same-person live updates keeping focus and edits, and Escape closing the journal without losing the draft.
+- **Not run locally:** the other Plan specs and the full unit suite. No other test imports the page module. The hosted Release checks run the whole selection on the final head; the result is in the PR.
+
+**Screenshots:** they stay as captured at `8461902` and recorded in `docs/screenshots/kit-list-sources.json`, and were not recaptured or restamped. The fix changes nothing drawn for a single person. The corrected browser run's own capture of the saved list matches the committed one except for the save time. That capture is ignored, in `test-results/kit-list/`.
+
+**Limits:**
+- **The test DOM is not a browser.** It models only what the module uses, and approximates layout by the `hidden` attribute and closed `<details>`.
+- **Unchanged, pre-existing (same person).** Suppose another adult saves a list while someone is typing into the empty list's box:
+  - a live update hides the box;
+  - the text is kept only in the hidden box, with no message;
+  - **Start a new list** clears it.
+  This correction keeps same-person behavior as it was; a throwaway probe recorded it.
+- **Earlier limits still apply.** Everything in the kit-list record below holds: no live OpenAI call, and no human, device, accessibility-audit or performance evidence.
+
+**Evidence:** kept local and ignored, in `test-results/kit-checklist-20261109/correction-001/`: the before, first-attempt, after and final logs, the guard and browser logs, the probe, commands and `SHA256SUMS.txt`.
+
 ## Kit list from text or a photo — November 9, 2026
 
 Branch `claude/kit-checklist`, from the reviewed PR #56 head `afbe13f` (unmerged, stacked on #55 → #54 → … → #49). Commits:
