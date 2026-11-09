@@ -5,6 +5,8 @@ import { parseEnv } from 'node:util';
 export const PAYPAL_SANDBOX_API = 'https://api-m.sandbox.paypal.com';
 export const PAYPAL_SANDBOX_SDK = 'https://www.sandbox.paypal.com/web-sdk/v6/core';
 export const DEFAULT_AI_MODEL = 'claude-opus-5-5';
+// Optional kit-list photo reading: OpenAI's model page lists image input, the Responses API and Structured Outputs for it.
+export const DEFAULT_KIT_MODEL = 'gpt-6-sol';
 const SUPPORTED_AI_PROVIDERS = new Set(['anthropic']);
 
 /**
@@ -22,7 +24,7 @@ export function readEnvironment({ root, envFile = process.env.OUR_CASTLE_ENV_FIL
 /**
  * Turn environment values into an explicit runtime configuration. Missing credentials select
  * clearly labeled example modes; they never fall back to another credential source.
- * Deliberately ignored: ANTHROPIC_API_KEY / ANTHROPIC_AUTH_TOKEN and any coding-assistant session.
+ * Deliberately ignored: ANTHROPIC_API_KEY / ANTHROPIC_AUTH_TOKEN, OPENAI_API_KEY and any coding-assistant session.
  */
 export function loadConfig(env = {}, { root = process.cwd() } = {}) {
   const warnings = [];
@@ -75,9 +77,16 @@ export function loadConfig(env = {}, { root = process.cwd() } = {}) {
   const studioLicence = trimmed('AG_STUDIO_LICENSE_KEY');
   const studio = studioLicence ? { licenseKey: studioLicence } : null;
 
+  // Kit list photo reading: optional, server-side only, with its OWN key. OPENAI_API_KEY and the planner's AI_API_KEY are
+  // never used for it, so no other credential is sent by accident. Without KIT_OPENAI_API_KEY it is off, and typing a
+  // kit list works exactly the same. The model is chosen here only, never by a request.
+  const kitKey = trimmed('KIT_OPENAI_API_KEY');
+  const kit = kitKey ? { mode: 'live', provider: 'openai', apiKey: kitKey, model: trimmed('KIT_OPENAI_MODEL') || DEFAULT_KIT_MODEL } : { mode: 'off' };
+  if (!kitKey && trimmed('KIT_OPENAI_MODEL')) warnings.push('KIT_OPENAI_MODEL is set without KIT_OPENAI_API_KEY, so photo reading stays off. Typing a kit list still works.');
+
   const dataDir = path.resolve(root, trimmed('OUR_CASTLE_DATA_DIR') || 'data');
   const access = accessConfig(trimmed('OUR_CASTLE_ACCESS'), trimmed('OUR_CASTLE_ORIGIN'));
-  return { port: Number.isFinite(port) ? port : 3010, host, payments, ai, merchant, studio, dataDir, access, warnings };
+  return { port: Number.isFinite(port) ? port : 3010, host, payments, ai, merchant, kit, studio, dataDir, access, warnings };
 }
 
 export class ConfigError extends Error {}

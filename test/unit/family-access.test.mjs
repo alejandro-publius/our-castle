@@ -322,7 +322,7 @@ test('a second passkey needs a recent check; data and sessions persist through a
   } finally { await s?.close(); rmSync(dir, { recursive: true, force: true }); }
 });
 
-test('upgrading a goal-project database adds the access, deferred-refund and family-choice tables; existing rows are unchanged', () => {
+test('upgrading a goal-project database adds the access, deferred-refund, family-choice and kit-list tables; existing rows are unchanged', () => {
   const dir = mkdtempSync(path.join(tmpdir(), 'our-castle-access-migration-'));
   const file = path.join(dir, 'before.sqlite');
   try {
@@ -339,7 +339,7 @@ test('upgrading a goal-project database adds the access, deferred-refund and fam
     const db = openDatabase(file);
     assert.equal(db.prepare('PRAGMA user_version').get().user_version, MIGRATIONS.length);
     assert.deepEqual(rows(db, beforeTables), before, 'every earlier table and row identical');
-    assert.deepEqual(tables(db).filter((t) => !beforeTables.includes(t)).sort(), ['accounts', 'audit_events', 'auth_challenges', 'deferred_refunds', 'family_choices', 'family_offers', 'family_preferences', 'invitations', 'memberships', 'passkeys', 'sessions']);
+    assert.deepEqual(tables(db).filter((t) => !beforeTables.includes(t)).sort(), ['accounts', 'audit_events', 'auth_challenges', 'deferred_refunds', 'family_choices', 'family_offers', 'family_preferences', 'invitations', 'kit_lists', 'memberships', 'passkeys', 'sessions']);
     db.close();
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });

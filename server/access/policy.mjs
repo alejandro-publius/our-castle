@@ -55,6 +55,9 @@ export const ROUTE_POLICIES = Object.freeze([
   ['POST', '/api/family-choices/offer/withdraw', 'adult'],
   ['PUT', '/api/family-choices/preference', 'member'],
   ['POST', '/api/family-choices/preference/remove', 'member'],
+  // Kit list: adults read a photo (no record changes) and save the list; every member reads the saved list in the state.
+  ['POST', '/api/kit/read', 'adult'],
+  ['PUT', '/api/kit', 'adult'],
   ['POST', '/api/steward', 'adult'],
   ['POST', '/api/entries', 'adult'],
   ['GET', '/api/paypal/config', 'adult'],

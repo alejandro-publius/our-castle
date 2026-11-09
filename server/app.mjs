@@ -1,7 +1,7 @@
 import path from 'node:path';
 import { readFile, stat } from 'node:fs/promises';
 import { readFileSync } from 'node:fs';
-import { createHash, randomUUID } from 'node:crypto';
+import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import {
   DEMO_HOUSEHOLD_ID, DomainError, addSelfReportedEntry, ensureDemoHousehold, getActiveGoal, getGoal, getMember, resetHousehold,
   progressFor, setupFamilyHouse, setupHousehold, updateCrest, updateGoal, updateGoalProject, updateMemberAvatar,
@@ -21,6 +21,7 @@ import {
   addChoice, checkChoiceForSave, familyChoicesView, fitContext, fitFinish, refreshChoice, removeChoice, removePreference, reviewChoice, saveOffer, setPreference, withdrawOffer,
 } from './family-choices.mjs';
 import { treasuryFor } from './treasury.mjs';
+import { checkKitImage, kitView, saveKit } from './kit/list.mjs';
 import { transaction } from './db.mjs';
 
 const MIME = {
@@ -44,6 +45,11 @@ const PACKAGE_FILES = new Map([
 ]);
 const LOCAL_HOSTS = new Set(['localhost', '127.0.0.1', '[::1]']);
 const MAX_BODY = 64 * 1024;
+// The one route that carries a photo: a re-encoded image of at most 1.4 MB as base64 JSON. Every other route keeps 64 KiB.
+const KIT_READ_ROUTE = '/api/kit/read';
+const KIT_READ_BODY_MAX = 2 * 1024 * 1024;
+const KIT_READ_TTL_MS = 2 * 3_600_000; // how long a photo reading can mark the lines it gave as "from a photo"
+const KIT_READS_PER_MINUTE = 4; // photo readings per household per minute: each is a paid provider call
 const PAYPAL_SOURCES = 'https://*.paypal.com https://*.paypalobjects.com https://*.braintreegateway.com https://*.braintree-api.com https://*.venmo.com';
 
 function inlineScriptHashes(html) {
@@ -89,12 +95,12 @@ function sendJson(res, status, body) {
   res.end(payload);
 }
 
-async function readBody(req) {
+async function readBody(req, limit = MAX_BODY) {
   const chunks = [];
   let size = 0;
   for await (const chunk of req) {
     size += chunk.length;
-    if (size > MAX_BODY) throw new HttpError(413, 'too_large', 'Request body is too large.');
+    if (size > limit) throw new HttpError(413, 'too_large', 'Request body is too large.');
     chunks.push(chunk);
   }
   return Buffer.concat(chunks).toString('utf8');
@@ -117,9 +123,9 @@ function checkHostAndOrigin(req, { write }) {
 const str = (v) => (typeof v === 'string' ? v : undefined);
 // Write-method routes that change no household record: calculations, provider look-ups, questions and ceremony steps.
 const UNCHANGING_WRITES = new Set(['/api/plans/preview', '/api/merchant/search', '/api/merchant/refresh', '/api/merchant/alternatives', '/api/merchant/categories', '/api/merchant/category',
-  '/api/family-choices/review', '/api/family-choices/fit', '/api/steward', '/api/paypal/client-token', '/api/auth/passkeys/options', '/api/auth/signout']);
+  '/api/family-choices/review', '/api/family-choices/fit', KIT_READ_ROUTE, '/api/steward', '/api/paypal/client-token', '/api/auth/passkeys/options', '/api/auth/signout']);
 
-export function createApp({ config, db, clock, paypal = null, aiProvider = null, stewardAi = null, paypalTools = null, stewardFetch, merchant = null, root, live: liveLimits = {} }) {
+export function createApp({ config, db, clock, paypal = null, aiProvider = null, stewardAi = null, paypalTools = null, stewardFetch, merchant = null, kitReader = null, root, live: liveLimits = {} }) {
   // Example mode is the single local example household. Family mode serves only households whose members enrolled their
   // own passkeys; it never creates, shows or falls back to the example household.
   const family = config.access?.mode === 'family';
@@ -151,6 +157,11 @@ export function createApp({ config, db, clock, paypal = null, aiProvider = null,
   // Which households this server showed each merchant draft. The merchant caches identical searches, so in family mode a
   // draft is saved only by a household that was actually shown it.
   const draftHouseholds = new Map();
+  // Kit list photo readings this server made: which household, goal and adult each belongs to, so only that adult's save
+  // can mark lines as read from a photo. No image, model answer or line is kept here. Bounded and short-lived.
+  const kitReads = new Map(); // readId -> { householdId, goalId, memberId, at }
+  const kitReadTimes = new Map(); // householdId -> recent reading start times
+  const kitStatus = () => (kitReader ? { mode: 'live', label: 'Photo reading by OpenAI' } : { mode: 'off', label: 'Photo reading is not set up' });
   const state = (scope = exampleScope()) => {
     const s = buildState({ db, householdId: scope.householdId, planner, contributions, config, steward: stewardInfo });
     s.modes.merchant = shop.status();
@@ -158,6 +169,8 @@ export function createApp({ config, db, clock, paypal = null, aiProvider = null,
     s.merchantGoalRevision = merchantGoalRevision(s.goal, s.progress.startingCents);
     s.treasury = treasuryFor(s, clock.iso(), planner.accepted(s.goal.id));
     s.familyChoices = familyChoicesView(db, choiceScope(scope, s.goal, s.progress));
+    s.modes.kit = kitStatus();
+    s.kit = kitView(db, s.goal);
     if (family) { s.access = access.viewer(scope); s.revision = live.revisionOf(scope.householdId); }
     return s;
   };
@@ -167,7 +180,7 @@ export function createApp({ config, db, clock, paypal = null, aiProvider = null,
 
   // Each route returns a JSON body. Mutations return the fresh state so the board can update at once.
   const routes = [
-    ['GET', '/api/status', () => ({ ...publicModes(config), merchant: shop.status() })],
+    ['GET', '/api/status', () => ({ ...publicModes(config), merchant: shop.status(), kit: kitStatus() })],
     ['GET', '/api/session', ({ session }) => (family ? { mode: 'family', ...access.sessionInfo(session) } : { mode: 'example' })],
     // Family mode: one live-update stream per open page; only change notices travel on it, never records.
     ['GET', '/api/events', ({ req, res, scope }) => {
@@ -366,6 +379,38 @@ export function createApp({ config, db, clock, paypal = null, aiProvider = null,
       refuseForeign(body, scope);
       const result = removePreference(db, { householdId: scope.householdId, goalId: scope.goalId, actor: choiceActor(body, scope) });
       return { ...result, state: state(scope) };
+    }],
+    // ---- Kit list: a family's short checklist of things to bring for its goal. Typing a list needs no server call; only
+    // "Save this list" writes, and only the kit list. Reading a photo writes nothing and tells no other page. ----
+    ['POST', KIT_READ_ROUTE, async ({ body, scope, assertAccess }) => {
+      refuseForeign(body, scope);
+      const actor = choiceActor(body, scope);
+      if (actor.role !== 'adult') throw new DomainError(403, 'adult_required', 'Only an adult in the family can read a photo for the kit list.');
+      if (!kitReader) throw new DomainError(503, 'kit_reader_off', 'Reading photos is not set up on this server. Type the list instead.');
+      checkKitImage(body.image);
+      const at = clock.now().getTime();
+      for (const [id, read] of kitReads) if (at - read.at > KIT_READ_TTL_MS) kitReads.delete(id);
+      while (kitReads.size >= 200) kitReads.delete(kitReads.keys().next().value);
+      for (const [id, times] of kitReadTimes) if (!times.some((t) => at - t < 60_000)) kitReadTimes.delete(id);
+      const recent = (kitReadTimes.get(scope.householdId) ?? []).filter((t) => at - t < 60_000);
+      if (recent.length >= KIT_READS_PER_MINUTE) throw new DomainError(429, 'kit_reader_busy', 'Several photos were read in the last minute. Wait a moment, or type the list.');
+      kitReadTimes.set(scope.householdId, [...recent, at]);
+      const reading = await kitReader.read({ image: body.image });
+      assertAccess(); // a reading never reaches a session or goal that changed while OpenAI answered
+      const readId = `kr_${randomBytes(12).toString('hex')}`;
+      kitReads.set(readId, { householdId: scope.householdId, goalId: scope.goalId, memberId: actor.memberId, at: clock.now().getTime() });
+      return { status: 'ok', readId, goalId: scope.goalId, reading };
+    }],
+    ['PUT', '/api/kit', ({ body, scope }) => {
+      refuseForeign(body, scope);
+      if (body.goalId !== scope.goalId) throw new DomainError(409, 'goal_changed', 'The goal changed while you were editing, so nothing was saved.');
+      const actor = choiceActor(body, scope);
+      const read = typeof body.readId === 'string' ? kitReads.get(body.readId) : null;
+      const photoRead = Boolean(read && read.householdId === scope.householdId && read.goalId === scope.goalId && read.memberId === actor.memberId
+        && clock.now().getTime() - read.at <= KIT_READ_TTL_MS);
+      const saved = saveKit(db, { householdId: scope.householdId, goalId: scope.goalId, actor, expectedRevision: body.expectedRevision, items: body.items, photoRead }, clock);
+      if (photoRead) kitReads.delete(body.readId);
+      return { status: 'ok', ...saved, state: state(scope) };
     }],
     // ---- Treasury: read-only. The AG Studio licence (if configured) is the only setting the page may read here. ----
     ['GET', '/api/treasury/studio', () => ({ licenseKey: config.studio?.licenseKey ?? null })],
@@ -613,7 +658,7 @@ export function createApp({ config, db, clock, paypal = null, aiProvider = null,
       let body = {};
       let rawBody = '';
       if (write) {
-        rawBody = await readBody(req);
+        rawBody = await readBody(req, req.method === 'POST' && url.pathname === KIT_READ_ROUTE ? KIT_READ_BODY_MAX : MAX_BODY);
         if (!webhook) {
           if (!String(req.headers['content-type'] ?? '').startsWith('application/json')) throw new HttpError(415, 'json_required', 'Send JSON.');
           try { body = rawBody ? JSON.parse(rawBody) : {}; } catch { throw new HttpError(400, 'invalid_json', 'Request body is not valid JSON.'); }

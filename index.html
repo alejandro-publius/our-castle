@@ -195,6 +195,39 @@
             <p class="family-fit" id="family-fit" hidden><span id="family-fit-text"></span> <button type="button" class="link-button" id="family-fit-find" aria-haspopup="dialog" aria-controls="merchant-dialog">Find options that fit</button></p>
             <div class="form-status" id="family-status" role="status" aria-live="polite"></div>
           </details>
+          <!-- Kit list: a short checklist of things to bring for this goal. An adult types it or reads it from a photo, checks
+               every line, then saves it for the family. A draft is never saved by itself, "Already have" is the family's own
+               count (not a purchase), and saving changes no goal, plan, offer or payment. -->
+          <details class="kit-list" id="kit-list">
+            <summary><span>Kit list</span> <small id="kit-count"></small></summary>
+            <p class="fine">A short list of things to bring, how many are needed and how many the family already has.</p>
+            <div class="kit-saved" id="kit-saved"></div>
+            <div class="actions" id="kit-saved-actions" hidden><button type="button" id="kit-edit">Edit the list</button><button type="button" class="link-button" id="kit-new">Start a new list</button></div>
+            <div class="kit-source" id="kit-source" hidden>
+              <label class="field"><span>Type or paste the list <small>— one item per line, or separated by ;</small></span>
+                <textarea id="kit-text" rows="3" autocomplete="off" spellcheck="true" placeholder="1 x 4-person tent; 2 x sleeping bag; 2 x torch"></textarea></label>
+              <div class="actions"><button type="button" id="kit-check">Check this list</button><button type="button" class="link-button" id="kit-source-cancel" hidden>Cancel</button></div>
+              <div class="kit-photo" id="kit-photo" hidden>
+                <label class="field"><span>Or choose a photo of a written list <small>— PNG or JPEG</small></span><input type="file" id="kit-photo-input" accept="image/png,image/jpeg"></label>
+                <img class="kit-photo-preview" id="kit-photo-preview" alt="The chosen photo (not saved)" hidden>
+                <p class="fine" id="kit-photo-note" hidden>Reading sends this photo to OpenAI. You check every line before anything is saved.</p>
+                <div class="actions"><button type="button" id="kit-read" hidden>Read the photo with OpenAI</button><button type="button" class="link-button" id="kit-photo-clear" hidden>Remove photo</button></div>
+              </div>
+              <p class="fine" id="kit-photo-off" hidden>Reading a photo is not set up on this server; typing the list works the same.</p>
+            </div>
+            <fieldset class="kit-draft" id="kit-draft" hidden>
+              <legend id="kit-draft-title" tabindex="-1">Draft <small>— not saved</small></legend>
+              <p class="fine" id="kit-draft-note"></p>
+              <p class="fine">Need: how many to bring. Have: how many the family already has (its own count, not a purchase).</p>
+              <img class="kit-photo-preview" id="kit-draft-photo" alt="The photo these lines were read from (not saved)" hidden>
+              <ol class="kit-rows" id="kit-rows"></ol>
+              <div class="actions"><button type="button" class="link-button" id="kit-add">Add a line</button></div>
+              <ul class="kit-problems" id="kit-problems"></ul>
+              <div class="kit-conflict" id="kit-conflict" hidden><p id="kit-conflict-text"></p><div class="actions"><button type="button" id="kit-keep">Keep my draft</button><button type="button" id="kit-use-saved">Use the saved list</button></div></div>
+              <div class="actions"><button type="button" class="primary" id="kit-save">Save this list</button><button type="button" id="kit-cancel">Cancel</button><button type="button" class="link-button" id="kit-to-text">Type the list instead</button></div>
+            </fieldset>
+            <div class="form-status" id="kit-status" role="status" aria-live="polite"></div>
+          </details>
           <!-- A Market Town merchant result waiting for the family's confirmation. Nothing is saved until "Save as our goal". -->
           <section class="goal-draft" id="goal-draft" hidden aria-labelledby="goal-draft-title">
             <h4 id="goal-draft-title" tabindex="-1">Draft from the market</h4>

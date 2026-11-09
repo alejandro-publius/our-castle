@@ -21,6 +21,7 @@ import { ledgerTrail } from '../core/ledger.js';
 import { contributionStory, countsSentence, storyKey } from '../core/contribution-story.js';
 import { createMerchantDialog, resultFacts } from './merchant.js';
 import { createFamilyChoices } from './family-choices.js';
+import { createKitList } from './kit-list.js';
 import { scheduleLines } from '../core/family-choices.js';
 import { needSummary } from '../core/family-fit.js';
 import { createTreasury } from './treasury.js';
@@ -93,6 +94,7 @@ let ledgerGrid = null;
 let familyAvatars = null;
 let merchant = null;
 let familyChoices = null; // the Plan journal's family choices (src/app/family-choices.js)
+let kitList = null; // the Plan journal's kit list (src/app/kit-list.js)
 let treasury = null;
 let planCheck = null;
 const ui = {
@@ -1009,7 +1011,7 @@ async function saveHouse() {
 }
 
 // ---------- 2. Plan ----------
-function renderPlan() { renderPlanForm(); familyChoices?.render(); merchant?.refreshFit(); lockPlanForChildren(); }
+function renderPlan() { renderPlanForm(); familyChoices?.render(); kitList?.render(); merchant?.refreshFit(); lockPlanForChildren(); }
 // A child in a shared family sees the goal and plan and may try a weekly amount or date with the read-only check, but
 // changes neither; the server refuses those requests anyway.
 function lockPlanForChildren() {
@@ -2063,6 +2065,7 @@ function bindEvents() {
     fitSource: () => familyChoices?.fitSource() ?? null });
   familyChoices = createFamilyChoices({ getState: () => state, actor: persona, openMerchant: (from, options) => merchant.open(from, options), onReview: useFamilyChoice, applyState,
     onProposed: () => $('#plan-headline').focus() });
+  kitList = createKitList({ getState: () => state, actor: persona, applyState });
   for (const opener of [$('#open-merchant'), $('#find-goal-item')]) opener.addEventListener('click', (e) => merchant.open(e.currentTarget));
   $('#visit-campsite').addEventListener('click', visitCampsite);
   $('#goal-draft-save').addEventListener('click', saveGoalDraft);
@@ -2115,7 +2118,7 @@ function bindEvents() {
     e.currentTarget.textContent = on ? 'Pixel art' : 'Raw 3D';
     scene?.setPixelMode(on);
   });
-  $('#persona').addEventListener('change', (e) => { ui.personaId = e.target.value; pref.set('persona', ui.personaId); ui.refundArm = null; $('#give-approve').checked = false; ui.approvalBasis = null; renderGive(); renderLedger(); renderNextStep(); familyChoices?.render(); });
+  $('#persona').addEventListener('change', (e) => { ui.personaId = e.target.value; pref.set('persona', ui.personaId); ui.refundArm = null; $('#give-approve').checked = false; ui.approvalBasis = null; renderGive(); renderLedger(); renderNextStep(); familyChoices?.render(); kitList?.render(); });
   $('#next-step-go').addEventListener('click', openNextStep);
   $('#deed-visit').addEventListener('click', visitDeed);
   $('#deed-next').addEventListener('click', () => { ui.deeds.index++; renderDeed(); $('#deed-name').focus(); });

@@ -257,7 +257,7 @@ test('example mode shows the same flow with its labelled example people; the per
   }
 });
 
-test('a schema-8 database gains only the three planning tables, with every earlier row unchanged', () => {
+test('a schema-8 database gains only the three planning tables (and the later kit-list table), with every earlier row unchanged', () => {
   const dir = mkdtempSync(path.join(tmpdir(), 'our-castle-family-choices-migration-'));
   const file = path.join(dir, 'before.sqlite');
   try {
@@ -276,8 +276,8 @@ test('a schema-8 database gains only the three planning tables, with every earli
     assert.equal(old.prepare('PRAGMA user_version').get().user_version, 8);
     old.close();
     const db = openDatabase(file);
-    assert.equal(db.prepare('PRAGMA user_version').get().user_version, MIGRATIONS.length); // later steps add no table
-    assert.deepEqual(tables(db).filter((t) => !beforeTables.includes(t)), ['family_choices', 'family_offers', 'family_preferences']);
+    assert.equal(db.prepare('PRAGMA user_version').get().user_version, MIGRATIONS.length); // later steps add one column and the kit list
+    assert.deepEqual(tables(db).filter((t) => !beforeTables.includes(t)), ['family_choices', 'family_offers', 'family_preferences', 'kit_lists']);
     assert.deepEqual(rows(db, beforeTables), before, 'every earlier table and row identical');
     db.close();
     const again = openDatabase(file); // opening again changes nothing

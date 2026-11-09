@@ -495,10 +495,11 @@ button { font: inherit; }
 .goal-draft-item strong { display:block; }
 .goal-draft-effect { margin:0 0 8px; font-size:14px; color:var(--ink-muted); }
 /* Family choices (Plan): a native disclosure; facts are text first, colour only repeats them. */
-.family-choices { margin:0 0 14px; border-top:1px solid var(--ink-line); border-bottom:1px solid var(--ink-line); }
-.family-choices > summary { display:flex; align-items:center; gap:8px; min-height:44px; cursor:pointer; font-weight:700; }
-.family-choices > summary small { font-weight:400; color:var(--ink-muted); }
-.family-choices[open] { padding-bottom:12px; }
+.family-choices, .kit-list { margin:0 0 14px; border-top:1px solid var(--ink-line); border-bottom:1px solid var(--ink-line); }
+.family-choices > summary, .kit-list > summary { display:flex; align-items:center; gap:8px; min-height:44px; cursor:pointer; font-weight:700; }
+.family-choices > summary small, .kit-list > summary small { font-weight:400; color:var(--ink-muted); }
+.family-choices[open], .kit-list[open] { padding-bottom:12px; }
+.family-choices + .kit-list { margin-top:-14px; border-top:0; }
 .family-empty { display:flex; flex-wrap:wrap; align-items:center; gap:4px 12px; margin:6px 0; }
 .family-empty p { margin:0; }
 .family-empty .link-button, .family-options .link-button, .family-trial .link-button, .family-offers .link-button { min-height:44px; }
@@ -526,6 +527,39 @@ button { font: inherit; }
 .family-my-offer .field, .family-trial-row .field { margin-bottom:6px; max-width:16em; }
 .family-trial-row { display:flex; flex-wrap:wrap; align-items:flex-end; gap:0 12px; }
 .merchant-shortlist { min-height:44px; }
+/* Kit list (Plan): the saved checklist as plain rows; a draft is native labelled fields, one small group per line. */
+.kit-saved-list { list-style:none; margin:4px 0 0; padding:0; }
+.kit-saved-list li { display:flex; flex-wrap:wrap; justify-content:space-between; gap:2px 12px; padding:7px 0; border-top:1px solid #d3bd8c; }
+.kit-item-name { font-weight:600; overflow-wrap:anywhere; }
+.kit-item-needs { display:block; font-weight:400; font-size:13px; color:var(--ink-muted); }
+.kit-item-counts { font-size:14px; font-variant-numeric:tabular-nums; white-space:nowrap; }
+.kit-item-counts strong { font-weight:700; }
+.kit-saved-note { margin:6px 0 0; font-size:13px; color:var(--ink-muted); }
+.kit-saved-title { margin:4px 0 0; font-weight:600; }
+.kit-source textarea { width:100%; min-height:72px; border:1px solid var(--ink-line); border-radius:3px; background:var(--paper-3); color:var(--ink); padding:8px 10px; font:inherit; resize:vertical; }
+.kit-source textarea:focus { border-color:#7a4f12; }
+.kit-photo { margin-top:12px; }
+.kit-photo input[type='file'] { min-height:44px; max-width:100%; }
+.kit-photo-preview { display:block; max-width:min(100%, 240px); max-height:180px; margin:4px 0 6px; border:1px solid var(--ink-line); background:var(--paper-3); object-fit:contain; }
+.kit-draft { margin:10px 0 0; padding:0; border:0; }
+.kit-draft legend { padding:0; font-weight:700; }
+.kit-draft legend small { font-weight:400; color:var(--ink-muted); }
+.kit-rows { list-style:none; margin:4px 0 0; padding:0; }
+.kit-row { margin:0; padding:8px 0 4px; border:0; border-top:1px solid #d3bd8c; display:grid; grid-template-columns:minmax(0,1fr) 4.6em 4.6em; gap:0 8px; align-items:end; }
+.kit-row legend { grid-column:1 / -1; font-size:13px; font-weight:600; color:var(--ink-muted); padding:0; }
+.kit-row .field { margin-bottom:4px; }
+.kit-row .field > span:first-child { font-size:13px; }
+.kit-row input { width:100%; min-height:44px; border:1px solid var(--ink-line); border-radius:3px; background:var(--paper-3); color:var(--ink); padding:8px 8px; font:inherit; }
+.kit-row input[type='number'] { font-variant-numeric:tabular-nums; }
+.kit-row input[aria-invalid='true'] { border-color:var(--warn); box-shadow:0 0 0 1px var(--warn); }
+.kit-to-get { margin:0 0 15px; font-size:14px; white-space:nowrap; align-self:end; font-variant-numeric:tabular-nums; }
+.kit-row .link-button { min-height:44px; justify-self:start; }
+.kit-row-problem { grid-column:1 / -1; margin:0 0 4px; font-size:13px; color:var(--warn); font-weight:500; }
+.kit-problems { margin:6px 0 0; padding-left:18px; font-size:14px; color:var(--warn); }
+.kit-problems:empty { display:none; }
+.kit-conflict { margin:8px 0 0; padding:8px 10px; border:1px dashed var(--brass-dark); background:var(--paper-3); font-size:14px; }
+.kit-conflict p { margin:0; }
+.kit-list .link-button { min-height:44px; }
 /* Family fit: the planning limit line, the optional kind of item and must-haves, and why each option fits. */
 .family-fit { margin:12px 0 0; font-size:14px; }
 .family-fit .link-button { min-height:44px; }

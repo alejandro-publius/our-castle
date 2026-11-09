@@ -341,6 +341,23 @@ export const MIGRATIONS = Object.freeze([
     // Planning facts only, and NULL for an ordinary choice. No row or other column changes.
     ensure(db) { if (!hasColumn(db, 'family_choices', 'need_json')) db.exec('ALTER TABLE family_choices ADD COLUMN need_json TEXT;'); },
   }),
+  Object.freeze({
+    id: 'kit-lists',
+    // The family's confirmed kit checklist for a goal, one row per goal: up to eight things to bring, each with how many
+    // are needed, how many the family says it already has and whether it was typed or read from a photo, plus the
+    // list's revision and who saved it when. Planning facts only: no price, purchase, money, photo or model answer.
+    // A new table only; no existing row or column changes.
+    ensure(db) { db.exec(`
+      CREATE TABLE IF NOT EXISTS kit_lists (
+        goal_id TEXT PRIMARY KEY REFERENCES goals(id) ON DELETE CASCADE,
+        household_id TEXT NOT NULL REFERENCES households(id) ON DELETE CASCADE,
+        revision INTEGER NOT NULL CHECK (revision > 0),
+        items_json TEXT NOT NULL,
+        saved_by TEXT NOT NULL REFERENCES members(id) ON DELETE CASCADE,
+        saved_at TEXT NOT NULL
+      );
+    `); },
+  }),
 ]);
 
 export function openDatabase(file) {
