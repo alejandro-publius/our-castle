@@ -4,6 +4,7 @@
 import { api } from './api.js';
 import { formatCents, parseAmountToCents } from '../core/rules.js';
 import { ceilingText, needLines, problemText } from '../core/family-fit.js';
+import { catalogueOf } from '../core/catalogue.js';
 
 const $ = (selector, root = document) => root.querySelector(selector);
 function h(tag, attrs = {}, ...children) {
@@ -21,7 +22,10 @@ function h(tag, attrs = {}, ...children) {
 const AVAILABILITY = { InStock: 'In stock', OutOfStock: 'Out of stock' };
 const clock = (iso) => new Date(iso).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
 const price = (r) => (r.priceCents === null ? 'No price returned' : `${formatCents(r.priceCents, r.currency)} ${r.currency}`);
-const sourceNote = (checkedAt) => `Channel3 catalog checked ${clock(checkedAt)}; retailer price and stock may differ. Tax/shipping extra. We may earn a commission from these links.`;
+// Channel3's results carry its link disclosure. The example catalogue's carry what they are instead: invented, and local.
+const sourceNote = (checkedAt, sample = false) => (sample
+  ? `Example catalogue, answered on this computer at ${clock(checkedAt)}: invented shops, listings, prices and stock. Not Channel3 results and not real offers. Tax and shipping are not included.`
+  : `Channel3 catalog checked ${clock(checkedAt)}; retailer price and stock may differ. Tax/shipping extra. We may earn a commission from these links.`);
 const day = (iso) => { const [y, m, d] = iso.split('-').map(Number); return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' }); };
 const money = (cents) => formatCents(cents);
 
@@ -60,7 +64,8 @@ export function createMerchantDialog({ getState, onUse, onShortlist = null, canS
   const fitScope = () => { const s = getState(); return JSON.stringify([s?.household?.id ?? null, s?.goal?.id ?? null, fitSource()?.memberId ?? null]); };
   let kindSeq = 0; // only the newest category look-up may change the choices shown
 
-  const connected = () => getState()?.modes?.merchant?.mode === 'live';
+  const catalogue = () => catalogueOf(getState());
+  const connected = () => catalogue().open;
   function say(kind, text) { status.dataset.kind = kind; status.textContent = text; }
 
   function renderConnection() {
@@ -239,7 +244,9 @@ export function createMerchantDialog({ getState, onUse, onShortlist = null, canS
     const more = h('details', { class: 'merchant-item-more' }, h('summary', {}, 'Details'),
       h('p', {}, [r.brand, selection, r.otherOffers ? `${r.otherOffers} other ${r.otherOffers === 1 ? 'retailer' : 'retailers'}` : null].filter(Boolean).join(' · ')),
       h('button', { type: 'button', class: 'link-button', onclick: () => lookup('refresh', ref, context) }, 'Check price & stock'),
-      r.url && r.usable && h('button', { type: 'button', class: 'link-button', onclick: () => lookup('refresh', ref, context, { visit: r }) }, `Visit ${r.merchant}`, h('span', { class: 'sr-only' }, ' (checks the item and opens a retailer site in a new tab)')));
+      // An example listing's shop is invented: there is no page to open, so no link is offered.
+      catalogue().sample ? h('p', {}, 'An invented shop: there is no page to visit.')
+        : r.url && r.usable && h('button', { type: 'button', class: 'link-button', onclick: () => lookup('refresh', ref, context, { visit: r }) }, `Visit ${r.merchant}`, h('span', { class: 'sr-only' }, ' (checks the item and opens a retailer site in a new tab)')));
     const actions = h('div', { class: 'merchant-item-actions' }, cheaper, more, suits ? (kitLine ? kitListingControl(r) : shortlistButton(r, context)) : null);
     const use = h('button', { type: 'button', class: 'merchant-use', disabled: !r.usable || !suits, 'aria-describedby': name.id }, 'Use as goal');
     if (r.usable && suits) use.addEventListener('click', () => { leaving = true; close(); onUse({ ...r, ...context }); });
@@ -306,7 +313,7 @@ export function createMerchantDialog({ getState, onUse, onShortlist = null, canS
 
   function showResults(res, context) {
     list.replaceChildren(...res.results.map(r => row(r, { ...context, goalId: res.goalId, goalRevision: res.goalRevision })));
-    source.textContent = sourceNote(res.checkedAt);
+    source.textContent = sourceNote(res.checkedAt, catalogue().sample);
     source.hidden = !res.results.length;
   }
 
@@ -318,7 +325,7 @@ export function createMerchantDialog({ getState, onUse, onShortlist = null, canS
     controller?.abort(); controller = new AbortController();
     retailerWindow?.close(); retailerWindow = null;
     // Reserve a user-initiated window before the asynchronous lookup. It never receives an old saved offer URL.
-    if (visit) {
+    if (visit && !catalogue().sample) {
       retailerWindow = window.open('about:blank', '_blank');
       if (!retailerWindow) { say('error', 'Allow a new tab to visit the retailer, then try again.'); return; }
       retailerWindow.opener = null;
@@ -334,7 +341,7 @@ export function createMerchantDialog({ getState, onUse, onShortlist = null, canS
       } else {
         const item = res.results[0];
         const changed = Number.isSafeInteger(item.previousPriceCents) && item.previousPriceCents !== item.priceCents;
-        say('ok', !item.usable ? (item.unusableReason ?? 'Review this item.') : changed ? `Price changed: ${formatCents(item.previousPriceCents)} → ${price(item)}. Your goal is unchanged.` : 'Channel3 listing checked.');
+        say('ok', !item.usable ? (item.unusableReason ?? 'Review this item.') : changed ? `Price changed: ${formatCents(item.previousPriceCents)} → ${price(item)}. Your goal is unchanged.` : catalogue().sample ? 'Example listing checked.' : 'Channel3 listing checked.');
         if (visit && retailerWindow) {
           if (item.usable && item.url && item.priceCents === visit.priceCents && item.currency === visit.currency && item.availability === visit.availability) {
             retailerWindow.location.replace(item.url);
@@ -375,7 +382,7 @@ export function createMerchantDialog({ getState, onUse, onShortlist = null, canS
     const mine = ++seq;
     controller?.abort(); controller = new AbortController();
     list.replaceChildren(); source.hidden = true; list.setAttribute('aria-busy', 'true');
-    say('working', 'Asking Channel3, then checking each item against the family’s needs…');
+    say('working', catalogue().sample ? 'Looking in the example catalogue, then checking each item against the family’s needs…' : 'Asking Channel3, then checking each item against the family’s needs…');
     try {
       const res = await api.post('/api/family-choices/fit', { query, budgetCents, category: fit.kind || null, mustHaves, reserveCents: src.reserveCents, revision,
         ...(state.access ? {} : { memberId: src.memberId }) }, { signal: controller.signal });
@@ -391,8 +398,8 @@ export function createMerchantDialog({ getState, onUse, onShortlist = null, canS
       const by = `by ${day(res.ceiling.targetDate)} within ${money(res.ceiling.ceilingCents)}`;
       say(res.results.length ? 'ok' : 'empty', res.results.length
         ? `${res.results.length} ${res.results.length === 1 ? 'option fits' : 'options fit'} the family’s needs ${by} (${res.inspected} checked).${res.moreSuitable ? ` ${res.moreSuitable} more suitable not shown.` : ''}`
-        : `None of the ${res.inspected} items Channel3 returned fit the family’s needs ${by}. Nothing was loosened to fill the list.`);
-      source.textContent = sourceNote(res.checkedAt);
+        : `None of the ${res.inspected} items ${catalogue().name} returned fit the family’s needs ${by}. Nothing was loosened to fill the list.`);
+      source.textContent = sourceNote(res.checkedAt, catalogue().sample);
       source.hidden = !res.results.length;
     } catch (error) {
       if (mine !== seq || error.name === 'AbortError') return;
@@ -422,19 +429,20 @@ export function createMerchantDialog({ getState, onUse, onShortlist = null, canS
     if (budgetText && budgetCents === null) { say('error', 'Enter the budget in dollars, like 200.00, or leave it empty.'); $('#merchant-budget').focus(); return; }
     controller = new AbortController();
     list.setAttribute('aria-busy', 'true');
-    say('working', 'Asking Channel3…');
+    say('working', catalogue().sample ? 'Looking in the example catalogue…' : 'Asking Channel3…');
     try {
       const res = await api.post('/api/merchant/search', { query, budgetCents }, { signal: controller.signal });
       if (mine !== seq) return;
       const context = { goalId: res.goalId, goalRevision: res.goalRevision, searchQuery: res.query, searchBudgetCents: res.budgetCents };
       list.replaceChildren(...res.results.map(r => row(r, context)));
       if (!res.results.length) {
-        say('empty', `No matches for “${res.query}”${res.budgetCents ? ` under ${formatCents(res.budgetCents)}` : ''}. Try other words${res.budgetCents ? ' or a higher budget' : ''}.`);
+        say('empty', `No matches for “${res.query}”${res.budgetCents ? ` under ${formatCents(res.budgetCents)}` : ''}. Try other words${res.budgetCents ? ' or a higher budget' : ''}.`
+          + (catalogue().sample ? ' The example catalogue has only tents, sleeping bags and stoves.' : ''));
         source.hidden = true;
       } else {
         say('ok', `${res.results.length} ${res.results.length === 1 ? 'result' : 'results'} for “${res.query}”${res.budgetCents ? ` · Budget ${formatCents(res.budgetCents)}` : ''}.`);
         // Channel3's required link disclosure sits with the links; the price facts stay with the results.
-        source.textContent = sourceNote(res.checkedAt);
+        source.textContent = sourceNote(res.checkedAt, catalogue().sample);
         source.hidden = false;
       }
     } catch (error) {

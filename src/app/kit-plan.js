@@ -13,6 +13,7 @@ import { formatCents } from '../core/rules.js';
 import { compareChoices } from '../core/family-choices.js';
 import { ceilingText, fitCeiling } from '../core/family-fit.js';
 import { lineCost, weightText } from '../core/kit-plan.js';
+import { catalogueOf } from '../core/catalogue.js';
 
 const $ = (id) => document.getElementById(id);
 function h(tag, attrs = {}, ...children) {
@@ -198,7 +199,7 @@ export function createKitPlan({ getState, actor, applyState, openMerchant, reser
     list.replaceChildren(...cards.map((k) => kitItem(k, a, { closest: a.status === 'none_fits', isStale, mayChoose: isAdult })));
     if (focusKey) list.querySelector(`[data-focus-key="${CSS.escape(focusKey)}"]`)?.focus({ preventScroll: true });
     $('kit-plan-pool').textContent = a.pool ? `Compared all ${plural(a.pool.combinations, 'complete kit')} made from the ${plural(a.pool.listings, 'listing')} added (up to three for each item): `
-      + 'not every shop online. Listed prices as last checked; tax and shipping are not included, and stock is not reserved. '
+      + `not every shop online. ${catalogueOf(s).sample ? 'These are the example’s invented listings, not real shops, prices or stock. ' : ''}Listed prices as last checked; tax and shipping are not included, and stock is not reserved. `
       + (a.pool.weightComparable ? 'Every listing reports a weight, so kits are also compared by the listed weight of the items to get.' : 'Not every listing reports a weight, so kits are not compared by weight.') : '';
     const prefer = $('kit-plan-prefer');
     prefer.hidden = !(isAdult && s.kitPlan.preference.mode === 'live' && a.status === 'ok' && a.pool.feasible >= 2 && !isStale);
@@ -214,8 +215,10 @@ export function createKitPlan({ getState, actor, applyState, openMerchant, reser
 
   function listingItem(c, line, isAdult, merchantOn) {
     const cost = lineCost(line.remaining, { listingCents: c.priceCents, perListing: c.perListing, weightMg: c.weightMg });
+    // The example catalogue's stock is invented with the listing, and says so.
+    const stock = AVAILABILITY[c.availability] ? `${AVAILABILITY[c.availability]}${catalogueOf(getState()).sample ? ' in this example' : ''}` : 'stock not reported';
     const facts = [c.merchant, `${money(c.priceCents)} a listing`, `${c.perListing} in each (${c.perListingBy}’s count)`, c.weightMg ? `listed ${weightText(c.weightMg)}` : 'weight not listed',
-      AVAILABILITY[c.availability] ?? 'stock not reported', `${c.fresh ? 'checked' : 'last checked'} ${time(c.checkedAt)}`];
+      stock, `${c.fresh ? 'checked' : 'last checked'} ${time(c.checkedAt)}`];
     return h('li', { class: 'kit-plan-listing', 'data-listing': c.id, 'data-issue': c.issue },
       h('span', { class: 'kit-plan-listing-name' }, c.title),
       h('span', { class: 'kit-plan-listing-facts' }, facts.join(' · ')),
@@ -290,14 +293,15 @@ export function createKitPlan({ getState, actor, applyState, openMerchant, reser
       if (ui.scope !== null) say('', '');
       ui.scope = scopeKey(); ui.answer = null; ui.asked = null; ui.seq++; clearTimeout(ui.timer);
     }
-    const plan = s.kitPlan, isAdult = adult(), merchantOn = s.modes?.merchant?.mode === 'live';
+    const plan = s.kitPlan, isAdult = adult(), catalogue = catalogueOf(s), merchantOn = catalogue.open;
     const needed = plan.lines.filter((l) => l.remaining > 0);
     const section = $('kit-plan');
     section.hidden = !s.kit.items.length || listEditing();
     if (section.hidden) return;
     $('kit-plan-intro').textContent = !needed.length ? 'Everything on this list is already at home: nothing remains to buy on it.'
       : !isAdult ? 'Adults add listings for each item still to get and compare complete kits. You can read them here.'
-        : merchantOn ? 'For each item still to get, add up to three listings from Market Town, then compare whole kits against the family’s offers and date. Nothing is bought.'
+        : catalogue.sample ? 'This example’s listings are invented: two sample shops, with invented prices, weights and stock. Compare whole kits against the family’s offers and date, or add and remove listings from Market Town’s example catalogue. Nothing is bought.'
+          : merchantOn ? 'For each item still to get, add up to three listings from Market Town, then compare whole kits against the family’s offers and date. Nothing is bought.'
           : 'Market Town is not connected here, so listings cannot be added. Listings already added can still be compared.';
     const lines = $('kit-plan-lines');
     const focusKey = lines.contains(document.activeElement) ? document.activeElement.dataset.focusKey : null;

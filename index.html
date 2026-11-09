@@ -163,6 +163,10 @@
           <p class="lede" id="planner-lede"></p>
           <!-- The family project's current stage and the one way to it from the journal. Camera only; it writes nothing. -->
           <p class="plan-project" id="plan-project"><span id="plan-project-stage"></span><button type="button" class="link-button" id="visit-campsite">Visit campsite</button></p>
+          <!-- An authored example only (npm run demo -- --family-trip): what is invented, and one way to the planning below.
+               Its links only open and move between Family choices and the Kit list below: they press nothing, fill nothing
+               and write nothing. -->
+          <p class="plan-project example-entry" id="example-entry" hidden><span id="example-entry-text"></span><button type="button" class="link-button" id="example-entry-go">Try a one-off expense</button></p>
           <!-- Family choices: up to three items compared against each adult's own weekly offer, the household's weekly amount
                and the goal's date. Planning only: offers, preferences and a one-off trial move no money and save no goal. -->
           <details class="family-choices" id="family-choices">
@@ -189,6 +193,7 @@
                 <button type="button" class="link-button" id="family-trial-clear">Clear</button>
               </div>
               <p class="fine" id="family-trial-note" aria-live="polite"></p>
+              <button type="button" class="link-button" id="example-to-kits" hidden>See which complete kits fit</button>
             </fieldset>
             <!-- Find options that fit: Market Town with the family's planning price ceiling for the goal's date (offers, the
                  household's weekly amount and any one-off amount tried above). Searching saves nothing. -->
@@ -210,7 +215,7 @@
               <p class="fine" id="kit-plan-intro"></p>
               <ul class="kit-plan-lines" id="kit-plan-lines"></ul>
               <p class="fine kit-plan-ceiling" id="kit-plan-ceiling"></p>
-              <div class="actions" id="kit-plan-compare-actions" hidden><button type="button" id="kit-plan-compare">Compare complete kits</button></div>
+              <div class="actions" id="kit-plan-compare-actions" hidden><button type="button" id="kit-plan-compare">Compare complete kits</button><button type="button" class="link-button" id="example-to-trial" hidden>Change the one-off expense</button></div>
               <div class="kit-plan-result" id="kit-plan-result" hidden>
                 <p class="kit-plan-note" id="kit-plan-note" tabindex="-1"></p>
                 <ol class="kit-plan-kits" id="kit-plan-kits" aria-label="Complete kits that fit, or the closest one"></ol>

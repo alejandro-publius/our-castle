@@ -2,7 +2,7 @@
 
 **One family goal, a realm you build together.**
 
-A living pixel woodland turns shared progress into new places to explore. Keep the village, open the Manor, cross the rivers to the Keep, and reach the Royal Citadel, Rosewind Palace and two storybook towers. Nine districts, a campsite that grows with the shared goal, short deed cards, family avatars, roaming guests and changing light sit beside one compact household journal.
+Decide what the family can afford together, compare complete kits and adjust the plan when an expense changes. A living pixel woodland turns shared progress into new places to explore. Keep the village, open the Manor, cross the rivers to the Keep, and reach the Royal Citadel, Rosewind Palace and two storybook towers. Nine districts, a campsite that grows with the shared goal, short deed cards, family avatars, roaming guests and changing light sit beside one compact household journal.
 
 ![The connected woodland realm and mountain border](docs/screenshots/mountain-border-day.png)
 
@@ -13,25 +13,29 @@ The source is **public on GitHub**. This source release includes the reviewed wo
 - family choices and schedules;
 - shopping within the family's limits;
 - a kit list from typed text or a photo;
-- complete-kit planning.
+- complete-kit planning and a playable family-trip example with an invented catalogue.
 
-The preserved Mac apps at http://localhost:3010 and http://localhost:3021 still run the earlier compass/receipt release `4082df5` (database schema 7), with their existing records. This release does not change them. [Release status and remaining video/submission steps](docs/RELEASE-READINESS.md). For an independent code review, use the [source map and evidence guide](docs/JUDGE-HANDOFF.md#6-for-source-reviewers).
+The saved Mac apps at http://localhost:3010 and http://localhost:3021 were upgraded to `b21b2d8` (database schema 12) with their original records preserved. They remain pinned to that runtime; the new family-trip example below starts a separate fresh session. [Release status and remaining video/submission steps](docs/RELEASE-READINESS.md). For an independent code review, use the [source map and evidence guide](docs/JUDGE-HANDOFF.md#6-for-source-reviewers).
 
 ## Try it locally
 
-Use **Node.js 22.16+** (verified on Node 26):
+Use **Node.js 22.16+**. Start with the playable family-trip example:
 
 ```sh
 git clone https://github.com/alejandro-publius/our-castle.git
 cd our-castle
 npm ci
-npm run demo
+npm run demo -- --family-trip
 # Open the local URL printed in the terminal.
 ```
 
-The demo starts a fresh in-memory household on an unused localhost port. It ignores `.env`, configured keys and saved records. Progress survives refresh while the demo runs; closing it ends that session. Payments are simulated and the planner uses built-in rules, with their existing labels.
+An invented family (Rowan, Ash and Wren), a kit list and six sample listings are ready in **Plan**. Choose **Try a one-off expense**, enter `90`, then compare complete kits. Choose the $180 kit, keep its stove and change the expense to `120`: the real planner repairs the kit to $150 by switching only the tent. The family, shops and prices are labelled examples; the kits, dates, shortfalls and repairs are calculated by the existing engine. [Full walkthrough, screenshots and limits](docs/FAMILY-TRIP-EXAMPLE.md).
 
-Without keys, Market Town search, reading a photo of a kit list and Cohere ordering are off, and no example catalogue is installed. Typing a kit list, family offers and the built-in planner all work. **Meet the Keeper**, at the top of Journal → House (or `?tour=1`), starts Moss's optional tour of the demo. For persistent local records and configured integrations, use `npm start` and [the runbook](docs/RUNBOOK.md). [Short review route](docs/JUDGE-HANDOFF.md#2-a-short-review-route)
+![Invented example data: after the expense changes, a $150 kit switches only the tent and keeps the agreed stove](docs/screenshots/family-trip-desktop-repair.png)
+
+The example starts an in-memory household on an unused localhost port. It ignores `.env`, configured keys and saved records, and makes no provider call. Progress survives refresh while that process runs; closing it ends the session. Payments are simulated, plans use built-in rules, and photo reading and Cohere ordering stay off. Approval and saving a goal remain explicit.
+
+For a blank household, run `npm run demo` without the flag. It has no catalogue; typed lists, family offers and the built-in planner still work. **Meet the Keeper**, in Journal → House (or `?tour=1`), starts Moss's optional tour. For persistent records and configured integrations, use `npm start` and [the runbook](docs/RUNBOOK.md). [Short review route](docs/JUDGE-HANDOFF.md#2-a-short-review-route).
 
 Several people in one family, each with their own passkey? `npm run family -- --port 3200` runs the opt-in shared-family mode with invitations, adult/child permissions and live updates across open pages. Unsaved edits stay in place; an approval is cleared if its goal or sign-in changes. This runner uses simulated payments and its own database. See [shared families](docs/FAMILY-ACCESS.md).
 
@@ -58,14 +62,14 @@ The walkthrough captures use isolated test households and simulated contribution
 
 In **Plan → Family choices**, shortlist up to three Market Town items, let each adult offer their own comfortable weekly amount, and let family members express a preference. Try an unexpected expense to see which item still fits the date and how much later the others finish. Choosing an item opens a goal draft for explicit review. **Save goal and propose this schedule** proposes the dated weeks it previews, keeping the expense and each adult's share, and **Use this plan** puts them in use. **Find options that fit** searches Market Town within the family's planning limit for its date, with optional must-haves from the catalog's own lists. It suggests only items the catalog confirms, and keeps why one was chosen.
 
-These features are part of this source release; the preserved Mac apps do not run them. Without Channel3, items cannot be added, but the adults' offers and the current goal can still be compared. The capture uses invented tents and fake provider responses. [Walkthrough, worked example and research](docs/FAMILY-CHOICES.md).
+These features are in the source and the saved `b21b2d8` runtimes. Adding live catalogue items needs Channel3; the separate family-trip example supplies invented listings. Without either catalogue, adults' offers and the current goal can still be compared. The capture uses invented tents and fake provider responses. [Walkthrough, worked example and research](docs/FAMILY-CHOICES.md).
 
 ![A family compares three purchase options beside the woodland](docs/screenshots/family-choices-desktop-three.png)
 
 **Plan → Kit list** keeps a short checklist of things to bring for the goal: each item, how many are needed and how many the family already has. An adult types or pastes it, which needs no key, or reads a photo of a written list with OpenAI (optional, with its own server key). Either way the result is a draft the adult checks before **Save this list**. It moves no money and changes no goal or plan. [How it works, privacy and limits](docs/KIT-LIST.md).
 
 **Complete kits** then compares whole kits for that list against the family's own offers, one-off amount and date.
-- An adult adds up to three Market Town listings for each item still to get, with their own count of items per listing. Listings come from Market Town, so this needs Channel3.
+- An adult adds up to three Market Town listings for each item still to get, with their own count of items per listing. Listings come from Market Town, so this needs Channel3, or the [family-trip example](docs/FAMILY-TRIP-EXAMPLE.md) and its invented catalogue.
 - Up to three different kits that fit are shown: lowest listed total, lower listed weight, fewest shops. When none fits, the closest one is shown with its shortfall.
 - Kept lines stay fixed, and the smallest change comes first when a larger one-off makes the chosen kit late.
 - A reviewed kit can become the goal, with its family schedule proposed in the same save.
@@ -82,7 +86,7 @@ These features are part of this source release; the preserved Mac apps do not ru
 | --- | --- |
 | ![Two kits fit by Dec 27 after a $90 one-off: $150 with the lowest listed total, and $180 with the lower listed weight](docs/screenshots/kit-planner-desktop-kits-compared.png) | ![After a $120 one-off, one kit fits: $150, switching only the tent from the chosen kit, with the kept stove](docs/screenshots/kit-planner-desktop-smallest-change.png) |
 
-These are test captures. The family (Rowan, Ash and Wren) is invented, and the "Test fixture" listings come from two invented shops through a fake catalog; the Cohere order comes from a fake transport. They are not live catalog results, and the default demo installs no catalog.
+These are test captures. The family (Rowan, Ash and Wren) is invented, and the "Test fixture" listings come from two invented shops through a fake catalog; the Cohere order comes from a fake transport. They are not live catalog results, and the default demo installs no catalog. `npm run demo -- --family-trip` runs the same decision in the page with its own invented listings: [playable family-trip example](docs/FAMILY-TRIP-EXAMPLE.md).
 
 ## Three sponsor integrations
 
@@ -96,15 +100,12 @@ PayPal JavaScript SDK v6 handles the browser session; Server SDK Orders v2/Payme
 
 ## What is verified
 
-- **Hosted release checks on this source:** [run 42659078905](https://github.com/alejandro-publius/our-castle/actions/runs/42659078905) on the reviewed source `3aae283` passed all five jobs:
-  - the source guard and 557 unit tests (556 passed, one existing skip) on each of Node 22.16.0, 24 and 26, with the Rust solver built and its own 9 tests passing in each;
-  - the complete-kit journey on desktop and phone (2 passed);
-  - the browser release selection (45 passed, 3 designed skips).
-
-  The workflow uses isolated data and fake providers; this is separate from the live evidence below. [Commands and limits](docs/VALIDATION.md#release-checks-workflow--november-7-2026)
-- **Feature checks:** each change's own unit and browser checks are recorded in [VALIDATION.md](docs/VALIDATION.md). Every Channel3, OpenAI and Cohere reply in them is invented by a fake transport; no live call was made for these features.
+- **Required release checks:** the [workflow](.github/workflows/release-checks.yml) runs the source guard and unit suite on Node 22.16.0, 24 and 26; builds and tests the pinned Rust solver; and exercises the release and native-kit journeys on desktop and 390 px phone. Each PR records its exact tested head and results. [Current changes and actual checks](docs/VALIDATION.md).
+- **Earlier integrated release:** [PR #60 run 42696659169](https://github.com/alejandro-publius/our-castle/actions/runs/42696659169) passed all five jobs: 556 unit passes and one existing skip per Node version, nine Rust tests per build, 45 release-browser passes with three designed skips, and two native-kit journey passes. These are fake-provider checks of that earlier head, separate from live evidence below.
+- **Feature checks:** each change's unit and browser checks are recorded in [VALIDATION.md](docs/VALIDATION.md). The development feature suites use fake transports. The separate live synthetic OpenAI check is listed below.
 - **Historical live sandbox:** hosted buyer approval, $15 capture, single credit, replay/mismatch checks, matching PayPal order and refund. [Original report](docs/LIVE-VERIFICATION.md)
 - **Historical live AI:** feasible and impossible plans, ledger reading and PayPal transaction listing. [Original report](docs/LIVE-VERIFICATION-AI.md)
+- **One live OpenAI check:** the production photo adapter read one synthetic packing-list image correctly. This is a single adapter check, not a real-photo accuracy benchmark or a human usability test. [Image, result and limits](docs/VALIDATION.md#one-live-openai-synthetic-photo--november-9-2026). Cohere live ranking remains untested.
 - **Earlier public clone:** an anonymous clone, install, source guard and ten journey/phone checks passed for an earlier build, using the actual isolated `npm run demo` command. [Recording and scope](docs/demos/current-review/sources/public-demo-capture.json)
 - **Historical in-app sandbox result** (preserved 3021 rehearsal, release `4082df5`): an owner-completed $15 contribution, one credit from $60 reported to $75, village/Manor open, and an actual same-order `get_order` with server reconciliation `match`. A model compatibility fix passed 10 focused tests. It predates this source and does not validate the newer features. [Evidence and recording limits](docs/IN-APP-SANDBOX-VERIFICATION.md)
 

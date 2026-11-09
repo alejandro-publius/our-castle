@@ -2,7 +2,7 @@
 
 Rechecked November 6, 2026 against the official public [rules](https://paypalaihackathon.devpost.com/rules), [resources](https://paypalaihackathon.devpost.com/resources), overview and all three sponsor briefs below. All returned HTTP 200. Earlier direct-fetch 403s are historical. The repository is now public; no hosted site or Devpost entry has been published.
 
-Implementation inventory refreshed November 7 against main `b7109d9` (implementation `5d8fdcd`). This is a source/documentation review, not a new rules check, provider run or recording. Unmerged work is excluded.
+Implementation inventory refreshed November 9 against the integrated family-planning release and its playable example. The underlying product source through `b21b2d8` is on main; [release readiness](RELEASE-READINESS.md) identifies subsequent integration. This is a source/evidence update, not a new rules check, provider run or recording.
 
 | Target | Actual evidence | Remaining gap |
 | --- | --- | --- |
@@ -10,6 +10,8 @@ Implementation inventory refreshed November 7 against main `b7109d9` (implementa
 | Channel3 | One real desktop search inside Market Town; explicit goal confirmation, manual offer refresh, cheaper alternatives, changed-offer expiry and selected-variant stock checks. [Implementation and separate fake-provider evidence](CHANNEL3-MERCHANT.md) | Refresh/alternatives/variant recovery use fake-provider checks; live phone/save not re-run. No automatic purchase or automatic price refresh |
 | AG Grid / AG Studio | Community 36.3.0 records/receipts; Studio 3.1.0 illustrated next-area/weekly widget, live data and Agent Framework behind the existing steward | Real harness/custom server runner tested with fake providers; no built-in-agent delegation or complete eligibility guarantee |
 | APIMatic | Eight enabled SDK-specific Codex skills; documented capture recovery and actual SDK 2.5.0 OAuth, serialization, request-ID, timeout-configuration and response/error contracts tested with fake transport. [Provenance and findings](APIMATIC-CODEX.md) | Context use and transport fixtures are evidence, not fresh live-provider verification or a prize guarantee. Existing safeguards are distinguished from new fixes |
+| Family decision engine | Adult offers/preferences, expense-aware schedules, complete kits, owned-item exclusion and smallest-change repair with kept choices; compiled Rust/reference agreement on 403 cases | Invented example and fake-catalogue checks demonstrate behavior, not measured family benefit or uniqueness |
+| Optional kit AI | OpenAI photo-to-editable-list adapter with one successful live synthetic-image check; Cohere eligible-kit ordering implemented with public-description-only requests | No real-photo accuracy benchmark; Cohere remains off and ranking quality is unmeasured; these are not extra sponsor-prize claims |
 | Render | Example-only Blueprint, automatic deployment off | No hosting or Workflows use; no award claim |
 | Postman | Guarded example walkthrough and explicit sandbox opt-in, with duplicate-credit checks | Useful validation; no separate prize claimed |
 
@@ -23,7 +25,7 @@ Official entry requirements and judging still apply. The owner has requested fin
 
 The rules rechecked November 6 allow at most **one Grand Prize plus one Sponsor Prize**, or **one Honorable Mention plus one Sponsor Prize**. Entering all three relevant sponsor categories does not mean three sponsor awards can be combined. The strongest presentation targets are the creative consumer/family experience, PayPal + AI and a clear demonstration; do not describe the read-only steward as an autonomous purchasing agent.
 
-## November 7 implementation status
+## Earlier implementation status — November 7
 
 The campsite and read-only schedule recommendations shipped through PRs #8–#10. Main now also includes a per-goal **Build** choice of campsite, garden or schoolhouse, and opt-in shared families with passkeys, invitations, adult/child permissions and live updates. See [family projects](FAMILY-PROJECT.md#what-the-family-builds), [family access](FAMILY-ACCESS.md) and the [integrated release](RELEASE-READINESS.md). These are implemented; a separate cosmetic reward selector at each milestone remains unbuilt. Shared-family checks use local virtual authenticators and simulated payments, with human playtest and physical-device evidence still pending.
 
@@ -36,6 +38,20 @@ The owner asked whether FarmVille could deepen the game. Zynga's current [co-op 
 **Earlier proposed build, now shipped in these parts:** the family chooses a campsite, garden or schoolhouse in Plan, and the illustrated project develops with current goal progress while earned districts persist. The family can check a revised remaining schedule without saving and review a fresh proposal before applying it. The Build choice changes the illustration; it does not certify real construction or move money. A separate cosmetic choice awarded at a milestone remains a future feature.
 
 The existing integration supplies the foundation: Channel3 item → explicitly confirmed goal → validated AI plan → adult-approved JS SDK v6 checkout → Server SDK capture matched to the local contribution → world progress → Treasury receipt/read-only verification. The integrated family/sponsor work is in main through PRs #20/#27/#28. Keep reported progress, simulated payments and confirmed sandbox captures distinct. Rachel's observed [three-person playtest](PLAYTEST.md) remains pending; automated coverage does not substitute for those observations.
+
+## Product outcome to demonstrate
+
+Lead with the family's decision: **“An expense changed. Can we keep our trip and the gear we already agreed on?”** The [family-trip example](FAMILY-TRIP-EXAMPLE.md) makes that decision playable without a provider account: compare the computed $150/$180 kits, choose the lighter one, keep the stove, then change the one-off from $90 to $120. The engine offers a $150 repair that changes only the tent. Its people, listings and prices are labelled invented; it is not a live Channel3 search or Cohere recommendation.
+
+| Criterion | Concrete contribution | Evidence limit |
+| --- | --- | --- |
+| Technological Implementation | Exact bounded Rust search, independent reference, scoped typed requests, atomic goal/schedule adoption and controlled payment-recovery tests | No speed, production-scale or security-certification claim |
+| Design | One playable example in the existing map/journal, contextual links, editable drafts and an exact-receipt handoff | Browser checks and emulated phone; human comprehension remains to be observed |
+| Potential Impact | Whole-kit costs, personal offers and minimum-change repair address a family's changing constraints | A product hypothesis supported by public pain-point research, not demonstrated adoption or savings |
+| Innovation | Family coordination and repair connected to a growing shared place | Shared saving and photo extraction already exist elsewhere; no claim of market exclusivity |
+| Presentation | A clone-and-run example and screenshots let a reviewer try the decision engine | Current video still predates this flow; recording and submission remain pending |
+
+Kubernetes, a Java rewrite, Kafka/JunoDB, another HF provider and UCP/WebMCP checkout were researched options, not missing implementation requirements. They do not resolve the demonstrated first-use gap. The existing Node/SQL boundaries, real Rust solver and optional AI adapters implement the selected useful lessons.
 
 ## Show the implemented evidence
 

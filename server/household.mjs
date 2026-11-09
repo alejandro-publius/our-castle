@@ -106,8 +106,11 @@ export function getActiveGoal(db, householdId) {
   return goalFromRow(db.prepare("SELECT * FROM goals WHERE household_id = ? AND status = 'active' ORDER BY created_at LIMIT 1").get(householdId));
 }
 
-/** Create the single local example household on first run. Idempotent. */
-export function ensureDemoHousehold(db, clock) {
+/**
+ * Create the single local example household on first run. Idempotent. `defaults` is EXAMPLE_DEFAULTS unless an authored
+ * example (scripts/family-trip.mjs) starts the household from its own invented figures and members.
+ */
+export function ensureDemoHousehold(db, clock, defaults = EXAMPLE_DEFAULTS) {
   if (getHousehold(db, DEMO_HOUSEHOLD_ID)) {
     // Backfill cosmetic additions for an existing goal, without changing financial records.
     const goal = getActiveGoal(db, DEMO_HOUSEHOLD_ID);
@@ -116,7 +119,7 @@ export function ensureDemoHousehold(db, clock) {
   }
   transaction(db, () => {
     const at = clock.iso();
-    const d = EXAMPLE_DEFAULTS;
+    const d = defaults;
     db.prepare(`INSERT INTO households (id, name, play_mode, crest_field, crest_charge, is_example, setup_complete, created_at)
       VALUES (?, ?, 'family', ?, ?, 1, 0, ?)`).run(DEMO_HOUSEHOLD_ID, d.householdName, d.crest.field, d.crest.charge, at);
     insertMembers(db, DEMO_HOUSEHOLD_ID, d.members.family);
@@ -127,11 +130,17 @@ export function ensureDemoHousehold(db, clock) {
   });
 }
 
+// Set the example household's members. A member who stays keeps their row, and with it every planning record that names
+// them (weekly offers, the kit list, kit listings and choices all cascade from it): deleting and re-adding everyone erased
+// those records on any house or crest save. Only a member who leaves is removed, and their own records with them.
 function insertMembers(db, householdId, members) {
-  const avatars = new Map(getMembers(db, householdId).map((m) => [m.id, m.avatarId]));
-  db.prepare('DELETE FROM members WHERE household_id = ?').run(householdId);
-  const insert = db.prepare('INSERT INTO members (id, household_id, display_name, role, is_example, sort, avatar_id) VALUES (?, ?, ?, ?, 1, ?, ?)');
-  members.forEach((m, i) => insert.run(m.id, householdId, m.name, m.role, i, avatars.get(m.id) ?? null));
+  const current = new Map(getMembers(db, householdId).map((m) => [m.id, m.avatarId]));
+  const staying = new Set(members.map((m) => m.id));
+  const remove = db.prepare('DELETE FROM members WHERE id = ? AND household_id = ?');
+  for (const id of current.keys()) if (!staying.has(id)) remove.run(id, householdId);
+  const insert = db.prepare('INSERT INTO members (id, household_id, display_name, role, is_example, sort, avatar_id) VALUES (?, ?, ?, ?, 1, ?, NULL)');
+  const update = db.prepare('UPDATE members SET display_name = ?, role = ?, is_example = 1, sort = ?, avatar_id = ? WHERE id = ? AND household_id = ?');
+  members.forEach((m, i) => (current.has(m.id) ? update.run(m.name, m.role, i, current.get(m.id), m.id, householdId) : insert.run(m.id, householdId, m.name, m.role, i)));
 }
 
 /** Change one existing member's appearance; no identity, role or financial mutation. */
@@ -159,8 +168,8 @@ export function validateHouseholdName(name) {
   return value;
 }
 
-/** Choose solo or family example members, name the house and choose a crest. */
-export function setupHousehold(db, householdId, { playMode, name, crest }) {
+/** Choose solo or family example members (from `defaults`), name the house and choose a crest. */
+export function setupHousehold(db, householdId, { playMode, name, crest }, defaults = EXAMPLE_DEFAULTS) {
   if (!['solo', 'family'].includes(playMode)) throw new DomainError(400, 'invalid_mode', 'Choose solo or family.');
   const cleanName = validateHouseholdName(name);
   const cleanCrest = validateCrest(crest);
@@ -172,7 +181,7 @@ export function setupHousehold(db, householdId, { playMode, name, crest }) {
   transaction(db, () => {
     db.prepare('UPDATE households SET name = ?, play_mode = ?, crest_field = ?, crest_charge = ?, setup_complete = 1 WHERE id = ?')
       .run(cleanName, playMode, cleanCrest.field, cleanCrest.charge, householdId);
-    insertMembers(db, householdId, EXAMPLE_DEFAULTS.members[playMode]);
+    insertMembers(db, householdId, defaults.members[playMode]);
   });
   return getHousehold(db, householdId);
 }
@@ -369,11 +378,11 @@ export function ledgerEntries(db, goalId) {
 }
 
 /** Delete local example data and re-seed. Used by the reset script/tests only. */
-export function resetHousehold(db, clock) {
+export function resetHousehold(db, clock, defaults = EXAMPLE_DEFAULTS) {
   transaction(db, () => {
     for (const table of ['deferred_refunds', 'webhook_events', 'payment_refunds', 'payment_captures', 'payment_orders', 'achievements', 'plans', 'ledger_entries', 'goals', 'members', 'households']) {
       db.exec(`DELETE FROM ${table}`);
     }
   });
-  ensureDemoHousehold(db, clock);
+  ensureDemoHousehold(db, clock, defaults);
 }

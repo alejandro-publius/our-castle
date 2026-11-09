@@ -54,7 +54,10 @@ async function closeDeed(page, name) {
 }
 
 test('fresh family -> merchant goal -> reviewed plan -> example contribution -> world -> Treasury and reload', { tag: '@release' }, async ({ page }, info) => {
-  test.setTimeout(300_000); // The full-motion journey also runs on slower software-rendered CI runners.
+  test.setTimeout(300_000); // The full journey also runs on slower software-rendered CI runners.
+  // This checks the connected state and UI journey; earned-realm and gold-fountain cover normal-motion sequencing.
+  // Avoid continuous software-WebGL animation consuming the action budget while taking evidence screenshots.
+  await page.emulateMedia({ reducedMotion: 'reduce' });
   await start(page);
   // Start from the actual House form rather than preparing a household through an API helper.
   await page.locator('input[name="playMode"][value="family"]').check();

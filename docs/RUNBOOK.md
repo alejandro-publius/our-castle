@@ -18,6 +18,8 @@ The two upgrades made no provider requests. A separate single synthetic-image Op
 
 **Fresh, no-credentials session:** after `npm ci`, run `npm run demo` and open its printed localhost URL. This portable command uses an unused port and an in-memory household; it never reads `.env`, inherited provider settings or saved data. Progress survives browser refresh until Ctrl+C ends the session. Start it again for a clean game. The owner's persistent 3010 app and separate 3021 rehearsal remain separate.
 
+**Playable family-trip session:** use `npm run demo -- --family-trip` to start the authored family, list and local sample catalogue. Compare complete kits, keep a choice and try an expense with the actual engine. People, prices and payments are labelled examples; photo AI and Cohere stay off. [Walkthrough, screenshots and constraints](FAMILY-TRIP-EXAMPLE.md). This uses a fresh in-memory household and an unused port just like the plain demo.
+
 **Persistent/configured app:** use the commands below.
 
 Requires **Node.js 22.16 or later** (uses the built-in `node:sqlite`).
