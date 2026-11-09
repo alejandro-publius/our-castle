@@ -14,8 +14,8 @@
     "binarySha256": "f151bd874022b56f9f3ea9790fea721b33dc12eadb4dc25cbae55ac9c437abdb",
     "provenance": "Not built in this checkout: no Rust toolchain is installed here. It is a copy of the existing build in the reviewed runtime worktree at b21b2d8, whose five solver sources are byte-identical to this commit's (hashes below). The hosted check builds it from source with the pinned compiler."
   },
-  "spec": "test/e2e/family-trip.spec.mjs — a visitor tries a one-off expense, sees the real planner repair the kit, and makes one simulated contribution",
-  "command": "Captured by the spec during the guarded run of the twelve affected spec files: KIT_SOLVER_REQUIRED=1 npx playwright test --config <the repository config with the test server probed at 127.0.0.1> ... --project=desktop --project=phone, with a minimal environment, OUR_CASTLE_ENV_FILE=none and a Node preload refusing every non-loopback connection. The page's own requests outside its origin are refused and counted by the spec.",
+  "spec": "test/e2e/family-trip.spec.mjs \u2014 a visitor tries a one-off expense, sees the real planner repair the kit, and makes one simulated contribution",
+  "command": "Captured by the spec during the guarded run of the twelve affected spec files: KIT_SOLVER_REQUIRED=1 npx playwright test --config <the repository config with the test server probed at 127.0.0.1> ... --project=desktop --project=phone, with a minimal environment, OUR_CASTLE_ENV_FILE=none and the corrected Node TCP/fetch preload denying non-loopback transport. The page's own requests outside its origin are refused and counted by the spec.",
   "checksInTheRun": {
     "catalogueSearchesAtStart": 3,
     "catalogueCallsWhileComparingAndRepairing": 0,
@@ -78,5 +78,6 @@
       "view": "phone project, 390 x 844 touch-emulated at device scale 2",
       "shows": "Step 6 on the 390 px phone project: the same $150 smallest change, the switched tent, the kept stove, and the note that the listings are invented."
     }
-  ]
+  ],
+  "transportLimits": "The preload is not an OS firewall: direct DNS, UDP and arbitrary child-process network APIs are outside its scope. The browser test separately intercepts requests outside its own origin. Earlier mutation probes did not load this preload and are not capture-isolation evidence."
 }
