@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { FIT_INSPECT_LIMIT, createMerchant, fitRequestBody, normalizeCategories, normalizeCategory, normalizeSearch, searchRequestBody } from '../../server/merchant/channel3.mjs';
 import { createFakeChannel3, fakeSearchResponse } from '../helpers/fake-channel3.mjs';
-import { FIT_CATEGORY, FIT_DETAIL, fitCatalog, fitProduct } from '../helpers/fit-catalog.mjs';
+import { FIT_CATEGORY, FIT_DETAIL, fitCatalog, fitProduct, fitProducts } from '../helpers/fit-catalog.mjs';
 
 // The family-fit side of the Channel3 adapter, against fake responses shaped like the published contract. Every
 // category, handle, value and product here is an invented test fixture, not Channel3's live taxonomy.
@@ -126,4 +126,100 @@ test('review F1, same pattern in refresh: concurrent checks of one fit item shar
   assert.deepEqual([ra.results[0].fit.context, rb.results[0].fit.context], [contextA, contextB]);
   assert.notEqual(ra.results[0].referenceId, rb.results[0].referenceId);
   assert.deepEqual(merchant.draft(rb.results[0].referenceId).fit.context, contextB);
+});
+
+// Review F3: a judged result rests on what the catalog reported for the item. A newer read of the same offer that reports
+// something else for the kind of item or a must-have is newer evidence, so the earlier judgement cannot be reused.
+const expiredRef = (e) => e.status === 410 && e.code === 'merchant_draft_expired';
+const CONTEXT = { ceilingCents: 15000, targetDate: '2026-12-20', reserveCents: 9000, on: '2026-11-08' };
+const sleepsTwo = (id, title, price) => fitProduct(id, title, price, { 'fixture-capacity': ['2 person'] });
+async function fitReady(merchant) {
+  await merchant.findCategories({ query: 'tent' });
+  await merchant.category('fixture-tents');
+  return merchant.buildNeed({ category: 'fixture-tents', mustHaves: [{ key: 'fixture-capacity', values: ['4 person', '6 person'] }] });
+}
+
+test('review F3: a newer check that contradicts a must-have expires the earlier fit draft; harmless or order-only changes keep it', async () => {
+  const catalog = fitCatalog({ products: [
+    fitProduct('fixtureTent4pA', 'Test fixture: Four-person tent A', 120, { 'fixture-capacity': ['4 person'] }),
+    fitProduct('fixtureTentWide', 'Test fixture: Four- or six-person tent', 140, { 'fixture-capacity': ['4 person', '6 person'], 'fixture-season': ['3-season'] }),
+  ] });
+  const merchant = createMerchant({ apiKey: KEY, fetch: catalog.fetch });
+  const need = await fitReady(merchant);
+  const found = await merchant.fitSearch({ query: 'tent', need, ceilingCents: 15000, context: CONTEXT });
+  const [tentA, wide] = found.results;
+  assert.deepEqual(found.results.map((r) => [r.productId, r.fit.status]), [['fixtureTent4pA', 'suitable'], ['fixtureTentWide', 'suitable']]);
+  // Harmless: a new title, picture and tracking link, the same values in another order, and a fact the need does not use.
+  const renamed = fitProduct('fixtureTentWide', 'Test fixture: Roomy tent (renamed)', 140, { 'fixture-capacity': ['6 person', '4 person'], 'fixture-season': ['4-season'] });
+  renamed.images = [{ url: 'https://cdn.trychannel3.com/fake-test-image-0002', is_main_image: true, alt_text: 'Roomy tent' }];
+  renamed.offers[0].url = 'https://buy.trychannel3.com/fake/fixtureTentWide-new-tracking-link';
+  catalog.lookup.set('fixtureTentWide', renamed);
+  const kept = await merchant.refresh(merchant.draft(wide.referenceId));
+  assert.deepEqual([kept.results[0].title, kept.results[0].fit.status], ['Test fixture: Roomy tent (renamed)', 'suitable']);
+  assert.equal(merchant.draft(wide.draftId).fit.status, 'suitable', 'the earlier draft is still usable');
+  // Contradicted: the same offer (retailer, price, stock and selection) now reports that it sleeps two.
+  catalog.lookup.set('fixtureTent4pA', sleepsTwo('fixtureTent4pA', 'Test fixture: Four-person tent A', 120));
+  const checked = await merchant.refresh(merchant.draft(tentA.referenceId));
+  assert.deepEqual([checked.results[0].fit.status, checked.results[0].fit.check.mustHaves[0].found], ['not_suitable', ['2 person']]);
+  assert.throws(() => merchant.draft(tentA.draftId), expiredRef, 'the earlier "sleeps four" judgement cannot be reused');
+  assert.equal(merchant.draft(checked.results[0].referenceId).fit.status, 'not_suitable', 'the newer check is the current judgement');
+});
+
+test('review F3: an older fit search answered after that check cannot bring the contradicted must-have back', async () => {
+  const catalog = fitCatalog();
+  const merchant = createMerchant({ apiKey: KEY, fetch: catalog.fetch });
+  const need = await fitReady(merchant);
+  const first = await merchant.fitSearch({ query: 'tent', need, ceilingCents: 15000, context: CONTEXT });
+  const release = catalog.hold();
+  const late = merchant.fitSearch({ query: 'four person tent', need, ceilingCents: 15000, context: CONTEXT }); // asked first, answered last
+  try {
+    catalog.lookup.set('fixtureTent4pA', sleepsTwo('fixtureTent4pA', 'Test fixture: Four-person tent A', 120));
+    const checked = await merchant.refresh(merchant.draft(first.results[0].referenceId));
+    assert.equal(checked.results[0].fit.status, 'not_suitable');
+    release();
+    // The slower answer still says tent A sleeps four. It is older than the check, so it is refused, not shown as suitable.
+    await assert.rejects(late, expiredRef);
+    assert.throws(() => merchant.draft(first.results[0].draftId), expiredRef);
+  } finally { release(); await late.catch(() => {}); }
+});
+
+test('review F3: an older check of a fit item answered after a newer search cannot bring the contradicted must-have back', async () => {
+  const products = fitProducts();
+  const catalog = fitCatalog({ products });
+  let gate = null;
+  const fetch = async (url, init) => {
+    const response = await catalog.fetch(url, init); // answered as the catalog was when asked, delivered later
+    if (gate && String(url).includes('/v1/products/')) { const wait = gate; gate = null; await wait; }
+    return response;
+  };
+  let open;
+  const merchant = createMerchant({ apiKey: KEY, fetch });
+  const need = await fitReady(merchant);
+  const first = await merchant.fitSearch({ query: 'tent', need, ceilingCents: 15000, context: CONTEXT });
+  gate = new Promise((resolve) => { open = resolve; });
+  const slow = merchant.refresh(merchant.draft(first.results[0].referenceId)); // tent A still sleeps four when asked
+  try {
+    products[1] = sleepsTwo('fixtureTent4pA', 'Test fixture: Four-person tent A', 120);
+    const newer = await merchant.fitSearch({ query: 'four person tent', need, ceilingCents: 15000, context: CONTEXT });
+    assert.equal(newer.results.some((r) => r.productId === 'fixtureTent4pA'), false, 'the newer search sees two person');
+    open();
+    await assert.rejects(slow, expiredRef);
+  } finally { open(); await slow.catch(() => {}); }
+});
+
+test('review F3: an ordinary result keeps its offer when a newer check changes the item’s facts, but no longer carries the replaced facts', async () => {
+  const catalog = fitCatalog();
+  const merchant = createMerchant({ apiKey: KEY, fetch: catalog.fetch });
+  const ordinary = await merchant.search({ query: 'tent', budgetCents: 15000 });
+  const tent = ordinary.results.find((r) => r.productId === 'fixtureTent4pA');
+  assert.deepEqual(merchant.draft(tent.draftId).catalog.attributes, { 'fixture-capacity': ['4 person'] });
+  catalog.lookup.set('fixtureTent4pA', sleepsTwo('fixtureTent4pA', 'Test fixture: Four-person tent A', 120));
+  const checked = await merchant.refresh(merchant.draft(tent.referenceId));
+  // Ordinary behaviour is unchanged: the same offer is still a usable draft, and the cached search still answers.
+  assert.deepEqual([merchant.draft(tent.draftId).usable, merchant.draft(tent.draftId).priceCents], [true, 12000]);
+  assert.equal((await merchant.search({ query: 'tent', budgetCents: 15000 })).cached, true);
+  // Only the newer check carries what the catalog reports now; the earlier result no longer carries "sleeps four".
+  assert.deepEqual(merchant.draft(checked.results[0].referenceId).catalog.attributes, { 'fixture-capacity': ['2 person'] });
+  assert.equal(merchant.draft(tent.draftId).catalog, null);
+  assert.equal(catalog.calls.length, 2);
 });

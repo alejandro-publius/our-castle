@@ -10,7 +10,7 @@ import { createApp } from '../../server/app.mjs';
 import { loadConfig } from '../../server/config.mjs';
 import { MIGRATIONS, openDatabase } from '../../server/db.mjs';
 import { createMerchant } from '../../server/merchant/channel3.mjs';
-import { fitCatalog, fitProduct } from '../helpers/fit-catalog.mjs';
+import { fitCatalog, fitProduct, fitProducts } from '../helpers/fit-catalog.mjs';
 import { browser, familyWith, mutableClock, startServer } from '../helpers/family-http.mjs';
 
 // Finding a purchase that fits the family, over real HTTP in family mode. The merchant is the real Channel3 code over a
@@ -354,6 +354,114 @@ test('review F1: two families searching at once share one catalog call, but each
     assert.deepEqual([money1, goals1, items1, plans1, deeds1, offers1], [money0, goals0, items0, plans0, deeds0, offers0]);
     assert.equal(choices1.length, 2);
   } finally {
+    await s.close();
+  }
+});
+
+// Review F3: after an explicit check finds that an item no longer meets a must-have, no reference read before that check
+// can make the family choice suitable again, save it as the goal, or revive the schedule that rested on it.
+const TENT_A = ['fixtureTent4pA', 'Test fixture: Four-person tent A', 120], TENT_B = ['fixtureTent4pB', 'Test fixture: Four-person tent B', 150];
+const lose = (catalog, [id, title, price]) => catalog.lookup.set(id, fitProduct(id, title, price, { 'fixture-capacity': ['2 person'] }));
+// A family choice from the fit search, saved as the goal with its proposed schedule.
+async function chosenAndProposed(f, [, title, price]) {
+  const { owner } = f;
+  await f.ready();
+  const found = (await f.fit()).json;
+  const result = found.results.find((r) => r.title === title);
+  const added = await owner.call('POST', '/api/family-choices', { draftId: result.draftId, expectedGoalId: found.goalId });
+  const choice = added.json.state.familyChoices.choices[0];
+  assert.deepEqual([choice.title, choice.need.check.status], [title, 'meets']);
+  const st = await f.state();
+  const review = await owner.call('POST', '/api/family-choices/review', { choiceId: choice.id, revision: st.familyChoices.revision, reserveCents: 9000 });
+  const goal = { name: title, targetCents: price * 100, startingCents: 6000, weeklyBudgetCents: 3000, targetDate: '2026-12-20' };
+  const saved = await owner.call('POST', '/api/merchant/goal', { draftId: review.json.item.draftId, goalId: st.goal.id, expectedGoalRevision: st.merchantGoalRevision, goal,
+    familyChoice: { choiceId: choice.id, revision: review.json.revision }, schedule: { reserveCents: 9000, revision: review.json.schedule.revision } });
+  assert.equal(saved.status, 200, JSON.stringify(saved.json));
+  return { found, result, choice, goal, plan: saved.json.plan };
+}
+const staleCodes = async (owner, plan) => {
+  const r = await owner.call('POST', `/api/plans/${plan.id}/accept`, {});
+  return [r.status, r.json.error?.code, r.json.error?.issues?.map((i) => i.code)];
+};
+
+test('review F3: after a check finds a must-have lost, the earlier fit reference cannot make the choice suitable again or save the goal', async () => {
+  const catalog = fitCatalog();
+  const f = await family({ catalog });
+  const { s, owner } = f;
+  try {
+    const { found, result, choice, goal, plan } = await chosenAndProposed(f, TENT_B);
+    lose(catalog, TENT_B);
+    const checked = await owner.call('POST', '/api/family-choices/refresh', { choiceId: choice.id });
+    assert.deepEqual([checked.status, checked.json.needStatus], [200, 'misses']);
+    const before = records(s.db);
+    // The reference from the first search still says "sleeps 4", at the same retailer, price and stock.
+    const again = await owner.call('POST', '/api/family-choices', { draftId: result.draftId, expectedGoalId: found.goalId });
+    assert.deepEqual([again.status, (await f.state()).familyChoices.choices[0].need.check.status], [410, 'misses']);
+    assert.equal(again.json.error.code, 'merchant_draft_expired');
+    const st = await f.state();
+    const saved = await owner.call('POST', '/api/merchant/goal', { draftId: result.draftId, goalId: st.goal.id, expectedGoalRevision: st.merchantGoalRevision, goal });
+    assert.deepEqual([saved.status, saved.json.error.code], [410, 'merchant_draft_expired']);
+    assert.equal(records(s.db), before, 'nothing was written');
+    assert.deepEqual(await staleCodes(owner, plan), [409, 'plan_stale', ['need_changed']]);
+  } finally {
+    await s.close();
+  }
+});
+
+test('review F3: an ordinary result read before that check stays usable but cannot bring the lost must-have back', async () => {
+  const catalog = fitCatalog();
+  const f = await family({ catalog });
+  const { s, owner } = f;
+  try {
+    const { choice, plan } = await chosenAndProposed(f, TENT_A);
+    // An ordinary Market Town search, read while tent A still reported sleeping four.
+    const ordinary = await owner.call('POST', '/api/merchant/search', { query: 'tent', budgetCents: 15000 });
+    const tentA = ordinary.json.results.find((r) => r.title === TENT_A[1]);
+    assert.equal(tentA.usable, true);
+    lose(catalog, TENT_A);
+    const checked = await owner.call('POST', '/api/family-choices/refresh', { choiceId: choice.id });
+    assert.deepEqual([checked.status, checked.json.needStatus], [200, 'misses']);
+    // Ordinary behaviour stays: the same offer can still be added, and it updates the line. Its older facts do not replace
+    // the newer check, so the choice still does not meet the family's needs and the schedule stays out of date.
+    const again = await owner.call('POST', '/api/family-choices', { draftId: tentA.draftId, expectedGoalId: ordinary.json.goalId });
+    assert.equal(again.status, 200, JSON.stringify(again.json));
+    assert.deepEqual([again.json.outcome, again.json.state.familyChoices.choices[0].need.check.status], ['updated', 'misses']);
+    assert.deepEqual(await staleCodes(owner, plan), [409, 'plan_stale', ['need_changed']]);
+  } finally {
+    await s.close();
+  }
+});
+
+test('review F3: a slower price check answered after a newer search updated the choice cannot bring the lost must-have back', async () => {
+  const products = fitProducts();
+  const catalog = fitCatalog({ products });
+  let gate = null, open = () => {};
+  const fetch = async (url, init) => {
+    const response = await catalog.fetch(url, init); // answered as the catalog was when asked, delivered later
+    if (gate && String(url).includes('/v1/products/')) { const wait = gate; gate = null; await wait; }
+    return response;
+  };
+  const f = await family({ catalog: { ...catalog, fetch } });
+  const { s, owner } = f;
+  let slow = null;
+  try {
+    const { choice, plan } = await chosenAndProposed(f, TENT_A);
+    gate = new Promise((resolve) => { open = resolve; });
+    slow = owner.call('POST', '/api/family-choices/refresh', { choiceId: choice.id }); // asked while tent A sleeps four
+    while (!catalog.calls.some((c) => c.url.includes('/v1/products/'))) await new Promise((resolve) => setImmediate(resolve));
+    // Meanwhile the catalog says two person, an ordinary search reads that, and the choice is updated from it.
+    products[1] = fitProduct(TENT_A[0], TENT_A[1], TENT_A[2], { 'fixture-capacity': ['2 person'] });
+    const ordinary = await owner.call('POST', '/api/merchant/search', { query: 'tent', budgetCents: 15000 });
+    const newer = await owner.call('POST', '/api/family-choices', { draftId: ordinary.json.results.find((r) => r.title === TENT_A[1]).draftId, expectedGoalId: ordinary.json.goalId });
+    assert.equal(newer.json.state.familyChoices.choices[0].need.check.status, 'misses');
+    open();
+    const late = await slow;
+    assert.equal(late.status, 200, JSON.stringify(late.json));
+    assert.deepEqual([late.json.needStatus, late.json.state.familyChoices.choices[0].need.check.status], ['misses', 'misses']);
+    assert.deepEqual(await staleCodes(owner, plan), [409, 'plan_stale', ['need_changed']]);
+  } finally {
+    open();
+    await slow?.catch(() => {});
     await s.close();
   }
 });

@@ -125,14 +125,15 @@ export function addChoice(db, { householdId, goalId, actor, expectedGoalId, item
   const replacing = replaceId === undefined || replaceId === null ? null : needChoiceId(replaceId);
   const facts = [item.title, item.merchant, item.url, item.priceCents, item.currency, item.availability ?? null, item.condition ?? null,
     JSON.stringify(selectionOf(item.selection)), item.checkedAt, draftId];
-  // A family-fit result brings its need and check. An ordinary result for a choice that has a need is checked against it.
+  // A family-fit result brings its need and check. An ordinary result for a choice that has a need is checked against it,
+  // unless a newer read replaced the facts it was read with: then it carries none, and the choice keeps its latest check.
   const found = item.fit ? needSnapshot(item.fit, item.checkedAt) : null;
   return transaction(db, () => {
     const rows = choiceRows(db, goal.id);
     const same = rows.find((r) => identityOf(rowItem(r)) === identityOf(item));
     if (same) {
       const earlier = rowNeed(same);
-      const need = found ?? (earlier ? recheckNeed(earlier, item.catalog ?? null, item.checkedAt) : null);
+      const need = found ?? (earlier && item.catalog ? recheckNeed(earlier, item.catalog, item.checkedAt) : earlier);
       db.prepare(`UPDATE family_choices SET title = ?, merchant = ?, url = ?, price_cents = ?, currency = ?, availability = ?, condition = ?,
         selection_json = ?, checked_at = ?, draft_id = ?, need_json = ? WHERE id = ?`).run(...facts, need ? JSON.stringify(need) : null, same.id);
       return { choiceId: same.id, outcome: 'updated' };
@@ -368,9 +369,10 @@ export async function refreshChoice(db, { householdId, goalId, actor, choiceId, 
     if (!row) throw fail(409, 'choice_gone', 'That choice was removed while its price was being checked.');
     const usable = fresh?.usable && fresh.draftId && fresh.currency === goal.currency && identityOf(fresh) === identityOf(rowItem(row));
     // A choice found for the family's need is checked against the catalog's newer facts. If it no longer meets a
-    // must-have, that is what it shows, whether or not the price is still usable.
+    // must-have, that is what it shows, whether or not the price is still usable. An answer without current facts (one
+    // older than a newer read that replaced them) leaves the latest check as it is.
     const earlier = rowNeed(row);
-    const need = earlier && fresh && identityOf(fresh) === identityOf(rowItem(row)) ? recheckNeed(earlier, fresh.catalog ?? null, fresh.checkedAt) : earlier;
+    const need = earlier && fresh?.catalog && identityOf(fresh) === identityOf(rowItem(row)) ? recheckNeed(earlier, fresh.catalog, fresh.checkedAt) : earlier;
     if (need !== earlier) db.prepare('UPDATE family_choices SET need_json = ? WHERE id = ?').run(JSON.stringify(need), id);
     const needStatus = need?.check?.status ?? null;
     if (!usable) {

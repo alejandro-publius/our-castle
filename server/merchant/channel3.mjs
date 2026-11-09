@@ -301,6 +301,12 @@ const offerFacts = (item) => item === null ? null : JSON.stringify([
   item.merchant, item.priceCents, item.currency, item.availability, item.condition ?? null, readSelection(item.selection), item.usable,
 ]);
 const expiredDraft = () => fail(410, 'merchant_draft_expired', 'That merchant result has expired. Search again for a fresh price before saving.');
+// What the catalog reports about an item's kind and facts, whatever the order: the category's slug and path, and each
+// attribute's values as a set. Titles, pictures and links are not among these facts.
+const kindOf = (c) => (c?.category ? [c.category.slug, [...(c.category.path ?? [])].sort()] : null);
+const catalogFacts = (c) => JSON.stringify(c ? [kindOf(c), Object.keys(c.attributes ?? {}).sort().map((k) => [k, [...c.attributes[k]].sort()])] : null);
+// The facts a family-fit judgement rests on: the kind of item when the need names one, and each must-have's values.
+const supportingFacts = (c, need) => JSON.stringify([need.category ? kindOf(c) : null, need.mustHaves.map((m) => [m.key, [...(c?.attributes?.[m.key] ?? [])].sort()])]);
 
 export function normalizeProduct(json, reference) {
   if (json?.id !== reference.productId) throw fail(502, 'merchant_malformed', 'Channel3 returned a different item. Nothing was changed.');
@@ -397,8 +403,10 @@ export function createMerchant({ apiKey = null, fetch, clock, ...options } = {})
   const client = apiKey ? createChannel3Client({ apiKey, fetch, timeoutMs: opts.timeoutMs }) : null;
   const cache = new Map(); // key -> { at, value }
   const inflight = new Map(); // key -> Promise
-  const drafts = new Map(); // draftId -> { expiresAt, item, offerKey, facts }
-  const observations = new Map(); // offerKey -> { version, facts, at }; bounded catalog knowledge, not search history
+  const drafts = new Map(); // draftId -> { expiresAt, item, offerKey, facts, basis? (the facts a fit judgement rests on) }
+  // offerKey -> { version, facts, catalog, at }: the newest read of each offer. Bounded public catalog knowledge, never a
+  // family's need, context or search history.
+  const observations = new Map();
   const shownCategories = new Map(); // slug -> at: kinds of item this server was given by the catalog (public taxonomy)
   const categoryDetails = new Map(); // slug -> { at, detail }: their must-have lists, the only ones a fit search accepts
   let readVersion = 0; // Start order, so an older slow response cannot revive an offer a newer lookup contradicted.
@@ -430,22 +438,46 @@ export function createMerchant({ apiKey = null, fetch, clock, ...options } = {})
     const latest = observations.get(key);
     if (latest && latest.version > version) {
       if (latest.facts !== facts) throw expiredDraft();
-      return; // Same offer facts; retain the later read's ordering.
+      return; // Same offer facts; retain the later read's ordering and its catalog facts (see replacedBy).
     }
+    const catalog = row?.catalog ?? null;
     observations.delete(key);
-    observations.set(key, { version, facts, at: now() });
+    observations.set(key, { version, facts, catalog, at: now() });
     // A draft is not a reserved price. Once the catalog contradicts it, the family must review another result.
     // Keep equal offers usable: a new tracking URL or a title/image change alone does not invalidate consent.
-    for (const [id, entry] of drafts) if (entry.offerKey === key && entry.facts !== facts) drafts.delete(id);
+    for (const [id, entry] of drafts) {
+      if (entry.offerKey !== key) continue;
+      if (entry.facts !== facts) { drafts.delete(id); continue; }
+      if (!row || catalogFacts(entry.item.catalog) === catalogFacts(catalog)) continue;
+      // This newer read reports another kind of item or other facts (an order alone is no change). A family-fit result
+      // whose suitability rests on a contradicted fact expires. Any other result keeps its offer, but no longer carries
+      // the replaced facts, so they can never again support a family's need.
+      if (entry.basis !== undefined && entry.basis !== supportingFacts(catalog, entry.item.fit.needSpec)) drafts.delete(id);
+      else entry.item = { ...entry.item, catalog: null };
+    }
     // Cached results carry the same short-lived references. Never return a list whose references just expired.
     for (const [query, entry] of cache) if (entry.value.results.some((r) => !drafts.has(r.referenceId))) cache.delete(query);
     prune(now());
   }
 
+  // The newest read of a row's offer, when it is newer than the row's own answer and reports other catalog facts.
+  function replacedBy(row) {
+    const seen = observations.get(offerKey(row));
+    return seen && seen.facts === offerFacts(row) && catalogFacts(seen.catalog) !== catalogFacts(row.catalog) ? seen : null;
+  }
+  // A judgement must not rest on a fact a newer read of the same offer contradicted: that older answer is refused.
+  function refuseContradicted(row, need) {
+    const newer = replacedBy(row);
+    if (newer && supportingFacts(newer.catalog, need) !== supportingFacts(row.catalog, need)) throw expiredDraft();
+  }
+
   function remember(row, checkedAt, query = '') {
     // Every shown product has a bounded reference for explicit refresh/similar; only usable products have goal drafts.
     const referenceId = `c3d_${randomBytes(12).toString('hex')}`;
-    drafts.set(referenceId, { expiresAt: now() + opts.draftTtlMs, item: { ...row, checkedAt, query }, offerKey: offerKey(row), facts: offerFacts(row) });
+    // An answer older than the newest read of the same offer keeps its offer, but not the facts that read replaced.
+    const item = { ...row, ...(replacedBy(row) ? { catalog: null } : {}), checkedAt, query };
+    const basis = row.fit ? supportingFacts(row.catalog, row.fit.needSpec) : undefined;
+    drafts.set(referenceId, { expiresAt: now() + opts.draftTtlMs, item, offerKey: offerKey(row), facts: offerFacts(row), basis });
     prune(now());
     const { catalog, ...shown } = row; // the catalog's raw facts stay here; a family-fit result shows its judgement instead
     return { ...shown, draftId: row.usable ? referenceId : null, referenceId, checkedAt };
@@ -482,7 +514,10 @@ export function createMerchant({ apiKey = null, fetch, clock, ...options } = {})
     // caller's context, in a draft of its own. If it no longer meets a must-have, it says so; it never keeps an earlier
     // "suitable". A saved item and a newer search can share the look-up but have different comparison prices.
     const row = { ...page.row };
-    if (reference.fit) row.fit = { ...evaluateFit(row, reference.fit.needSpec, { ceilingCents: reference.fit.context.ceilingCents }), needSpec: reference.fit.needSpec, context: reference.fit.context };
+    if (reference.fit) {
+      refuseContradicted(row, reference.fit.needSpec); // an older answer cannot restore a fact a newer read contradicted
+      row.fit = { ...evaluateFit(row, reference.fit.needSpec, { ceilingCents: reference.fit.context.ceilingCents }), needSpec: reference.fit.needSpec, context: reference.fit.context };
+    }
     return { status: 'ok', provider: 'Channel3', checkedAt: page.checkedAt, results: [{ ...remember(row, page.checkedAt, reference.query), previousPriceCents: reference.priceCents }] };
   }
 
@@ -606,6 +641,8 @@ export function createMerchant({ apiKey = null, fetch, clock, ...options } = {})
     });
     // Each caller's own: the judgement against its need and ceiling, its private planning context, and drafts of its own.
     // One family's context or references therefore never reach another caller of the same search.
+    // An answer that arrived after a newer read of one of its items contradicted a must-have or the kind is refused.
+    for (const row of page.rows) refuseContradicted(row, need);
     const judged = page.rows.map((row) => ({ row, fit: evaluateFit(row, need, { ceilingCents }) }));
     const suitable = judged.filter((j) => j.fit.status === 'suitable').sort((a, b) => bySuitableOrder(a.row, b.row));
     const shown = suitable.slice(0, FIT_MAX_RESULTS);
