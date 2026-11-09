@@ -1,0 +1,109 @@
+{
+  "recordedAt": "2026-11-09T20:47:21.875260+00:00",
+  "scope": "Sanitized summary of authorized local activation; raw saved databases, backups and reports remain private.",
+  "source": "b21b2d8bd04fe59de7eee885cc47dbdccf2dd302",
+  "runtimeTree": "ba265ea1861e368de2213d4272abf585e4147281",
+  "localNode": "26.0.0",
+  "nativeSolverSHA256": "f151bd874022b56f9f3ea9790fea721b33dc12eadb4dc25cbae55ac9c437abdb",
+  "roles": [
+    {
+      "role": "owner",
+      "port": 3010,
+      "source": "b21b2d8bd04fe59de7eee885cc47dbdccf2dd302",
+      "newPid": 440,
+      "phase": "activated_verified",
+      "finishedAt": "2026-11-09T20:34:38.580951+00:00",
+      "schemaBefore": 7,
+      "schemaAfter": 12,
+      "tablesBefore": 19,
+      "tablesAfter": 27,
+      "originalRowsChanged": 0,
+      "coreStateMatches": true,
+      "existingModesMatch": true,
+      "expectedStartupMetadata": {
+        "achievementIdCounterAdvance": 2,
+        "otherSequenceCountersUnchanged": true
+      },
+      "servedResourceHashes": {
+        "/": "af8993ffc33a8486e8645162066be19ab539fff27d857ce6f2bbd23957f6710f",
+        "/app.css": "31bbf58931ebcc2c9e0e17a7832803922a590d14d85dd2759071264a1d41697e",
+        "/src/app/main.js": "57a409cd33b2f28e766ad68b5505d2f9e78e59b9d042f513555d39e992a263dc",
+        "/src/app/kit-list.js": "e6ec29e51ffd1dee3058396d0806857c5329069008647ca7acd596b27cef715f",
+        "/src/app/kit-plan.js": "c8ff2da0d87443bdae59f9ab26a2555e8fd25793621a6824bb612fd338b28d15",
+        "/src/app/keeper.js": "34312141063675c1bb170831199cd745afbde6eff117878ce391b15f7513dc65",
+        "/src/world/board-scene.js": "e3e602cdd29dac03532b20f9862162b73859611748b4c775de03ee07aaf6f0f8"
+      },
+      "environmentUnchangedSinceAuthorizedKeyInstall": true,
+      "OpenAIPhotoMode": "live",
+      "CohereMode": "off",
+      "progressCents": 6000,
+      "targetCents": 30000,
+      "historical15DollarCapturesPreserved": 0,
+      "providerCallsByThisOperation": 0
+    },
+    {
+      "role": "rehearsal",
+      "port": 3021,
+      "source": "b21b2d8bd04fe59de7eee885cc47dbdccf2dd302",
+      "newPid": 985,
+      "phase": "activated_verified",
+      "finishedAt": "2026-11-09T20:35:18.571158+00:00",
+      "schemaBefore": 7,
+      "schemaAfter": 12,
+      "tablesBefore": 19,
+      "tablesAfter": 27,
+      "originalRowsChanged": 0,
+      "coreStateMatches": true,
+      "existingModesMatch": true,
+      "expectedStartupMetadata": {
+        "achievementIdCounterAdvance": 2,
+        "otherSequenceCountersUnchanged": true
+      },
+      "servedResourceHashes": {
+        "/": "af8993ffc33a8486e8645162066be19ab539fff27d857ce6f2bbd23957f6710f",
+        "/app.css": "31bbf58931ebcc2c9e0e17a7832803922a590d14d85dd2759071264a1d41697e",
+        "/src/app/main.js": "57a409cd33b2f28e766ad68b5505d2f9e78e59b9d042f513555d39e992a263dc",
+        "/src/app/kit-list.js": "e6ec29e51ffd1dee3058396d0806857c5329069008647ca7acd596b27cef715f",
+        "/src/app/kit-plan.js": "c8ff2da0d87443bdae59f9ab26a2555e8fd25793621a6824bb612fd338b28d15",
+        "/src/app/keeper.js": "34312141063675c1bb170831199cd745afbde6eff117878ce391b15f7513dc65",
+        "/src/world/board-scene.js": "e3e602cdd29dac03532b20f9862162b73859611748b4c775de03ee07aaf6f0f8"
+      },
+      "environmentUnchangedSinceAuthorizedKeyInstall": true,
+      "OpenAIPhotoMode": "live",
+      "CohereMode": "off",
+      "progressCents": 7500,
+      "targetCents": 30000,
+      "historical15DollarCapturesPreserved": 1,
+      "providerCallsByThisOperation": 0
+    }
+  ],
+  "privateCopyRehearsals": {
+    "roles": 2,
+    "passed": 2,
+    "originalTablesChanged": 0,
+    "providerAttempts": 0,
+    "testChildrenCleanedUp": true
+  },
+  "operatorCorrection": "The first owner restart passed original-table checks but an over-strict sequence assertion rejected expected achievement-ID metadata. The owner app resumed after correcting that check and zombie-child liveness detection; all application values remained unchanged. Rehearsal activation then passed.",
+  "newTables": [
+    "deferred_refunds",
+    "family_choices",
+    "family_offers",
+    "family_preferences",
+    "goal_kits",
+    "kit_candidates",
+    "kit_lists",
+    "kit_selections"
+  ],
+  "newTablesEmpty": true,
+  "newSavedPayPalChecks": 0,
+  "activationProviderCalls": 0,
+  "separateSyntheticOpenAIProbe": "kit-photo-openai-20261109.json",
+  "limits": [
+    "Historical sandbox payment and exact-order match preserved; not repeated on this release.",
+    "One synthetic-image OpenAI adapter check is not a photo-quality benchmark or full browser upload test.",
+    "No live Channel3 or Cohere check for the new kit features.",
+    "No physical-device, observed-family-playtest or production recovery claim.",
+    "Existing video unchanged; no recording, publication, deployment or web submission."
+  ]
+}

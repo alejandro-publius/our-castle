@@ -1,5 +1,52 @@
 # Validation
 
+## Saved Mac runtime activation — November 9, 2026
+
+**Source:** reviewed main `b21b2d8`, implementation tree `ba265ea`. Both saved apps moved from schema 7 to 12 using a fresh locked dependency install and the compiled solver on Node **26.0.0**. This local Node version is separate from the hosted versions.
+
+**Before activation:** consistent read-only online snapshots, fingerprints, then private-copy migration and full-startup rehearsals for each actual database. The rehearsals used synthetic configuration/fake providers with the corrected guard below: both passed with no provider attempts and their test processes cleaned up.
+
+**Actual activation:** each role had a fresh stopped-app rollback snapshot before migration. Owner 3010 now runs PID 440 at $60/$300; rehearsal 3021 runs PID 985 at $75/$300 and retains its one completed $15 capture and credit. For both:
+- all 19 original application tables, columns and typed row values match; the eight new tables are empty;
+- household/goal/progress and existing provider/access modes match;
+- seven served HTML/CSS/module hashes match the reviewed source;
+- the native solver binary is selected (SHA-256 `f151bd874022b56f9f3ea9790fea721b33dc12eadb4dc25cbae55ac9c437abdb`);
+- configuration remains unchanged since the separately authorized OpenAI key addition; Cohere is off;
+- the upgrade made zero provider calls, orders, payments or refunds.
+
+**Operator correction:** an extra SQLite sequence-equality check initially rejected 3010 after the application-table checks passed. The startup achievement insert can advance its AUTOINCREMENT counter despite adding no row. The operator also initially mistook its stopped zombie child for a running app. The corrected check accepts only this monotonic achievement-counter change and handles a zombie as stopped. 3010 resumed and passed all checks before 3021 was upgraded. No force kill or original application-row change occurred. The final counter advance is two for each role; all other sequence counters match.
+
+Raw snapshots/reports remain private, outside the repository and web roots. [Sanitized result](evidence/runtime-activation-20261109.json) and [runbook](RUNBOOK.md#saved-mac-runtime--november-9-2026). This is local activation evidence, not a production recovery guarantee or a new PayPal verification.
+
+## One live OpenAI synthetic photo — November 9, 2026
+
+The owner explicitly authorized a credited key and one bounded check. Exactly **one** request used the production `server/kit/reader.mjs` adapter on `b21b2d8`, model `gpt-6-sol`, against OpenAI's Responses API. It used a strict schema, `store: false`, no retries/redirects and a 60-second limit.
+
+The input was this invented [800 × 560 packing-list image](evidence/kit-photo-synthetic-20261109.png), SHA-256 `70cfcdc579bf72fff7db6772cae0148ce61789d6c8ffde3ed1696b21c8e3e4fe`. The answer was readable, contained no extra lines and matched all four intended names/counts:
+
+| Item | Quantity |
+| --- | --- |
+| 4-person tent | 1 |
+| Sleeping bag | 2 |
+| Torch | 2 |
+| Camping stove | 1 |
+
+[Sanitized adapter result](evidence/kit-photo-openai-20261109.json). No saved household or app API was used for this probe, and no key, raw provider response or private record is published. No Cohere, Channel3, Anthropic or PayPal request was made by it.
+
+**Limit:** one synthetic-image adapter integration check. It does not establish accuracy on real family photos, physical-device capture, the full browser upload path or a human playtest. Earlier feature tests below remain fake-provider evidence.
+
+## Transport isolation correction — November 9, 2026
+
+A ROOT review reproduced a blind spot in the scratch transport preload used for tasks 016–019 (saved family schedules, family-fit shopping, kit lists and complete kits). Node can pass a normalized argument array to `net.Socket.connect`. The old preload treated it as an options object, defaulted the missing host to localhost and could let a non-loopback target reach name lookup. A controlled `.invalid` target with a custom lookup reproduced this **before any external DNS or TCP connection**.
+
+Those earlier checks still used disposable data, explicit synthetic configuration, no `.env` and fake providers. Their raw test outcomes stand, but **the preload does not prove complete outbound-TCP isolation**. The wording in the affected records below and the kit guides is corrected. These tests are not live-provider evidence; the new controls are not retroactive proof for every older run.
+
+The corrected activation preload unwraps normalized arguments and covers Node net/TLS, HTTP/HTTPS and fetch before lookup. Two identical helper locations each passed **53 controls**, including 14 expected denials, with loopback IPv4/IPv6 still usable. The former version is retained as a failing control. Ten affected synthetic startup/entrypoint reruns passed with zero provider attempts. The actual private-copy rehearsals above used this corrected helper.
+
+Helper SHA-256: `dcaf05bd9de88b7457bd68f76c50aa33a361e94adc3abf6ac7eb2da5889164ec`. Raw controls and reruns are in the ignored runtime preflight folder, under `rehearsal/net-guard-correction/`; its final manifest verifies 288 files.
+
+**Boundary:** this is a Node transport test preload, not an operating-system sandbox. It does not intercept direct DNS calls, UDP or child-process networking. No production source or tracked test helper was changed for this correction; the affected preload lived in ignored evidence.
+
 ## Complete kits: review correction 001 — November 9, 2026
 
 Codex's review of `1dfca06` (PR #58) reproduced five production defects, R1–R5, in the complete-kit planner. Commits on the same branch:
@@ -34,7 +81,7 @@ Codex's review of `1dfca06` (PR #58) reproduced five production defects, R1–R5
 
 The two R2 cases that already held on `1dfca06` passed: a late success is refused, and a failure for current figures keeps the kits.
 
-**After, on exactly `39833fe`.** Every check used fake catalog and Cohere transports, invented data and disposable databases, with `.env` loading off and non-loopback transport denied. `KIT_SOLVER_REQUIRED=1` required the compiled solver; its sources are unchanged since `dfcfa7a`, and the binary's sha256 is `79feaabe…`.
+**After, on exactly `39833fe`.** Every check used fake catalog and Cohere transports, invented data and disposable databases, with `.env` loading off and the historical transport preload (see the [isolation correction](#transport-isolation-correction--november-9-2026)). `KIT_SOLVER_REQUIRED=1` required the compiled solver; its sources are unchanged since `dfcfa7a`, and the binary's sha256 is `79feaabe…`.
 - **Unit:** `kit-solver`, `kit-planner` and `kit-rerank` passed **36/36 on Node 22.16.0 and 26.0.0** (29 tests and 7 subtests).
   - Six development runs on Node 26 also passed 36/36. They ran before one test fixture's text was updated to the new description format.
   - In all eight runs, the whole standard-error test took 0.44–0.65 seconds. Its last program would otherwise have waited out the 4-second limit.
@@ -96,7 +143,7 @@ The owner asked for this product feature (task 019), after 018's reviewed kit li
 - Installed with `--no-modify-path --profile minimal` into the worktree's ignored `test-results/toolchain/`, with no sudo and no profile or PATH change. rustc and cargo 1.99.1 (2026-10-13) are pinned in `solver/rust-toolchain.toml`.
 - One crate dependency, `serde_json` 1.0.154 (it compiles `serde_core`, `itoa`, `memchr` and `zmij`), with every build and test `--locked`.
 
-**Checks on `dfcfa7a`** (fake catalog and Cohere transports, invented data, disposable databases, `.env` loading off, non-loopback transport denied):
+**Checks on `dfcfa7a`** (fake catalog and Cohere transports, invented data, disposable databases, `.env` loading off, the historical transport preload (see the [isolation correction](#transport-isolation-correction--november-9-2026))):
 - **Rust:** a clean `cargo test --locked` passed 9/9, and `cargo build --release --locked` succeeded.
   - The tests cover the eight literal combinations and both one-off amounts, the retailer-set trap and the $160 → $140 repair.
   - They also cover whole listings and spares, unknown weights, the largest valid request (6,561 kits, no overflow) and every refused request.
@@ -175,7 +222,7 @@ Codex reproduced this through the module, and the probe kept with correction 001
   - Ash sends nothing until Check and Save. Ash's list then replaces Rowan's for every member.
   - The rest of the journey is unchanged; the kit ends at revision 5 instead of 4.
 
-**Before and after** (Node 22.16.0 and 26.0.0, `.env` loading off, non-loopback transport denied):
+**Before and after** (Node 22.16.0 and 26.0.0, `.env` loading off, the historical transport preload (see the [isolation correction](#transport-isolation-correction--november-9-2026))):
 
 | Source | Page tests, on each Node version | Kit journey |
 | --- | --- | --- |
@@ -225,7 +272,7 @@ Codex's review of PR #57 (`8461902` and `d39ae12`) found two scope-boundary erro
   - **the leftover message** after a save;
   - **two same-scope checks:** an unchanged re-read keeps the drawn list and its focus, and keeps typed text and an open draft, with focus in the line being edited.
 
-**Before and after** (Node 22.16.0 and 26.0.0, `.env` loading off, non-loopback transport denied):
+**Before and after** (Node 22.16.0 and 26.0.0, `.env` loading off, the historical transport preload (see the [isolation correction](#transport-isolation-correction--november-9-2026))):
 
 | Source | Result on each Node version |
 | --- | --- |
@@ -253,7 +300,7 @@ During development, the first version of the fix failed the leftover-message tes
   - the text is kept only in the hidden box, with no message;
   - **Start a new list** clears it.
   This correction keeps same-person behavior as it was; a throwaway probe recorded it. It was fixed afterwards, by [review correction 002](#kit-list-review-correction-002--november-9-2026).
-- **Earlier limits still apply.** Everything in the kit-list record below holds: no live OpenAI call, and no human, device, accessibility-audit or performance evidence.
+- **Earlier limits still apply.** Everything in the kit-list record below holds: no live OpenAI call in those runs, and no human, device, accessibility-audit or performance evidence.
 
 **Evidence:** kept local and ignored, in `test-results/kit-checklist-20261109/correction-001/`: the before, first-attempt, after and final logs, the guard and browser logs, the probe, commands and `SHA256SUMS.txt`.
 
@@ -271,7 +318,7 @@ The owner asked for this product feature (task 018). It is the first of two stag
 - **A draft** shows Need, Have and To get for each line, with each problem in words. Only **Save this list** writes, through `PUT /api/kit`: one revision-checked transaction into the new `kit_lists` table (migration 11).
 - **The photo** is resized and re-encoded on the page, and the server checks its type, bytes and size. Only `POST /api/kit/read` accepts up to 2 MiB; every other route keeps 64 KiB. Neither the photo nor the model's answer is stored or logged.
 
-**Checks on `8461902`** (fake OpenAI transport, invented data, disposable databases, `.env` loading off, non-loopback transport denied):
+**Checks on `8461902`** (fake OpenAI transport, invented data, disposable databases, `.env` loading off, the historical transport preload (see the [isolation correction](#transport-isolation-correction--november-9-2026))):
 - **Unit:** 12 files passed **111/111 on Node 22.16.0 and 26.0.0**.
   - **New (22 tests).** `kit-list-core` (parsing and bounds), `kit-reader` (request serialization, the strict schema, refusals, unfinished, malformed and oversized answers, HTTP errors, timeout, no retry) and `kit-list` (HTTP, config, body limits and migration). The HTTP cases include:
     - the typed path, with zero model calls;
@@ -309,7 +356,7 @@ The owner asked for this product feature (task 018). It is the first of two stag
 - `kit-list-phone-child-saved.png` (`2a947ba9352b`): the child's read-only view.
 
 **Limits:**
-- **Accuracy:** how well any model reads a real family's photo is untested. No live OpenAI call was made, and the fake reading proves only what is sent and how answers are handled.
+- **Accuracy:** how well any model reads a real family's photo is untested. No live OpenAI call was made in that feature run; the fake reading proves only what is sent and how answers are handled. The later [single synthetic-image adapter check](#one-live-openai-synthetic-photo--november-9-2026) is separate.
 - **Typed text:** the parser follows literal rules, so unusual wording may need correcting in the draft.
 - **Have:** a family report, never verified.
 - **Not covered:** human, physical-device, accessibility-audit or performance evidence.
@@ -455,7 +502,7 @@ The owner asked for this product iteration. It is a hypothesis about better buyi
 - **Affected existing browser specs** (`channel3-merchant`, `connected-journey`, `area-cards`, `family-choices`, `family-schedule`, `family-journey`, `journey`, `plan-check`, `shared-live`) with the new spec, on `1ecde49`, desktop and phone: 113 passed, 11 designed project skips, 0 failed.
 - **Guard:** `npm run check` passed: 47 copied art/runtime files, the original 90-colour palette, the renderer wiring and syntax.
 - **Runbook:** the snapshot example now comes from a real rehearsal on a fresh schema-10 example database (23 tables).
-- **Isolation:** every check used disposable in-memory data, empty synthetic configuration and a preload that refuses non-loopback app transport.
+- **Isolation:** every check used disposable in-memory data, empty synthetic configuration and the historical preload whose limits are now recorded in the [isolation correction](#transport-isolation-correction--november-9-2026).
 - **Hosted:** one Release checks run is required on the final PR head. Its actual result is recorded in the PR, so no docs-only run is needed.
 
 **Limits:**
@@ -563,7 +610,7 @@ The owner authorized this follow-through. It is a planning aid. No person has us
   - Throughout: one provider call (the search); no payment, steward, model or ordinary-plan request; every money row unchanged.
 - **Affected existing browser specs** (`channel3-merchant`, `connected-journey`, `family-choices`, `family-journey`, `plan-check`, `journey`, `shared-live`), desktop and phone: 91 passed, 9 designed viewport skips, 0 failed, on exactly the source of `f55e1ba`.
 - **Guard:** `npm run check` passed: 47 copied art/runtime files, the original 90-colour palette, the renderer wiring and syntax.
-- **Isolation:** every check used disposable in-memory data, empty synthetic configuration and a preload that refuses non-loopback app transport.
+- **Isolation:** every check used disposable in-memory data, empty synthetic configuration and the historical preload whose limits are now recorded in the [isolation correction](#transport-isolation-correction--november-9-2026).
 - **Hosted:** one Release checks run is required on the final PR head. Its actual result is recorded in the PR, so no docs-only run is needed.
 
 **Limits:**

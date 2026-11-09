@@ -80,11 +80,13 @@ All captures use invented test data: the camping list `1 x 4-person tent; 2 x sl
 
 ## Checks
 
-Fake OpenAI transport, invented data, disposable databases and family-mode servers, with non-loopback transport denied. [Validation](VALIDATION.md#kit-list-from-text-or-a-photo--november-9-2026).
+The feature suites use fake OpenAI transport, invented data and disposable databases/family-mode servers with `.env` loading off. Their historical network preload had a documented argument-handling gap; it is not proof of complete outbound isolation. [Original validation](VALIDATION.md#kit-list-from-text-or-a-photo--november-9-2026) and [transport correction](VALIDATION.md#transport-isolation-correction--november-9-2026).
+
+Separately, one owner-authorized live OpenAI adapter call on `b21b2d8` correctly read all four names/counts from an invented packing-list image. [Input, result and limits](VALIDATION.md#one-live-openai-synthetic-photo--november-9-2026). It used no saved family record and made no app write.
 
 ## Limits
 
-- **Accuracy.** How well any model reads a real family's photo is untested; no live call was made. The fake reading proves only what is sent, how answers are handled, and that the family corrects the draft.
+- **Accuracy.** How well a model reads a real family's photo is untested. One live synthetic-image adapter check passed; the fake-provider browser journey separately proves the draft/correction behavior. Neither is a real-photo quality benchmark.
 - **Typed text.** The parser follows the literal rules above, so unusual wording may need a correction in the draft.
 - **Have.** A family report, never verified.
 - **Scope.** No human playtest, physical-device, accessibility-audit or performance evidence.
