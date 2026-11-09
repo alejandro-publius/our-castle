@@ -64,6 +64,8 @@ test('a family makes its kit list from typed text or a photo, fixes what was mis
     for (const p of [owner, ash, wren]) await openKit(p);
     await expect(wren.page.locator('#kit-saved')).toHaveText('No kit list yet. Adults in the family make it.');
     await expect(wren.page.locator('#kit-source')).toBeHidden();
+    // Meanwhile Ash starts a list of their own in the same empty box, without checking it.
+    await ash.page.getByLabel('Type or paste the list').fill('2 x torch; 1 x stove');
     await owner.page.getByLabel('Type or paste the list').fill(FIXTURE);
     await owner.page.getByRole('button', { name: 'Check this list' }).click();
     await expect(owner.page.locator('#kit-draft-title')).toBeFocused();
@@ -88,6 +90,19 @@ test('a family makes its kit list from typed text or a photo, fixes what was mis
     await expect(wren.page.locator('#kit-saved .kit-saved-note')).toContainText('Typed, checked and saved by Rowan');
     expect(writes('Rowan')).toEqual(['PUT /api/kit']);
     expect(openai.calls).toHaveLength(0);
+    // Ash's unsaved text survives Rowan's first save: its box stays open, with Ash's focus, below Rowan's list to compare.
+    // Nothing of Ash's is sent until Ash checks it (a draft that says it replaces the saved list) and saves.
+    await expect(ash.page.locator('#kit-source')).toBeVisible();
+    await expect(ash.page.getByLabel('Type or paste the list')).toHaveValue('2 x torch; 1 x stove');
+    await expect(ash.page.getByLabel('Type or paste the list')).toBeFocused();
+    await expect(ash.page.locator('#kit-saved-actions')).toBeHidden();
+    expect(writes('Ash')).toEqual([]);
+    await ash.page.getByRole('button', { name: 'Check this list' }).click();
+    await expect(ash.page.locator('#kit-draft-note')).toHaveText('Saving replaces the saved list.');
+    await ash.page.getByRole('button', { name: 'Save this list' }).click();
+    await expect(ash.page.locator('#kit-status')).toHaveText('Saved for the family. Nothing was bought or paid.');
+    for (const p of [owner, ash, wren]) await expectSaved(p, ['torch', 'stove'], ['Need 2 · Have 0 · To get 2', 'Need 1 · Have 0 · To get 1']);
+    expect(writes('Ash')).toEqual(['PUT /api/kit']);
 
     // 2. A photo: chosen and shown on this page only; it is sent only by "Read the photo with OpenAI".
     const photo = `${evidence}${info.project.name}-invented-list.png`;
@@ -169,7 +184,7 @@ test('a family makes its kit list from typed text or a photo, fixes what was mis
 
     // Only the explicit saves wrote, and only the kit list: no money, goal, plan, offer, choice or deed record changed.
     expect(others(s.db)).toBe(before);
-    expect(s.db.prepare('SELECT revision FROM kit_lists').all().map((r) => r.revision)).toEqual([4]);
+    expect(s.db.prepare('SELECT revision FROM kit_lists').all().map((r) => r.revision)).toEqual([5]);
     expect(openai.calls).toHaveLength(2);
     for (const p of people) expect(writes(p.name).filter((w) => /paypal|steward|merchant|plans|entries|family-choices|goal/.test(w))).toEqual([]);
     for (const p of people) { expect(p.errors).toEqual([]); expect(p.outside).toEqual([]); }

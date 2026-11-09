@@ -313,6 +313,10 @@ export function createKitList({ getState, actor, applyState }) {
     const drafting = canEdit && ui.mode === 'draft' && ui.draft;
     // While drafting, the saved list shows only when someone else saved a newer one, to compare before choosing.
     $('kit-saved').hidden = Boolean(drafting) && kit.revision === ui.draft.baseRevision;
+    // Text or a photo this adult began in the empty list's box (still shown from the last render) stays open when
+    // another adult saves the first list meanwhile: their list shows above it, and nothing is saved until this adult
+    // checks it and saves. With nothing entered, the box closes as before.
+    if (canEdit && ui.mode === 'view' && kit.items.length && !$('kit-source').hidden && ($('kit-text').value.trim() || ui.photo)) ui.mode = 'source';
     const sourcing = canEdit && !drafting && (ui.mode === 'source' || !kit.items.length);
     $('kit-saved-actions').hidden = !canEdit || drafting || sourcing || !kit.items.length;
     $('kit-source').hidden = !sourcing;

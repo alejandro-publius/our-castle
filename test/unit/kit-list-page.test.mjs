@@ -7,6 +7,8 @@
 //   left in the hidden box after a save is not reported as a discarded draft.
 // The same household, goal and person keep what they had: an unchanged live re-read keeps the drawn list and its focus,
 // and typed text or an open draft survives it.
+// - F3 (review correction 002): typing or a photo begun in the empty list's box stays open and usable when another adult
+//   saves the first list. Their list shows above it, and only this adult's own Check and Save replace it.
 import { after, test } from 'node:test';
 import assert from 'node:assert/strict';
 import { MiniNode, documentFromPage } from '../helpers/mini-dom.mjs';
@@ -14,7 +16,7 @@ import { createKitList } from '../../src/app/kit-list.js';
 
 const realFetch = globalThis.fetch;
 globalThis.Node = MiniNode;
-after(() => { globalThis.fetch = realFetch; delete globalThis.document; delete globalThis.Node; });
+after(() => { globalThis.fetch = realFetch; delete globalThis.document; delete globalThis.Node; delete globalThis.createImageBitmap; });
 
 const SAVED_AT = '2026-11-09T10:00:00.000Z';
 const DISCARDED = 'The draft was for another person or goal, so it was discarded. Nothing was saved.';
@@ -157,4 +159,72 @@ test("a message about one goal's list is not left under the next goal's list", a
   // Neither the camping list's "saved" message nor a claim that a draft was discarded: that list was saved.
   assert.equal(page.$('kit-status').textContent, '');
   assert.equal(page.$('kit-text').value, '');
+});
+
+// Stand-ins for the browser's image decoding and canvas, so a chosen "photo" needs no real image in this test.
+function allowPhotos(page) {
+  const create = page.document.createElement.bind(page.document);
+  page.document.createElement = (tag) => (tag !== 'canvas' ? create(tag)
+    : { width: 0, height: 0, getContext: () => ({ fillRect() {}, drawImage() {} }), toDataURL: () => 'data:image/jpeg;base64,/9j/2wBD' });
+  globalThis.createImageBitmap = async () => ({ width: 640, height: 480, close() {} });
+}
+const shown = (el) => el.offsetParent !== null;
+
+test("typing or a photo begun in the empty list stays open and usable when another adult saves the first list", async (t) => {
+  const ashSaved = (modes) => ({ ...familyState({ kit: savedKit('mem_ash', '4-person tent') }), ...modes });
+
+  await t.test('typed text: kept with its focus, beside the new list, until this adult checks and saves', async () => {
+    const page = kitPage();
+    page.show(familyState(), 'mem_rowan');
+    page.type('kit-text', '2 x torch; 1 x stove');
+    page.$('kit-text').focus();
+    page.show(ashSaved(), 'mem_rowan'); // Ash's first save arrives by a live re-read: same household, goal and person
+    assert.ok(shown(page.$('kit-text')), 'the typing box is still shown');
+    assert.equal(page.$('kit-text').value, '2 x torch; 1 x stove');
+    assert.equal(page.document.activeElement, page.$('kit-text'), 'focus stayed in the box');
+    assert.ok(shown(page.$('kit-saved')));
+    assert.match(page.savedText(), /4-person tent.*checked and saved by Ash/, "Ash's list is shown to compare");
+    assert.equal(page.$('kit-saved-actions').hidden, true, '"Start a new list" is not offered while the text is open');
+    assert.deepEqual(page.requests, [], 'nothing was sent');
+    // Only this adult's explicit Check and Save replace Ash's list, against the revision this page has shown.
+    page.$('kit-check').click();
+    assert.equal(page.$('kit-draft-note').textContent, 'Saving replaces the saved list.');
+    assert.deepEqual(page.requests, []);
+    const saved = familyState({ kit: savedKit('mem_rowan', 'torch', { revision: 2, savedAt: '2026-11-09T10:05:00.000Z' }) });
+    page.answerWith({ state: saved });
+    page.$('kit-save').click();
+    await settle();
+    assert.deepEqual(page.requests.map((r) => [r.method, r.url, r.body.expectedRevision, r.body.items]), [['PUT', '/api/kit', 1, [
+      { name: 'torch', needs: null, quantity: 2, ownedQuantity: 0, from: 'typed' }, { name: 'stove', needs: null, quantity: 1, ownedQuantity: 0, from: 'typed' }]]]);
+    assert.equal(page.$('kit-status').textContent, SAVED);
+    assert.equal(page.$('kit-source').hidden, true, 'after the save the box closes');
+    page.show(structuredClone(saved), 'mem_rowan');
+    assert.equal(page.$('kit-source').hidden, true, 'and a later re-read does not reopen it with the saved text');
+  });
+
+  await t.test('a chosen photo: still shown and still readable, with nothing sent', async () => {
+    const page = kitPage();
+    allowPhotos(page);
+    const photoOn = { modes: { kit: { mode: 'live' } } };
+    page.show({ ...familyState(), ...photoOn }, 'mem_rowan');
+    const input = page.$('kit-photo-input');
+    input.files = [{ type: 'image/png', size: 2048 }];
+    input.dispatchEvent({ type: 'change' });
+    await settle();
+    assert.ok(shown(page.$('kit-photo-preview')));
+    page.show(ashSaved(photoOn), 'mem_rowan');
+    assert.ok(shown(page.$('kit-photo-preview')), 'the chosen photo is still shown');
+    assert.ok(shown(page.$('kit-read')), 'and can still be read, by its own explicit action');
+    assert.match(page.savedText(), /4-person tent/);
+    assert.deepEqual(page.requests, []);
+  });
+
+  await t.test('nothing entered: the empty box closes and the saved list is offered as before', () => {
+    const page = kitPage();
+    page.show(familyState(), 'mem_rowan');
+    page.show(ashSaved(), 'mem_rowan');
+    assert.equal(page.$('kit-source').hidden, true);
+    assert.equal(page.$('kit-saved-actions').hidden, false);
+    assert.deepEqual(page.requests, []);
+  });
 });
