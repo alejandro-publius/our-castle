@@ -2,6 +2,18 @@
 
 Commands and integration setup for Our Castle. Current state and live-proof limits are in [JUDGE-HANDOFF.md](JUDGE-HANDOFF.md); historical results are not a reason to repeat paid checks.
 
+## Saved Mac runtime — November 9, 2026
+
+The owner's two saved apps have been upgraded to reviewed source `b21b2d8`, schema 12, from `~/projects/our-castle-runtime-release-20261109`. Owner 3010 (PID 440) retains $60/$300; rehearsal 3021 (PID 985) retains $75/$300 and its completed $15 sandbox capture. [Activation evidence and operator correction](VALIDATION.md#saved-mac-runtime-activation--november-9-2026).
+
+These processes are independent of Claude Code. Closing its terminal does not stop them. Refresh an idle browser page for the current assets; do not start a second process on either occupied port.
+
+The runtime uses explicit absolute environment and per-role data paths, with the compiled Rust solver selected. Its ignored configuration enables OpenAI photo reading; Cohere stays off. The original checkout is not the active source. Plain `npm start` in another checkout can choose different settings/data, so it is not an owner-runtime restart instruction.
+
+**Recovery is an operator action:** the private activation folder `~/projects/our-castle-activation-private-20261109/` contains consistent per-role `*-stopped-rollback.sqlite` snapshots, fingerprints and activation reports. It contains real saved records and must stay private. The old runtime checkout is retained at Git head `01fb478`, with production files verified identical to `4082df5`. Before any restore, stop and identify the exact affected process, preserve the current database and sidecars, and rehearse recovery on a private copy. Never open the upgraded schema-12 database with the older schema-7 app or replace a running database. No restore is needed after this successful upgrade.
+
+The two upgrades made no provider requests. A separate single synthetic-image OpenAI adapter probe passed; it does not authorize repeating paid checks. No existing receipt-check history was backfilled. [Current source, providers and limits](RELEASE-READINESS.md).
+
 ## Run it
 
 **Fresh, no-credentials session:** after `npm ci`, run `npm run demo` and open its printed localhost URL. This portable command uses an unused port and an in-memory household; it never reads `.env`, inherited provider settings or saved data. Progress survives browser refresh until Ctrl+C ends the session. Start it again for a clean game. The owner's persistent 3010 app and separate 3021 rehearsal remain separate.

@@ -142,7 +142,7 @@ The smallest change follows the production-replanning example: a $160 kit with a
 
 ## Checks
 
-The checks used fake catalog and Cohere transports, invented data, disposable databases and family-mode servers, the compiled Rust solver, and non-loopback transport denied. [Validation](VALIDATION.md#complete-kits-for-the-kit-list--november-9-2026) and its [review correction 001](VALIDATION.md#complete-kits-review-correction-001--november-9-2026).
+The checks used fake catalog and Cohere transports, invented data, disposable databases/family-mode servers, the compiled Rust solver and `.env` loading off. Their historical network preload had a documented argument-handling gap, so it does not establish complete outbound isolation. [Validation](VALIDATION.md#complete-kits-for-the-kit-list--november-9-2026), [review correction 001](VALIDATION.md#complete-kits-review-correction-001--november-9-2026) and [transport correction](VALIDATION.md#transport-isolation-correction--november-9-2026).
 
 ## Limits
 

@@ -16,7 +16,7 @@ It keeps the reviewed scene lifecycle and Treasury stalled-asset recovery fixes,
 - the complete-kit journey (2 passed);
 - 45 desktop/phone browser checks, with 3 designed skips.
 
-These are fake-provider checks. The preserved Mac apps described below still run the earlier compass/receipt release `4082df5`; cloning the source gives the updated build.
+These source suites use fake providers. Both saved Mac apps now run the integrated source `b21b2d8` at schema 12; the later local upgrade and one live synthetic OpenAI photo check are recorded separately in [validation](VALIDATION.md#saved-mac-runtime-activation--november-9-2026).
 
 ## 1. Run it
 
@@ -81,14 +81,14 @@ Passkey setup needs a compatible browser/device. Existing multi-context tests us
 | Shared-family access | [Passkeys, invitations, adult/child permissions and live updates](FAMILY-ACCESS.md); separate authenticated browser contexts and fake-provider boundary/recovery checks | Local WebAuthn with virtual authenticators; no hosted service, physical-device or observed human-playtest claim |
 | World and family journey | Focused desktop/touch-phone Chromium and Linux WebKit checks | Browser emulation, not physical devices/macOS Safari |
 | Family choices, schedules and family fit | [Offers, preferences, one-off trials, saved schedules and fit searches](FAMILY-CHOICES.md); fake-provider unit and browser checks | Invented catalog and fake transports; these flows were not retested against live Channel3 |
-| Kit list and complete kits | [Typed lists and fake-OpenAI photo drafts](KIT-LIST.md); [the compiled Rust solver equal to the reference on 403 cases, and fake-catalog/fake-Cohere journeys](KIT-PLANNER.md) | No live OpenAI, Channel3 or Cohere call; ranking quality not measured |
+| Kit list and complete kits | [Typed lists, fake-OpenAI draft journeys and one successful live synthetic-image adapter check](KIT-LIST.md); [the compiled Rust solver equal to the reference on 403 cases, and fake-catalog/fake-Cohere journeys](KIT-PLANNER.md) | One invented photo is not a quality benchmark or browser upload proof; no live Channel3 or Cohere check for these features, and ranking quality is unmeasured |
 | Recovery and payment safety | [Restart recovery, two servers on one database, refund ordering and snapshots](RELEASE-READINESS.md): real app processes on disposable databases with fake providers | Not a production or disaster-recovery guarantee |
 
 [VALIDATION.md](VALIDATION.md) gives exact runs and versions. [AWARD-STRATEGY.md](AWARD-STRATEGY.md) maps the implementations to official sponsor briefs without guaranteeing a prize.
 
 ## 4. What remains, by who has to act
 
-**Current Mac apps:** the owner household stays at **http://localhost:3010** and the isolated rehearsal at **http://localhost:3021**, both running reviewed implementation `4082df5` from `~/projects/our-castle-compass-release-20261107`. PR #32 integrates the compass, west-meadow review fix, direct Treasury receipt route and refreshed judge guidance; PRs #20/#27/#28 remain included. Both original households keep their prior access/provider modes and $60/$75 progress; shared-family mode uses its separate opt-in runner. They do not run this source release (schema 12); activating it there is a separate step that has not been done. All 19 application tables and the private environment matched the latest activation checks. [Release readiness](RELEASE-READINESS.md#current-mac-app) and private session metadata hold exact PIDs, backups and source details; this review guide does not assign a new checkout operator.
+**Current Mac apps:** **http://localhost:3010** (PID 440) and the isolated rehearsal **http://localhost:3021** (PID 985) now run reviewed source `b21b2d8` from `~/projects/our-castle-runtime-release-20261109`, schema 12. The verified private-copy rehearsals and stopped-app backups preceded activation. All 19 original application tables/values and core state are preserved; eight new tables are empty. Progress remains $60/$300 and $75/$300, and the existing completed $15 capture/credit is preserved. Prior payment, planner, Merchant and access modes remain; the compiled Rust solver and separately authorized OpenAI photo configuration are active, while Cohere stays off. Shared-family mode remains opt-in. [Release readiness](RELEASE-READINESS.md#current-mac-app) records the exact local upgrade, operator correction and limits. Refresh an idle page to load these assets; no further payment or provider check is needed.
 
 **Completed manual checkout:** the owner was the sole browser operator and completed the approved $15 contribution. This worker inspected the saved capture/credit, fixed the provider's forced-tool incompatibility, and made one necessary same-order steward retry through the local API. It genuinely called `get_order`; the server returned `match`, selected-order `verified`, and no warnings. Do not create another payment or repeat paid suites.
 

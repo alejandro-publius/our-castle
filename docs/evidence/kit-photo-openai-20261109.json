@@ -1,0 +1,36 @@
+{
+  "at": "2026-11-09T19:39:55.291080+00:00",
+  "provider": "OpenAI",
+  "requests": 1,
+  "source": "b21b2d8bd04fe59de7eee885cc47dbdccf2dd302",
+  "model": "gpt-6-sol",
+  "imageSHA256": "70cfcdc579bf72fff7db6772cae0148ce61789d6c8ffde3ed1696b21c8e3e4fe",
+  "synthetic": true,
+  "readable": true,
+  "lines": [
+    {
+      "name": "4-person tent",
+      "quantity": 1
+    },
+    {
+      "name": "sleeping bag",
+      "quantity": 2
+    },
+    {
+      "name": "torch",
+      "quantity": 2
+    },
+    {
+      "name": "camping stove",
+      "quantity": 1
+    }
+  ],
+  "matchesSyntheticList": true,
+  "ok": true,
+  "CohereRequests": 0,
+  "CohereStatus": "deferred_by_owner",
+  "actualSavedDataTouched": false,
+  "limits": "One synthetic image only; adapter integration proof, not an OCR-quality benchmark or human playtest.",
+  "input": "kit-photo-synthetic-20261109.png",
+  "transport": "One production adapter Responses API call; explicit fixed OpenAI host, no redirects or retries."
+}
