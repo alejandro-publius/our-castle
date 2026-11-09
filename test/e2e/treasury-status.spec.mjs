@@ -193,3 +193,57 @@ test('a failed saved check on an unpaid order exposes one read-only recovery act
     await page.close(); server.closeAllConnections(); await new Promise(resolve => server.close(resolve)); domain.db.close();
   }
 });
+
+
+test('a failed check clears an older saved-confirmation answer without changing financial records', { tag: '@release' }, async ({ page }) => {
+  const domain = setupDomain({ mode: 'sandbox' });
+  const owner = { householdId: domain.householdId, goalId: domain.goalId };
+  let now = new Date('2026-11-03T12:00:00Z');
+  domain.clock.now = () => now;
+  const { orderId } = await domain.service.createPayPalOrder(contribution());
+  await domain.service.capturePayPalOrder({ providerOrderId: orderId, ...owner });
+  await domain.service.refreshPayPalOrder({ providerOrderId: orderId, ...owner });
+  const modelCalls = [];
+  const app = createApp({ root, db: domain.db, clock: domain.clock, paypal: domain.paypal,
+    config: loadConfig({ PAYPAL_CLIENT_ID: 'fake-client', PAYPAL_CLIENT_SECRET: 'fake-secret' }, { root }),
+    stewardFetch: async () => { modelCalls.push('model'); throw new Error('No model call allowed'); } });
+  const server = http.createServer(app.handler);
+  await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+  const base = `http://127.0.0.1:${server.address().port}`, outside = [], issues = [], writes = [];
+  page.on('pageerror', error => issues.push(error.message));
+  await page.route('**/*', route => {
+    const request = route.request(), url = new URL(request.url());
+    if (url.origin !== base) { outside.push(url.href); return route.abort(); }
+    if (request.method() !== 'GET') writes.push(`${request.method()} ${url.pathname}`);
+    return route.continue();
+  });
+  try {
+    await page.goto(base);
+    await page.waitForFunction(() => document.body.dataset.ready === 'true');
+    if (await page.locator('#journey').isHidden()) await page.locator('#journal-toggle').click();
+    await page.locator('#tab-ledger').click();
+    const receipt = page.locator('#ledger-contributions'), answer = page.locator('#steward-answer');
+    await expect(receipt.locator('[data-check="match"]')).toBeVisible();
+    await page.locator('#steward-block > summary').click();
+    await page.getByRole('button', { name: 'Last confirmation', exact: true }).click();
+    await expect(answer.locator('.verification-title')).toHaveText('Saved confirmation');
+    const ledgerBefore = domain.db.prepare('SELECT * FROM ledger_entries ORDER BY rowid').all();
+    const ordersBefore = domain.db.prepare('SELECT * FROM payment_orders ORDER BY rowid').all();
+    now = new Date('2026-11-04T12:00:00Z');
+    let failedReads = 0;
+    domain.paypal.getOrder = async () => { failedReads++; throw new PayPalError('Fixture read unavailable', { status: 500 }); };
+    await receipt.getByRole('button', { name: 'Check with PayPal', exact: true }).click();
+    await expect(receipt.locator('[data-check="failed"]')).toBeVisible();
+    expect(domain.db.prepare('SELECT * FROM ledger_entries ORDER BY rowid').all()).toEqual(ledgerBefore);
+    expect(domain.db.prepare('SELECT * FROM payment_orders ORDER BY rowid').all()).toEqual(ordersBefore);
+    expect(domain.db.prepare('SELECT count(*) AS n FROM order_checks').get().n).toBe(2);
+    expect(failedReads).toBe(1);
+    expect(writes).toEqual(['POST /api/steward', `POST /api/paypal/orders/${orderId}/refresh`]);
+    expect(modelCalls).toEqual([]);
+    expect(outside).toEqual([]);
+    expect(issues).toEqual([]);
+    await expect(answer).toBeHidden();
+  } finally {
+    await page.close(); server.closeAllConnections(); await new Promise(resolve => server.close(resolve)); domain.db.close();
+  }
+});

@@ -1841,7 +1841,7 @@ function renderTreasury() {
     },
     requestSteward: (payload, options) => api.post('/api/steward', payload, options),
     getStewardScope: () => JSON.stringify([state.household.id, state.household.name, state.goal, state.progress, state.plan?.id, state.acceptedPlanId,
-      state.contributions.map((c) => [c.id, c.status, c.updatedAt]), persona()?.id, ui.ledgerRecord, family.epoch]),
+      state.contributions.map((c) => [c.id, c.status, c.updatedAt, c.lastCheck]), persona()?.id, ui.ledgerRecord, family.epoch]),
     getLicence: () => api.get('/api/treasury/studio').then((r) => r.licenseKey ?? null) });
   treasury.update(state);
 }
