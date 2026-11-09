@@ -143,6 +143,9 @@ function worldInsets() {
     const r = el.getBoundingClientRect();
     if (r.height && r.bottom > world.top && r.top < world.top + world.height / 2) top = Math.max(top, r.bottom - world.top);
   }
+  // A kit preview's plaque sits under the toolbar: the picture it describes is framed below it.
+  const plaque = $('#kit-preview').getBoundingClientRect();
+  if (plaque.height) top = Math.max(top, plaque.bottom - world.top);
   const foot = $('.board-foot').getBoundingClientRect();
   if (foot.height && foot.top < world.bottom) bottom = world.bottom - foot.top;
   return { top: (top + 8) / world.height, bottom: (bottom + 6) / world.height };
@@ -391,6 +394,7 @@ function requestRefused(error) {
 function sessionLost(error) {
   if (family.lost) return;
   family.lost = true;
+  kitPlan?.closePreview(); // nothing of this household's plan stays drawn on the map
   family.live?.stop();
   clearInterval(family.timer); clearTimeout(family.statusTimer); clearTimeout(family.retryTimer);
   showLiveStatus(false);
@@ -771,9 +775,9 @@ function syncRealmMarkers({focus,points,exploring=false,free=false}){
   // The toolbar (Areas, Whole realm, View, settings) and the area row along the bottom are laid over the map, above its
   // names. Their actual boxes, in the map's coordinates (a details menu by its summary, not its open panel):
   const frame=map.getBoundingClientRect();
-  const controls=[...board.querySelectorAll('.world-hud > *, .board-foot > *')].flatMap((el)=>{
+  const controls=[...board.querySelectorAll('.world-hud > *, .board-foot > *, .kit-preview')].flatMap((el)=>{
     const r=(el.matches('details')?el.querySelector(':scope > summary'):el)?.getBoundingClientRect();
-    return r&&r.width&&r.height?[{left:r.left-frame.left,right:r.right-frame.left,top:r.top-frame.top,bottom:r.bottom-frame.top,toolbar:Boolean(el.closest('.world-hud'))}]:[];
+    return r&&r.width&&r.height?[{left:r.left-frame.left,right:r.right-frame.left,top:r.top-frame.top,bottom:r.bottom-frame.top,toolbar:Boolean(el.closest('.world-hud, .kit-preview'))}]:[];
   });
   const priority=(p)=>document.activeElement?.dataset?.district===p.id?3:p.id===home?2:0;
   for(const point of [...points].sort((a,b)=>priority(b)-priority(a))){
@@ -1823,6 +1827,56 @@ function visitCampsite(e) {
   const marker = $('#project-marker');
   marker?.focus({ preventScroll: true }); revealRealm(marker, { instant: e?.detail === 0 });
 }
+// ---------- A kit preview on the map (Plan → Kit list → Complete kits → Preview on map) ----------
+// The planner hands over what to draw and say (src/app/kit-plan.js), from the comparison answer already on the page.
+// Showing, updating and closing it only draw: nothing here calls the server, saves a record or changes progress.
+const kitPreview = { sceneKey: null, captionKey: null };
+function showKitPreview(view, { reveal = false } = {}) {
+  const plaque = $('#kit-preview');
+  if (!view) {
+    if (kitPreview.sceneKey === null && plaque.hidden) return;
+    Object.assign(kitPreview, { sceneKey: null, captionKey: null });
+    plaque.hidden = true; plaque.removeAttribute('aria-busy');
+    scene?.setKitPreview(null); scene?.reframe(); // the view is framed without the plaque again
+    return;
+  }
+  plaque.setAttribute('aria-busy', String(Boolean(view.pending)));
+  if (view.pending) return; // the last picture stays while a fresh comparison is on its way
+  const sceneKey = JSON.stringify(view.scene), captionKey = JSON.stringify(view.caption);
+  if (captionKey !== kitPreview.captionKey) {
+    kitPreview.captionKey = captionKey;
+    const c = view.caption;
+    plaque.dataset.fits = String(c.fits); plaque.dataset.role = c.role;
+    $('#kit-preview-title').textContent = c.title;
+    $('#kit-preview-finish').textContent = c.finish;
+    $('#kit-preview-items').textContent = c.items;
+    $('#kit-preview-changes').textContent = c.changes; $('#kit-preview-changes').hidden = !c.changes;
+    $('#kit-preview-about').textContent = c.about;
+  }
+  const height = plaque.hidden ? 0 : plaque.offsetHeight;
+  plaque.hidden = false;
+  if (sceneKey !== kitPreview.sceneKey) { kitPreview.sceneKey = sceneKey; scene?.setKitPreview(view.scene); }
+  if (reveal) {
+    // The existing campsite view, framed below the plaque. Camera only; the compass and free navigation still work after.
+    scene?.focusLegend(FAMILY_PROJECT_SITE.id); $('.realm-map').dataset.focused = 'true';
+    const title = $('#kit-preview-title');
+    title.focus({ preventScroll: true }); revealRealm(title, { instant: true });
+  } else if (plaque.offsetHeight !== height) scene?.reframe(); // the plaque grew or shrank: frame below it, camera as it was
+}
+// Focus goes back to the button that opened the preview (or the nearest thing left of it), in the journal's Plan.
+function returnToKits(origin) {
+  setJournalOpen(true);
+  if (ui.tab !== 'plan') selectTab('plan', { focus: false });
+  $('#kit-list').open = true;
+  const target = (origin && $(`#kit-plan-kits [data-focus-key="${CSS.escape(origin)}"]`)) || $('#kit-plan-compare');
+  const usable = target && !target.closest('[hidden]') ? target : $('#kit-list summary');
+  usable.focus({ preventScroll: true }); usable.scrollIntoView({ block: 'center', behavior: 'instant' });
+}
+function closeKitPreview() {
+  const origin = kitPlan?.previewOrigin() ?? null;
+  kitPlan?.closePreview();
+  returnToKits(origin);
+}
 function recordImpact(row) {
   if (row.afterCents === null) return null;
   const open = new Set(state.rewards.realm.districts.filter((d) => d.open).map((d) => d.id));
@@ -2132,10 +2186,13 @@ function bindEvents() {
   kitList = createKitList({ getState: () => state, actor: persona, applyState, onRender: () => kitPlan?.render() });
   kitPlan = createKitPlan({ getState: () => state, actor: persona, applyState, openMerchant: (from, options) => merchant.open(from, options),
     reserve: () => { const src = familyChoices?.fitSource(); return { cents: src?.reserveCents ?? 0, invalid: Boolean(src?.reserveInvalid) }; },
-    onReview: useKitReview, listEditing: () => kitList?.editing() ?? false });
+    onReview: useKitReview, listEditing: () => kitList?.editing() ?? false, onPreview: showKitPreview });
   for (const opener of [$('#open-merchant'), $('#find-goal-item')]) opener.addEventListener('click', (e) => merchant.open(e.currentTarget));
   $('#visit-campsite').addEventListener('click', visitCampsite);
   for (const id of ['#example-entry-go', '#example-to-kits', '#example-to-trial']) $(id).addEventListener('click', openExample);
+  $('#kit-preview-close').addEventListener('click', closeKitPreview);
+  $('#kit-preview-back').addEventListener('click', () => returnToKits(kitPlan?.previewOrigin() ?? null));
+  $('#kit-preview').addEventListener('keydown', (e) => { if (e.key === 'Escape' && !e.isComposing) { e.preventDefault(); closeKitPreview(); } });
   $('#goal-draft-save').addEventListener('click', saveGoalDraft);
   $('#goal-draft-propose').addEventListener('click', saveGoalDraft);
   $('#goal-draft-review').addEventListener('click', reviewGoalDraft);

@@ -105,6 +105,16 @@
             </div>
           </details>
         </div>
+        <!-- A kit preview's words (Plan → Kit list → Complete kits → Preview on map): what the temporary picture in the west
+             meadow is, with the kit's actual total and finish. Shown only while a preview is on the map. It writes nothing. -->
+        <section class="kit-preview" id="kit-preview" aria-labelledby="kit-preview-title" hidden>
+          <div class="kit-preview-head"><span class="kit-preview-eyebrow">Plan preview · Not bought</span><button type="button" class="link-button" id="kit-preview-back">Back to kits</button><button type="button" class="link-button" id="kit-preview-close">Close preview</button></div>
+          <h3 id="kit-preview-title" tabindex="-1"></h3>
+          <p id="kit-preview-finish"></p>
+          <p id="kit-preview-items"></p>
+          <p id="kit-preview-changes" hidden></p>
+          <details class="kit-preview-about"><summary>About this picture</summary><p id="kit-preview-about"></p></details>
+        </section>
         <div class="board-foot"><p id="realm-focus-status" class="area-status" role="status" aria-live="polite"></p><button type="button" class="chip" id="open-merchant" aria-label="Open the Market Town merchant" hidden>Merchant</button><button type="button" class="chip" id="view-deed" aria-describedby="realm-focus-status" hidden>View deed</button><p id="board-status" class="sr-only" role="status" aria-live="polite"></p><ol id="tier-track" class="sr-only" aria-label="House milestones"></ol></div>
         <p id="world-fallback" class="world-fallback" hidden>The board is unavailable. Your journal still works. <a href="references/images/our-house-castle.png">See the realm.</a></p>
         <div id="celebration" class="celebration" hidden></div>
