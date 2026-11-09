@@ -1,5 +1,30 @@
 # Validation
 
+## Playable family decision and final source integration — November 9, 2026
+
+[PR #61](https://github.com/alejandro-publius/our-castle/pull/61), source `c6aa3e4` and guide/captures `a792654`, supplies the no-key catalogue missing from the ordinary demo. `npm run demo -- --family-trip` opens the existing Plan surface with an invented family, its offers, an editable kit list and six labelled sample listings. It uses the existing services and actual complete-kit/repair calculations. The ordinary blank demo remains available.
+
+The exercised route compares $150/$180 kits after a $90 one-off, keeps the chosen stove, repairs the choice to $150 after a $120 expense by changing only the tent, and explains the real $80 shortfall at a $200 expense. Review, goal save, proposed schedule and contribution approval remain separate explicit actions. A simulated $15 contribution credits once. Child actions, external shop links, false catalogue labels and unintended financial writes are checked. [Walkthrough and three real example captures](FAMILY-TRIP-EXAMPLE.md).
+
+The integration also includes `816a76c`: a newer failed saved check now invalidates an older displayed steward answer. It reuses the existing scope invalidation and changes no payment route, financial record or provider call. [Reproduction and narrow correction](STALE-CONFIRMATION-ANSWER.md).
+
+**Actual local checks:**
+- Family-trip unit/HTTP source: **569 results, 568 passed, one existing skip, zero failures**, Node 26.0.0 with the compiled Rust solver required. Twelve new cases cover the scenario, real computation, reset failure preservation, retained member records and configuration isolation.
+- Twelve affected browser files, desktop and 390 px touch-emulated phone: **97 passed and one designed phone skip**, over two guarded batches. Eight files supplied 38 passes; the corrected four-file batch supplied 59 passes and one skip. The two new family-trip cases passed with the native solver. These were selected affected checks, not the entire browser suite.
+- The page reset control was separately exercised once: **8/8 checks**, restoring the family, offers and six listings after a chosen/kept kit; no outside-origin request or page error.
+- Stale-answer regression: on `e0f8816`, the desktop case failed specifically because the old answer remained visible after the failed check. With `816a76c`, **desktop and phone both passed** (30.9 seconds), while payment/ledger rows stayed identical, exactly one fake read failed, and no model/external browser request occurred. It is tagged `@release` for ongoing CI.
+
+**Test harness correction:** the initial browser batch had 58 harness failures in four files: Playwright's Node request helper supplied a custom lookup for `localhost`, which the strict preload refused. The final retry retained the corrected preload byte-for-byte (SHA-256 `dcaf05bd9de88b7457bd68f76c50aa33a361e94adc3abf6ac7eb2da5889164ec`) and used an evidence-only adapter that rewrites only exact `localhost` with a caller lookup to literal `127.0.0.1`, dropping that lookup before the guard. A 22-check control passed, including refusal of tested non-loopback targets before lookup; four deliberately broken adapters were detected. The interim unguarded retry was stopped and is not counted. Nineteen earlier mutation probes detected deliberately broken source behavior, but their runner did not load the corrected TCP preload; they are not isolation evidence. The preload covers the tested Node TCP/fetch paths, not direct DNS, UDP or arbitrary child-process networking; browser requests are separately intercepted.
+
+**Capture and native-build provenance:** the three images retain their actual `c6aa3e4` source hashes and invented-data labels. The local native binary was copied from the earlier reviewed `b21b2d8` build (SHA-256 `f151bd874022b56f9f3ea9790fea721b33dc12eadb4dc25cbae55ac9c437abdb`); the five solver source/config files were byte-identical. The hosted workflow builds the pinned compiler/crates afresh. The integrating PR records the exact combined head, checked merge tree and hosted results; earlier runs are not presented as tests of this combined head.
+
+**Combined static review:** the source/art/palette/renderer/syntax guard and diff check passed; 365 local documentation links resolved, all three image hashes and 27 capture-source hashes matched. Listed token/private-key patterns found no matches in added text; this is a scoped check, not a general privacy guarantee.
+
+README and the judge/runbook/award/entry/shot-plan documents now lead with the family decision and accurately separate the runnable example, configured source, saved runtime and historical live evidence. The saved 3010/3021 apps remain on `b21b2d8` with schema 12; this source integration does not restart them or touch their data. No new live provider call, payment, human playtest, physical-device claim, recording, deployment or submission occurred.
+
+Raw ignored evidence remains in the feature checkout's `test-results/playable-family-trip-20261109/` (final, correction-001, baseline and mutation), the focused fix checkout's `test-results/stale-confirmation/`, and the integration checkout's `test-results/family-trip-release-20261109/`. [Image/source hashes](screenshots/family-trip-sources.json) are public; runtime credentials, household records and private backups are not.
+
+
 ## Saved Mac runtime activation — November 9, 2026
 
 **Source:** reviewed main `b21b2d8`, implementation tree `ba265ea`. Both saved apps moved from schema 7 to 12 using a fresh locked dependency install and the compiled solver on Node **26.0.0**. This local Node version is separate from the hosted versions.
