@@ -37,8 +37,10 @@ export function resultFacts(r) {
  * @param options.canShortlist () => boolean — whether the member acting here may change the family choices (adults)
  * @param options.fitSource () => { reserveCents, reserveInvalid, preview, memberId } | null — the family-fit inputs on
  *   this page: the one-off amount being tried and a preview of the planning price ceiling (the server derives its own)
+ * @param options.onKitListing ({ draftId, lineId, perListing }) => Promise — adds a shown result as a listing for one kit
+ *   line, with the adult's own count of items in one listing (opened from Complete kits with options.kitLine)
  */
-export function createMerchantDialog({ getState, onUse, onShortlist = null, canShortlist = () => false, fitSource = () => null }) {
+export function createMerchantDialog({ getState, onUse, onShortlist = null, canShortlist = () => false, fitSource = () => null, onKitListing = null }) {
   const dialog = $('#merchant-dialog');
   const form = $('#merchant-form');
   const status = $('#merchant-status');
@@ -50,6 +52,7 @@ export function createMerchantDialog({ getState, onUse, onShortlist = null, canS
   let leaving = false; // "Use as goal" moves focus to the Plan draft instead of back to the map.
   let retailerWindow = null;
   let replacing = null; // { id, title }: a family choice this search may replace (opened from its Replace button)
+  let kitLine = null; // { lineId, name, remaining }: a kit line this search adds listings to (opened from Complete kits)
   // Family-fit mode (opened from Family choices): { kinds, kind, detail, chosen: [{ key, values: Set }] }. Null otherwise.
   let fit = null;
   // The need being refined is kept between openings on this page, for the same household, goal and adult. Results never are.
@@ -188,10 +191,11 @@ export function createMerchantDialog({ getState, onUse, onShortlist = null, canS
     return lines;
   }
 
-  function open(from, { query = null, budgetCents = null, replaceChoice = null, fit: wantFit = false } = {}) {
+  function open(from, { query = null, budgetCents = null, replaceChoice = null, fit: wantFit = false, kitLine: line = null } = {}) {
     origin = from ?? document.activeElement;
     leaving = false;
     replacing = replaceChoice;
+    kitLine = line;
     if (wantFit && fitMemory?.scope !== fitScope()) fitMemory = { scope: fitScope(), kinds: [], kind: '', detail: null, chosen: [] };
     fit = wantFit ? fitMemory : null;
     kindSeq++;
@@ -208,6 +212,9 @@ export function createMerchantDialog({ getState, onUse, onShortlist = null, canS
     renderConnection();
     if (replacing && connected()) say('', `Search for an item to replace “${replacing.title}” among the family choices.`);
     if (fit && connected()) say('', 'Describe the item, then search. Choosing a kind of item and its must-haves is optional.');
+    if (kitLine && connected()) {
+      say('', `Listings for “${kitLine.name}” (${kitLine.remaining} to get). For each one you add, enter how many ${kitLine.name} one listing gives, from the listing itself. Up to three; nothing is bought.`);
+    }
     if (!dialog.open) dialog.showModal();
     (connected() ? $('#merchant-query') : $('#merchant-title')).focus();
   }
@@ -233,13 +240,42 @@ export function createMerchantDialog({ getState, onUse, onShortlist = null, canS
       h('p', {}, [r.brand, selection, r.otherOffers ? `${r.otherOffers} other ${r.otherOffers === 1 ? 'retailer' : 'retailers'}` : null].filter(Boolean).join(' · ')),
       h('button', { type: 'button', class: 'link-button', onclick: () => lookup('refresh', ref, context) }, 'Check price & stock'),
       r.url && r.usable && h('button', { type: 'button', class: 'link-button', onclick: () => lookup('refresh', ref, context, { visit: r }) }, `Visit ${r.merchant}`, h('span', { class: 'sr-only' }, ' (checks the item and opens a retailer site in a new tab)')));
-    const actions = h('div', { class: 'merchant-item-actions' }, cheaper, more, suits ? shortlistButton(r, context) : null);
+    const actions = h('div', { class: 'merchant-item-actions' }, cheaper, more, suits ? (kitLine ? kitListingControl(r) : shortlistButton(r, context)) : null);
     const use = h('button', { type: 'button', class: 'merchant-use', disabled: !r.usable || !suits, 'aria-describedby': name.id }, 'Use as goal');
     if (r.usable && suits) use.addEventListener('click', () => { leaving = true; close(); onUse({ ...r, ...context }); });
     return h('li', { class: 'merchant-item', 'data-product': r.productId, 'data-fit': r.fit?.status ?? null },
       picture,
       h('div', { class: 'merchant-item-text' }, name, meta, why, notes.length ? h('p', { class: 'merchant-item-note' }, notes.join(' · ')) : null, actions),
-      use);
+      kitLine ? null : use); // a kit listing becomes part of a whole kit, never the goal on its own
+  }
+
+  // A shown result an adult may add for one kit line. How many items one listing gives is the adult's own count, read from
+  // the listing: it has no default and is never taken from the title. Only references and that count travel.
+  function kitListingControl(r) {
+    if (!onKitListing || !kitLine || !r.usable || !r.draftId || !canShortlist()) return null;
+    const line = kitLine;
+    const input = h('input', { type: 'number', inputmode: 'numeric', min: 1, max: 100, step: 1, required: true, class: 'merchant-kit-count', 'aria-describedby': `merchant-item-${r.productId}` });
+    const button = h('button', { type: 'button', class: 'link-button merchant-kit-add', 'aria-describedby': `merchant-item-${r.productId}` }, `Add for ${line.name}`);
+    button.addEventListener('click', async () => {
+      const text = input.value.trim();
+      if (!/^\d{1,3}$/.test(text) || Number(text) < 1 || Number(text) > 100) {
+        input.setAttribute('aria-invalid', 'true');
+        say('error', `Enter how many ${line.name} one listing gives, from 1 to 100. Check the listing itself.`);
+        input.focus();
+        return;
+      }
+      input.removeAttribute('aria-invalid');
+      button.disabled = true;
+      try {
+        const res = await onKitListing({ draftId: r.draftId, lineId: line.lineId, perListing: Number(text) });
+        say('ok', res.outcome === 'updated' ? `Updated this listing for ${line.name}.` : `Added for ${line.name}. It is under Complete kits in the Kit list.`);
+        button.textContent = `Added for ${line.name}`;
+      } catch (error) {
+        say('error', error.message);
+        button.disabled = false;
+      }
+    });
+    return h('div', { class: 'merchant-kit' }, h('label', { class: 'merchant-kit-label' }, 'Items in one listing ', input), button);
   }
 
   // A shown result an adult may save as a family choice. Only references travel: the server copies its own result.
@@ -429,7 +465,9 @@ export function createMerchantDialog({ getState, onUse, onShortlist = null, canS
     list.removeAttribute('aria-busy');
     if (status.dataset.kind === 'working') say('', '');
     if (leaving) return;
-    const target = origin?.isConnected && !origin.closest('[hidden]') ? origin : $('#district-menu summary');
+    // The button that opened the merchant may have been drawn again meanwhile (a listing was added): use its replacement.
+    const again = !origin?.isConnected && origin?.dataset?.focusKey ? $(`[data-focus-key="${CSS.escape(origin.dataset.focusKey)}"]`) : null;
+    const target = origin?.isConnected && !origin.closest('[hidden]') ? origin : again && !again.closest('[hidden]') ? again : $('#district-menu summary');
     target?.focus();
   });
   // A live family update while the dialog is open refreshes the limit line only; it never searches.

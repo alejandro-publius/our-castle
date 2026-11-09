@@ -7,6 +7,9 @@ export const PAYPAL_SANDBOX_SDK = 'https://www.sandbox.paypal.com/web-sdk/v6/cor
 export const DEFAULT_AI_MODEL = 'claude-opus-5-5';
 // Optional kit-list photo reading: OpenAI's model page lists image input, the Responses API and Structured Outputs for it.
 export const DEFAULT_KIT_MODEL = 'gpt-6-sol';
+// Optional ordering of complete kits by a family preference: Cohere's changelog lists rerank-v5.0-fast for low latency.
+export const DEFAULT_KIT_RANK_MODEL = 'rerank-v5.0-fast';
+const KIT_SOLVER_MODES = new Set(['auto', 'native', 'reference']);
 const SUPPORTED_AI_PROVIDERS = new Set(['anthropic']);
 
 /**
@@ -24,7 +27,8 @@ export function readEnvironment({ root, envFile = process.env.OUR_CASTLE_ENV_FIL
 /**
  * Turn environment values into an explicit runtime configuration. Missing credentials select
  * clearly labeled example modes; they never fall back to another credential source.
- * Deliberately ignored: ANTHROPIC_API_KEY / ANTHROPIC_AUTH_TOKEN, OPENAI_API_KEY and any coding-assistant session.
+ * Deliberately ignored: ANTHROPIC_API_KEY / ANTHROPIC_AUTH_TOKEN, OPENAI_API_KEY, CO_API_KEY / COHERE_API_KEY and any
+ * coding-assistant session.
  */
 export function loadConfig(env = {}, { root = process.cwd() } = {}) {
   const warnings = [];
@@ -84,9 +88,20 @@ export function loadConfig(env = {}, { root = process.cwd() } = {}) {
   const kit = kitKey ? { mode: 'live', provider: 'openai', apiKey: kitKey, model: trimmed('KIT_OPENAI_MODEL') || DEFAULT_KIT_MODEL } : { mode: 'off' };
   if (!kitKey && trimmed('KIT_OPENAI_MODEL')) warnings.push('KIT_OPENAI_MODEL is set without KIT_OPENAI_API_KEY, so photo reading stays off. Typing a kit list still works.');
 
+  // Kit comparison: ordering kits that already fit by a family preference, with Cohere Rerank. Optional, server-side only,
+  // with its OWN key; any other Cohere variable is ignored. Without KIT_COHERE_API_KEY it is off and every comparison still
+  // works. The model is chosen here only, never by a request.
+  const rankKey = trimmed('KIT_COHERE_API_KEY');
+  const kitRank = rankKey ? { mode: 'live', provider: 'cohere', apiKey: rankKey, model: trimmed('KIT_COHERE_MODEL') || DEFAULT_KIT_RANK_MODEL } : { mode: 'off' };
+  if (!rankKey && trimmed('KIT_COHERE_MODEL')) warnings.push('KIT_COHERE_MODEL is set without KIT_COHERE_API_KEY, so ordering kits by a preference stays off.');
+  // The complete-kit solver: "auto" uses the Rust build (solver/) when present, else the built-in reference; "native"
+  // refuses to start without the Rust build; "reference" never runs it.
+  const solverMode = (trimmed('OUR_CASTLE_KIT_SOLVER') || 'auto').toLowerCase();
+  if (!KIT_SOLVER_MODES.has(solverMode)) throw new ConfigError('OUR_CASTLE_KIT_SOLVER must be "auto", "native" or "reference".');
+
   const dataDir = path.resolve(root, trimmed('OUR_CASTLE_DATA_DIR') || 'data');
   const access = accessConfig(trimmed('OUR_CASTLE_ACCESS'), trimmed('OUR_CASTLE_ORIGIN'));
-  return { port: Number.isFinite(port) ? port : 3010, host, payments, ai, merchant, kit, studio, dataDir, access, warnings };
+  return { port: Number.isFinite(port) ? port : 3010, host, payments, ai, merchant, kit, kitRank, kitSolver: { mode: solverMode }, studio, dataDir, access, warnings };
 }
 
 export class ConfigError extends Error {}

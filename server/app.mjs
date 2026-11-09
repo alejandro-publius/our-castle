@@ -22,6 +22,11 @@ import {
 } from './family-choices.mjs';
 import { treasuryFor } from './treasury.mjs';
 import { checkKitImage, kitView, saveKit } from './kit/list.mjs';
+import { createKitSolver } from './kit/solver.mjs';
+import { KIT_PREFERENCES } from './kit/rerank.mjs';
+import {
+  addCandidate, adoptKit, chooseKit, compareKits, goalKitFor, keepLine, kitDescription, kitPlanView, refreshCandidate, removeCandidate, reviewKit, withPreference,
+} from './kit/planner.mjs';
 import { transaction } from './db.mjs';
 
 const MIME = {
@@ -50,6 +55,7 @@ const KIT_READ_ROUTE = '/api/kit/read';
 const KIT_READ_BODY_MAX = 2 * 1024 * 1024;
 const KIT_READ_TTL_MS = 2 * 3_600_000; // how long a photo reading can mark the lines it gave as "from a photo"
 const KIT_READS_PER_MINUTE = 4; // photo readings per household per minute: each is a paid provider call
+const KIT_RANKS_PER_MINUTE = 6; // preference orderings per household per minute: each is a provider call
 const PAYPAL_SOURCES = 'https://*.paypal.com https://*.paypalobjects.com https://*.braintreegateway.com https://*.braintree-api.com https://*.venmo.com';
 
 function inlineScriptHashes(html) {
@@ -123,9 +129,11 @@ function checkHostAndOrigin(req, { write }) {
 const str = (v) => (typeof v === 'string' ? v : undefined);
 // Write-method routes that change no household record: calculations, provider look-ups, questions and ceremony steps.
 const UNCHANGING_WRITES = new Set(['/api/plans/preview', '/api/merchant/search', '/api/merchant/refresh', '/api/merchant/alternatives', '/api/merchant/categories', '/api/merchant/category',
-  '/api/family-choices/review', '/api/family-choices/fit', KIT_READ_ROUTE, '/api/steward', '/api/paypal/client-token', '/api/auth/passkeys/options', '/api/auth/signout']);
+  '/api/family-choices/review', '/api/family-choices/fit', KIT_READ_ROUTE, '/api/kit/compare', '/api/kit/prefer', '/api/kit/review',
+  '/api/steward', '/api/paypal/client-token', '/api/auth/passkeys/options', '/api/auth/signout']);
 
-export function createApp({ config, db, clock, paypal = null, aiProvider = null, stewardAi = null, paypalTools = null, stewardFetch, merchant = null, kitReader = null, root, live: liveLimits = {} }) {
+export function createApp({ config, db, clock, paypal = null, aiProvider = null, stewardAi = null, paypalTools = null, stewardFetch, merchant = null, kitReader = null,
+  kitSolver = null, kitReranker = null, root, live: liveLimits = {} }) {
   // Example mode is the single local example household. Family mode serves only households whose members enrolled their
   // own passkeys; it never creates, shows or falls back to the example household.
   const family = config.access?.mode === 'family';
@@ -162,6 +170,11 @@ export function createApp({ config, db, clock, paypal = null, aiProvider = null,
   const kitReads = new Map(); // readId -> { householdId, goalId, memberId, at }
   const kitReadTimes = new Map(); // householdId -> recent reading start times
   const kitStatus = () => (kitReader ? { mode: 'live', label: 'Photo reading by OpenAI' } : { mode: 'off', label: 'Photo reading is not set up' });
+  // Complete-kit comparison: the Rust solver when it is built (or required), else the built-in reference. Its path is fixed
+  // under the app's root; no request chooses a program. Ordering kits by a preference needs the server's own Cohere key.
+  const solver = kitSolver ?? createKitSolver({ root, engine: config.kitSolver?.mode ?? 'auto' });
+  const rankMode = () => (kitReranker ? 'live' : 'off');
+  const kitRanks = new Map(); // householdId -> recent preference-ordering times
   const state = (scope = exampleScope()) => {
     const s = buildState({ db, householdId: scope.householdId, planner, contributions, config, steward: stewardInfo });
     s.modes.merchant = shop.status();
@@ -171,6 +184,8 @@ export function createApp({ config, db, clock, paypal = null, aiProvider = null,
     s.familyChoices = familyChoicesView(db, choiceScope(scope, s.goal, s.progress));
     s.modes.kit = kitStatus();
     s.kit = kitView(db, s.goal);
+    s.kitPlan = kitPlanView(db, { householdId: scope.householdId, goal: s.goal, now: clock.now().getTime(), rankMode: rankMode() });
+    s.goalKit = goalKitFor(db, s.goal);
     if (family) { s.access = access.viewer(scope); s.revision = live.revisionOf(scope.householdId); }
     return s;
   };
@@ -412,6 +427,99 @@ export function createApp({ config, db, clock, paypal = null, aiProvider = null,
       if (photoRead) kitReads.delete(body.readId);
       return { status: 'ok', ...saved, state: state(scope) };
     }],
+    // ---- Kit planner: listings for each line still to get, complete kits compared against the family's own figures, the
+    // chosen kit and its kept lines, then an explicit review and adoption. Comparing, ordering and reviewing write nothing;
+    // only "Compare" and "Order" run the solver, and only "Order by" and "Check price" call a provider. ----
+    ['POST', '/api/kit/listings', ({ body, scope }) => {
+      refuseForeign(body, scope);
+      // The listing is this server's own copy of a result it showed this household, never product facts from the page.
+      if (family && !shownTo(body.draftId, scope)) throw new DomainError(410, 'merchant_draft_expired', 'That merchant result has expired. Search again for a fresh price.');
+      const item = shop.draft(str(body.draftId));
+      const added = addCandidate(db, { householdId: scope.householdId, goalId: scope.goalId, actor: choiceActor(body, scope), revision: str(body.revision) ?? null, lineId: body.lineId,
+        item, draftId: body.draftId, perListing: body.perListing }, clock);
+      return { ...added, state: state(scope) };
+    }],
+    ['POST', '/api/kit/listings/remove', ({ body, scope }) => {
+      refuseForeign(body, scope);
+      removeCandidate(db, { householdId: scope.householdId, goalId: scope.goalId, actor: choiceActor(body, scope), candidateId: body.candidateId });
+      return { status: 'ok', state: state(scope) };
+    }],
+    ['POST', '/api/kit/listings/refresh', async ({ body, scope, assertAccess }) => {
+      refuseForeign(body, scope);
+      const result = await refreshCandidate(db, { householdId: scope.householdId, goalId: scope.goalId, actor: choiceActor(body, scope), candidateId: body.candidateId,
+        refresh: async (reference) => {
+          const found = await shop.refresh(reference);
+          assertAccess();
+          if (family) rememberDrafts(found, scope);
+          return { ...found, results: found.results.map((r) => ({ ...r, catalog: catalogOf(r.referenceId) })) };
+        } });
+      return { ...result, state: state(scope) };
+    }],
+    ['POST', '/api/kit/compare', async ({ body, scope, assertAccess }) => {
+      refuseForeign(body, scope);
+      const context = kitContext(body, scope);
+      if (context.actor.role !== 'adult') throw new DomainError(403, 'adult_required', 'Only an adult in the family can compare kits.');
+      const { sample, ...result } = await compareKits(db, context, { solver });
+      assertAccess();
+      sameKitFacts(result, body, scope);
+      return result;
+    }],
+    ['POST', '/api/kit/prefer', async ({ body, scope, assertAccess }) => {
+      refuseForeign(body, scope);
+      const context = kitContext(body, scope);
+      if (context.actor.role !== 'adult') throw new DomainError(403, 'adult_required', 'Only an adult in the family can order kits by a preference.');
+      if (!kitReranker) throw new DomainError(503, 'kit_rank_off', 'Ordering kits by a preference is not set up on this server. The kits shown are unchanged.');
+      const key = str(body.preference);
+      if (!key || !Object.hasOwn(KIT_PREFERENCES, key)) throw new DomainError(400, 'invalid_preference', 'Choose one of the preferences listed.');
+      const { label } = KIT_PREFERENCES[key];
+      const { sample, ...result } = await compareKits(db, context, { solver, sampleSize: 8 });
+      if (result.status !== 'ok' || sample.length < 2) return { ...result, preference: { key, label, status: 'not_needed', message: 'Fewer than two kits fit these figures, so there is nothing to order.' } };
+      const at = clock.now().getTime();
+      for (const [id, times] of kitRanks) if (!times.some((t) => at - t < 60_000)) kitRanks.delete(id);
+      const recent = (kitRanks.get(scope.householdId) ?? []).filter((t) => at - t < 60_000);
+      if (recent.length >= KIT_RANKS_PER_MINUTE) throw new DomainError(429, 'kit_rank_busy', 'Kits were ordered several times in the last minute. Wait a moment. The kits shown are unchanged.');
+      kitRanks.set(scope.householdId, [...recent, at]);
+      let ranking;
+      try { ranking = await kitReranker.rank({ preference: key, documents: sample.map(kitDescription) }); } catch (error) {
+        assertAccess();
+        if (!(error instanceof DomainError)) throw error;
+        return { ...result, preference: { key, label, status: 'failed', message: error.message } };
+      }
+      assertAccess();
+      sameKitFacts(result, body, scope);
+      const top = sample[ranking[0].index];
+      return { ...result, kits: withPreference(result, top, 'preference'), preference: { key, label, status: 'ok', ordered: sample.length, matchKey: top.key, excerpt: ranking[0].excerpt } };
+    }],
+    ['PUT', '/api/kit/choice', ({ body, scope }) => {
+      refuseForeign(body, scope);
+      chooseKit(db, { householdId: scope.householdId, goalId: scope.goalId, actor: choiceActor(body, scope), revision: str(body.revision) ?? null, lines: body.lines }, clock);
+      return { status: 'ok', state: state(scope) };
+    }],
+    ['PUT', '/api/kit/keep', ({ body, scope }) => {
+      refuseForeign(body, scope);
+      keepLine(db, { householdId: scope.householdId, goalId: scope.goalId, actor: choiceActor(body, scope), revision: str(body.revision) ?? null, lineId: body.lineId, kept: body.kept }, clock);
+      return { status: 'ok', state: state(scope) };
+    }],
+    // Read-only: the chosen kit checked against fresh catalog answers, as a goal draft for the Plan form. Saves nothing.
+    ['POST', '/api/kit/review', ({ body, scope }) => {
+      refuseForeign(body, scope);
+      return reviewKit(db, kitContext(body, scope), { draftFor: (draftId) => kitDraft(draftId, scope) });
+    }],
+    // "Save goal" or "Save goal and propose this schedule" for a reviewed kit: the goal, the kit's provenance and (when
+    // asked) the family schedule proposal, in one transaction from the server's own records. Nothing is put in use or paid.
+    ['POST', '/api/kit/adopt', ({ body, scope }) => {
+      refuseForeign(body, scope);
+      const proposing = body.schedule !== undefined;
+      if (proposing && (body.schedule === null || typeof body.schedule !== 'object')) throw new DomainError(400, 'invalid_schedule', 'Review the kit before proposing its schedule.');
+      const reviewed = body.kit !== null && typeof body.kit === 'object' ? body.kit : {};
+      const plan = transaction(db, () => {
+        const context = kitContext({ ...body, revision: reviewed.revision, choicesRevision: reviewed.choicesRevision, reserveCents: proposing ? body.schedule.reserveCents : 0 }, scope);
+        const adopted = adoptKit(db, context, { draftFor: (draftId) => kitDraft(draftId, scope), expectedGoalId: str(body.goalId), expectedGoalRevision: str(body.expectedGoalRevision), input: body.goal }, clock);
+        return proposing ? planner.proposeFamily({ householdId: scope.householdId, goalId: scope.goalId, actor: context.actor, reserveCents: body.schedule.reserveCents, kit: adopted.kit,
+          expected: { scheduleRevision: str(body.schedule.revision) ?? null } }) : null;
+      });
+      return { status: 'ok', ...(plan ? { plan } : {}), state: state(scope) };
+    }],
     // ---- Treasury: read-only. The AG Studio licence (if configured) is the only setting the page may read here. ----
     ['GET', '/api/treasury/studio', () => ({ licenseKey: config.studio?.licenseKey ?? null })],
     ['POST', '/api/steward', async ({ body, scope, assertAccess }) => (family ? stewardFor(scope.householdId) : steward)
@@ -517,6 +625,27 @@ export function createApp({ config, db, clock, paypal = null, aiProvider = null,
   // A family request naming another household or goal is refused before any work (example mode has only one).
   function refuseForeign(body, scope) { if (family) owner(body, scope); }
   const choiceScope = (scope, goal, progress) => ({ householdId: scope.householdId, goal, progress, today: clock.today(), now: clock.now().getTime(), family });
+  // The kit planner's facts for one request: the server's goal, progress, day and member, plus the revisions and one-off
+  // amount the page showed. Every figure is read again here; the page sends none.
+  function kitContext(body, scope) {
+    const goal = getGoal(db, scope.goalId);
+    return { ...choiceScope(scope, goal, progressFor(db, goal.id)), actor: choiceActor(body, scope), revision: str(body.revision) ?? null,
+      choicesRevision: str(body.choicesRevision) ?? null, reserveCents: body.reserveCents, rankMode: rankMode() };
+  }
+  // After a solver or provider wait, the answer is returned only if the family's records are still the ones it was for.
+  function sameKitFacts(result, body, scope) {
+    const now = kitContext(body, scope);
+    const view = kitPlanView(db, { householdId: scope.householdId, goal: now.goal, now: now.now });
+    const choices = familyChoicesView(db, { householdId: scope.householdId, goal: now.goal, progress: now.progress, today: now.today, now: now.now, family });
+    if (view.revision !== result.revision || choices.revision !== result.choicesRevision) {
+      throw new DomainError(409, 'kit_plan_changed', 'The kit list, its listings or the family’s figures changed while comparing. Compare again with the latest.');
+    }
+  }
+  // A listing's live catalog answer, usable only by a household this server showed it to.
+  function kitDraft(draftId, scope) {
+    if (family && !shownTo(draftId, scope)) throw new DomainError(410, 'merchant_draft_expired', 'That merchant result has expired.');
+    return shop.draft(draftId);
+  }
   function contributionInput(body, scope) {
     return {
       ...owner(body, scope),

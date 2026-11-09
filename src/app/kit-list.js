@@ -60,8 +60,9 @@ const asText = (rows) => rows.map((r) => `${Number.isSafeInteger(r.quantity) && 
  * @param options.getState () => the app state
  * @param options.actor () => the member acting on this page ({ id, name, role }): the signed-in member, or the example persona
  * @param options.applyState (state) => applies a server state
+ * @param options.onRender () => called after every render (the complete-kit planner hides while the list is edited)
  */
-export function createKitList({ getState, actor, applyState }) {
+export function createKitList({ getState, actor, applyState, onRender = () => {} }) {
   const ui = { mode: 'view', draft: null, photo: null, scope: null, busy: false, readSeq: 0, controller: null, edits: 0 };
   const status = $('kit-status');
   function say(kind, text) {
@@ -290,7 +291,8 @@ export function createKitList({ getState, actor, applyState }) {
       h('p', { class: 'kit-saved-note' }, `${how}, checked and saved by ${nameOf(kit.savedBy)} · ${time(kit.savedAt)}. “Have” is what the family says it already has; nothing is bought or paid.`));
   }
 
-  function render() {
+  function render() { draw(); onRender(); }
+  function draw() {
     const state = getState();
     if (!state?.kit) return;
     const key = scopeKey();
@@ -361,5 +363,7 @@ export function createKitList({ getState, actor, applyState }) {
   $('kit-edit').addEventListener('click', () => startDraft(getState().kit.items.map((item) => rowOf(item, item.source)), { from: 'saved' }));
   $('kit-new').addEventListener('click', () => { finish(); ui.mode = 'source'; $('kit-text').value = ''; render(); $('kit-text').focus(); });
 
-  return { render };
+  // Whether the list itself is being edited here (typing, a photo or a draft open), so nothing else competes with it.
+  const editing = () => !$('kit-source').hidden || !$('kit-draft').hidden;
+  return { render, editing };
 }

@@ -16,6 +16,8 @@
     "test": "npm run check && npm run test:unit && npm run test:e2e",
     "test:unit": "node --test \"test/unit/**/*.test.mjs\"",
     "test:e2e": "playwright test",
+    "solver:build": "cd solver && cargo build --release --locked",
+    "solver:test": "cd solver && cargo test --locked",
     "reset-demo": "node scripts/reset-demo.mjs",
     "snapshot": "node scripts/snapshot.mjs",
     "verify:live": "node scripts/verify-live.mjs",

@@ -22,6 +22,7 @@ import { contributionStory, countsSentence, storyKey } from '../core/contributio
 import { createMerchantDialog, resultFacts } from './merchant.js';
 import { createFamilyChoices } from './family-choices.js';
 import { createKitList } from './kit-list.js';
+import { createKitPlan } from './kit-plan.js';
 import { scheduleLines } from '../core/family-choices.js';
 import { needSummary } from '../core/family-fit.js';
 import { createTreasury } from './treasury.js';
@@ -95,6 +96,7 @@ let familyAvatars = null;
 let merchant = null;
 let familyChoices = null; // the Plan journal's family choices (src/app/family-choices.js)
 let kitList = null; // the Plan journal's kit list (src/app/kit-list.js)
+let kitPlan = null; // complete kits for that list (src/app/kit-plan.js)
 let treasury = null;
 let planCheck = null;
 const ui = {
@@ -1171,6 +1173,8 @@ function renderGoalDraft() {
   // A draft from "Review this choice" belongs to the comparison it was checked against. Once another member changes the
   // choices, offers or goal, it must be reviewed again (the server refuses to save it as well).
   if (draft?.familyChoice && state.familyChoices && state.familyChoices.revision !== draft.familyChoice.revision) draft.choicesChanged = true;
+  // A kit draft belongs to the kit and figures it was checked against, in the same way.
+  if (draft?.kitReview && (state.kitPlan?.revision !== draft.kitReview.revision || state.familyChoices?.revision !== draft.kitReview.choicesRevision)) draft.choicesChanged = true;
   box.hidden = !draft;
   $('#goal-draft-review').hidden = !draft?.needsReview;
   $('#goal-draft-search').hidden = !draft?.expired;
@@ -1179,32 +1183,38 @@ function renderGoalDraft() {
   $('#goal-draft-discard').disabled = ui.goalDraftBusy;
   $('#ask-planner').disabled = Boolean(draft); // one explicit decision at a time: save or discard the draft first
   planCheck?.update(); // programmatic market selections must clear calculations for the previous goal immediately
-  const item = state.goalItem;
+  const item = state.goalItem, kit = state.goalKit;
   const line = $('#goal-item');
-  line.hidden = Boolean(draft) || !item;
+  line.hidden = Boolean(draft) || !(item || kit);
   if (item && !draft) {
     line.replaceChildren(`${item.title} · ${formatCents(item.priceCents, item.currency)} saved price. `,
       h('button', { type: 'button', class: 'link-button', onclick: (e) => merchant.openSaved(e.currentTarget) }, 'Check item'));
+  } else if (kit && !draft) {
+    line.replaceChildren(`Saved from the chosen kit: ${kit.lineCount} ${kit.lineCount === 1 ? 'item' : 'items'} to get, ${formatCents(kit.totalCents, kit.currency)} listed total (tax and shipping not included).`);
   }
   if (!draft) return;
   const image = $('#goal-draft-image');
   image.hidden = !draft.image;
   if (draft.image && image.getAttribute('src') !== draft.image.url) image.setAttribute('src', draft.image.url);
   $('#goal-draft-name').textContent = draft.title;
-  $('#goal-draft-facts').textContent = ` ${resultFacts(draft).join(' · ')} · Channel3, checked ${timeLabel(draft.checkedAt)}`;
+  $('#goal-draft-facts').textContent = draft.kind === 'kit'
+    ? ` ${draft.kit.lines.map((l) => `${l.name}: ${l.listings} × ${l.title} (${l.merchant})`).join(' · ')} · Channel3 listings, checked within the last half hour`
+    : ` ${resultFacts(draft).join(' · ')} · Channel3, checked ${timeLabel(draft.checkedAt)}`;
   const { goal, progress } = state;
-  const effects = [`Not saved yet. Saving replaces “${goal.name}” (${money(goal.targetCents)}) with the name and amount below`];
+  const effects = [draft.kind === 'kit' ? `Not saved yet. Saving sets “${goal.name}” (${money(goal.targetCents)}) to the kit’s listed total below, with the kit as its source`
+    : `Not saved yet. Saving replaces “${goal.name}” (${money(goal.targetCents)}) with the name and amount below`];
   if (progress.progressCents > 0) effects.push(`; the ${money(progress.progressCents)} already tracked stays and counts toward the new amount`);
   if (state.plan) effects.push('; the current plan is set aside, so make a new one afterwards');
   if (draft.familyPlan) {
     const p = draft.familyPlan;
-    effects.push(`. From family choices: up to ${money(p.weeklyBudgetCents)} a week from the adults’ offers, `
+    effects.push(`. ${draft.kind === 'kit' ? 'From the family’s figures' : 'From family choices'}: up to ${money(p.weeklyBudgetCents)} a week from the adults’ offers, `
       + (p.targetDate !== p.deadline ? `with the target date moved from ${dateLabel(p.deadline)} to ${dateLabel(p.targetDate)}, the earliest finish at those offers` : `by ${dateLabel(p.targetDate)}`)
       + (p.reserveCents ? `, allowing for the one-off ${money(p.reserveCents)} you tried` : ''));
   }
   if (draft.familyPlan?.need) effects.push(`. ${needSummary(draft.familyPlan.need, { money, date: shortDate }).replace(/\.$/, '')}`);
-  if (draft.choicesChanged) effects.push('. The family’s choices or offers changed after this review: discard this draft and review the choice again');
-  effects.push('. The price excludes tax and shipping; nothing is bought.');
+  if (draft.choicesChanged) effects.push(draft.kind === 'kit' ? '. The kit or the family’s figures changed after this review: discard this draft and review the kit again'
+    : '. The family’s choices or offers changed after this review: discard this draft and review the choice again');
+  effects.push(draft.kind === 'kit' ? '. The listed total excludes tax and shipping; stock is not reserved and nothing is bought.' : '. The price excludes tax and shipping; nothing is bought.');
   $('#goal-draft-effect').textContent = effects.join('');
   renderDraftSchedule();
 }
@@ -1261,6 +1271,33 @@ function useFamilyChoice(review) {
   $('#goal-weekly').value = centsToInput(review.goal.weeklyBudgetCents);
   renderGoalDraft();
 }
+// "Review this kit": the server-checked chosen kit, its listed total as the goal amount, and the date and weekly amount from
+// the family's figures, as an unsaved draft in the same Plan form. The goal keeps its name; the adult may change any field.
+function useKitReview(review) {
+  const count = review.kit.lines.length;
+  ui.goalDraft = { kind: 'kit', title: `Chosen kit: ${count} ${count === 1 ? 'item' : 'items'} to get`, image: null, kit: review.kit,
+    goalId: state.goal.id, goalRevision: state.merchantGoalRevision,
+    kitReview: { revision: review.revision, choicesRevision: review.choicesRevision },
+    familyPlan: { weeklyBudgetCents: review.goal.weeklyBudgetCents, targetDate: review.goal.targetDate, deadline: review.deadline, reserveCents: review.reserveCents,
+      schedule: review.schedule ?? null, reviewed: { ...review.goal, startingCents: review.startingCents }, need: null } };
+  ui.planGoalId = state.goal.id; ui.planGoalRevision = state.merchantGoalRevision;
+  ui.planFormDirty = true;
+  $('#goal-name-input').value = state.goal.name;
+  $('#goal-target').value = centsToInput(review.goal.targetCents);
+  $('#goal-date').value = review.goal.targetDate;
+  $('#goal-weekly').value = centsToInput(review.goal.weeklyBudgetCents);
+  for (const field of ['#goal-name-input', '#goal-target']) $(field).removeAttribute('aria-invalid');
+  setStatus('#plan-status', '', '');
+  selectTab('plan', { focus: false });
+  renderGoalDraft();
+  $('#goal-draft-title').focus();
+}
+// "Add for <item>" in Market Town: the server copies its own shown result; the page sends references and the adult's count.
+async function addKitListing({ draftId, lineId, perListing }) {
+  const res = await api.post('/api/kit/listings', { draftId, lineId, perListing, revision: state.kitPlan.revision, ...(state.access ? {} : { memberId: persona()?.id }) });
+  applyState(res.state);
+  return res;
+}
 // "Add to family choices" in Market Town: the server copies its own shown result; the page sends only references.
 async function shortlistItem({ draftId, expectedGoalId, replaceId }) {
   const res = await api.post('/api/family-choices', { draftId, expectedGoalId, ...(replaceId ? { replaceId } : {}), ...(state.access ? {} : { memberId: persona()?.id }) });
@@ -1287,9 +1324,13 @@ async function saveGoalDraft(event) {
   renderGoalDraft();
   setStatus('#plan-status', 'working', propose ? 'Saving the goal and proposing the family schedule…' : 'Saving the goal…');
   try {
-    const res = await api.post('/api/merchant/goal', { draftId: draft.draftId, goalId: draft.goalId, expectedGoalRevision: draft.goalRevision, goal,
-      ...(draft.familyChoice ? { familyChoice: draft.familyChoice } : {}),
-      ...(propose ? { schedule: { reserveCents: draft.familyPlan.reserveCents, revision: draft.familyPlan.schedule.revision }, ...(state.access ? {} : { memberId: persona()?.id }) } : {}) });
+    const schedule = propose ? { schedule: { reserveCents: draft.familyPlan.reserveCents, revision: draft.familyPlan.schedule.revision } } : {};
+    const res = draft.kind === 'kit'
+      // A kit: the goal, the kit as its source and (when proposing) its schedule, in one server transaction.
+      ? await api.post('/api/kit/adopt', { goalId: draft.goalId, expectedGoalRevision: draft.goalRevision, goal, kit: draft.kitReview, ...schedule, ...(state.access ? {} : { memberId: persona()?.id }) })
+      : await api.post('/api/merchant/goal', { draftId: draft.draftId, goalId: draft.goalId, expectedGoalRevision: draft.goalRevision, goal,
+        ...(draft.familyChoice ? { familyChoice: draft.familyChoice } : {}),
+        ...(propose ? { ...schedule, ...(state.access ? {} : { memberId: persona()?.id }) } : {}) });
     if (ui.goalDraft !== draft) { applyState(res.state); return; }
     ui.goalDraft = null;
     ui.planFormDirty = false;
@@ -1306,7 +1347,7 @@ async function saveGoalDraft(event) {
     setStatus('#plan-status', 'error', error.message); // a refused save changes nothing; the draft stays for review
     if (error.code === 'merchant_draft_expired') draft.expired = true;
     if (error.code === 'goal_changed') draft.needsReview = true;
-    if (error.code === 'choices_changed') draft.choicesChanged = true;
+    if (['choices_changed', 'kit_plan_changed', 'kit_needs_check', 'kit_not_chosen', 'kit_kept_unavailable'].includes(error.code)) draft.choicesChanged = true;
     if (error.code === 'schedule_changed') draft.scheduleChanged = true;
   } finally {
     ui.goalDraftBusy = false;
@@ -2062,10 +2103,13 @@ function bindEvents() {
     if (id) openDeedFromMap(id, e.currentTarget);
   });
   merchant = createMerchantDialog({ getState: () => state, onUse: useMerchantItem, onShortlist: shortlistItem, canShortlist: () => persona()?.role === 'adult',
-    fitSource: () => familyChoices?.fitSource() ?? null });
+    fitSource: () => familyChoices?.fitSource() ?? null, onKitListing: addKitListing });
   familyChoices = createFamilyChoices({ getState: () => state, actor: persona, openMerchant: (from, options) => merchant.open(from, options), onReview: useFamilyChoice, applyState,
     onProposed: () => $('#plan-headline').focus() });
-  kitList = createKitList({ getState: () => state, actor: persona, applyState });
+  kitList = createKitList({ getState: () => state, actor: persona, applyState, onRender: () => kitPlan?.render() });
+  kitPlan = createKitPlan({ getState: () => state, actor: persona, applyState, openMerchant: (from, options) => merchant.open(from, options),
+    reserve: () => { const src = familyChoices?.fitSource(); return { cents: src?.reserveCents ?? 0, invalid: Boolean(src?.reserveInvalid) }; },
+    onReview: useKitReview, listEditing: () => kitList?.editing() ?? false });
   for (const opener of [$('#open-merchant'), $('#find-goal-item')]) opener.addEventListener('click', (e) => merchant.open(e.currentTarget));
   $('#visit-campsite').addEventListener('click', visitCampsite);
   $('#goal-draft-save').addEventListener('click', saveGoalDraft);

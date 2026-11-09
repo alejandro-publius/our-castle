@@ -11,11 +11,11 @@ import { createFakePayPal, webhookHeaders } from '../helpers/fake-paypal.mjs';
 import { FIXED_NOW } from '../helpers/setup.mjs';
 
 const root = fileURLToPath(new URL('../../', import.meta.url));
-const SECRETS = { PAYPAL_CLIENT_SECRET: 'paypal-secret-value-7f3a91', AI_API_KEY: 'sk-ant-api-secret-value-0c1d', KIT_OPENAI_API_KEY: 'kit-openai-secret-value-5b2e' };
+const SECRETS = { PAYPAL_CLIENT_SECRET: 'paypal-secret-value-7f3a91', AI_API_KEY: 'sk-ant-api-secret-value-0c1d', KIT_OPENAI_API_KEY: 'kit-openai-secret-value-5b2e', KIT_COHERE_API_KEY: 'kit-cohere-secret-value-9d4c' };
 
 async function startServer({ sandbox = false, paypalOptions = {} } = {}) {
   const env = sandbox
-    ? { PAYPAL_CLIENT_ID: 'public-sandbox-client-id', PAYPAL_CLIENT_SECRET: SECRETS.PAYPAL_CLIENT_SECRET, PAYPAL_WEBHOOK_ID: 'WH-TEST', AI_API_KEY: SECRETS.AI_API_KEY, KIT_OPENAI_API_KEY: SECRETS.KIT_OPENAI_API_KEY }
+    ? { PAYPAL_CLIENT_ID: 'public-sandbox-client-id', PAYPAL_CLIENT_SECRET: SECRETS.PAYPAL_CLIENT_SECRET, PAYPAL_WEBHOOK_ID: 'WH-TEST', AI_API_KEY: SECRETS.AI_API_KEY, KIT_OPENAI_API_KEY: SECRETS.KIT_OPENAI_API_KEY, KIT_COHERE_API_KEY: SECRETS.KIT_COHERE_API_KEY }
     : {};
   const config = loadConfig(env, { root });
   const fake = sandbox ? createFakePayPal(paypalOptions) : null;

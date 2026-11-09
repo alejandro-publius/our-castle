@@ -20,13 +20,13 @@ export function mutableClock() {
   return { now: () => new Date(Date.now() + offset), iso() { return this.now().toISOString(); }, today() { const d = this.now(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; }, advance(ms) { offset += ms; }, base };
 }
 
-export async function familyServer({ clock = createClock(), merchant = null, live = {}, aiProvider = null, kitReader = null } = {}) {
+export async function familyServer({ clock = createClock(), merchant = null, live = {}, aiProvider = null, kitReader = null, kitSolver = null, kitReranker = null } = {}) {
   const db = openDatabase(':memory:');
   let app;
   const server = http.createServer((req, res) => app.handler(req, res));
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
   const origin = `http://localhost:${server.address().port}`;
-  app = createApp({ config: loadConfig({ OUR_CASTLE_ACCESS: 'family', OUR_CASTLE_ORIGIN: origin }, { root }), db, clock, root, merchant, live, aiProvider, kitReader });
+  app = createApp({ config: loadConfig({ OUR_CASTLE_ACCESS: 'family', OUR_CASTLE_ORIGIN: origin }, { root }), db, clock, root, merchant, live, aiProvider, kitReader, kitSolver, kitReranker });
   let closing = null;
   return {
     origin, db, clock, app,

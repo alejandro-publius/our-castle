@@ -45,7 +45,7 @@ export function createPlanner({ db, clock, provider = null, family = false }) {
     const now = factsNow(goal.id) ?? { ...was, goalId: null };
     const changes = describeFactChanges(was, now);
     if (basis.family) {
-      const facts = familyFacts(db, { householdId: goal.householdId, goalId: goal.id, family, choiceId: basis.family.facts.choice?.id ?? null });
+      const facts = familyFacts(db, { householdId: goal.householdId, goalId: goal.id, family, choiceId: basis.family.facts.choice?.id ?? null, kitLines: basis.family.facts.kit?.lines ?? null });
       changes.push(...describeFamilyChanges(basis.family.facts, facts, goal.currency));
     }
     return { factsChanged: changes.length > 0, changes, planFactsRevision: factsRevision(was), factsRevision: factsRevision(now) };
@@ -131,8 +131,10 @@ export function createPlanner({ db, clock, provider = null, family = false }) {
      * @param expected.choicesRevision the comparison the adult saw (familyChoices.revision), when proposing from it
      * @param expected.scheduleRevision the schedule the adult reviewed (from "Review this choice"), when saving with a goal
      * @param choiceId the family choice it came from, if any: its price is then one of the facts the proposal rests on
+     * @param kit the chosen kit it came from, if any ({ totalCents, lines: [{ candidateId, title }] }): each listing's
+     *   current identity, count and price are then facts the proposal rests on
      */
-    proposeFamily({ householdId, goalId, actor, reserveCents: rawReserve, choiceId = null, expected = {} }) {
+    proposeFamily({ householdId, goalId, actor, reserveCents: rawReserve, choiceId = null, kit = null, expected = {} }) {
       if (actor?.role !== 'adult') throw new DomainError(403, 'adult_required', 'Only an adult in the family can propose a family schedule.');
       const reserveCents = needReserve(rawReserve);
       const goal = goalFor(householdId, goalId);
@@ -148,12 +150,13 @@ export function createPlanner({ db, clock, provider = null, family = false }) {
       if ('scheduleRevision' in expected && expected.scheduleRevision !== schedule.revision) {
         throw new DomainError(409, 'schedule_changed', 'These weeks no longer match the schedule you reviewed: a figure changed or a field was edited. Nothing was saved. Review the choice again.');
       }
-      const facts = familyFacts(db, { householdId, goalId: goal.id, family, choiceId });
+      const facts = familyFacts(db, { householdId, goalId: goal.id, family, choiceId, kitLines: kit?.lines ?? null });
       const basis = { ...computeBasis({ goal, progress, commitments: [], today }), family: { facts, reserveCents } };
       const choice = facts.choice && !facts.choice.removed ? view.choices.find((c) => c.id === facts.choice.id) : null;
       const plan = finalizePlan(familyPlanBody(basis, schedule), basis, {
         source: 'rules', kind: 'family', sourceLabel: SOURCE_LABELS.family, provider: null, model: null,
-        family: familyPlanDetails(schedule, { choice: choice ? { id: choice.id, title: choice.title, merchant: choice.merchant, priceCents: choice.priceCents, currency: choice.currency, ...(choice.need ? { need: choice.need } : {}) } : null }),
+        family: familyPlanDetails(schedule, { choice: choice ? { id: choice.id, title: choice.title, merchant: choice.merchant, priceCents: choice.priceCents, currency: choice.currency, ...(choice.need ? { need: choice.need } : {}) } : null,
+          kit: kit ? { totalCents: kit.totalCents, lineCount: kit.lines.length } : null }),
       });
       return store({ goal, source: 'rules', inputs: { family: { reserveCents, choiceId: choice?.id ?? null } }, basis, plan });
     },

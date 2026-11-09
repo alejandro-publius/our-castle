@@ -203,6 +203,32 @@
             <p class="fine">A short list of things to bring, how many are needed and how many the family already has.</p>
             <div class="kit-saved" id="kit-saved"></div>
             <div class="actions" id="kit-saved-actions" hidden><button type="button" id="kit-edit">Edit the list</button><button type="button" class="link-button" id="kit-new">Start a new list</button></div>
+            <!-- Complete kits: listings an adult adds for each item still to get, compared as whole kits against the family's
+                 own figures. Comparing, ordering and reviewing save nothing; only "Choose this kit" and "Keep" save choices. -->
+            <section class="kit-plan" id="kit-plan" aria-labelledby="kit-plan-title" hidden>
+              <h3 class="kit-plan-title" id="kit-plan-title">Complete kits</h3>
+              <p class="fine" id="kit-plan-intro"></p>
+              <ul class="kit-plan-lines" id="kit-plan-lines"></ul>
+              <p class="fine kit-plan-ceiling" id="kit-plan-ceiling"></p>
+              <div class="actions" id="kit-plan-compare-actions" hidden><button type="button" id="kit-plan-compare">Compare complete kits</button></div>
+              <div class="kit-plan-result" id="kit-plan-result" hidden>
+                <p class="kit-plan-note" id="kit-plan-note" tabindex="-1"></p>
+                <ol class="kit-plan-kits" id="kit-plan-kits" aria-label="Complete kits that fit, or the closest one"></ol>
+                <p class="fine" id="kit-plan-pool"></p>
+                <div class="kit-plan-prefer" id="kit-plan-prefer" hidden>
+                  <label class="field"><span>Order the kits that fit by</span><select id="kit-plan-preference"></select></label>
+                  <button type="button" class="link-button" id="kit-plan-order">Order with Cohere</button>
+                  <p class="fine" id="kit-plan-prefer-note">Sends only the listings’ titles and shops, with the preference you pick, to Cohere. Prices, dates and the family stay here.</p>
+                </div>
+              </div>
+              <div class="kit-plan-chosen" id="kit-plan-chosen" hidden>
+                <h4 class="kit-plan-chosen-title" id="kit-plan-chosen-title" tabindex="-1">Chosen kit</h4>
+                <ul class="kit-plan-chosen-lines" id="kit-plan-chosen-lines"></ul>
+                <p class="fine" id="kit-plan-chosen-note"></p>
+                <div class="actions" id="kit-plan-review-actions" hidden><button type="button" id="kit-plan-review">Review this kit</button></div>
+              </div>
+              <div class="form-status" id="kit-plan-status" role="status" aria-live="polite"></div>
+            </section>
             <div class="kit-source" id="kit-source" hidden>
               <label class="field"><span>Type or paste the list <small>— one item per line, or separated by ;</small></span>
                 <textarea id="kit-text" rows="3" autocomplete="off" spellcheck="true" placeholder="1 x 4-person tent; 2 x sleeping bag; 2 x torch"></textarea></label>

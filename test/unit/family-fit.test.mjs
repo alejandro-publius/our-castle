@@ -466,7 +466,7 @@ test('review F3: a slower price check answered after a newer search updated the 
   }
 });
 
-test('a schema-9 database gains only the need column (and the later kit-list table); every earlier row is unchanged', () => {
+test('a schema-9 database gains only the need column (and the later kit-list and kit-planner tables); every earlier row is unchanged', () => {
   const dir = mkdtempSync(path.join(tmpdir(), 'our-castle-family-fit-migration-'));
   const file = path.join(dir, 'before.sqlite');
   try {
@@ -486,7 +486,7 @@ test('a schema-9 database gains only the need column (and the later kit-list tab
     old.close();
     const db = openDatabase(file);
     assert.equal(db.prepare('PRAGMA user_version').get().user_version, MIGRATIONS.length);
-    assert.deepEqual(tables(db), [...beforeTables, 'kit_lists'].sort(), 'no new table but the later kit list');
+    assert.deepEqual(tables(db), [...beforeTables, 'goal_kits', 'kit_candidates', 'kit_lists', 'kit_selections'].sort(), 'no new table but the later kit list and kit planner');
     const after = rows(db, beforeTables);
     assert.deepEqual(after.family_choices, before.family_choices.map((r) => ({ ...r, need_json: null })), 'the old choice gains an empty need');
     for (const t of beforeTables.filter((n) => n !== 'family_choices')) assert.deepEqual(after[t], before[t], t);

@@ -21,7 +21,7 @@ const span = (rows) => (rows.length === 1 ? `week ${rows[0].week} (${shortDate(r
   : `weeks ${rows[0].week}–${rows.at(-1).week} (${shortDate(rows[0].date)}–${shortDate(rows.at(-1).date)})`);
 
 /** What a stored family plan carries for the page and for later checks: every dated week, each adult's share and the inputs. */
-export function familyPlanDetails(schedule, { choice = null } = {}) {
+export function familyPlanDetails(schedule, { choice = null, kit = null } = {}) {
   return {
     reserveCents: schedule.reserve.cents,
     householdLimitCents: schedule.capacity.householdLimitCents,
@@ -33,6 +33,7 @@ export function familyPlanDetails(schedule, { choice = null } = {}) {
     finishWeek: schedule.finishWeek,
     finishDate: schedule.finishDate,
     choice,
+    ...(kit ? { kit } : {}), // a chosen kit's listed total and how many lines it has
     revision: schedule.revision,
   };
 }

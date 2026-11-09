@@ -560,6 +560,44 @@ button { font: inherit; }
 .kit-conflict { margin:8px 0 0; padding:8px 10px; border:1px dashed var(--brass-dark); background:var(--paper-3); font-size:14px; }
 .kit-conflict p { margin:0; }
 .kit-list .link-button { min-height:44px; }
+/* Complete kits (src/app/kit-plan.js): listings for each item still to get, up to three compared kits, the chosen kit. */
+.kit-plan { margin:10px 0 4px; padding-top:8px; border-top:1px solid var(--ink-line); }
+.kit-plan-title { margin:0; font-size:16px; }
+.kit-plan-lines, .kit-plan-listings, .kit-plan-kits, .kit-plan-kit-lines, .kit-plan-kit-changes, .kit-plan-chosen-lines { list-style:none; margin:4px 0 0; padding:0; }
+.kit-plan-line { padding:8px 0; border-top:1px solid #d3bd8c; }
+.kit-plan-line.owned { color:var(--ink-muted); }
+.kit-plan-line-head, .kit-plan-kit-head { display:flex; justify-content:space-between; align-items:baseline; gap:8px; }
+.kit-plan-need, .kit-plan-kit-total { font-variant-numeric:tabular-nums; white-space:nowrap; }
+.kit-plan-need { font-size:13px; color:var(--ink-muted); }
+.kit-plan-kit-total { font-weight:700; }
+.kit-plan-listing { display:flex; flex-direction:column; gap:1px; margin-top:6px; padding:2px 0 2px 10px; border-left:2px solid #d3bd8c; overflow-wrap:anywhere; }
+.kit-plan-listing[data-issue] { border-left-color:var(--warn); }
+.kit-plan-listing-name { font-weight:600; }
+.kit-plan-listing-facts, .kit-plan-listing-buys, .kit-plan-kit-lines { font-size:13px; color:var(--ink-muted); font-variant-numeric:tabular-nums; }
+.kit-plan-listing-buys { color:var(--ink); }
+.kit-plan-listing .actions { margin-top:0; }
+.kit-plan-issue { font-size:13px; color:var(--warn); }
+.kit-plan-ceiling { margin-top:10px; }
+.kit-plan-note { margin:10px 0 0; font-weight:600; }
+.kit-plan-note:focus { outline:2px solid var(--brass-dark); outline-offset:2px; }
+.kit-plan-kit { padding:10px 0; border-top:1px solid #d3bd8c; }
+.kit-plan-kit[data-fits='false'] { border-left:3px solid var(--warn); padding-left:8px; }
+.kit-plan-kit-finish { margin:4px 0 0; }
+.kit-plan-kit-lines li, .kit-plan-kit-changes li { padding:2px 0; overflow-wrap:anywhere; }
+.kit-plan-kit-changes { font-size:14px; color:var(--ink); }
+.kit-plan-kit .actions { margin-top:6px; }
+.kit-plan-prefer { display:flex; flex-wrap:wrap; align-items:end; gap:4px 12px; margin-top:8px; }
+.kit-plan-prefer .field { margin:0; }
+.kit-plan-prefer .fine { flex-basis:100%; margin:0; }
+.kit-plan-chosen { margin-top:10px; padding-top:8px; border-top:1px solid var(--ink-line); }
+.kit-plan-chosen-title { margin:0; font-size:15px; }
+.kit-plan-chosen-title:focus { outline:2px solid var(--brass-dark); outline-offset:2px; }
+.kit-plan-chosen-lines li { display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:2px 10px; padding:4px 0; border-top:1px dashed #d3bd8c; overflow-wrap:anywhere; font-size:14px; }
+.kit-plan-keep[aria-pressed='true'] { font-weight:700; text-decoration:none; }
+.kit-plan .link-button, .merchant-kit .link-button { min-height:44px; }
+.merchant-kit { display:flex; flex-wrap:wrap; align-items:center; gap:4px 10px; margin-top:6px; }
+.merchant-kit-label { display:inline-flex; align-items:center; gap:6px; font-size:14px; }
+.merchant-kit-count { width:4.5em; min-height:40px; }
 /* Family fit: the planning limit line, the optional kind of item and must-haves, and why each option fits. */
 .family-fit { margin:12px 0 0; font-size:14px; }
 .family-fit .link-button { min-height:44px; }

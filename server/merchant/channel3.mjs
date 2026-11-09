@@ -19,6 +19,11 @@
 // Unknown slugs are silently dropped by Channel3, and a provider may ignore filters. Every item is therefore judged
 // here (src/core/family-fit.js), and no filter is relaxed or retried to fill a list. Only the family's own words, public
 // taxonomy values, a price ceiling and the locale are sent: never offers, members, dates, progress or the one-off amount.
+//
+// Listed weight (the kit planner): each offer may carry `dimensions.weight` as `{ number, unit }`, unit one of mg, g, kg,
+// oz or lb, documented as "physical size of this offer, when known" (same reference, ProductOffer/Dimensions). It is read
+// as whole milligrams with the exact unit definitions, or left unknown. It is the offer's listed weight, never a measured
+// one, and never a pack count: how many items one listing gives is not in this contract.
 
 import { randomBytes } from 'node:crypto';
 import { DomainError } from '../household.mjs';
@@ -115,6 +120,19 @@ function toCents(amount) {
   return Number.isSafeInteger(cents) ? cents : null;
 }
 
+// Exact unit definitions, in milligrams (the international avoirdupois ounce and pound).
+const MG_PER_UNIT = Object.freeze({ mg: 1, g: 1000, kg: 1_000_000, oz: 28_349.523125, lb: 453_592.37 });
+const MAX_LISTED_MG = 1_000_000_000; // 1,000 kg: above this a listed weight is treated as unknown
+
+/** An offer's listed weight in whole milligrams, or null when it is missing, unreadable or implausible. */
+export function readWeight(raw) {
+  if (!raw || typeof raw !== 'object' || typeof raw.number !== 'number' || !Number.isFinite(raw.number) || raw.number <= 0) return null;
+  const factor = typeof raw.unit === 'string' && Object.hasOwn(MG_PER_UNIT, raw.unit) ? MG_PER_UNIT[raw.unit] : null;
+  if (factor === null) return null;
+  const mg = Math.round(raw.number * factor);
+  return Number.isSafeInteger(mg) && mg >= 1 && mg <= MAX_LISTED_MG ? mg : null;
+}
+
 function readOffer(raw) {
   if (!raw || typeof raw !== 'object') return null;
   const url = safeHttpsUrl(raw.url);
@@ -130,6 +148,7 @@ function readOffer(raw) {
     currency: cents !== null && currency ? currency : null,
     availability: AVAILABILITY.has(raw.availability) ? raw.availability : null,
     condition: raw.condition === 'used' ? 'used' : raw.condition === 'new' ? 'new' : null,
+    weightMg: readWeight(raw.dimensions?.weight),
   };
 }
 
@@ -209,6 +228,7 @@ export function normalizeSearch(json, { budgetCents = null, max = MAX_RESULTS, w
       currency: offer?.currency ?? null,
       availability: variantBlock ? variantBlock.availability : offer?.availability ?? null,
       condition: offer?.condition ?? null,
+      weightMg: offer?.weightMg ?? null,
       selection: readSelection(product.variants?.selected),
       otherOffers: Math.max(0, offers.length - 1),
       overBudget: Boolean(budgetCents !== null && offer?.priceCents !== null && offer?.currency === MERCHANT_CURRENCY && offer.priceCents > budgetCents),
@@ -297,8 +317,9 @@ function readSelection(value) {
 
 // Public offer identity, never a family identifier. Another retailer/condition/variant remains a separate choice.
 const offerKey = (item) => JSON.stringify([item.productId, item.merchant, item.condition ?? null, readSelection(item.selection)]);
+// The listed weight is one of them: a kit compared by weight must not rest on a weight a newer read contradicted.
 const offerFacts = (item) => item === null ? null : JSON.stringify([
-  item.merchant, item.priceCents, item.currency, item.availability, item.condition ?? null, readSelection(item.selection), item.usable,
+  item.merchant, item.priceCents, item.currency, item.availability, item.condition ?? null, readSelection(item.selection), item.usable, item.weightMg ?? null,
 ]);
 const expiredDraft = () => fail(410, 'merchant_draft_expired', 'That merchant result has expired. Search again for a fresh price before saving.');
 // What the catalog reports about an item's kind and facts, whatever the order: the category's slug and path, and each

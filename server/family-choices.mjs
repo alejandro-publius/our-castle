@@ -28,7 +28,7 @@ function activeMembers(db, householdId, family) {
 
 const selectionOf = (value) => (Array.isArray(value) ? value : []).map((v) => ({ name: v.name, label: v.label }));
 // The public identity of an offer: another retailer, condition or variant is a different choice.
-const identityOf = (x) => JSON.stringify([x.productId, x.merchant, x.condition ?? null, selectionOf(x.selection)]);
+export const identityOf = (x) => JSON.stringify([x.productId, x.merchant, x.condition ?? null, selectionOf(x.selection)]);
 const rowItem = (r) => ({ productId: r.product_id, merchant: r.merchant, condition: r.condition, selection: JSON.parse(r.selection_json), priceCents: r.price_cents, currency: r.currency, availability: r.availability });
 // The stored "why this was chosen", if the choice came from a family-fit search (see needSnapshot).
 function rowNeed(r) {
@@ -43,7 +43,7 @@ function rowNeed(r) {
  * - check: what the catalog reported for this item;
  * - search: the planning price ceiling, date and one-off amount it was found under.
  */
-function needSnapshot(fit, checkedAt) {
+export function needSnapshot(fit, checkedAt) {
   const spec = fit.needSpec;
   return {
     category: spec.category ? { slug: spec.category.slug, title: spec.category.title, path: [...spec.category.path] } : null,
@@ -57,7 +57,7 @@ const checkOf = (result, checkedAt) => ({
   mustHaves: result.mustHaves.map(({ key, found, status }) => ({ key, found: [...found], status })), checkedAt,
 });
 // The same need checked against newer catalog facts (an explicit price check, or the item seen again).
-const recheckNeed = (need, catalog, checkedAt) => ({ ...need, check: checkOf(matchNeed(catalog, need), checkedAt) });
+export const recheckNeed = (need, catalog, checkedAt) => ({ ...need, check: checkOf(matchNeed(catalog, need), checkedAt) });
 const choiceRows = (db, goalId) => db.prepare('SELECT * FROM family_choices WHERE goal_id = ? ORDER BY added_at, rowid').all(goalId);
 const goalOf = (db, householdId, goalId) => {
   const goal = getGoal(db, goalId);
@@ -230,11 +230,17 @@ export function unschedulable(schedule) {
 
 /**
  * The facts a family schedule rests on beyond the goal's own: the active adults' offers and, when it came from a family
- * choice, that choice's current price. A proposal is usable only while these still hold.
+ * choice, that choice's current price; when it came from a chosen kit, each of its listings as it is now. A proposal is
+ * usable only while these still hold.
  */
-export function familyFacts(db, { householdId, goalId, family, choiceId = null }) {
+export function familyFacts(db, { householdId, goalId, family, choiceId = null, kitLines = null }) {
   const offers = activeOffers(db, goalId, membersById(db, householdId, family)).map((o) => ({ memberId: o.memberId, name: o.name, weeklyCents: o.weeklyCents }));
-  if (!choiceId) return { offers, choice: null };
+  const kit = kitLines ? { lines: kitLines.map((line) => {
+    const row = db.prepare('SELECT * FROM kit_candidates WHERE id = ? AND goal_id = ?').get(line.candidateId, goalId);
+    return row ? { candidateId: row.id, title: row.title, identity: identityOf(rowItem(row)), priceCents: row.price_cents, perListing: row.per_listing }
+      : { candidateId: line.candidateId, title: line.title, removed: true };
+  }) } : null;
+  if (!choiceId) return { offers, choice: null, ...(kit ? { kit } : {}) };
   const row = db.prepare('SELECT * FROM family_choices WHERE id = ? AND goal_id = ?').get(choiceId, goalId);
   return { offers, choice: row ? { id: row.id, title: row.title, identity: identityOf(rowItem(row)), priceCents: row.price_cents, currency: row.currency,
     needStatus: rowNeed(row)?.check?.status ?? null } : { id: choiceId, removed: true } };
@@ -251,6 +257,15 @@ export function describeFamilyChanges(was, now, currency) {
     else if (n.weeklyCents !== o.weeklyCents) changes.push({ code: 'offer_changed', message: `${o.name}’s weekly offer changed from ${f(o.weeklyCents)} to ${f(n.weeklyCents)}.` });
   }
   for (const n of now.offers) if (!before.has(n.memberId)) changes.push({ code: 'offer_added', message: `${n.name} now offers ${f(n.weeklyCents)} a week.` });
+  // A schedule from a chosen kit rests on each of its listings: one removed, replaced or repriced makes it stale.
+  if (was.kit) {
+    const current = new Map((now.kit?.lines ?? []).map((l) => [l.candidateId, l]));
+    for (const line of was.kit.lines) {
+      const n = current.get(line.candidateId);
+      if (!n || n.removed || n.identity !== line.identity || n.perListing !== line.perListing) changes.push({ code: 'kit_changed', message: `${line.title}, part of the kit this schedule came from, was removed or changed.` });
+      else if (n.priceCents !== line.priceCents) changes.push({ code: 'kit_price_changed', message: `${line.title} now shows ${f(n.priceCents)}; this schedule used ${f(line.priceCents)}.` });
+    }
+  }
   if (was.choice) {
     const c = now.choice;
     if (!c || c.removed || c.identity !== was.choice.identity) changes.push({ code: 'choice_changed', message: `The family choice this schedule came from (${was.choice.title}) was removed or replaced.` });

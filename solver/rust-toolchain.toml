@@ -1,0 +1,5 @@
+# The exact compiler this solver is built and tested with (rustc 1.99.1, released 2026-10-13). rustup installs it on
+# first use; the minimal profile is enough (no docs, no extra components).
+[toolchain]
+channel = "1.99.1"
+profile = "minimal"
