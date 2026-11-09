@@ -10,9 +10,10 @@ This feature is in the source branch awaiting integration. The preserved owner a
 2. Each adult enters and explicitly saves their own weekly offer. Offers are visible to the family, and can be withdrawn. Children can express a preference without making an offer.
 3. Compare the price, finish date, deadline shortfall and each adult's weekly share. Preference counts express wishes; they never authorize a payment.
 4. Try a one-off expense. It uses future weekly capacity once, beginning with the first week. Each item shows its finish with the trial and the date without it. Typing sends no request and saves nothing.
-5. Review this choice fills the existing unsaved goal form and previews the family schedule: each dated week, what the expense takes and each adult's share. Save as our goal changes only the goal. **Save goal and propose this schedule** saves the goal and proposes those same weeks, together. Changed offers, prices or goal facts require another review.
-6. In the Plan, the proposal is labelled **Family schedule**. Its table shows every week's amount with each adult's share or the expense note. **Use this plan** puts it in use, as for any plan; the next contribution and the Treasury's week then follow its dates.
-7. **Propose this schedule** on the current goal makes a later proposal without changing the goal. Any one-off amount must be entered again; none is carried over.
+5. **Find options that fit** (adults, with Market Town connected) searches for items the family's plan can cover by the goal's date. A kind of item and up to two must-haves are optional. [How it works](#find-options-that-fit).
+6. Review this choice fills the existing unsaved goal form and previews the family schedule: each dated week, what the expense takes and each adult's share. Save as our goal changes only the goal. **Save goal and propose this schedule** saves the goal and proposes those same weeks, together. Changed offers, prices or goal facts require another review.
+7. In the Plan, the proposal is labelled **Family schedule**. Its table shows every week's amount with each adult's share or the expense note. **Use this plan** puts it in use, as for any plan; the next contribution and the Treasury's week then follow its dates.
+8. **Propose this schedule** on the current goal makes a later proposal without changing the goal. Any one-off amount must be entered again; none is carried over.
 
 Without Channel3, the current goal can still be compared with the adults' offers. No example catalogue is silently installed. The screenshots below use invented products served by fake transport, not live retailer quotes.
 
@@ -77,6 +78,50 @@ The weeks given to the expense stay in it as $0 goal weeks with a short note.
 **Use this plan** is still the separate decision. A proposal is refused there if any of these changed: an offer, the active adults, the source item's price, the goal, progress or the date. An accepted schedule keeps its dates. A reload or a new day never takes the expense again, and the app never assumes the expense was paid. Ordinary built-in and AI plans are unchanged and do not include a one-off amount.
 
 A family schedule is stored with the existing plans, as deterministic built-in arithmetic, never as AI output. It is not edited week by week, because a typed amount could exceed someone's offer. The family proposes a new one instead.
+
+## Find options that fit
+
+A family can say what the item must do and see up to three items that do it and that its plan can cover by the goal's date. It is a better buying brief, not a guarantee: the catalog's facts can be missing, and retailer prices change.
+
+1. **Find options that fit** in Family choices shows the planning limit first, for example "Options up to $150.00 can be planned by Dec 20, after the one-off $90.00."
+2. Market Town opens with that limit. The family types what the item is, like "tent". Optionally:
+   - **Find kinds of item** lists the catalog's categories for those words;
+   - **Show must-haves** lists that kind's own facts with their allowed values, such as how many people it sleeps;
+   - the adult ticks every acceptable value, for example 4 or 6 people, for up to two must-haves.
+   Each look-up is an explicit click; typing sends nothing.
+3. **Find options that fit** checks one page of at most twelve catalog items and suggests at most three, lowest price first. Each suggestion shows why it fits and when it would be finished at the adults' offers. Every other item gets one reason, such as "Sleeps does not match", "not reported", "over $150.00", "out of stock" or "priced in EUR". Nothing is loosened to fill three places.
+4. **Add to family choices** keeps why the item was chosen. Every member sees it in Family choices, and it travels into the goal review, the family schedule and the plan in use.
+
+**The planning limit.** It is the progress already recorded, plus what the weeks up to the goal's date can add. Those weeks are counted at the lower of the household's weekly amount and the active adults' own offers, after any one-off amount comes out of the first weeks once. A lower price the adult types also applies. The server works it out from its own records. The page sends only the one-off amount it is trying, and the page's figure is a labelled preview.
+
+It is a planning limit, not money in hand. It never raises an offer or moves the date. With no offers, a $0 household amount, a date under a week away or less than $1.00 to plan, the app says so instead of searching.
+
+**The task's example** (test fixtures: an invented taxonomy and invented tents, not a claim about Channel3's live tent category). Nov 8, $60 recorded, $30 a week from offers of $20 and $10, a Dec 20 date. The family needs a tent that sleeps 4 or 6.
+
+| One-off amount | Planning limit | Suggested | Not suggested |
+| --- | --- | --- | --- |
+| $90 | $150 | four-person tent A, $120, finishes Dec 13; four-person tent B, $150, finishes Dec 20 | a two-person tent ($90, sleeps 2), a tent with no capacity fact, a six-person tent over $150, one out of stock, one priced in euros, and a tarp (not a tent) |
+| $120 | $120 | four-person tent A, $120, still finishes Dec 20 | tent B now over $120; the cheaper two-person tent still never fills the gap |
+
+| Options that fit (desktop) | Why it was chosen, in Family choices | The plan in use keeps it (phone) |
+| --- | --- | --- |
+| ![Up to $150.00 by Dec 20: two tents that sleep 4 suggested, each with why it fits](screenshots/family-fit-desktop-results.png) | ![Tent A meets the family's needs, found within $120.00 for Dec 20](screenshots/family-fit-desktop-need.png) | ![The family schedule in use with the chosen tent and why](screenshots/family-fit-phone-plan.png) |
+
+[All five captures and source hashes](screenshots/family-fit-sources.json).
+
+**Why chosen, kept.** The stored reason comes from the server's own judged result, never from the page. It records:
+- the kind of item and must-haves;
+- what the catalog reported for the item;
+- the limit and date of the search.
+
+An explicit price check judges the item again. If it no longer meets a must-have, Family choices says "No longer meets the family's needs", and a schedule proposal resting on it is refused until the family reviews it again.
+
+**Research basis.** These are inferences from public sources, not claims about those teams or proof of demand:
+- [CrawlerPal](https://developer.paypal.com/community/blog/winners-dev-days-hackathon/) placed first at PayPal Dev Days 2025 as "a paywall AI agent assistant built with PayPal APIs": one complete task.
+- [Codebusters](https://www.shopware.com/en/news/shopware-at-paypal-dev-days-2025/) placed second by fixing a specific friction merchants reported: PayPal buttons on product-heavy and dynamic category pages.
+- [CIBC's gold](https://www.dtcc.com/insights/2025/dtcc-announces-winners-from-first-ai-powered-hackathon) at DTCC's 2025 hackathon replaced "manual sifting through numerous sources" with one centralized platform.
+
+Together they suggested one understandable path here: need, then suitable item, then a schedule the family can keep, then explicit adoption. The catalog contract is Channel3's published API reference and product-discovery guidance (see [the merchant notes](CHANNEL3-MERCHANT.md#family-fit-kinds-of-item-must-haves-and-the-familys-date--november-8)).
 
 ## Why this direction
 

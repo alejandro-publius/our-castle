@@ -1,5 +1,123 @@
 # Validation
 
+## Family fit: options that meet the family's needs by its date — November 8, 2026
+
+Branch `claude/family-fit-search`, from the reviewed PR #55 head `9ba5e38`. That head is still unmerged, stacked on PR #54 → #53 → #52 → #51 → #50 → #49. The commits are:
+- `09ee37e`: the feature-gap demonstration;
+- `1ecde49`: the implementation and its tests;
+- the commit after it: these screenshots and this note.
+
+The owner asked for this product iteration. It is a hypothesis about better buying decisions, not evidence of demand. No person has used it.
+
+**The gap, shown on `9ba5e38` before any change** (invented fake catalog data, documented as a missing feature, not a broken promise):
+- Ordinary search took only words and a budget the family had to work out by hand.
+- It showed the first three catalog products, the cheap two-person tent first. All were "usable", none carried a capacity fact or date, and the request carried only words and price.
+- No category or must-have discovery and no fit search existed: the HTTP demonstration got 404 for the category route.
+
+**What a family can do now:**
+- **Find options that fit** (Plan → Family choices, adults, with Market Town connected) opens Market Town with the planning limit for the goal's date.
+- **Optional:**
+  - **Find kinds of item** and **Show must-haves** fetch the catalog's own categories and that category's enumerated non-color facts, each by an explicit click;
+  - the adult ticks every acceptable value, for up to two must-haves.
+- **The search** inspects one page of at most twelve items and suggests at most three, lowest price first.
+  - Each suggestion shows why it fits and when it would finish at the adults' offers.
+  - Every other item gets one reason: a known mismatch first, then what is unknown.
+  - Nothing is loosened or retried to fill the list, and fewer than three is shown as it is.
+- **Add to family choices** (or **Update this family choice**) keeps why the item was chosen. Members, the goal review, the schedule proposal and the plan in use show it.
+- **An explicit price check** judges the item again. One that no longer meets a must-have says so, and a schedule proposal resting on it is refused.
+
+**Arithmetic and judgement** (`src/core/family-fit.js`: pure, deterministic, server-authoritative):
+- **Ceiling:** P + max(0, N × C − R), from the same weekly arithmetic as the comparison and saved schedule (`weeklyCapacity`):
+  - P is recorded progress;
+  - N is the weeks to the goal's date, at most 52;
+  - C is the lower of the household amount and the sum of active adults' offers;
+  - R is the one-off amount, taken once from the first weeks.
+  It is capped by a lower typed limit and the $100,000 bound. The page sends only R and the comparison revision; the server reads everything else from its own records.
+- **No ceiling:** no offers, a $0 household amount, a date under a week away or less than $1.00 are refused plainly.
+- **Kind of item:** it must be the chosen category or below it.
+- **Each must-have:**
+  - match: every reported value is accepted;
+  - mismatch: every reported value is listed but not accepted;
+  - missing;
+  - unclear: mixed values, or a value the category does not list.
+- **Suitable** additionally needs a usable USD price within the ceiling and in-stock from the retailer. Missing or unclear facts are unknown, never suitable. A title word is never evidence.
+- **The task's example** (invented fixtures; Nov 8; $60 recorded; offers $20 + $10; Dec 20; needs 4 or 6 person):
+  - a $90 one-off gives $150, suggesting the $120 and $150 tents (Dec 13, Dec 20);
+  - a $120 one-off gives $120, suggesting the $120 tent (Dec 20); the two-person tent never substitutes.
+
+**Data and access:**
+- **Storage:** migration 10 adds one nullable `need_json` column to `family_choices`, a planning snapshot. No table, payment record or other column changes.
+- **What the snapshot holds:** the need, what the catalog reported at the latest check, and the search's ceiling, date and one-off amount.
+- **Where it comes from:** the server's judged draft only; a forged `fit` in the page's request is ignored.
+- **Routes:** three new adult-only routes in the fail-closed policy:
+  - `POST /api/merchant/categories`;
+  - `POST /api/merchant/category`;
+  - `POST /api/family-choices/fit`.
+  None writes a household record. The fit route re-reads the family's figures after Channel3 answers and rechecks access. A late answer after a change is refused, not shown as current.
+- **Channel3:** only the words, taxonomy values the adult chose from the catalog's lists, the ceiling and the locale are sent (see the merchant notes).
+
+**Checks on `1ecde49`:**
+- **Demonstration first:** on `9ba5e38` the HTTP case recorded the unchanged ordinary search, then failed (1 test, 1 failure: 404 on the category route).
+- **`test/unit/family-fit-core.test.mjs`** (5 tests): literal expectations for:
+  - the ceiling (P + max(0, N×C − R)): $150.00, $120.00, a typed $130.00, the household cap, the 52-week and amount bounds;
+  - the no-ceiling outcomes and their words;
+  - match, mismatch, missing and unclear, including descendant categories and title-free judgement;
+  - suitable, unknown and not suitable, with the first reason ordered;
+  - the stored-need sentences.
+- **`test/unit/channel3-fit.test.mjs`** (4 tests):
+  - bounded, sanitized category and attribute parsing, with color and empty value sets dropped;
+  - the exact fit request, with the ordinary request unchanged;
+  - at most twelve inspected and three shown, from one provider call with no relaxed retry;
+  - catalog facts kept off the page;
+  - observed-only categories and reuse of their must-have lists.
+- **`test/unit/family-fit.test.mjs`** (8 tests, real HTTP, family mode over a fake transport that ignores filters, plus example mode):
+  - the example flow, with exact outbound requests and nothing written;
+  - every other item's reason;
+  - the $120.00 one-off and a typed limit;
+  - the handoff through choice, review, schedule proposal and use, with a reload and a second member, a forged page claim ignored and offers unchanged;
+  - a price check losing a must-have, with the proposal then refused;
+  - child, other-family, impersonation, CSRF, signed-out, stale-revision, schema and enum refusals, all before any provider call;
+  - the no-ceiling refusals;
+  - a late answer after an offer change refused;
+  - the 9 → 10 migration on a disposable file;
+  - example personas.
+- **Existing tests changed only where the schema bump requires:** the migration step list, and the family-choices migration test reading the current schema length.
+- **Unit runs:** the 17 new and affected unit files passed 162/162 on Node 22.16.0 and 26.0.0.
+- **`test/e2e/family-fit.spec.mjs`** (`@release`), desktop 1440×1000 and 390×844 phone: 2/2 passed. Two adults and a child each use their own passkey context.
+  - The limit line, explicit kind and must-have look-ups, the two suggested tents, and the six reasons.
+  - Add to family choices, with every member reading why.
+  - A held provider answer refused after Ash's offer change.
+  - The $120.00 one-off and the updated reason.
+  - Review, the schedule proposal and use, then a reload and the other adult.
+  - Five catalog calls in all; no payment, steward, model or ordinary-plan request; money rows unchanged; offers back to $20.00 and $10.00.
+- **Affected existing browser specs** (`channel3-merchant`, `connected-journey`, `area-cards`, `family-choices`, `family-schedule`, `family-journey`, `journey`, `plan-check`, `shared-live`) with the new spec, on `1ecde49`, desktop and phone: 113 passed, 11 designed project skips, 0 failed.
+- **Guard:** `npm run check` passed: 47 copied art/runtime files, the original 90-colour palette, the renderer wiring and syntax.
+- **Runbook:** the snapshot example now comes from a real rehearsal on a fresh schema-10 example database (23 tables).
+- **Isolation:** every check used disposable in-memory data, empty synthetic configuration and a preload that refuses non-loopback app transport.
+- **Hosted:** one Release checks run is required on the final PR head. Its actual result is recorded in the PR, so no docs-only run is needed.
+
+**Limits:**
+- **Catalog facts:** how well real Channel3 categories expose the facts a family needs is untested. No live category, attribute set or search was called for this feature, and every taxonomy and product here is an invented fixture. A missing fact is shown as not confirmed.
+- **Planning limit:** a limit, not money in hand. Offers are planning ceilings the adults chose, not income or an approval. Recorded progress is not spendable funds.
+- **Prices:** Channel3 catalog prices as last checked; the retailer's price and stock may differ, and tax and shipping are extra.
+- **Ranking:** only the first twelve items of one page are judged; suitable items further down are not found, and the lowest price shown first is not a quality ranking.
+- **Scope:** fake providers, simulated payments, virtual passkeys and disposable data only. This is not human, device or real-provider evidence.
+
+| Options that fit, desktop | The same search, 390 px phone | Why it was chosen, in Family choices |
+| --- | --- | --- |
+| ![Market Town in family-fit mode: up to $150.00 by Dec 20, tents sleeping 4 or 6, two suggested with why each fits](screenshots/family-fit-desktop-results.png) | ![The family-fit search on a phone](screenshots/family-fit-phone-results.png) | ![Tent A in Family choices: meets the family's needs, found within $120.00 for Dec 20](screenshots/family-fit-desktop-need.png) |
+
+| The plan in use keeps the reason, desktop | The same on a 390 px phone |
+| --- | --- |
+| ![The family schedule in use with the chosen tent and why it was chosen](screenshots/family-fit-desktop-plan.png) | ![The plan in use with its reason on a phone](screenshots/family-fit-phone-plan.png) |
+
+The captures are from the passing `@release` journey on `1ecde49`, using an invented fixture taxonomy and products over a fake Channel3 transport. Provenance, step notes and hashes, with every listed source verified against `1ecde49`, are in [family-fit-sources.json](screenshots/family-fit-sources.json).
+
+**Evidence:** kept local and ignored, in `test-results/family-fit-search-20261108/`. It holds:
+- the gap demonstration log;
+- the development and final logs, with the commands;
+- the raw captures with `SHA256SUMS.txt`;
+- the schema-10 snapshot rehearsal output.
 ## Family schedule: the reviewed expense and each adult's share, saved and used — November 8, 2026
 
 Branch `claude/family-choice-schedule`, from the reviewed PR #54 head `d0d2dda`. That head is still unmerged, stacked on PR #53 → #52 → #51 → #50 → #49. The commits are:
