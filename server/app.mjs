@@ -133,11 +133,14 @@ const UNCHANGING_WRITES = new Set(['/api/plans/preview', '/api/merchant/search',
   '/api/steward', '/api/paypal/client-token', '/api/auth/passkeys/options', '/api/auth/signout']);
 
 export function createApp({ config, db, clock, paypal = null, aiProvider = null, stewardAi = null, paypalTools = null, stewardFetch, merchant = null, kitReader = null,
-  kitSolver = null, kitReranker = null, root, live: liveLimits = {} }) {
+  kitSolver = null, kitReranker = null, example = null, root, live: liveLimits = {} }) {
   // Example mode is the single local example household. Family mode serves only households whose members enrolled their
   // own passkeys; it never creates, shows or falls back to the example household.
   const family = config.access?.mode === 'family';
-  if (!family) ensureDemoHousehold(db, clock);
+  // An authored example (the demo runner's --family-trip) starts the example household from its own invented figures and
+  // says so in every state. It belongs to the simulated example household only: never a shared family or sandbox records.
+  if (example && (family || config.payments.mode !== 'example')) throw new Error('An authored example runs only on the simulated example household.');
+  if (!family) ensureDemoHousehold(db, clock, example?.defaults);
   // Family mode: live updates tell a household's open pages to re-read their state after any committed change.
   let access = null;
   const live = family ? createLive({ checkSession: (sessionId) => access.sessionEndReason(sessionId), limits: liveLimits }) : null;
@@ -179,6 +182,8 @@ export function createApp({ config, db, clock, paypal = null, aiProvider = null,
     const s = buildState({ db, householdId: scope.householdId, planner, contributions, config, steward: stewardInfo });
     s.modes.merchant = shop.status();
     s.goalItem = goalItemFor(db, s.goal);
+    // An item saved as the goal in an authored example came from its own catalogue, and says so.
+    if (example && s.goalItem) s.goalItem = { ...s.goalItem, provider: shop.status().provider };
     s.merchantGoalRevision = merchantGoalRevision(s.goal, s.progress.startingCents);
     s.treasury = treasuryFor(s, clock.iso(), planner.accepted(s.goal.id));
     s.familyChoices = familyChoicesView(db, choiceScope(scope, s.goal, s.progress));
@@ -186,16 +191,27 @@ export function createApp({ config, db, clock, paypal = null, aiProvider = null,
     s.kit = kitView(db, s.goal);
     s.kitPlan = kitPlanView(db, { householdId: scope.householdId, goal: s.goal, now: clock.now().getTime(), rankMode: rankMode() });
     s.goalKit = goalKitFor(db, s.goal);
+    if (example) s.example = exampleInfo;
     if (family) { s.access = access.viewer(scope); s.revision = live.revisionOf(scope.householdId); }
     return s;
   };
+  // The authored example's starting state: prepared first (its catalogue searches may be refused, changing nothing), then
+  // saved in one transaction, after erasing the example household when it is a reset.
+  const exampleInfo = example ? Object.freeze({ id: example.id, title: example.title }) : null;
+  async function seedExample({ reset = false } = {}) {
+    const saveStartingState = await example.prepare();
+    transaction(db, () => {
+      if (reset) resetHousehold(db, clock, example.defaults);
+      saveStartingState({ db });
+    });
+  }
   // Example mode's scope is the example household; family mode's comes only from a validated session (see handler).
   const exampleScope = () => Object.freeze({ mode: 'example', householdId: DEMO_HOUSEHOLD_ID, goalId: getActiveGoal(db, DEMO_HOUSEHOLD_ID).id });
   const familyOnly = () => { if (!family) throw new HttpError(404, 'not_found', 'Unknown API route.'); return access; };
 
   // Each route returns a JSON body. Mutations return the fresh state so the board can update at once.
   const routes = [
-    ['GET', '/api/status', () => ({ ...publicModes(config), merchant: shop.status(), kit: kitStatus() })],
+    ['GET', '/api/status', () => ({ ...publicModes(config), merchant: shop.status(), kit: kitStatus(), ...(example ? { example: exampleInfo } : {}) })],
     ['GET', '/api/session', ({ session }) => (family ? { mode: 'family', ...access.sessionInfo(session) } : { mode: 'example' })],
     // Family mode: one live-update stream per open page; only change notices travel on it, never records.
     ['GET', '/api/events', ({ req, res, scope }) => {
@@ -205,7 +221,7 @@ export function createApp({ config, db, clock, paypal = null, aiProvider = null,
     ['GET', '/api/state', ({ scope }) => state(scope)],
     ['POST', '/api/setup', ({ body, scope }) => {
       if (family) setupFamilyHouse(db, scope.householdId, { name: body.name, crest: body.crest });
-      else setupHousehold(db, scope.householdId, { playMode: body.playMode, name: body.name, crest: body.crest });
+      else setupHousehold(db, scope.householdId, { playMode: body.playMode, name: body.name, crest: body.crest }, example?.defaults);
       return { state: state(scope) };
     }],
     ['PUT', '/api/house', ({ body, scope }) => {
@@ -587,10 +603,11 @@ export function createApp({ config, db, clock, paypal = null, aiProvider = null,
       const result = contributions.simulateRefund({ captureId: params[0], householdId: owner(body, scope).householdId, approverId: actingMember(body.approverId, scope), approvalConfirmed: body.approvalConfirmed });
       return { ...result, state: state(scope) };
     }],
-    ['POST', '/api/demo/reset', ({ scope }) => {
+    ['POST', '/api/demo/reset', async ({ scope }) => {
       // Reset erases every household in its database, so it exists only for the example household.
       if (family || config.payments.mode !== 'example') throw new DomainError(403, 'reset_disabled', 'Reset is only available in example mode, so sandbox records are kept.');
-      resetHousehold(db, clock);
+      // An authored example starts again from its own starting state.
+      if (example) await seedExample({ reset: true }); else resetHousehold(db, clock);
       return { state: state(scope) };
     }],
 
@@ -860,5 +877,5 @@ export function createApp({ config, db, clock, paypal = null, aiProvider = null,
       FROM households h`).all().map((r) => [r.id, r.print]));
   }
 
-  return { handler, planner, contributions, steward, merchant: shop, state, live, routes: routes.map(([method, pattern]) => ({ method, pattern })) };
+  return { handler, planner, contributions, steward, merchant: shop, state, live, seedExample: example ? seedExample : null, routes: routes.map(([method, pattern]) => ({ method, pattern })) };
 }

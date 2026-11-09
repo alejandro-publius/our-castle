@@ -1,0 +1,82 @@
+{
+  "capturedAt": "2026-11-09T21:29:09Z",
+  "sourceCommit": "c6aa3e4982b212d1070f1a52ff0809d40940cfd3",
+  "sourceTree": "1fcf953d544837db6cdd65be8532c9471e7f23a6",
+  "base": "b21b2d8bd04fe59de7eee885cc47dbdccf2dd302",
+  "whatThisIs": "Three captures of the real running example (npm run demo -- --family-trip), taken by its own browser check. Everything shown about the family and the shops is invented example data; the kits, totals, dates and the repair were computed by the existing planner and solver during the run.",
+  "invented": "The family (Rowan and Ash, adults; Wren, a child; \"House of Alder\"), the $60 reported progress, the weekly offers ($20 and $10), the kit list, both shops (sample-shop-one.example and sample-shop-two.example, a reserved name that cannot exist), all six \"Sample:\" listings, their prices, listed weights and stock, and the one-item-per-listing counts recorded as Rowan's. None is a real product, price, shop, person or family.",
+  "notShown": "No live Channel3 search, OpenAI reading or Cohere ordering: none was called, and the last two are off in the example. No PayPal transaction. No human playtest and no physical device.",
+  "environment": "Playwright 1.64.1 / Chromium 156.0.8078.4 headless, macOS arm64 with SwiftShader, reduced motion. The phone capture is the 390 x 844 touch-emulated project at device scale 2, not a physical phone.",
+  "clock": "The server's day was pinned to Nov 8, 2026 (the worked example in docs/KIT-PLANNER.md), so the goal date is Dec 27. Started normally, the example uses the real day and a date seven weeks ahead.",
+  "solver": {
+    "engine": "native (compiled Rust), required for the run (KIT_SOLVER_REQUIRED=1)",
+    "binary": "solver/target/release/kit-solver",
+    "binarySha256": "f151bd874022b56f9f3ea9790fea721b33dc12eadb4dc25cbae55ac9c437abdb",
+    "provenance": "Not built in this checkout: no Rust toolchain is installed here. It is a copy of the existing build in the reviewed runtime worktree at b21b2d8, whose five solver sources are byte-identical to this commit's (hashes below). The hosted check builds it from source with the pinned compiler."
+  },
+  "spec": "test/e2e/family-trip.spec.mjs — a visitor tries a one-off expense, sees the real planner repair the kit, and makes one simulated contribution",
+  "command": "Captured by the spec during the guarded run of the twelve affected spec files: KIT_SOLVER_REQUIRED=1 npx playwright test --config <the repository config with the test server probed at 127.0.0.1> ... --project=desktop --project=phone, with a minimal environment, OUR_CASTLE_ENV_FILE=none and a Node preload refusing every non-loopback connection. The page's own requests outside its origin are refused and counted by the spec.",
+  "checksInTheRun": {
+    "catalogueSearchesAtStart": 3,
+    "catalogueCallsWhileComparingAndRepairing": 0,
+    "moneyProgressGoalPlanAndOffersUnchangedByTrials": true,
+    "simulatedContributions": 1,
+    "requestsLeavingTheOrigin": 0,
+    "newTabsOpened": 0
+  },
+  "sources": {
+    "index.html": "142213a5e5fc4d4e0f728f83f9452f8cf7ffabf92cabe455e9ce9079a9a933b4",
+    "app.css": "5e2e5e5097837dbea9836e2598d7e3f4f6b1b3a79c7a12573c52f1394b864348",
+    "scripts/demo.mjs": "b250548933abb96cfd698a80185ddc803794454c1abf6caeedad6ea1ac4ca47d",
+    "scripts/family-trip.mjs": "46a701ae7d382ee974817dc23a89a5ae7abcc1483f8d6f2233700dabfa272002",
+    "server/app.mjs": "6a39200fb9c107c271b3e486e3da0e760d7d6d125066d5038536d771f2fdb102",
+    "server/household.mjs": "174c258a0185107d65c7ee5023f637852bc8c64c8b7e274cced51aa28c12d2f4",
+    "server/family-choices.mjs": "f5812ce0c28428bef70b292412595ec55d6efc85fc162effb8a12c54d9881b15",
+    "server/kit/list.mjs": "f67c369bbab39ea1b78c468cc36f18d2d6d8d35fccf33cd66243fcdd8d6e71e3",
+    "server/kit/planner.mjs": "ce73fc5a9cb1aeae4bf75fc97f534aa63e5b069daf500ea0eaa74c8fcbd1a59c",
+    "server/kit/solver.mjs": "4e109b3bcdcbbc72b0941ee87736df173e5f40ab7e8a4a11808f47d29522d1d6",
+    "server/merchant/channel3.mjs": "d7827d12b18a7c41fccedf4039f793da5054f564953a4bfb88b4363f97a1adad",
+    "src/app/main.js": "dfe879f0c18c5e5167877114941737b5c72cbb87f7662247d162649df7103e5c",
+    "src/app/kit-plan.js": "70383ccee72710bec378b909684e8c6ac0d4a186b57122c7fe6e65baa4dabe4e",
+    "src/app/family-choices.js": "ea4f4b3b54eba6ffbdada4cbdd85f2666e27105a9cbb0b7f78f318483a9f04a1",
+    "src/app/merchant.js": "cc1b1a775cdb7d8e32f58b83b0474946a26202c595dddd2fcb4f44a23de5f59e",
+    "src/core/catalogue.js": "6eb2809e4be855247e5165b88455e4cdb70e0092f54f0073861fe04793292dff",
+    "src/core/kit-plan.js": "cbf3fa7db9770fecc6c463608887d359169d86fc2a2cc13db532ac3b01b1a08a",
+    "src/core/family-choices.js": "9640a8d3f85f950f3a1480c0d9e79b4572262bf1a1132c8058f990e13946b064",
+    "src/core/family-fit.js": "11d09409b301ca010a308848b61ae584d2007d204e31acb14c4d5c857a8989d6",
+    "solver/src/lib.rs": "fa7fff96dde25f7cbc76910924de0c127eb2f6a62e287ec7a25527d5811e27c6",
+    "solver/src/main.rs": "020956e3553401268f10bd178c7019d4837a56f5885ff297a6fecda48e97da95",
+    "solver/Cargo.toml": "05634e24de3df3f465970ed212be23c5605aaf8b1ef0d1fb6563ccefd01ba5f0",
+    "solver/Cargo.lock": "111ed384a18b543dfcaa32b00fb8821a7b838241f54f8c6b6567185ae206f16a",
+    "solver/rust-toolchain.toml": "284106289bf75e0a2082a5a829684c1205eabd9c90883a39d59bf74d519641b5",
+    "test/e2e/family-trip.spec.mjs": "268cb11d865606419a89ce37c158b90c0112d69b0f8a0c0c88180cab5eb73b49",
+    "test/e2e/support/deeds.mjs": "13f17839d9f22002b90a363ae433110ea641eaf0d2c712c8bf43f284ee11bb91",
+    "playwright.config.mjs": "20fa9f257409ffc57aa65ffcb4f059cc05a790176c525cf565de660cf55622a1"
+  },
+  "images": [
+    {
+      "path": "docs/screenshots/family-trip-desktop-comparison.png",
+      "sha256": "b579b31803a4be2244f738bb40995c0175bb345dc32c739085fc466b9b1afc7e",
+      "bytes": 279481,
+      "pixels": "1440 x 1000",
+      "view": "desktop, 1440 x 1000",
+      "shows": "Step 4 of the spec: after the visitor types a $90 one-off and presses Compare complete kits. Two kits of invented \"Sample:\" listings fit by Dec 27: $150 (finishes Dec 20) and $180 (finishes Dec 27)."
+    },
+    {
+      "path": "docs/screenshots/family-trip-desktop-repair.png",
+      "sha256": "c2657ae16dd326d857c5e12e976e26524c7228e089f65f2134945bb31323a2f2",
+      "bytes": 277718,
+      "pixels": "1440 x 1000",
+      "view": "desktop, 1440 x 1000",
+      "shows": "Step 6: the $180 kit is chosen with its stove kept, and the one-off is changed to $120. One kit fits: $150, the smallest change, switching only the tent; the stove is marked kept."
+    },
+    {
+      "path": "docs/screenshots/family-trip-phone-repair.png",
+      "sha256": "b9bd9078c18a2e31bf6e352ac7d04bb8394d276b488573bda919968be0c52151",
+      "bytes": 244938,
+      "pixels": "780 x 1688",
+      "view": "phone project, 390 x 844 touch-emulated at device scale 2",
+      "shows": "Step 6 on the 390 px phone project: the same $150 smallest change, the switched tent, the kept stove, and the note that the listings are invented."
+    }
+  ]
+}
