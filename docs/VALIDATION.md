@@ -1,5 +1,51 @@
 # Validation
 
+## Kit list review correction 002 — November 9, 2026
+
+Codex's review of `4642e94` found one remaining input-preservation error, F3. Correction 001 had recorded it as an unchanged limit; the root reviewer then authorized fixing it. The fix is `e6b1943`; these notes are the commit after it.
+
+**What was wrong:**
+- While the kit list was still empty, its typing box showed without being opened explicitly.
+- If an adult had typed a list there, or chosen a photo, and another adult in the same household and goal saved the first list meanwhile, a live update hid the box.
+- The entry stayed only in the hidden box, and **Start a new list** then erased it.
+
+Codex reproduced this through the module, and the probe kept with correction 001's evidence recorded the same.
+
+**The fix,** in `src/app/kit-list.js`: when such a save arrives while the box is shown with typed text or a chosen photo, the box stays open.
+- **What stays:** the entry and its focus. The new saved list shows above it to compare, and **Start a new list** is not offered meanwhile.
+- **What is sent:** nothing on its own. Only the adult's own **Check this list** and **Save this list** replace that list. The draft says "Saving replaces the saved list.", and the save goes through the existing revision check against the list the adult has seen.
+- **Unchanged:** with nothing entered, the box closes as before. A change of household, goal or person still drops everything (correction 001).
+
+**Regression tests:**
+- **`test/unit/kit-list-page.test.mjs`** gains one test with three cases, on the same minimal DOM:
+  - **typed text:** kept with its focus beside Ash's list, with nothing sent until Check and Save. The save is sent against revision 1; the box then closes and stays closed on a re-read.
+  - **a chosen photo:** still shown and still readable, with nothing sent. The browser's image decoding and canvas are replaced by stand-ins in the test.
+  - **nothing entered:** the box closes and the saved list's actions show, as before.
+- **`test/e2e/kit-list.spec.mjs`**, the existing journey: Ash now types `2 x torch; 1 x stove` into the empty box while Rowan makes and saves the first list.
+  - Ash's text and focus stay, and Rowan's list shows.
+  - Ash sends nothing until Check and Save. Ash's list then replaces Rowan's for every member.
+  - The rest of the journey is unchanged; the kit ends at revision 5 instead of 4.
+
+**Before and after** (Node 22.16.0 and 26.0.0, `.env` loading off, non-loopback transport denied):
+
+| Source | Page tests, on each Node version | Kit journey |
+| --- | --- | --- |
+| `4642e94`, with the new tests | 17 results: 14 pass, 3 fail (the typed and photo cases and their parent) | Desktop: failed at Ash's box (expected visible, received hidden) |
+| The fix, `e6b1943` | 17 of 17 pass | 2/2, desktop and 390 px phone |
+
+The failures before the fix were the reported ones: "the typing box is still shown" and "the chosen photo is still shown" were false. The nothing-entered case and every correction-001 test passed both before and after.
+
+**Other checks:** `npm run check` passed. The full unit suite and the other Plan specs were not run locally. The hosted Release checks run the whole selection on the final head; the result is in the PR.
+
+**Screenshots:** unchanged and still stamped at `8461902`; none of them shows this case. The extended journey's own capture of the saved list matches the committed one except for the save time.
+
+**Limits:**
+- **Photo case:** checked only in the module test, with stand-ins for image decoding. The browser journey covers typed text.
+- **No notice** says that another adult saved while this adult was typing. The saved list appears above the box, and the draft's "Saving replaces the saved list." is the warning before any save.
+- **Earlier limits:** the test DOM is not a browser, and the earlier kit-list limits still apply.
+
+**Evidence:** kept local and ignored, in `test-results/kit-checklist-20261109/correction-002/`: the before, after and final logs, the guard and browser logs, commands and `SHA256SUMS.txt`.
+
 ## Kit list review correction 001 — November 9, 2026
 
 Codex's review of PR #57 (`8461902` and `d39ae12`) found two scope-boundary errors in the page's kit list, `src/app/kit-list.js`. It reproduced both by calling the exported module with invented states over a minimal DOM. The fix is `b3f8377`; these notes are the commit after it. The [kit-list record](#kit-list-from-text-or-a-photo--november-9-2026) below is unchanged.
@@ -57,7 +103,7 @@ During development, the first version of the fix failed the leftover-message tes
   - a live update hides the box;
   - the text is kept only in the hidden box, with no message;
   - **Start a new list** clears it.
-  This correction keeps same-person behavior as it was; a throwaway probe recorded it.
+  This correction keeps same-person behavior as it was; a throwaway probe recorded it. It was fixed afterwards, by [review correction 002](#kit-list-review-correction-002--november-9-2026).
 - **Earlier limits still apply.** Everything in the kit-list record below holds: no live OpenAI call, and no human, device, accessibility-audit or performance evidence.
 
 **Evidence:** kept local and ignored, in `test-results/kit-checklist-20261109/correction-001/`: the before, first-attempt, after and final logs, the guard and browser logs, the probe, commands and `SHA256SUMS.txt`.
