@@ -31,7 +31,15 @@ npm run demo
 
 The demo starts a fresh in-memory household on an unused localhost port. It ignores `.env`, configured keys and saved records. Progress survives refresh while the demo runs; closing it ends that session. Payments are simulated and the planner uses built-in rules, with their existing labels.
 
-Without keys, Market Town search, reading a photo of a kit list and Cohere ordering are off, and no example catalogue is installed. Typing a kit list, family offers and the built-in planner all work. **Meet the Keeper**, at the top of Journal → House (or `?tour=1`), starts Moss's optional tour of the demo. For persistent local records and configured integrations, use `npm start` and [the runbook](docs/RUNBOOK.md). [Short review route](docs/JUDGE-HANDOFF.md#2-a-short-review-route)
+Without keys, Market Town search, reading a photo of a kit list and Cohere ordering are off, and `npm run demo` installs no catalogue. Typing a kit list, family offers and the built-in planner all work. **Meet the Keeper**, at the top of Journal → House (or `?tour=1`), starts Moss's optional tour of the demo. For persistent local records and configured integrations, use `npm start` and [the runbook](docs/RUNBOOK.md). [Short review route](docs/JUDGE-HANDOFF.md#2-a-short-review-route)
+
+**To try a complete family decision without any key, start the playable example instead:**
+
+```sh
+npm run demo -- --family-trip
+```
+
+It opens an invented family (Rowan, Ash and Wren) with a kit list and six invented listings from two sample shops. Try a one-off expense, compare complete kits, keep a line, then change the expense and see the smallest change that still fits. The family, shops, listings and prices are invented, and the page says so. The kits, dates and repair are computed by the same planner and solver as the configured app. No provider is contacted. [What to try, what is invented and its limits](docs/FAMILY-TRIP-EXAMPLE.md).
 
 Several people in one family, each with their own passkey? `npm run family -- --port 3200` runs the opt-in shared-family mode with invitations, adult/child permissions and live updates across open pages. Unsaved edits stay in place; an approval is cleared if its goal or sign-in changes. This runner uses simulated payments and its own database. See [shared families](docs/FAMILY-ACCESS.md).
 
@@ -65,7 +73,7 @@ These features are part of this source release; the preserved Mac apps do not ru
 **Plan → Kit list** keeps a short checklist of things to bring for the goal: each item, how many are needed and how many the family already has. An adult types or pastes it, which needs no key, or reads a photo of a written list with OpenAI (optional, with its own server key). Either way the result is a draft the adult checks before **Save this list**. It moves no money and changes no goal or plan. [How it works, privacy and limits](docs/KIT-LIST.md).
 
 **Complete kits** then compares whole kits for that list against the family's own offers, one-off amount and date.
-- An adult adds up to three Market Town listings for each item still to get, with their own count of items per listing. Listings come from Market Town, so this needs Channel3.
+- An adult adds up to three Market Town listings for each item still to get, with their own count of items per listing. Listings come from Market Town, so this needs Channel3, or the [family-trip example](docs/FAMILY-TRIP-EXAMPLE.md) and its invented catalogue.
 - Up to three different kits that fit are shown: lowest listed total, lower listed weight, fewest shops. When none fits, the closest one is shown with its shortfall.
 - Kept lines stay fixed, and the smallest change comes first when a larger one-off makes the chosen kit late.
 - A reviewed kit can become the goal, with its family schedule proposed in the same save.
@@ -82,7 +90,7 @@ These features are part of this source release; the preserved Mac apps do not ru
 | --- | --- |
 | ![Two kits fit by Dec 27 after a $90 one-off: $150 with the lowest listed total, and $180 with the lower listed weight](docs/screenshots/kit-planner-desktop-kits-compared.png) | ![After a $120 one-off, one kit fits: $150, switching only the tent from the chosen kit, with the kept stove](docs/screenshots/kit-planner-desktop-smallest-change.png) |
 
-These are test captures. The family (Rowan, Ash and Wren) is invented, and the "Test fixture" listings come from two invented shops through a fake catalog; the Cohere order comes from a fake transport. They are not live catalog results, and the default demo installs no catalog.
+These are test captures. The family (Rowan, Ash and Wren) is invented, and the "Test fixture" listings come from two invented shops through a fake catalog; the Cohere order comes from a fake transport. They are not live catalog results, and the default demo installs no catalog. `npm run demo -- --family-trip` runs the same decision in the page with its own invented listings: [playable family-trip example](docs/FAMILY-TRIP-EXAMPLE.md).
 
 ## Three sponsor integrations
 
