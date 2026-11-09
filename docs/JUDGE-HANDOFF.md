@@ -1,12 +1,26 @@
 # Run and review Our Castle
 
-Review [current main](https://github.com/alejandro-publius/our-castle/tree/main) and state the commit you inspected. Nine woodland districts, a chosen campsite/garden/schoolhouse that develops with the goal, one household journal, Merchant, Treasury, APIMatic context, the Studio Agent Framework and saved explicit receipt checks are implemented. Opt-in [shared families](FAMILY-ACCESS.md) add passkeys, invitations, server-enforced adult/child permissions and live page updates. [Family-planning integration](FAMILY-PLAN-REVIEW.md) adds read-only amount/date checks and protection against using stale plans. [Release status](RELEASE-READINESS.md) records actual runtime evidence and remaining recording/submission gaps. This is not a submitted entry.
+Review [current main](https://github.com/alejandro-publius/our-castle/tree/main) and state the commit you inspected. Nine woodland districts, a chosen campsite/garden/schoolhouse that develops with the goal, one household journal, Merchant, Treasury, APIMatic context, the Studio Agent Framework and saved explicit receipt checks are implemented. Opt-in [shared families](FAMILY-ACCESS.md) add passkeys, invitations, server-enforced adult/child permissions and live page updates. [Family-planning integration](FAMILY-PLAN-REVIEW.md) adds read-only amount/date checks and protection against using stale plans.
 
-Public main also includes the reviewed scene lifecycle and Treasury stalled-asset recovery fixes, plus [credential-free CI](VALIDATION.md#release-checks-workflow--november-7-2026). The final PR #38 hosted run passed 361 unit tests with one existing skip on each of three Node versions, and 19 desktop/phone browser checks with one designed skip. These are fake-provider checks. The preserved Mac apps described below still run the earlier compass/receipt release; cloning main gives the updated source.
+This source also includes:
+- [family choices](FAMILY-CHOICES.md), with their saved schedules and family-fit shopping;
+- a [kit list](KIT-LIST.md) from typed text or a photo, and [complete-kit planning](KIT-PLANNER.md);
+- Moss's optional [tour](KEEPER-GUIDE.md);
+- opt-in music;
+- payment recovery fixes.
+
+[Release status](RELEASE-READINESS.md) records actual runtime evidence and remaining recording/submission gaps. This is not a submitted entry.
+
+It keeps the reviewed scene lifecycle and Treasury stalled-asset recovery fixes, and [credential-free CI](VALIDATION.md#release-checks-workflow--november-7-2026). On this source (`3aae283`), [run 42659078905](https://github.com/alejandro-publius/our-castle/actions/runs/42659078905) passed:
+- 557 unit tests with one existing skip on each of Node 22.16.0, 24 and 26, with the Rust solver built and tested;
+- the complete-kit journey (2 passed);
+- 45 desktop/phone browser checks, with 3 designed skips.
+
+These are fake-provider checks. The preserved Mac apps described below still run the earlier compass/receipt release `4082df5`; cloning the source gives the updated build.
 
 ## 1. Run it
 
-Use Node.js **22.16 or later** (verified development environment: Node 26). The no-credentials game runs with simulated payments and a built-in rules planner. It is not a live PayPal/AI demonstration.
+Use Node.js **22.16 or later** (verified development environment: Node 26). The no-credentials game runs with simulated payments and a built-in rules planner. It is not a live PayPal/AI demonstration. Market Town search, reading a kit-list photo and Cohere kit ordering are off without their own keys, and no example catalogue is installed.
 
 The repository is public; cloning needs no GitHub sign-in. Runtime keys and owner data are excluded. See [release readiness](RELEASE-READINESS.md#github-publication-result).
 
@@ -20,17 +34,22 @@ npm run demo
 
 Use the same command from a POSIX shell or PowerShell; the launcher has no shell-specific environment syntax. It uses an OS-assigned localhost port and a fresh in-memory database, ignoring `.env`, inherited provider keys, `HOST`, `PORT` and data-directory settings. It leaves existing servers and households alone. Refresh retains progress; Ctrl+C ends the session. A new run starts fresh. Use ordinary `npm start` for the separately configured, persistent app.
 
-For live integrations on another machine, use your own sandbox developer credentials and runtime API key following [the README](../README.md#real-paypal-sandbox-and-ai). Channel3 needs a server key; Studio's local trial is not bundled. Studio may show its evaluation notice without a suitable licence. No runtime secrets or owner databases are distributed.
+For live integrations on another machine, use your own sandbox developer credentials and runtime API key following [the README](../README.md#real-paypal-sandbox-and-ai). Channel3 needs a server key; Studio's local trial is not bundled. Reading a kit-list photo and ordering complete kits use their own optional keys, `KIT_OPENAI_API_KEY` and `KIT_COHERE_API_KEY` ([settings](RUNBOOK.md#merchant-and-treasury-settings)). Studio may show its evaluation notice without a suitable licence. No runtime secrets or owner databases are distributed.
 
 ## 2. A short review route
 
-1. Name the house and choose a crest. The map starts close to Hearth Village; the **compass beside View** lets you drag between places at that scale. **Whole realm** shows all nine districts.
+1. Name the house and choose a crest. The map starts close to Hearth Village; the **compass beside View** lets you drag between places at that scale. **Whole realm** shows all nine districts. Optionally, **Meet the Keeper** at the top of Journal → House starts Moss's eight-step tour.
 2. **Journal → Plan → Find an item**, or **Areas → Market Town → Merchant:** with Channel3 configured, search within a budget. **Use as goal** drafts the Plan; confirm **Save as our goal** explicitly. Manual refresh and cheaper alternatives keep changed offers subject to review; selected stock/variant checks can expire an old draft. The no-key demo keeps search disconnected and uses its existing camping-trip goal; do not treat the disconnected state as fake product results.
 3. **Journal → Plan:** save a campsite, garden or schoolhouse **Build** choice with the goal, then try a weekly amount/date with **Check schedule**; a later-date suggestion only fills the form. Explicitly make, review and use a plan to save it. The AI planner is live only with a runtime key; otherwise the rules planner is labelled accordingly. The project's **Visit** control reaches the chosen place, including on a phone.
-4. **Contribute:** choose Rowan (adult), approve the exact amount and contribute. A $15 simulated contribution from the synthetic $60/$300 starting state opens the Manor at $75. It is labelled simulated.
-5. Dismiss the short deed, inspect the Manor and confirm the village remains. **View deed** reopens an earned area's card.
-6. **Ledger:** the illustrated Studio 3.1 milestone points to the next area and its weekly comparison uses the accepted plan and contribution/refund records. AG Grid filters/search affect only the list; select a contribution to see its receipt and saved-check status/time when present. A record with no saved check says so. **Visit…** returns to the earned district. One note beside the selected record identifies the steward's mode: the configured steward says “Cannot make payments,” while the no-key demo says “Saved confirmations.” **House steward** opens the questions; **Last confirmation** reads saved local history without a model or PayPal call. Opening the Ledger or a receipt never makes a fresh provider check.
-7. Refresh and select the receipt again. Goal, contribution records and earned areas persist while this demo session runs. Explore night/rain and inspect the palace, towers and sword; viewing a locked property does not earn it. Saved PayPal-check history belongs to the configured sandbox flow, not to simulated receipts.
+4. **Journal → Plan → Kit list and Family choices** need no key.
+   - In Kit list, type `1 x 4-person tent; 2 x sleeping bag; 2 x torch`, choose **Check this list**, enter what is already at home under Have, then **Save this list**.
+   - In Family choices, Rowan can offer a weekly amount and try a one-off expense against the current goal.
+   - Reading a photo needs the server's own OpenAI key. Adding items needs Channel3, and so does **Complete kits**, whose listings come from Market Town; without it the page says Market Town is not connected.
+   - The README's kit screenshots use a fake catalog and an invented family, not a live catalog.
+5. **Contribute:** choose Rowan (adult), approve the exact amount and contribute. A $15 simulated contribution from the synthetic $60/$300 starting state opens the Manor at $75. It is labelled simulated.
+6. Dismiss the short deed, inspect the Manor and confirm the village remains. **View deed** reopens an earned area's card.
+7. **Ledger:** the illustrated Studio 3.1 milestone points to the next area and its weekly comparison uses the accepted plan and contribution/refund records. AG Grid filters/search affect only the list; select a contribution to see its receipt and saved-check status/time when present. A record with no saved check says so. **Visit…** returns to the earned district. One note beside the selected record identifies the steward's mode: the configured steward says “Cannot make payments,” while the no-key demo says “Saved confirmations.” **House steward** opens the questions; **Last confirmation** reads saved local history without a model or PayPal call. Opening the Ledger or a receipt never makes a fresh provider check.
+8. Refresh and select the receipt again. Goal, contribution records and earned areas persist while this demo session runs. Explore night/rain and inspect the palace, towers and sword; viewing a locked property does not earn it. Saved PayPal-check history belongs to the configured sandbox flow, not to simulated receipts.
 
 **After an in-app contribution:** finish the deed's Visit/Close action, then **Review the receipt** opens Treasury at that contribution and its existing saved-check status. The steward's one note sits beside the record; its questions stay closed until requested. A final contribution follows this receipt route before **Visit your castle**. [Handoff and focused evidence](RECEIPT-HANDOFF.md).
 
@@ -61,12 +80,15 @@ Passkey setup needs a compatible browser/device. Existing multi-context tests us
 | APIMatic | [Eight SDK-specific Codex skills](APIMATIC-CODEX.md), discovery/hash evidence, documented payment fixes and real generated-SDK wire contracts using fake transport | Developer context and fixture-backed contracts, not another runtime money service or new live-provider proof |
 | Shared-family access | [Passkeys, invitations, adult/child permissions and live updates](FAMILY-ACCESS.md); separate authenticated browser contexts and fake-provider boundary/recovery checks | Local WebAuthn with virtual authenticators; no hosted service, physical-device or observed human-playtest claim |
 | World and family journey | Focused desktop/touch-phone Chromium and Linux WebKit checks | Browser emulation, not physical devices/macOS Safari |
+| Family choices, schedules and family fit | [Offers, preferences, one-off trials, saved schedules and fit searches](FAMILY-CHOICES.md); fake-provider unit and browser checks | Invented catalog and fake transports; these flows were not retested against live Channel3 |
+| Kit list and complete kits | [Typed lists and fake-OpenAI photo drafts](KIT-LIST.md); [the compiled Rust solver equal to the reference on 403 cases, and fake-catalog/fake-Cohere journeys](KIT-PLANNER.md) | No live OpenAI, Channel3 or Cohere call; ranking quality not measured |
+| Recovery and payment safety | [Restart recovery, two servers on one database, refund ordering and snapshots](RELEASE-READINESS.md): real app processes on disposable databases with fake providers | Not a production or disaster-recovery guarantee |
 
 [VALIDATION.md](VALIDATION.md) gives exact runs and versions. [AWARD-STRATEGY.md](AWARD-STRATEGY.md) maps the implementations to official sponsor briefs without guaranteeing a prize.
 
 ## 4. What remains, by who has to act
 
-**Current Mac apps:** the owner household stays at **http://localhost:3010** and the isolated rehearsal at **http://localhost:3021**, both running reviewed implementation `4082df5` from `~/projects/our-castle-compass-release-20261107`. PR #32 integrates the compass, west-meadow review fix, direct Treasury receipt route and refreshed judge guidance; PRs #20/#27/#28 remain included. Both original households keep their prior access/provider modes and $60/$75 progress; shared-family mode uses its separate opt-in runner. All 19 application tables and the private environment matched the latest activation checks. [Release readiness](RELEASE-READINESS.md#current-mac-app) and private session metadata hold exact PIDs, backups and source details; this review guide does not assign a new checkout operator.
+**Current Mac apps:** the owner household stays at **http://localhost:3010** and the isolated rehearsal at **http://localhost:3021**, both running reviewed implementation `4082df5` from `~/projects/our-castle-compass-release-20261107`. PR #32 integrates the compass, west-meadow review fix, direct Treasury receipt route and refreshed judge guidance; PRs #20/#27/#28 remain included. Both original households keep their prior access/provider modes and $60/$75 progress; shared-family mode uses its separate opt-in runner. They do not run this source release (schema 12); activating it there is a separate step that has not been done. All 19 application tables and the private environment matched the latest activation checks. [Release readiness](RELEASE-READINESS.md#current-mac-app) and private session metadata hold exact PIDs, backups and source details; this review guide does not assign a new checkout operator.
 
 **Completed manual checkout:** the owner was the sole browser operator and completed the approved $15 contribution. This worker inspected the saved capture/credit, fixed the provider's forced-tool incompatibility, and made one necessary same-order steward retry through the local API. It genuinely called `get_order`; the server returned `match`, selected-order `verified`, and no warnings. Do not create another payment or repeat paid suites.
 
@@ -108,6 +130,9 @@ Identify the commit you actually inspected, read [release readiness](RELEASE-REA
 | Does product search become a goal only after confirmation? | [Merchant dialog](../src/app/merchant.js), [Channel3 adapter](../server/merchant/channel3.mjs), [goal save](../server/merchant/goal-item.mjs) | [Merchant browser cases](../test/e2e/channel3-merchant.spec.mjs), [connected journey](../test/e2e/connected-journey.spec.mjs) |
 | Is Studio doing meaningful work? | [Treasury widget](../src/app/treasury.js), [agent runner](../src/app/treasury-agent.js), [typed model](../server/treasury.mjs) | [Treasury implementation/evidence](TREASURY.md) |
 | What did the PayPal Doctor checklist find? | [Source-guided review and exact upstream reference](PAYPAL-DOCTOR-REVIEW.md) | Late-cancel/error reporting reproduced and fixed with fakes; native slash command and live probes not run; public webhook timing remains a deployment limit |
+| Can complete kits be compared without guessing? | [Planner](../server/kit/planner.mjs), [solver bridge](../server/kit/solver.mjs), [Rust solver](../solver/src/lib.rs), [reference](../src/core/kit-plan.js) | [Solver agreement and bridge](../test/unit/kit-solver.test.mjs), [HTTP cases](../test/unit/kit-planner.test.mjs), [journey](../test/e2e/kit-planner.spec.mjs); fake catalog and Cohere |
+| Do family choices keep each adult's own offer? | [Family choices](../server/family-choices.mjs), [comparison](../src/core/family-choices.js) | [HTTP cases](../test/unit/family-choices.test.mjs), [schedule cases](../test/unit/family-schedule.test.mjs), [journey](../test/e2e/family-choices.spec.mjs) |
+| Does a payment survive a restart or a second server? | [Contribution service](../server/payments/contributions.mjs) | [Restart](../test/unit/payment-restart.test.mjs), [two servers](../test/unit/payment-two-servers.test.mjs), [seeded model](../test/unit/payment-model.test.mjs) |
 | What did APIMatic contribute? | [Pinned context and provenance](APIMATIC-CODEX.md), SDK adapter | Documented context use and fake-provider recovery checks; not a runtime money service |
 | What is still a limitation? | [Release status](RELEASE-READINESS.md), [dependency review](TOOLKIT-MAINTENANCE.md), [licences](../NOTICE.md) | Unfilmed insert, unpublished video/unsubmitted entry, human playtest notes pending, local-only personas, no utility provider, remaining dependency advisories |
 

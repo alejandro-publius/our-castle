@@ -1,6 +1,36 @@
-# Release readiness — November 7, 2026
+# Release readiness — November 9, 2026
 
-**Current public source:** reviewed [PR #36](https://github.com/alejandro-publius/our-castle/pull/36), [PR #37](https://github.com/alejandro-publius/our-castle/pull/37) and [PR #38](https://github.com/alejandro-publius/our-castle/pull/38) are merged. They include the original PR #34/#35 commits, scene lifecycle fixes, usable Treasury fallbacks when optional bundles stall, and credential-free release checks. PR #38's exact head `f4bf89c` passed hosted guard/unit jobs on Node 22.16.0, 24 and 26 (361 passes and one existing skip each), and 19 desktop/phone browser cases with one designed skip. These checks use fake providers; see [actual runs and limits](VALIDATION.md#release-checks-workflow--november-7-2026).
+**This source release.** The integration branch `claude/main-source-release-20261109` proposes the reviewed source `3aae283`, with these release notes, for main. Main `579b4f6` is its ancestor: the source adds 61 commits from PRs #40–#58, each reviewed. Those PRs stay open. The reviewer merges this branch into main after its checks and records the merge.
+
+It includes:
+- **Recovery and payment safety:**
+  - [household snapshots](RUNBOOK.md#household-snapshots) (`npm run snapshot`);
+  - [payment recovery after an abrupt restart](VALIDATION.md#payment-recovery-across-an-abrupt-process-restart--november-7-2026);
+  - refunds applied in whatever order their events arrive ([refund ordering](REFUND-ORDERING.md)), including [before their capture](DEFERRED-REFUNDS.md);
+  - [two app servers on one database](VALIDATION.md#two-app-servers-on-one-database--november-8-2026);
+  - [malformed contribution ids refused with a 4xx](VALIDATION.md#malformed-contribution-ids-get-a-4xx--november-8-2026);
+  - [failure responses with a request reference](FAILURE-DIAGNOSTICS.md).
+- **[Readable receipts](VALIDATION.md#readable-contribution-receipts--november-8-2026):** what counts after a partial refund, and a pending capture said plainly.
+- **Opt-in music** ([one CC0 track](../assets/music/README.md)), muted on every page until Sound is enabled, and unchanged scene states reused ([scene reuse](SCENE-STATE-REUSE.md)).
+- **Moss's optional tour** of the example demo ([keeper guide](KEEPER-GUIDE.md)).
+- **[Family choices](FAMILY-CHOICES.md)**, their saved schedules, and **family-fit shopping** within the family's own limit and date.
+- **A [kit list](KIT-LIST.md)** from typed text or, with the optional OpenAI key, a photo.
+- **[Complete-kit planning](KIT-PLANNER.md):** a compiled Rust solver once built, otherwise the built-in JavaScript reference, with every answer checked. Ordering by Cohere is optional.
+- **Schema 12** (migrations 8–12; 27 tables on a fresh database). A database this source opens is upgraded on start.
+- **Dependencies:** `package-lock.json` is unchanged since main. The Rust solver adds one locked crate, `serde_json` 1.0.154. The release checks workflow now builds and tests the solver, and runs the kit journey in its own job.
+
+**Checks on this source:** [run 42659078905](https://github.com/alejandro-publius/our-castle/actions/runs/42659078905), on `3aae283`, passed all five jobs. Each job checked out merge `fa1e134`, whose tree `b0fe269` is the source's own.
+- **Guard and unit tests** on Node 22.16.0, 24 and 26: 557 tests each, 556 passed, 0 failed, 1 existing skip. Each job built the Rust solver with rustc 1.99.1, and its own 9 tests passed.
+- **The complete-kit journey**, desktop and phone: 2 passed.
+- **The browser release selection:** 45 passed, 3 designed skips, 0 failed.
+
+These checks use isolated data and fake providers. Each feature's own checks are in [VALIDATION.md](VALIDATION.md). No live Channel3, OpenAI or Cohere call was made for the new features, and no new sandbox payment. The integration branch's own run, on its final head, is recorded in its PR.
+
+**Not activated.** The preserved Mac apps keep running `4082df5` at schema 7: owner 3010 (PID 17038) and rehearsal 3021 (PID 17039). This release does not touch them, their databases or their `.env`.
+- Running this source on those saved databases would upgrade them to schema 12. That activation needs its own backups, rehearsal and authorization, and has not been done.
+- The $15 sandbox proof below is historical (release `4082df5`). It does not validate the newer features.
+
+**Previous public source (November 7):** reviewed [PR #36](https://github.com/alejandro-publius/our-castle/pull/36), [PR #37](https://github.com/alejandro-publius/our-castle/pull/37) and [PR #38](https://github.com/alejandro-publius/our-castle/pull/38) are merged. They include the original PR #34/#35 commits, scene lifecycle fixes, usable Treasury fallbacks when optional bundles stall, and credential-free release checks. PR #38's exact head `f4bf89c` passed hosted guard/unit jobs on Node 22.16.0, 24 and 26 (361 passes and one existing skip each), and 19 desktop/phone browser cases with one designed skip. These checks use fake providers; see [actual runs and limits](VALIDATION.md#release-checks-workflow--november-7-2026).
 
 **Preserved Mac implementation: `4082df5`.** [Integration PR #32](https://github.com/alejandro-publius/our-castle/pull/32) includes the original commits from [compass PR #30](https://github.com/alejandro-publius/our-castle/pull/30) and [judge-guide PR #31](https://github.com/alejandro-publius/our-castle/pull/31), plus the west-meadow bounds fix and direct Treasury receipt handoff. Earlier PRs #20/#27/#28 remain included. Owner **http://localhost:3010**, PID **17038**, and preserved rehearsal **http://localhost:3021**, PID **17039**, run `~/projects/our-castle-compass-release-20261107`. The familiar `our-castle-reviewed` checkout is synchronized; the dependency lock is unchanged. This supersedes every older source/PID entry below.
 
@@ -28,13 +58,14 @@ The earlier competing migration numbers are resolved by one checked sequence: go
 | --- | --- |
 | Game and three sponsors | Implemented: Channel3 Merchant, AG Grid/Studio Treasury and Agent Framework, APIMatic context/SDK improvements |
 | Latest scenery | 356×260 realm, complete mountain slopes, official-outline PayPal hillside letters, three small sponsor signs and map names clear of controls. [Terrain](MOUNTAIN-BORDER.md), [signs](SPONSOR-WORLD-DETAILS.md), [phone checks](VALIDATION.md) |
-| Current local validation | Compass parent: 26 actual-input checks and 4 final browser passes / 2 designed viewport skips. Receipt/meadow follow-up: source/art guard, 3 journey unit/HTTP checks and 14 focused desktop/phone browser passes. Earlier integrated baseline: 358 unit pass / 1 old skip; Merchant variant follow-up: 32 focused unit/HTTP and 2 browser passes. Full suites were not repeated for these UI/camera changes; new provider evidence is fake. [Exact evidence](VALIDATION.md) |
+| Current validation | This source: the hosted run above, and each feature's fake-provider checks in [VALIDATION.md](VALIDATION.md). Before it, compass parent: 26 actual-input checks and 4 final browser passes / 2 designed viewport skips. Receipt/meadow follow-up: source/art guard, 3 journey unit/HTTP checks and 14 focused desktop/phone browser passes. Earlier integrated baseline: 358 unit pass / 1 old skip; Merchant variant follow-up: 32 focused unit/HTTP and 2 browser passes. Full suites were not repeated for these UI/camera changes; new provider evidence is fake. [Exact evidence](VALIDATION.md) |
 | GitHub source release | **Public**, confirmed through anonymous repository metadata and README access. Published using the owner's existing Mac GitHub CLI login |
 | Hosted site | Not deployed; repository run instructions satisfy the checked functional-demo route |
-| Mac activation | Both apps run reviewed `4082df5` from `~/projects/our-castle-compass-release-20261107`, schema 7; the familiar reviewed checkout is synchronized. Original checkout, all 19 table values and `.env` are preserved |
+| Mac activation | Both apps run reviewed `4082df5` from `~/projects/our-castle-compass-release-20261107`, schema 7; the familiar reviewed checkout is synchronized. Original checkout, all 19 table values and `.env` are preserved. This source release is not activated there |
+| Optional providers in this source | Channel3 search, OpenAI kit-photo reading and Cohere kit ordering are each off without their own key. They were checked only with fake transports |
 | Approved sandbox flow | Owner completed one $15 in-app contribution; one credit to $75, village/Manor open, real same-order `get_order` and server `match`; preserve the existing 3021 rehearsal |
 | Entry text / current shot plan | Ready in [SUBMISSION-DRAFT.md](SUBMISSION-DRAFT.md) and [SUBMISSION-SHOTLIST.md](SUBMISSION-SHOTLIST.md) |
-| Judge session | Earlier anonymous clone/install and ten demo checks passed; latest integrated Mac install/startup/resource and focused browser checks are separate evidence. The no-key demo and family runner remain isolated |
+| Judge session | The no-key demo offers the typed kit list, family offers and Moss's tour; search, photo reading and kit ordering need their own keys ([route](JUDGE-HANDOFF.md#2-a-short-review-route)). Earlier anonymous clone/install and ten demo checks passed for an earlier build; latest integrated Mac install/startup/resource and focused browser checks are separate evidence. The no-key demo and family runner remain isolated |
 | Video / YouTube / Devpost | Existing **2:42 review cut** is preserved and predates this integration. Checkout insert remains unfilmed; recording is paused. No final YouTube upload or Devpost submission |
 
 ## Source review
@@ -45,6 +76,7 @@ The earlier competing migration numbers are resolved by one checked sequence: go
 - The two release implementation/documentation commits also passed a separate history scan with zero findings. Source snapshot `331d864` contains 411 files and excludes runtime keys, databases, logs, local captures and dependencies. A fresh extraction installed 276 packages with `npm ci`, passed the original-art/source guard and started in example-payments/example-planner/merchant-off mode. The app, new runner, actual Studio bundle and bundled font all returned HTTP 200. The smoke script's first attempt used a wrong font filename; the corrected check passed without an application change.
 - The source uses the existing MIT code licence and retains original-art, font, Three.js and APIMatic notices. The AG Studio commercial/evaluation notice is explicit; no trial key is included. Public availability does not grant a general Tiny Castle brand/art licence or a Studio production licence.
 - Twelve dependency packages remain audit-flagged through other advisories after the scoped LangChain patch. See [TOOLKIT-MAINTENANCE.md](TOOLKIT-MAINTENANCE.md); this is not an audit-clean or production-ready claim.
+- The credential and media scans above covered the history and media at publication. The commits and screenshots added by this source release were not re-scanned in this pass.
 
 Ignored audit evidence is under `test-results/release-audit/`; functional evidence is under `test-results/studio-agent/`. Historical live reports and all original media are unchanged.
 
