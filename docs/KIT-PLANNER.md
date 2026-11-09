@@ -8,6 +8,8 @@
 
 It is planning only. It buys nothing, moves no money, reserves no price or stock, and changes no goal until an adult saves one.
 
+**Try it without keys:** `npm run demo -- --family-trip` supplies six clearly invented listings and an example family to this same engine. [The playable guide](FAMILY-TRIP-EXAMPLE.md) shows the $150/$180 comparison and repair after an expense changes. The plain demo still has no catalogue.
+
 ## What a family does
 
 1. **Listings for each item still to get.** For each line of the saved kit list with something still to get (Need minus Have), an adult chooses **Find listings for …**.

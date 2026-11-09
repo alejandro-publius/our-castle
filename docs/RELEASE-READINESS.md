@@ -1,15 +1,21 @@
 # Release readiness — November 9, 2026
 
-**Public source:** [PR #59](https://github.com/alejandro-publius/our-castle/pull/59) merged the reviewed PR #40–#58 source into main at `b21b2d8` on November 9. The implementation tree is `ba265ea`. This handoff changes documentation and synthetic evidence only.
+**Public source:** [PR #59](https://github.com/alejandro-publius/our-castle/pull/59) integrated the reviewed PR #40–#58 source at `b21b2d8`; [PR #60](https://github.com/alejandro-publius/our-castle/pull/60) recorded the saved-app activation and live synthetic photo evidence. This source also includes the [playable family-trip example](FAMILY-TRIP-EXAMPLE.md). The latest source checks are recorded at the top of [validation](VALIDATION.md); the two saved runtimes below remain pinned separately.
 
 It includes household snapshots and restart recovery; refund ordering, including a refund arriving before its capture; two-server payment checks; readable receipts and request references; optional muted music and Moss's tour; family choices, saved schedules and family-fit shopping; typed or photographed kit lists; and complete-kit planning with a checked Rust solver and optional Cohere ordering. See [validation](VALIDATION.md), [kit lists](KIT-LIST.md) and [complete kits](KIT-PLANNER.md).
 
-**Source checks:** [PR #59 run 42669664087](https://github.com/alejandro-publius/our-castle/actions/runs/42669664087) passed all five jobs on head `8a984ca`; its checked-out merge tree equals the current implementation tree.
+**Earlier integrated-source checks:** [PR #59 run 42669664087](https://github.com/alejandro-publius/our-castle/actions/runs/42669664087) passed all five jobs on head `8a984ca`; its checked-out merge tree equals that release’s implementation tree `ba265ea`.
 - Node 22.16.0, 24 and 26: 557 unit results each, 556 passed, one existing skip, zero failures; each job also passed nine Rust tests.
 - Browser release selection: 45 passed, three designed skips.
 - Native complete-kit journey: two desktop/390 px phone passes.
 
 The separate post-merge [run 42672760816](https://github.com/alejandro-publius/our-castle/actions/runs/42672760816) encountered GitHub internal errors. Its second attempt passed all four jobs GitHub created (three unit/Rust jobs and the native-kit journey); GitHub never created its release-browser job and refused another retry. It is not a fully green post-merge run. The passing equivalent-tree PR run above remains distinct evidence. These are fake-provider checks, not live payment or ranking-quality evidence.
+
+## Playable local example
+
+After `npm ci`, run **`npm run demo -- --family-trip`** and open its printed localhost URL. It starts an invented family and local sample catalogue in a fresh in-memory household, using the existing engine for complete kits, kept choices and minimum-change repair. The optional photo reader and Cohere remain off; contributions are simulated. [Try the decision, see the screenshots and check the limits](FAMILY-TRIP-EXAMPLE.md).
+
+The plain `npm run demo` retains its fresh household with no catalogue. The family-trip flag is an opt-in fresh session; the saved 3010/3021 apps and their historical sandbox records remain separate.
 
 ## Current Mac app
 
@@ -32,7 +38,7 @@ Private backups and raw activation reports stay outside Git and web roots. The [
 - The completed $15 capture and same-order `get_order` match are **historical evidence from implementation `4082df5`**, preserved through this upgrade. No new payment or PayPal lookup was made, and empty saved-check history was not backfilled.
 - OpenAI evidence is one synthetic image, not a real-family-photo benchmark or browser upload test. Channel3 refresh/variants and Cohere ordering retain their documented fake-provider evidence.
 - Some task 016–019 validation notes overstated the old transport preload's coverage. [The correction and new controls](VALIDATION.md#transport-isolation-correction--november-9-2026) limit those earlier claims.
-- `npm run demo` remains an isolated no-key session. It supports typed lists, family offers, simulated contributions and the tour; complete kits currently need a configured catalog. A playable example is being developed separately and is not part of this pinned runtime.
+- The family-trip example demonstrates actual planning over six invented listings. Real catalogue freshness, live ranking quality and human usefulness remain separate evidence; no sample result is presented as a live shopping offer.
 - The existing **2:42 review cut** is unchanged and predates these features. Its checkout insert remains unfilmed; no video publication, deployment or Devpost submission is claimed.
 - Observed family playtesting, physical-device/passkey and screen-reader checks, hosted multi-family operation, production Studio terms and remaining dependency advisories are separate follow-up. No participant evidence is invented.
 

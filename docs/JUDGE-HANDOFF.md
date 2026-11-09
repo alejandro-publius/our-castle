@@ -20,7 +20,7 @@ These source suites use fake providers. Both saved Mac apps now run the integrat
 
 ## 1. Run it
 
-Use Node.js **22.16 or later** (verified development environment: Node 26). The no-credentials game runs with simulated payments and a built-in rules planner. It is not a live PayPal/AI demonstration. Market Town search, reading a kit-list photo and Cohere kit ordering are off without their own keys, and no example catalogue is installed.
+Use Node.js **22.16 or later** (verified development environment: Node 26). Start with the **playable family-trip example** to try the complete-kit decision engine without provider accounts. Its family, shops, prices and contributions are explicitly labelled invented/simulated; the existing planner computes the results. OpenAI photo reading and Cohere ordering stay off. This is not a live PayPal/AI demonstration.
 
 The repository is public; cloning needs no GitHub sign-in. Runtime keys and owner data are excluded. See [release readiness](RELEASE-READINESS.md#github-publication-result).
 
@@ -28,9 +28,11 @@ The repository is public; cloning needs no GitHub sign-in. Runtime keys and owne
 git clone https://github.com/alejandro-publius/our-castle.git
 cd our-castle
 npm ci
-npm run demo
+npm run demo -- --family-trip
 # Open the localhost URL printed in the terminal.
 ```
+
+For the plain fresh household without the authored trip or sample catalogue, use `npm run demo`. Its live integrations remain off without their keys. The [family-trip guide](FAMILY-TRIP-EXAMPLE.md) records the scenario, real checks and screenshots. A checkout without a compiled Rust binary uses the independent JavaScript reference; [native build instructions](KIT-PLANNER.md) describe the optional Rust path.
 
 Use the same command from a POSIX shell or PowerShell; the launcher has no shell-specific environment syntax. It uses an OS-assigned localhost port and a fresh in-memory database, ignoring `.env`, inherited provider keys, `HOST`, `PORT` and data-directory settings. It leaves existing servers and households alone. Refresh retains progress; Ctrl+C ends the session. A new run starts fresh. Use ordinary `npm start` for the separately configured, persistent app.
 
@@ -38,13 +40,27 @@ For live integrations on another machine, use your own sandbox developer credent
 
 ## 2. A short review route
 
+### Start with the family decision
+
+In the family-trip example, Plan opens with an invented family and packing list already entered. The starting $60 is reported progress, not a bank balance.
+
+1. Choose **Try a one-off expense** and enter **90**. Rowan offers $20 a week and Ash $10. The two torches already at home need no purchase.
+2. Choose **See which complete kits fit**, then **Compare complete kits**. Inspect the computed **$150** lower-total kit and **$180** lighter kit. The deadline is seven weeks after this demo starts.
+3. Choose the $180 kit, then **Keep stove as it is**. Choose **Change the one-off expense** and enter **120**. The smallest repair switches only the tent, bringing the listed total to $150 while keeping the stove.
+4. Choose the repair and **Review this kit**. Inspect the unsaved draft, then explicitly **Save goal and propose this schedule** if wanted. Comparison and repair have not moved money or changed the goal.
+5. In **Contribute**, approve an exact simulated amount. After the deed, choose **Review the receipt** to see that contribution in the Treasury. Its simulated label stays visible; it does not gain a fabricated PayPal Match.
+
+The same planner and approval boundaries drive the configured app. Sample products exercise their local path; they do not establish live Channel3 prices, stock or purchasing. Switching example profiles is not passkey sign-in; use the separate family route below to inspect that implementation.
+
+### Explore the plain household or configured integrations
+
 1. Name the house and choose a crest. The map starts close to Hearth Village; the **compass beside View** lets you drag between places at that scale. **Whole realm** shows all nine districts. Optionally, **Meet the Keeper** at the top of Journal → House starts Moss's eight-step tour.
-2. **Journal → Plan → Find an item**, or **Areas → Market Town → Merchant:** with Channel3 configured, search within a budget. **Use as goal** drafts the Plan; confirm **Save as our goal** explicitly. Manual refresh and cheaper alternatives keep changed offers subject to review; selected stock/variant checks can expire an old draft. The no-key demo keeps search disconnected and uses its existing camping-trip goal; do not treat the disconnected state as fake product results.
+2. **Journal → Plan → Find an item**, or **Areas → Market Town → Merchant:** with Channel3 configured, search within a budget. **Use as goal** drafts the Plan; confirm **Save as our goal** explicitly. Manual refresh and cheaper alternatives keep changed offers subject to review; selected stock/variant checks can expire an old draft. The plain `npm run demo` keeps search disconnected; the opt-in family-trip command above supplies explicitly invented results instead.
 3. **Journal → Plan:** save a campsite, garden or schoolhouse **Build** choice with the goal, then try a weekly amount/date with **Check schedule**; a later-date suggestion only fills the form. Explicitly make, review and use a plan to save it. The AI planner is live only with a runtime key; otherwise the rules planner is labelled accordingly. The project's **Visit** control reaches the chosen place, including on a phone.
 4. **Journal → Plan → Kit list and Family choices** need no key.
    - In Kit list, type `1 x 4-person tent; 2 x sleeping bag; 2 x torch`, choose **Check this list**, enter what is already at home under Have, then **Save this list**.
    - In Family choices, Rowan can offer a weekly amount and try a one-off expense against the current goal.
-   - Reading a photo needs the server's own OpenAI key. Adding items needs Channel3, and so does **Complete kits**, whose listings come from Market Town; without it the page says Market Town is not connected.
+   - Reading a photo needs the server's own OpenAI key. Real product listings need Channel3. The opt-in family-trip example supplies a local invented catalogue to the same Market Town and complete-kit flow; the plain demo keeps Market Town disconnected.
    - The README's kit screenshots use a fake catalog and an invented family, not a live catalog.
 5. **Contribute:** choose Rowan (adult), approve the exact amount and contribute. A $15 simulated contribution from the synthetic $60/$300 starting state opens the Manor at $75. It is labelled simulated.
 6. Dismiss the short deed, inspect the Manor and confirm the village remains. **View deed** reopens an earned area's card.
@@ -100,9 +116,9 @@ The rehearsal now has **one completed order, one completed capture, two ledger e
 
 **Production follow-up:** hosted multi-family operation, public webhook delivery, physical passkey/device and screen-reader passes, suitable AG commercial terms and remaining dependency advisories. Local passkey households and cross-page updates are implemented and tested with virtual authenticators; they are not a claim of hosted production validation. Utility rewards require genuine authorized provider evidence; there is no such connection.
 
-## 5. Current review cut and preserved media
+## 5. Historical review cut and preserved media
 
-The existing [2:42 review cut](demos/current-review/our-castle-current-review-cut.mp4) is exported with narration, captions, an editable timeline and exact provenance. It predates the latest scenery, Plan shortcut and receipt history. Its explicit unfilmed checkout insert is at **1:08–1:36**; [kit and revised insert plan](demos/current-review/README.md). Recording/editing remains paused under the owner's instruction; this handoff refresh produces no media. The cut has not been uploaded to YouTube or submitted. Historical live sources are labelled separately from the recorded example game. Older kit instructions are historical; use the current insert plan before touching the already-occupied rehearsal port.
+The preserved [2:42 review cut](demos/current-review/our-castle-current-review-cut.mp4) is exported with narration, captions, an editable timeline and exact provenance. It predates the latest scenery, Plan shortcut and receipt history. Its explicit unfilmed checkout insert is at **1:08–1:36**; [kit and revised insert plan](demos/current-review/README.md). Recording/editing remains paused under the owner's instruction; this handoff refresh produces no media. The cut has not been uploaded to YouTube or submitted. Historical live sources are labelled separately from the recorded example game. Older kit instructions are historical; use the current insert plan before touching the already-occupied rehearsal port.
 
 All older sources and captions remain unchanged:
 
