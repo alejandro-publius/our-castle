@@ -6,7 +6,7 @@ import path from 'node:path';
 import { openDatabase } from '../../server/db.mjs';
 import { createClock } from '../../server/household.mjs';
 import { exchangeAction } from '../../server/exchange/index.mjs';
-import { assertVillageLeaveAllowed, clearExampleVillage, publicVillageFund, recordVillageReceipt, villageAction, villageFund, villagePaymentContext, villageView } from '../../server/village/index.mjs';
+import { assertVillageLeaveAllowed, clearExampleVillage, publicVillageFund, recordVillageReceipt, villageAction, villageFund, villagePaymentContext, villageReview, villageView } from '../../server/village/index.mjs';
 
 const clock = createClock('2026-11-10T12:00:00.000Z');
 function fixture(file = ':memory:') {
@@ -133,7 +133,7 @@ test('membership is rechecked, commitments may be withdrawn and fund history can
     f.act(f.b, 'share', { fundId: id, expectedRevision: 2, committedMinor: 0, confirmed: true });
     f.event(id, { eventRef: 'birch_capture', familyHouseholdId: f.b.householdId });
     assertVillageLeaveAllowed(f.db, f.b.householdId); f.exchange(f.b, 'leave');
-    rejects(() => villageFund(f.db, f.b, id), 403); rejects(() => villagePaymentContext(f.db, f.b, id), 403);
+    rejects(() => villageFund(f.db, f.b, id), 403); rejects(() => villagePaymentContext(f.db, f.b, id), 404);
     f.exchange(f.b, 'create', { name: 'New private neighbors', alias: 'PRIVATE_NEW_ALIAS' });
     f.event(id, { kind: 'refund', eventRef: 'birch_refund', parentRef: 'birch_capture', familyHouseholdId: f.b.householdId });
     assert.doesNotMatch(JSON.stringify(villageFund(f.db, f.a, id)), /PRIVATE_NEW_ALIAS/);
@@ -185,4 +185,55 @@ test('only a completely synthetic in-memory village can discard its fund history
   const dir = mkdtempSync(path.join(tmpdir(), 'castle-village-no-reset-')), saved = fixture(path.join(dir, 'synthetic.sqlite'));
   try { saved.create(); rejects(() => clearExampleVillage(saved.db, saved.a.householdId), 403, 'village_example_only'); }
   finally { saved.db.close(); rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('an outside adult can support a published fund without joining or learning private receipts and shares', () => {
+  const f = fixture(); try {
+    const id = f.create(); f.event(id, { amountMinor: 2500 });
+    rejects(() => villagePaymentContext(f.db, f.stranger, id), 404);
+    rejects(() => villagePaymentContext(f.db, f.stranger, id, { allowSettled: true }), 404);
+    rejects(() => villageReview(f.db, f.stranger, id), 404);
+    f.act(f.a, 'publish', { fundId: id, expectedRevision: 2, published: true, confirmed: true });
+    const context = villagePaymentContext(f.db, f.stranger, id);
+    assert.equal(context.attributionHouseholdId, null); assert.equal(context.viewerMember, false); assert.equal(context.published, true);
+    const review = villageReview(f.db, f.stranger, id);
+    assert.equal(review.progress.netMinor, 2500); assert.deepEqual(review.shares, []); assert.deepEqual(review.receipts, []);
+    assert.equal(review.viewerMember, false); assert.equal(review.canManage, false);
+    assert.doesNotMatch(JSON.stringify(review), /capture_one|VRC-|Birch|Cedar|PRIVATE|householdId/);
+    assert.equal(villageReview(f.db, f.a, id).viewerMember, true);
+    assert.equal(villagePaymentContext(f.db, f.a, id).attributionHouseholdId, f.a.householdId);
+    rejects(() => villageFund(f.db, f.stranger, id), 403);
+    f.db.prepare('INSERT INTO members(id,household_id,display_name,role,sort) VALUES(?,?,?,?,1)').run('child_outside', f.stranger.householdId, 'Child', 'child');
+    rejects(() => villagePaymentContext(f.db, { ...f.stranger, memberId: 'child_outside' }, id), 403);
+    rejects(() => villageReview(f.db, {}, id), 403);
+  } finally { f.db.close(); }
+});
+
+test('unpublishing blocks new outsider payments; only the actual adult with an existing intent can check it', () => {
+  const f = fixture(); try {
+    const id = f.create();
+    f.act(f.a, 'publish', { fundId: id, expectedRevision: 1, published: true, confirmed: true });
+    const published = villagePaymentContext(f.db, f.stranger, id);
+    assert.equal(published.published, true);
+    // The domain works before or after A's separately owned migration. Populate an actual intent row if schema16 is
+    // present, or its minimal ownership columns in this foundation-only test; caller-supplied claims never suffice.
+    f.db.exec('CREATE TABLE IF NOT EXISTS village_payment_intents (fund_id TEXT,household_id TEXT,member_id TEXT)');
+    const values = { id: 'vpay_fixture', request_id: 'outside_fixture', fund_id: id, household_id: f.stranger.householdId,
+      member_id: f.stranger.memberId, source: 'simulated', amount_minor: 100, currency: 'USD', recipient_json: 'null',
+      fund_revision: published.revision, target_minor: 10000, status: 'created', attribution_household_id: null,
+      created_at: clock.iso(), updated_at: clock.iso() };
+    const columns = f.db.prepare('PRAGMA table_info(village_payment_intents)').all().map(c => c.name).filter(c => Object.hasOwn(values, c));
+    f.db.prepare(`INSERT INTO village_payment_intents(${columns.join(',')}) VALUES(${columns.map(() => '?').join(',')})`).run(...columns.map(c => values[c]));
+    f.act(f.a, 'publish', { fundId: id, expectedRevision: 2, published: false, confirmed: true });
+    rejects(() => villagePaymentContext(f.db, f.stranger, id), 404);
+    rejects(() => villageReview(f.db, f.stranger, id), 404);
+    const check = villagePaymentContext(f.db, f.stranger, id, { allowSettled: true });
+    assert.equal(check.published, false); assert.equal(check.viewerMember, false); assert.equal(check.attributionHouseholdId, null);
+    f.db.prepare('INSERT INTO members(id,household_id,display_name,role,sort) VALUES(?,?,?,?,1)').run('other_adult', f.stranger.householdId, 'Other', 'adult');
+    rejects(() => villagePaymentContext(f.db, { ...f.stranger, memberId: 'other_adult' }, id, { allowSettled: true }), 404);
+    const second = f.create();
+    rejects(() => villagePaymentContext(f.db, f.stranger, second, { allowSettled: true }), 404);
+    f.db.prepare('DELETE FROM village_payment_intents').run();
+    rejects(() => villagePaymentContext(f.db, f.stranger, id, { allowSettled: true }), 404);
+  } finally { f.db.close(); }
 });

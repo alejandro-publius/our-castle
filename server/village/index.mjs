@@ -155,6 +155,16 @@ export function publicVillageFund(db, fundId) {
     organizer: { alias: f.organizer_alias }, recipientKind: JSON.parse(f.recipient_json)?.kind ?? null };
 }
 
+/** A signed-in visitor can review an explicitly published fund without joining its private neighborhood. */
+export function villageReview(db, scope, fundId) {
+  const f = fundRow(db, fundId), m = member(db, scope?.householdId);
+  if (f && m?.circle_id === f.circle_id) return { ...villageFund(db, scope, fundId), viewerMember: true };
+  if (typeof scope?.memberId !== 'string' || !getMember(db, scope.householdId ?? '', scope.memberId))
+    throw fail(403, 'village_sign_in', 'Sign in to review this published fund’s contribution options.');
+  const publicView = publicVillageFund(db, fundId);
+  return { ...publicView, recipient: JSON.parse(f.recipient_json), shares: [], receipts: [], canManage: false, viewerMember: false, published: true };
+}
+
 export function villageAction(db, { scope, actor, action, input }, clock) {
   adult(db, scope, actor);
   if (!input || typeof input !== 'object' || Array.isArray(input)) throw fail(400, 'village_input', 'Review a village action.');
@@ -206,12 +216,20 @@ export function villageAction(db, { scope, actor, action, input }, clock) {
 
 export function villagePaymentContext(db, scope, fundId, { allowSettled = false } = {}) {
   adult(db, scope);
-  const f = authorizedFund(db, scope, fundId), progress = accounting(rows(db, f.id), f.target_minor).progress;
+  const f = fundRow(db, fundId), m = member(db, scope.householdId);
+  const viewerMember = Boolean(f && m?.circle_id === f.circle_id);
+  // Existing payment reconciliation is permitted after publication ends, but only for the adult who already owns
+  // an actual intent. The boolean alone is never authority to inspect an unpublished outsider fund.
+  const heldIntent = allowSettled && f && db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name='village_payment_intents'").get()
+    && db.prepare('SELECT 1 FROM village_payment_intents WHERE fund_id=? AND household_id=? AND member_id=? LIMIT 1').get(f.id, scope.householdId, scope.memberId);
+  if (!f || (!viewerMember && !f.published && !heldIntent)) throw fail(404, 'village_fund', 'This fund is not shared with your family.');
+  const progress = accounting(rows(db, f.id), f.target_minor).progress;
   if (!allowSettled && f.status !== 'open') throw fail(409, 'village_closed', 'This fund is closed to new contributions.');
   if (!allowSettled && !progress.remainingMinor) throw fail(409, 'village_complete', 'This fund has reached its target.');
   return { id: f.id, fundId: f.id, rail: f.rail, targetMinor: f.target_minor, currency: f.currency, decimals: f.decimals,
     remainingMinor: progress.remainingMinor, recipient: JSON.parse(f.recipient_json), revision: f.revision, status: f.status,
-    householdId: scope.householdId, memberId: scope.memberId };
+    householdId: scope.householdId, memberId: scope.memberId, attributionHouseholdId: viewerMember ? scope.householdId : null,
+    viewerMember, published: Boolean(f.published) };
 }
 
 /** Trusted adapter entry only. Never accept a browser's claim that a transfer happened. */
