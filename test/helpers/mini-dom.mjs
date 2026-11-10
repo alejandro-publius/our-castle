@@ -136,8 +136,9 @@ export class MiniDocument extends MiniNode {
   }
 }
 
-// Start tags with double-quoted or bare attributes, end tags, comments and text: the plain markup of the page's blocks.
-const TOKEN = /<!--[\s\S]*?-->|<\/([a-z][a-z0-9]*)\s*>|<([a-z][a-z0-9]*)((?:\s+[a-z][a-z0-9-]*(?:="[^"]*")?)*)\s*\/?>|([^<]+)/y;
+// Start tags with double-quoted or bare attributes (including SVG viewBox), end tags, comments and text.
+// Only the decorative SVG icons need self-closing foreign-content elements; HTML keeps its usual void list.
+const TOKEN = /<!--[\s\S]*?-->|<\/([a-z][a-z0-9]*)\s*>|<([a-z][a-z0-9]*)((?:\s+[a-zA-Z][a-zA-Z0-9-]*(?:="[^"]*")?)*)\s*\/?>|([^<]+)/y;
 
 /** A new document whose body holds the element of index.html with this id, and everything inside it. */
 export function documentFromPage(id, html = PAGE) {
@@ -155,9 +156,10 @@ export function documentFromPage(id, html = PAGE) {
     if (text !== undefined) stack.at(-1).append(decode(text));
     else if (tag) {
       const el = doc.createElement(tag);
-      for (const [, name, value] of attributes.matchAll(/([a-z][a-z0-9-]*)(?:="([^"]*)")?/g)) el.setAttribute(name, decode(value ?? ''));
+      for (const [, name, value] of attributes.matchAll(/([a-zA-Z][a-zA-Z0-9-]*)(?:="([^"]*)")?/g)) el.setAttribute(name, decode(value ?? ''));
       stack.at(-1).append(el);
-      if (!VOID.has(el.localName)) stack.push(el);
+      const selfClosingSvg = token[0].endsWith('/>') && (tag === 'svg' || stack.some((node) => node.localName === 'svg'));
+      if (!VOID.has(el.localName) && !selfClosingSvg) stack.push(el);
     } else if (end) {
       if (stack.at(-1).localName !== end) throw new Error(`mini-dom: </${end}> does not close <${stack.at(-1).localName}> in index.html`);
       stack.pop();
