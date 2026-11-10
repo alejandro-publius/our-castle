@@ -1,6 +1,6 @@
 # Architecture
 
-A small Node server (built-in `node:http` and `node:sqlite`) serves a framework-free browser app. The server uses the official Anthropic SDK and PayPal Server SDK/Agent Toolkit; the browser loads AG Grid Community and AG Studio for the Treasury. Optional family access uses passkeys. The board renders through the original pixel pipeline; the server owns every financial fact.
+A modular Node application (built-in `node:http` and `node:sqlite`) serves a framework-free browser app. The server uses the official Anthropic SDK and PayPal Server SDK/Agent Toolkit; the browser loads AG Grid Community and AG Studio for the Treasury. Optional family access uses passkeys. The board renders through the original pixel pipeline; the server owns every financial fact.
 
 ```mermaid
 flowchart LR
@@ -10,6 +10,9 @@ flowchart LR
     Routes <--> Records[("SQLite<br/>household records")]
     Routes --> Planning["Family choices and Merchant<br/>kit list and weekly planning"]
     Routes --> Payments["Contribution service<br/>capture and refund reconciliation"]
+    Routes --> Exchange["Village Exchange<br/>invite-only needs and item handovers"]
+    Exchange --> Planning
+    Exchange --> Records
     Routes --> Steward["Read-only steward<br/>scoped ledger and PayPal tools"]
     Planning <--> Solver["Rust kit solver<br/>JS reference when unbuilt"]
     Planning -. "search and refresh" .-> Catalogue["Channel3"]
@@ -28,6 +31,7 @@ The complete-kit planner derives a budget from the family's offers and deadline,
 | Routes, access, state and updates | [app.mjs](../server/app.mjs), [access](../server/access/index.mjs), [view.mjs](../server/view.mjs), [live.mjs](../server/live.mjs) |
 | Family decisions and kits | [family-choices.mjs](../server/family-choices.mjs), [kit planner](../server/kit/planner.mjs), [solver bridge](../server/kit/solver.mjs), [Rust solver](../solver/) |
 | Optional AI | [weekly planner](../server/planner/index.mjs), [photo reader](../server/kit/reader.mjs), [kit ordering](../server/kit/rerank.mjs), [steward](../server/steward/index.mjs) |
+| Neighbor item sharing | [exchange service](../server/exchange/index.mjs), [available shared items](../server/exchange/stock.mjs), [journal](../src/app/village-exchange.js) |
 | Contributions and storage | [contributions.mjs](../server/payments/contributions.mjs), [db.mjs](../server/db.mjs) |
 | Treasury and world | [treasury.js](../src/app/treasury.js), [ledger-grid.js](../src/app/ledger-grid.js), [board-scene.js](../src/world/board-scene.js) |
 
@@ -45,6 +49,13 @@ The complete-kit planner derives a budget from the family's offers and deadline,
 | `webhook_events` | Processed webhook event ids (deduplication). |
 | `plans` | Proposed/accepted/superseded plans with their inputs, the arithmetic basis and the validated plan JSON. |
 | `achievements` | Tier keepsakes (`tier:1..3`) and habit gardens (`garden:1..4`), unique per goal. |
+| `accounts`, `passkeys`, `memberships`, `sessions`, `invitations`, `auth_challenges`, `audit_events` | Passkey identity, household access, expiring sessions and access history. |
+| `goal_items`, `family_choices`, `family_offers`, `family_preferences` | Reviewed products, household shortlists, adults' weekly offers and members' preferences. |
+| `kit_lists`, `kit_candidates`, `kit_selections`, `goal_kits` | Versioned quantities, product evidence, kept choices and an explicitly adopted complete kit. |
+| `order_checks`, `deferred_refunds` | Saved receipt comparisons and verified refunds received before their capture is known. |
+| `exchange_circles`, `exchange_members`, `exchange_invites` | Private neighborhood membership and hashed, expiring, single-use invitations. |
+| `exchange_requests`, `exchange_offers` | Explicitly shared kit needs and item handover state; no financial credit. |
+
 
 Example mode and sandbox mode use different database files (`data/our-castle-example.sqlite`, `data/our-castle-sandbox.sqlite`), so simulated entries can never mix with PayPal-confirmed ones.
 
@@ -132,7 +143,7 @@ The planner proposes only. Each contribution still needs an adult's explicit app
 | --- | --- | --- |
 | `read_household_ledger` | Our Castle database | Goal, progress, milestones, contributions with PayPal ids and statuses; bills and gifts marked "not savings" |
 | `get_order` | PayPal Agent Toolkit | Only offered in sandbox mode; `order_id` is a JSON-schema enum of this household's PayPal order ids, re-checked by the server |
-| `list_transactions` | PayPal Agent Toolkit | Only offered in sandbox mode; the server turns `days` (clamped 1–31) and a status into the toolkit's date range |
+| `list_transactions` | PayPal Agent Toolkit | Only offered in sandbox mode; date range is clamped to 1–31 days, then results are filtered to this household/goal’s recorded capture IDs. Only ID, status, amount and fee fields reach the model; payer data, merchant totals and unmatched rows are discarded |
 
 `server/steward/paypal-tools.mjs` constructs `PayPalAgentToolkit` with only `orders.get` and `transactions.list` enabled and `context.sandbox: true` (the toolkit defaults to production). It refuses to start if any other tool is enabled or if the base URL is not a sandbox host. No create, capture (`pay_order`), refund, invoice or subscription tool is ever offered. The model's arguments are never passed straight to the toolkit; the server rebuilds them.
 
@@ -144,7 +155,7 @@ The server records what the steward actually checked. For each `get_order` it co
 - `ledger-grid.js` lazily loads AG Grid Community (served by exact path from `node_modules`), themes it with the parchment tokens through the Theming API, and falls back to a plain HTML table if it cannot load. Household-typed labels are rendered as DOM text, not HTML.
 - `board-scene.js` extends the original art-preview vocabulary (MiniBuilder instancing, layered trees, antlered deer, towers) with the household travelers (two figures for family, one for solo), milestone banners in crest colors and habit gardens. It also handles camera focus on a district, zoom, turn, pan and reset. Rendering is on demand: frames run only during walks and tier rises, and reduced-motion users get instant updates.
 - The connected realm has three parts:
-  - `src/core/realm.js` defines its geography: nine districts on a 228x132 map centred at (32, 0), nine drawbridges and the twenty-step route across them. It also derives which districts and bridges are open from earned achievements, so access is a presentation of server state, never a payment decision.
+  - `src/core/realm.js` defines its geography: nine districts in the original 228x132 interior of a 420x324 map centred at (32, 0), nine drawbridges and the twenty-step route across them. It also derives which districts and bridges are open from earned achievements, so access is a presentation of server state, never a payment decision.
   - `src/world/realm-models.js` draws the woodland: one ground heightfield with the river channels of `REALM_RIVERS` (`src/core/realm.js`) cut over a shallow water bed, an instanced forest with flat Lambert paint that is built once and kept across rebuilds, the district clearings and the bridges. Locked districts keep their colours; their bridge leaves are raised and a gate closes the crossing.
   - `src/world/estate-models.js` holds the earlier home and estate architecture. `src/world/princess-palace.js` adds the original Rosewind model; `src/world/woodland-legends.js` draws the two folklore towers and hidden sword; `REALM_LEGENDS` and `focusLegend` expose only camera inspection, independently of district access; `REALM_BOUNDS` aligns ground, forest, rivers, rain, clouds and camera framing.
 - `src/core/journey.js` derives the family's one next step (and the "if the server confirms" projection in Contribute) from the saved state and the shared milestone rules. It is shared, dependency-free and never writes; the browser only switches tab and moves focus.
@@ -161,3 +172,177 @@ The server records what the steward actually checked. For each `get_order` it co
 - Only allowlisted static paths are served; `server/`, `data/`, `.env*`, `node_modules/` (except two exact AG Grid files) and `package.json` return 404.
 - Secrets come from the local `.env` (or the process environment) and are never echoed in responses or logs; only the public PayPal client id is sent to the browser.
 - The PayPal Agent Toolkit pins dependencies with published advisories (see VALIDATION.md). Its OpenAI-format entry point only loads the Server SDK, axios, debug, lodash, mathjs and zod at runtime; the steward passes it only server-built arguments (a known order id, an ISO date range, a status letter), never model text.
+
+## Access and live family updates
+
+The diagrams below unpack the overview into the actual systems. These are modules of one Node application, not separate microservices. No Kubernetes, message broker or hosted service is implied.
+
+```mermaid
+flowchart TB
+    accTitle: Family access and refresh boundaries
+    accDescr: Passkey identity and session checks resolve one household before domain actions. Change notices cause each page to reread only its authorized state.
+    Browser["One browser per family member"] --> Ceremony["Passkey ceremony<br/>challenge and origin binding"]
+    Ceremony --> Identity[("Accounts · passkeys · memberships")]
+    Identity --> Cookie["Opaque session cookie<br/>server-side session record"]
+    Cookie --> Policy["Route policy<br/>member / adult / owner / deny"]
+    Policy --> CSRF["Writes: origin and CSRF checks"]
+    CSRF --> Scope["Server resolves household, member and active goal"]
+    Scope --> Service["Domain action<br/>recheck access after asynchronous work"]
+    Service --> Commit[("SQLite transaction")]
+    Commit --> Notice["Household revision and change notice"]
+    Notice --> Stream["Household-scoped event stream"]
+    Stream --> Refresh["Page requests its authorized state"]
+    Refresh --> Keep["Discard older replies<br/>preserve unsaved fields and selection"]
+    Keep --> Browser
+    Identity -. "expiry, sign-out or revocation" .-> End["End access and close the private view"]
+    End --> Browser
+```
+
+The stream sends change notices, not household records. Exchange changes notify the participating neighborhood's household streams; each page still receives only the shared board and offers it may see. An invitation to the neighborhood does **not** grant access to another family's goal, bills, members or ledger. See [family access](FAMILY-ACCESS.md) and [exchange service](../server/exchange/index.mjs).
+
+## Kit planning and the optional AI boundary
+
+```mermaid
+flowchart TD
+    accTitle: Checked complete-kit planning
+    accDescr: Saved kit quantities and received neighbor items determine remaining needs. A bounded solver compares candidates under budget and date constraints; optional AI reads drafts or orders eligible results without authorizing payments.
+    Typed["Typed kit list"] --> Draft["Editable draft<br/>names, needs, quantities, owned items"]
+    Photo["Explicitly chosen packing-list photo"] -. "optional OpenAI reader" .-> Draft
+    Draft --> Confirm["Adult checks and saves"]
+    Confirm --> Kit[("Versioned kit list")]
+    Received["Neighbor item confirmed received"] --> Available["Shared availability<br/>loan must cover the goal date"]
+    Available --> Remaining["Needed minus owned minus available"]
+    Kit --> Remaining
+    Channel["Channel3 search or refresh"] --> Listings[("Bounded candidate pool<br/>price, variant, pack count, needs, freshness")]
+    Offers["Family weekly offers and deadline"] --> Basis["Integer-cent budget and dated schedule"]
+    Expense["One-off expense trial"] --> Basis
+    Remaining --> Solve["Rust constrained kit comparison<br/>or JS reference when native build is absent"]
+    Listings --> Solve
+    Basis --> Solve
+    Kept["Keep agreed choices"] --> Solve
+    Solve --> Check["Independent server recheck<br/>quantities, total, needs, deadline and kept lines"]
+    Check --> Choices["Eligible complete kits<br/>cost, shops and known weight tradeoffs"]
+    Choices -. "optional Cohere ordering of eligible kits only" .-> Ordered["Preference ordering"]
+    Choices --> Review["Adult reviews kit and current listings"]
+    Ordered --> Review
+    Review --> Adopt["Explicit goal and schedule proposal"]
+    Adopt --> Accept["Adult chooses Use this plan"]
+    Accept --> Contribution["Each payment still needs its own amount approval"]
+```
+
+Rust is a bounded optimizer, not an AI model. The reference solver is used only when selected or when the native executable has not been built; a failing native solve is reported. Photo interpretation and ranking cannot loosen budget, quantity, date or ownership constraints. Received equipment changes what still needs buying; it does not increase financial progress. The loan's terms can become unsuitable if the family moves its goal date, in which case it stops covering that need. Changing the date or availability invalidates previous kit comparisons.
+
+## Village Exchange lifecycle
+
+```mermaid
+sequenceDiagram
+    accTitle: Private neighborhood and confirmed item sharing
+    accDescr: Adults explicitly join a private neighborhood, share a kit need, accept an offer and confirm receiving it. Only receipt changes kit availability; no exchange step writes financial credit.
+    actor A as Requesting adult
+    actor B as Neighbor adult
+    participant App as Scoped exchange service
+    participant DB as SQLite
+    participant Planner as Kit planner
+    A->>App: Create neighborhood with chosen public family alias
+    App->>DB: Store membership and hashed single-use invite
+    App-->>A: Invitation code, shown once, expires in 24 hours
+    Note over A,B: The adult shares the code themselves.
+    B->>App: Preview invitation, then confirm joining
+    App->>DB: Atomically consume invitation and add household membership
+    A->>App: Share one saved kit need and explicit public fields
+    B->>App: Offer a quantity as a loan or gift
+    A->>App: Accept offer
+    App->>DB: Reserve request quantity, no kit stock or money credit
+    A->>App: Confirm physical handover: I received the item
+    App->>DB: Mark received and advance kit revision atomically
+    A->>Planner: Compare what remains to buy
+    Planner->>DB: Read owned and eligible shared quantities
+    Planner-->>A: Updated checked kits and dates
+    A->>App: Confirm return, or stop counting a gift
+    App->>DB: Release availability and advance kit revision
+    Note over App,Planner: All steps leave payment records and ledger money unchanged.
+```
+
+```mermaid
+stateDiagram-v2
+    accTitle: Item offer states
+    accDescr: Offers can be accepted, withdrawn or declined. Only the recipient confirms receipt and later return or release.
+    [*] --> Offered: Neighbor offers an item
+    Offered --> Accepted: Requesting adult accepts
+    Offered --> Withdrawn: Offering adult withdraws
+    Offered --> Declined: Requesting adult declines
+    Accepted --> Withdrawn: Offering adult cancels before handover
+    Accepted --> Declined: Requesting adult cancels before handover
+    Accepted --> Received: Requesting adult confirms receipt
+    Received --> Returned: Requesting adult confirms return or release
+    Returned --> [*]
+    Withdrawn --> [*]
+    Declined --> [*]
+```
+
+The transaction checks current kit requirements and reserved quantity before acceptance or receipt. Duplicate receipt confirmation is idempotent. No family can confirm receipt on another family's behalf. Active accepted/received items prevent removal of their kit line. Accepted items and received loans prevent either family leaving until resolved; the giver may leave after a gift is received. The founding family manages invitations; leaving removes access to the board. This is voluntary equipment coordination, not a payment marketplace, escrow, delivery service or debt exchange.
+
+## Data relationships
+
+This diagram groups the principal relationships rather than reproducing every column in all 32 tables. The ordered migrations in [db.mjs](../server/db.mjs) are authoritative.
+
+```mermaid
+erDiagram
+    accTitle: Principal household and exchange data relationships
+    accDescr: Household goals connect planning, payment records and kits. Neighborhood membership gates shared requests and offers. JSON kit-line relationships are enforced by domain services.
+    HOUSEHOLDS ||--o{ MEMBERS : contains
+    ACCOUNTS ||--o{ PASSKEYS : authenticates_with
+    ACCOUNTS ||--o| MEMBERSHIPS : holds
+    MEMBERS ||--o| MEMBERSHIPS : identifies
+    ACCOUNTS ||--o{ SESSIONS : opens
+    HOUSEHOLDS ||--o{ MEMBERSHIPS : scopes
+    HOUSEHOLDS ||--o{ GOALS : plans
+    GOALS ||--o{ PLANS : proposes
+    GOALS ||--o{ LEDGER_ENTRIES : tracks
+    GOALS ||--o{ PAYMENT_ORDERS : owns
+    PAYMENT_ORDERS ||--o{ PAYMENT_CAPTURES : reconciles
+    PAYMENT_CAPTURES ||--o{ PAYMENT_REFUNDS : offsets
+    GOALS ||--o{ FAMILY_OFFERS : budgets
+    GOALS ||--o{ FAMILY_CHOICES : shortlists
+    GOALS ||--o| KIT_LISTS : requires
+    GOALS ||--o{ KIT_CANDIDATES : considers
+    GOALS ||--o{ KIT_SELECTIONS : chooses
+    KIT_CANDIDATES ||--o{ KIT_SELECTIONS : selected_in
+    GOALS ||--o| GOAL_KITS : adopts
+    EXCHANGE_CIRCLES ||--o{ EXCHANGE_MEMBERS : invites
+    HOUSEHOLDS ||--o| EXCHANGE_MEMBERS : joins
+    EXCHANGE_CIRCLES ||--o{ EXCHANGE_INVITES : admits
+    EXCHANGE_CIRCLES ||--o{ EXCHANGE_REQUESTS : shares
+    GOALS ||--o{ EXCHANGE_REQUESTS : needs
+    EXCHANGE_REQUESTS ||--o{ EXCHANGE_OFFERS : receives
+    HOUSEHOLDS ||--o{ EXCHANGE_OFFERS : provides
+```
+
+`kit_lists.items_json` holds bounded line IDs. Candidate/selection and exchange request references to those lines are validated by services, rather than SQL foreign keys into JSON. The offer lifecycle changes kit revisions; catalog changes and selections also feed the comparison token. Financial credit has its own provider-ID uniqueness constraints and never relies on an exchange state.
+
+## World rendering and interaction
+
+```mermaid
+flowchart LR
+    accTitle: World rendering without financial authority
+    accDescr: Household progress drives districts. Static geography and ambient scenery share the original renderer, while accessible arrows and a compass control the camera without financial writes.
+    State["Authorized household state"] --> Progress["Shared progress and reward rules"]
+    Progress --> Places["Existing districts, bridges and family project stages"]
+    Geography["Realm bounds, channels and mountain heightfield"] --> Static["Ground and instanced forest<br/>built once per scene"]
+    Static --> Pixel["Original pixel renderer<br/>90-color palette, outlines and dither"]
+    Places --> Pixel
+    Scenery["Connected waterfalls and hidden knight camp"] --> Ambient["Existing ambient clock<br/>paused when hidden; frozen for reduced motion"]
+    Ambient --> Pixel
+    Arrows["Compact property arrows<br/>name on selection or keyboard focus"] --> Camera["Focus, turn, zoom or compass drag"]
+    Camera --> Pixel
+    Pixel --> View["Woodland canvas and accessible marker overlay"]
+    View -. "explicit journal action" .-> State
+```
+
+The new outer row adds 32 world units on **each** side: 356×260 becomes 420×324. The original 228×132 district interior, route waypoints and financial thresholds stay fixed. Two raised spring pools feed waterfalls whose feet are inside existing channels. The knight camp and water animation are scenery with no unlock, reward or write route. They share the existing animation lifecycle; no separate timer or animation loop is introduced.
+
+| Waterfalls meet the existing channels | A hidden camp at night |
+| --- | --- |
+| ![Western waterfall flowing into the river](screenshots/woodland-west-waterfall.png) | ![Two knights beside their campfire in the forest](screenshots/woodland-camp-night.png) |
+
+[Desktop/phone capture provenance](screenshots/village-exchange-sources.json). The compass reaches the added outer landscape, with its target bounded by the actual board.

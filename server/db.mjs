@@ -416,6 +416,44 @@ export const MIGRATIONS = Object.freeze([
       );
     `); },
   }),
+  Object.freeze({
+    id: 'village-exchange',
+    ensure(db) { db.exec(`
+      CREATE TABLE IF NOT EXISTS exchange_circles (
+        id TEXT PRIMARY KEY, name TEXT NOT NULL,
+        owner_household_id TEXT NOT NULL REFERENCES households(id) ON DELETE CASCADE,
+        created_at TEXT NOT NULL
+      );
+      CREATE TABLE IF NOT EXISTS exchange_members (
+        household_id TEXT PRIMARY KEY REFERENCES households(id) ON DELETE CASCADE,
+        circle_id TEXT NOT NULL REFERENCES exchange_circles(id) ON DELETE CASCADE,
+        alias TEXT NOT NULL, joined_at TEXT NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS exchange_circle_members ON exchange_members(circle_id);
+      CREATE TABLE IF NOT EXISTS exchange_invites (
+        id TEXT PRIMARY KEY, circle_id TEXT NOT NULL REFERENCES exchange_circles(id) ON DELETE CASCADE,
+        token_hash TEXT NOT NULL UNIQUE, expires_at TEXT NOT NULL, used_at TEXT, revoked_at TEXT
+      );
+      CREATE TABLE IF NOT EXISTS exchange_requests (
+        id TEXT PRIMARY KEY, circle_id TEXT NOT NULL REFERENCES exchange_circles(id) ON DELETE CASCADE,
+        household_id TEXT NOT NULL REFERENCES households(id) ON DELETE CASCADE,
+        goal_id TEXT NOT NULL REFERENCES goals(id) ON DELETE CASCADE,
+        line_id TEXT NOT NULL, item_name TEXT NOT NULL, needs TEXT, quantity INTEGER NOT NULL CHECK(quantity BETWEEN 1 AND 100),
+        needed_until TEXT NOT NULL, note TEXT NOT NULL,
+        status TEXT NOT NULL CHECK(status IN ('open', 'closed')), created_at TEXT NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS exchange_circle_requests ON exchange_requests(circle_id, created_at);
+      CREATE TABLE IF NOT EXISTS exchange_offers (
+        id TEXT PRIMARY KEY, request_id TEXT NOT NULL REFERENCES exchange_requests(id) ON DELETE CASCADE,
+        household_id TEXT NOT NULL REFERENCES households(id) ON DELETE CASCADE,
+        quantity INTEGER NOT NULL CHECK(quantity BETWEEN 1 AND 100), kind TEXT NOT NULL CHECK(kind IN ('loan', 'gift')),
+        return_by TEXT, note TEXT NOT NULL,
+        status TEXT NOT NULL CHECK(status IN ('offered','accepted','received','returned','withdrawn','declined')),
+        created_at TEXT NOT NULL, updated_at TEXT NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS exchange_request_offers ON exchange_offers(request_id, status);
+    `); },
+  }),
 ]);
 
 export function openDatabase(file) {

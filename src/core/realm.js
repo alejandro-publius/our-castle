@@ -1,7 +1,8 @@
+import { WOODLAND_CAMP } from './woodland-discoveries.js';
 // One connected world. District access is a presentation of existing earned achievements, never a payment decision.
 export const REALM_INTERIOR = Object.freeze({ width: 228, depth: 132, centerX: 32, centerZ: 0 });
-// Two 32-unit land rows leave room for complete mountain slopes beyond the original frontier.
-export const REALM_BORDER = 64;
+// Three 32-unit land rows: the latest adds one square on each edge, beyond the complete mountain slopes.
+export const REALM_BORDER = 96;
 export const REALM_SIZE = Object.freeze({ width: REALM_INTERIOR.width + REALM_BORDER * 2, depth: REALM_INTERIOR.depth + REALM_BORDER * 2, centerX: 32, centerZ: 0 });
 export const REALM_BOUNDS = Object.freeze({
   minX: REALM_SIZE.centerX - REALM_SIZE.width / 2, maxX: REALM_SIZE.centerX + REALM_SIZE.width / 2,
@@ -22,6 +23,7 @@ export const homeDistrict = (tier) => REALM_DISTRICTS.find((d) => d.homeTier ===
 export const districtById = (id) => REALM_DISTRICTS.find((d) => d.id === id);
 // Discoveries are scenery, never reward entries or payment gates.
 export const REALM_LEGENDS = Object.freeze([
+  Object.freeze({ ...WOODLAND_CAMP, id: 'knights-rest', name: 'The Knights’ Rest' }),
   Object.freeze({ id: 'sword-stone', name: 'The Sword in the Stone', x: -35, z: -51, width: 14, depth: 14, height: 8 }),
 ]);
 export const legendById = (id) => REALM_LEGENDS.find((d) => d.id === id);
@@ -42,12 +44,12 @@ export const REALM_BRIDGES = Object.freeze([
 // bridges: the main river under the garden, keep and royal-procession crossings; a west tributary under the manor
 // crossing; an east tributary under the citadel and market crossings. Control points are joined by Catmull-Rom curves.
 export const REALM_RIVERS = Object.freeze([
-  { id: 'main', halfWidth: 2.4, points: [[-152, 3], [-120, 3], [-86, 3], [-72, -2.5], [-60, .5], [-49, 4], [-38, 1.5], [-24, -3], [-10, -.5], [3, 2.5], [17, -.5], [30, .5], [44, 3], [57, .5], [70, 3.5], [83, 3], [98, 2], [113, 3.5], [130, 2], [150, 2], [184, 2], [216, 2]] },
-  { id: 'west', halfWidth: 1.9, points: [[-38, 1.5], [-35.5, 9], [-37.5, 17], [-36.5, 26], [-34.5, 35], [-37.5, 45], [-36, 72], [-36, 104], [-36, 136]] },
-  { id: 'east', halfWidth: 1.9, points: [[16, -136], [16, -104], [16, -72], [18, -47], [15, -38], [16.5, -28], [18, -18], [15.5, -9], [17, -.5], [20, 8], [17.5, 17], [19, 26], [21.5, 35], [18, 45], [20, 72], [20, 104], [20, 136]] },
-  { id: 'rose', halfWidth: 1.9, points: [[82, -136], [82, -104], [82, -72], [80, -58], [81, -45], [82, -28], [79, -15], [81, -6], [83, 3]] },
-  { id: 'starfall', halfWidth: 1.45, points: [[70, 3.5], [72.5, 14], [71.5, 28], [70.5, 43], [73, 72], [73, 104], [73, 136]] },
-  { id: 'braid', halfWidth: 1.4, points: [[113, 3.5], [112.5, 16], [111.5, 30], [112, 44], [112, 72], [112, 104], [112, 136]] },
+  { id: 'main', halfWidth: 2.4, points: [[-184, 3], [-152, 3], [-120, 3], [-86, 3], [-72, -2.5], [-60, .5], [-49, 4], [-38, 1.5], [-24, -3], [-10, -.5], [3, 2.5], [17, -.5], [30, .5], [44, 3], [57, .5], [70, 3.5], [83, 3], [98, 2], [113, 3.5], [130, 2], [150, 2], [184, 2], [216, 2], [248, 2]] },
+  { id: 'west', halfWidth: 1.9, points: [[-38, 1.5], [-35.5, 9], [-37.5, 17], [-36.5, 26], [-34.5, 35], [-37.5, 45], [-36, 72], [-36, 104], [-36, 136], [-36, 168]] },
+  { id: 'east', halfWidth: 1.9, points: [[16, -168], [16, -136], [16, -104], [16, -72], [18, -47], [15, -38], [16.5, -28], [18, -18], [15.5, -9], [17, -.5], [20, 8], [17.5, 17], [19, 26], [21.5, 35], [18, 45], [20, 72], [20, 104], [20, 136], [20, 168]] },
+  { id: 'rose', halfWidth: 1.9, points: [[82, -168], [82, -136], [82, -104], [82, -72], [80, -58], [81, -45], [82, -28], [79, -15], [81, -6], [83, 3]] },
+  { id: 'starfall', halfWidth: 1.45, points: [[70, 3.5], [72.5, 14], [71.5, 28], [70.5, 43], [73, 72], [73, 104], [73, 136], [73, 168]] },
+  { id: 'braid', halfWidth: 1.4, points: [[113, 3.5], [112.5, 16], [111.5, 30], [112, 44], [112, 72], [112, 104], [112, 136], [112, 168]] },
 ].map((r) => Object.freeze({ ...r, points: Object.freeze(r.points.map((p) => Object.freeze(p))) })));
 function sampleRiver(points, steps = 10) {
   const out = [], at = (i) => points[Math.max(0, Math.min(points.length - 1, i))];

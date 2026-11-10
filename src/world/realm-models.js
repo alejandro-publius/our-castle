@@ -5,6 +5,8 @@ import { FARM_SITES, inFarmPlot } from './farm-locations.js';
 import { createWoodlandLegends } from './woodland-legends.js';
 import { createPrincessPalace } from './princess-palace.js';
 import { createRiverCurrent } from './river-current.js';
+import { createWoodlandDiscoveries } from './woodland-discoveries.js';
+import { inDiscoveryClearing } from '../core/woodland-discoveries.js';
 import { FRONTIER_CLEARINGS, MOUNTAIN_PEAKS, terrainElevation } from '../core/realm-terrain.js';
 import { addPayPalHillside } from './paypal-hillside.js';
 import { REALM_SIZE, REALM_BOUNDS, REALM_DISTRICTS, REALM_LEGENDS, REALM_BRIDGES, RIVER_PATHS, journeyLeg, realmAccess, bridgeAccess, riverAt } from '../core/realm.js';
@@ -195,7 +197,7 @@ export function createRealmModels({ builder, part: addPart, models, colours: C }
       const x = gx + (hash(i, j) - .5) * step * .9, z = gz + (hash(j, i) - .5) * step * .9;
       if (x < REALM_BOUNDS.minX + .8 || x > REALM_BOUNDS.maxX - .8 || z < REALM_BOUNDS.minZ + .8 || z > REALM_BOUNDS.maxZ - .8) continue;
       const river = riverAt(x, z), clearing = deepestClearing(x, z), density = noise(x / 13, z / 13), species = noise(x / 19 + 20, z / 19 - 7);
-      if(terrainElevation(x,z,river)>.6)continue;
+      if(terrainElevation(x,z,river)>.6 || inDiscoveryClearing(x,z))continue;
       if (river.depth > -1.5 || nearBridge(x, z, 3.6) || nearJourney(x, z, 2.7) || farmWorldPlots.some(([a,b,c,d])=>x>a-1.4&&x<b+1.4&&z>c-1.4&&z<d+1.4)) continue;
       // Trees may step up to about 2.5 units into a clearing edge, so no district has a straight tree line.
       if (clearing > 1.1 + 1.4 * noise(x / 4, z / 4)) continue;
@@ -454,7 +456,7 @@ export function createRealmModels({ builder, part: addPart, models, colours: C }
   }
   // The ground, rivers and forest do not depend on progress. They are built once into their own group and kept, so a
   // milestone or preview rebuilds only the districts and bridges, as before.
-  let landscape = null, current = null;
+  let landscape = null, current = null, discoveries = null;
   function woodland(group) {
     const started = performance.now(), land = ground(group), woods = new THREE.Group(); group.add(woods);
     // The forest covers most of the screen, so it is batched with flat Lambert paint, which is far cheaper to shade than
@@ -474,8 +476,9 @@ export function createRealmModels({ builder, part: addPart, models, colours: C }
       mesh.computeBoundingSphere(); mesh.userData.ownedMaterial = true; woods.add(mesh);
     }
     let instances = 0, meshes = 0; woods.traverse((o) => { if (o.isInstancedMesh) { meshes++; instances += o.count; } });
-    for(const d of REALM_LEGENDS){const secret=new THREE.Group();secret.position.set(d.x,0,d.z);group.add(secret);legends.sword(secret);builder.flush();finish(secret);}
+    for(const d of REALM_LEGENDS.filter(d=>d.id==='sword-stone')){const secret=new THREE.Group();secret.position.set(d.x,0,d.z);group.add(secret);legends.sword(secret);builder.flush();finish(secret);}
     const hillsideSign=addPayPalHillside(group,{builder,part:addPart,colours:C});
+    discoveries = createWoodlandDiscoveries({group,builder,part:addPart,colours:C,waterLevel:L.water,groundLevel:L.ground});
     current = createRiverCurrent(L.water, F.ripple); group.add(current.mesh);
     landscape = { ground: land, forest: { ...counts, meshes, instances }, rivers: { count: RIVER_PATHS.length, ...rivers }, frontier:{clearings:FRONTIER_CLEARINGS.length,mountainPeaks:MOUNTAIN_PEAKS.length,highlandTrees,hillsideSign}, buildMs: Math.round(performance.now() - started) };
     return landscape;
@@ -513,7 +516,7 @@ export function createRealmModels({ builder, part: addPart, models, colours: C }
   return {woodland,build,home,finish,lightSpots,
     stepFarm: (seconds) => farm.tick(seconds), farmDebug: () => farm.debug(),
     stepTavern: (seconds) => tavern.tick(seconds), tavernDebug: () => tavern.debug(),
-    stepCurrent: (seconds) => current?.tick(seconds), currentDebug: () => current?.debug() ?? null,
+    stepCurrent: (seconds) => { current?.tick(seconds); discoveries?.tick(seconds); }, discoveriesDebug: () => discoveries?.debug() ?? null, currentDebug: () => current?.debug() ?? null,
     stepLegends: (seconds) => legends.tick(seconds), legendsDebug: () => legends.debug(),
     surfaces: () => ({...surfaceMeshes, ripples: current?.mesh}),
   };

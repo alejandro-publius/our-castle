@@ -339,7 +339,7 @@ test('upgrading a goal-project database adds the access, deferred-refund, family
     const db = openDatabase(file);
     assert.equal(db.prepare('PRAGMA user_version').get().user_version, MIGRATIONS.length);
     assert.deepEqual(rows(db, beforeTables), before, 'every earlier table and row identical');
-    assert.deepEqual(tables(db).filter((t) => !beforeTables.includes(t)).sort(), ['accounts', 'audit_events', 'auth_challenges', 'deferred_refunds', 'family_choices', 'family_offers', 'family_preferences', 'goal_kits', 'invitations', 'kit_candidates', 'kit_lists', 'kit_selections', 'memberships', 'passkeys', 'sessions']);
+    assert.deepEqual(tables(db).filter((t) => !beforeTables.includes(t)).sort(), ['accounts', 'audit_events', 'auth_challenges', 'deferred_refunds', 'exchange_circles', 'exchange_invites', 'exchange_members', 'exchange_offers', 'exchange_requests', 'family_choices', 'family_offers', 'family_preferences', 'goal_kits', 'invitations', 'kit_candidates', 'kit_lists', 'kit_selections', 'memberships', 'passkeys', 'sessions']);
     db.close();
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });

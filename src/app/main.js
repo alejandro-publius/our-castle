@@ -23,6 +23,7 @@ import { createMerchantDialog, resultFacts } from './merchant.js';
 import { createFamilyChoices } from './family-choices.js';
 import { createKitList } from './kit-list.js';
 import { createKitPlan } from './kit-plan.js';
+import { createVillageExchange } from './village-exchange.js';
 import { scheduleLines } from '../core/family-choices.js';
 import { needSummary } from '../core/family-fit.js';
 import { catalogueOf } from '../core/catalogue.js';
@@ -97,6 +98,7 @@ let familyAvatars = null;
 let merchant = null;
 let familyChoices = null; // the Plan journal's family choices (src/app/family-choices.js)
 let kitList = null; // the Plan journal's kit list (src/app/kit-list.js)
+let villageExchange = null;
 let kitPlan = null; // complete kits for that list (src/app/kit-plan.js)
 let treasury = null;
 let planCheck = null;
@@ -729,6 +731,7 @@ function districtCondition(district) {
 // The map's buttons are rebuilt only when an area opens or closes or the Build choice changes. Any other update (a live
 // update from another member, say) leaves them, their places on the map and the keyboard on them exactly as they are.
 let realmNavigationKey = null;
+let namedDistrict = null, lastMarkerView = null;
 function renderRealmNavigation() {
   const regions = realmAccess({ builtTier: state.board.builtTier, estateLevel: state.board.estateLevel, gardens: state.board.gardens });
   const key = JSON.stringify([regions.map((d) => [d.id, d.status]), projectKind(state.goal.projectKind).key]);
@@ -742,8 +745,9 @@ function renderRealmNavigation() {
   $('#realm-districts').replaceChildren(...regions.map((d) => h('button', { type: 'button', class: 'realm-stop', 'data-district': d.id, 'data-status': d.status, 'aria-pressed': 'false' },
     h('strong', {}, d.name), h('small', {}, d.open ? 'Open district' : `Locked · ${d.percent === null ? 'bill habit' : `${d.percent}%`}`))));
   $('#realm-markers').replaceChildren(...regions.map((d) => h('button', { type: 'button', class: 'realm-marker', 'data-district': d.id, 'data-status': d.status, 'aria-label': `Inspect ${d.name} on the map`, hidden: true },
-    !d.open && h('span', { class: 'realm-lock', 'aria-hidden': 'true', html: lock }), h('strong', {}, d.name))));
+    h('span', { class: 'realm-arrow', 'aria-hidden': 'true', html: '<svg viewBox="0 0 40 40"><path d="M20 5 36 34H4Z" fill="var(--paper-3)" stroke="var(--ink)" stroke-width="4" stroke-linejoin="round"/><path d="M20 10 32 32H8Z" fill="none" stroke="var(--brass)" stroke-width="2"/></svg>' }), h('span', { class: 'realm-marker-caption', id: `realm-name-${d.id}` }, !d.open && h('span', { class: 'realm-lock', 'aria-hidden': 'true', html: lock }), h('strong', {}, d.name)))));
   $('#realm-markers').append(h('button', {type:'button',id:'sword-glint',class:'realm-legend','data-legend':'sword-stone','aria-label':'Investigate the glint in the trees','aria-pressed':'false',hidden:true},h('span',{'aria-hidden':'true'},'✦')));
+  $('#realm-markers').append(h('button', {type:'button',id:'camp-glow',class:'realm-legend','data-legend':'knights-rest','aria-label':'Visit the forest camp','aria-pressed':'false',hidden:true},h('span',{'aria-hidden':'true',html:'<svg width="24" height="26" viewBox="0 0 24 26"><path d="M13 2c1 7-6 7-3 13 2-1 3-3 3-5 6 6 7 12-1 14C2 22 3 16 6 12c0 3 1 4 2 4C4 9 11 8 13 2Z" fill="currentColor"/></svg>'})));
   // The family project: a small marker in the west meadow drawn as the chosen place (a tent, a sprout or a schoolhouse
   // with its bell). Selecting it only moves the camera and names its stage.
   const kind = projectKind(state.goal.projectKind);
@@ -760,16 +764,20 @@ function renderRealmNavigation() {
 // The View menu's hint (index.html) says what a drag does now; exploring with the compass makes it pan.
 const VIEW_HINT = { turning: 'Drag to turn. Shift-drag to pan. Scroll to zoom.', exploring: 'Drag to pan. Scroll to zoom.' };
 function syncRealmMarkers({focus,points,exploring=false,free=false}){
+  lastMarkerView = {focus,points,exploring,free};
+  if (!focus && !free && !document.activeElement?.matches('#realm-markers [data-district]')) namedDistrict = null;
+  for (const marker of $$('#realm-markers [data-district]')) {
+    const expanded = marker.dataset.district === namedDistrict;
+    marker.dataset.named = String(expanded); marker.setAttribute('aria-expanded', String(expanded)); marker.setAttribute('aria-controls', `realm-name-${marker.dataset.district}`);
+  }
   const map=$('.realm-map'),focused=focus?'true':'false';if(map.dataset.focused!==focused)map.dataset.focused=focused;
   // The compass shows whether drags explore; the scene ends exploring on any explicit navigation, and this follows it.
   const compass=$('#map-explore'),pressed=String(Boolean(exploring));if(compass&&compass.getAttribute('aria-pressed')!==pressed)compass.setAttribute('aria-pressed',pressed);
   const hint=$('#view-hint'),words=exploring?VIEW_HINT.exploring:VIEW_HINT.turning;if(hint&&hint.textContent!==words)hint.textContent=words;
   const board=map.closest('.board-shell'),menuHeight=Math.max(120,Math.floor(map.clientHeight-110))+'px';
   if(board.style.getPropertyValue('--world-menu-height')!==menuHeight)board.style.setProperty('--world-menu-height',menuHeight);
-  // On a phone, full property plaques would cover the overview. Keep the current home named;
-  // all districts stay available in Areas and a focused district always gets its full plaque.
-  // Exploring close up is not the overview: the places in view keep their names (overlaps still hide).
-  const compactOverview = !focus && !free && map.clientWidth < 640;
+  // Arrow hit areas stay compact; only the selected property unfolds its name.
+  const compactOverview = false; // Compact arrows allow every non-overlapping property on phones too.
   const home = homeDistrict(state?.board?.builtTier ?? 0).id;
   const occupied=[];
   // The toolbar (Areas, Whole realm, View, settings) and the area row along the bottom are laid over the map, above its
@@ -781,11 +789,11 @@ function syncRealmMarkers({focus,points,exploring=false,free=false}){
   });
   const priority=(p)=>document.activeElement?.dataset?.district===p.id?3:p.id===home?2:0;
   for(const point of [...points].sort((a,b)=>priority(b)-priority(a))){
-    const legend = point.id === 'sword-stone' || point.id === FAMILY_PROJECT_SITE.id;
+    const legend = point.id === 'sword-stone' || point.id === 'knights-rest' || point.id === FAMILY_PROJECT_SITE.id;
     const el=legend ? $(`#realm-markers [data-legend="${point.id}"]`) : $(`#realm-markers [data-district="${point.id}"]`);if(!el)continue;
     // A small marker also shows while a neighbouring district is in view: the grove beside the garden and keep, the campsite beside the village.
     const nearby = point.id === 'sword-stone' ? ['garden','keep'] : point.id === FAMILY_PROJECT_SITE.id ? ['cottage'] : [];
-    const visible = (!focus || point.id === focus || legend && nearby.includes(focus)) && (!compactOverview || legend || point.id === home || el === document.activeElement) && point.x > 0 && point.x < point.width && point.y > 0 && point.y < point.height;
+    const visible = (point.id !== 'knights-rest' || free || focus === 'knights-rest') && (!focus || point.id === focus || legend && nearby.includes(focus)) && (!compactOverview || legend || point.id === home || el === document.activeElement) && point.x > 0 && point.x < point.width && point.y > 0 && point.y < point.height;
     el.hidden = !visible;
     if (visible) {
       const px=Math.max(el.offsetWidth/2+8,Math.min(point.width-el.offsetWidth/2-8,point.x));
@@ -813,6 +821,7 @@ function syncRealmMarkers({focus,points,exploring=false,free=false}){
   const d=regions.find(d=>d.id===focus);
   const merchantButton = $('#open-merchant');
   if (merchantButton.hidden !== (focus !== 'market')) merchantButton.hidden = focus !== 'market';
+  $('#open-exchange').hidden = focus !== 'market' || !state.exchange?.available;
   const deedButton = $('#view-deed');
   deedButton.hidden = !d?.open;
   if (d?.open) {
@@ -1019,7 +1028,7 @@ async function saveHouse() {
 }
 
 // ---------- 2. Plan ----------
-function renderPlan() { renderPlanForm(); renderExampleEntry(); familyChoices?.render(); kitList?.render(); merchant?.refreshFit(); lockPlanForChildren(); }
+function renderPlan() { renderPlanForm(); renderExampleEntry(); familyChoices?.render(); kitList?.render(); villageExchange?.render(); merchant?.refreshFit(); lockPlanForChildren(); }
 // An authored example (npm run demo -- --family-trip) says what is invented, with one way into the existing planning
 // surface and a link each way between its two parts: the one-off expense in Family choices and Complete kits in the Kit
 // list. They open those sections and move focus; they press no control, fill no field and write nothing.
@@ -2179,7 +2188,8 @@ function bindEvents() {
   document.addEventListener('click', (e) => { for (const menu of menus) if (menu.open && !e.composedPath().includes(menu)) menu.open = false; });
   // Selecting a district keeps focus on the button that was used. The focused map is taller on phones, so set that
   // layout before measuring, then reveal the realm without scrolling the button out of view.
-  for(const root of [$('#realm-districts'),$('#realm-markers')])root.addEventListener('click',e=>{const button=e.target.closest('[data-district]');if(button&&scene){scene.focusDistrict(button.dataset.district);$('.realm-map').dataset.focused='true';let keep=button;if(root.id==='realm-districts'){$('#district-menu').open=false;keep=$('#district-menu summary');keep.focus();}revealRealm(keep,{instant:e.detail===0});}});
+  for(const root of [$('#realm-districts'),$('#realm-markers')])root.addEventListener('click',e=>{const button=e.target.closest('[data-district]');if(button&&scene){namedDistrict=button.dataset.district;scene.focusDistrict(button.dataset.district);$('.realm-map').dataset.focused='true';let keep=button;if(root.id==='realm-districts'){$('#district-menu').open=false;keep=$('#district-menu summary');keep.focus();}revealRealm(keep,{instant:e.detail===0});}});
+  $('#realm-markers').addEventListener('focusin', e => { const marker = e.target.closest('[data-district]'); if (!marker) return; namedDistrict = marker.dataset.district; if (lastMarkerView) syncRealmMarkers(lastMarkerView); });
   $('#realm-markers').addEventListener('click',e=>{const button=e.target.closest('[data-legend]');if(!button||!scene)return;scene.focusLegend(button.dataset.legend);revealRealm(button,{instant:e.detail===0});});
   $('#view-deed').addEventListener('click', (e) => {
     const id = e.currentTarget.dataset.district;
@@ -2189,10 +2199,13 @@ function bindEvents() {
     fitSource: () => familyChoices?.fitSource() ?? null, onKitListing: addKitListing });
   familyChoices = createFamilyChoices({ getState: () => state, actor: persona, openMerchant: (from, options) => merchant.open(from, options), onReview: useFamilyChoice, applyState,
     onProposed: () => $('#plan-headline').focus() });
+  villageExchange = createVillageExchange({ getState: () => state, actor: persona, applyState,
+    onCompare: () => { $('#kit-list').open = true; $('#kit-plan-compare').scrollIntoView({ block: 'center' }); $('#kit-plan-compare').focus(); } });
   kitList = createKitList({ getState: () => state, actor: persona, applyState, onRender: () => kitPlan?.render() });
   kitPlan = createKitPlan({ getState: () => state, actor: persona, applyState, openMerchant: (from, options) => merchant.open(from, options),
     reserve: () => { const src = familyChoices?.fitSource(); return { cents: src?.reserveCents ?? 0, invalid: Boolean(src?.reserveInvalid) }; },
     onReview: useKitReview, listEditing: () => kitList?.editing() ?? false, onPreview: showKitPreview });
+  $('#open-exchange').addEventListener('click', () => { selectTab('plan'); setJournalOpen(true); villageExchange.open(); });
   for (const opener of [$('#open-merchant'), $('#find-goal-item')]) opener.addEventListener('click', (e) => merchant.open(e.currentTarget));
   $('#visit-campsite').addEventListener('click', visitCampsite);
   for (const id of ['#example-entry-go', '#example-to-kits', '#example-to-trial']) $(id).addEventListener('click', openExample);
@@ -2250,7 +2263,7 @@ function bindEvents() {
     e.currentTarget.textContent = on ? 'Pixel art' : 'Raw 3D';
     scene?.setPixelMode(on);
   });
-  $('#persona').addEventListener('change', (e) => { ui.personaId = e.target.value; pref.set('persona', ui.personaId); ui.refundArm = null; $('#give-approve').checked = false; ui.approvalBasis = null; renderGive(); renderLedger(); renderNextStep(); renderExampleEntry(); familyChoices?.render(); kitList?.render(); });
+  $('#persona').addEventListener('change', (e) => { ui.personaId = e.target.value; pref.set('persona', ui.personaId); ui.refundArm = null; $('#give-approve').checked = false; ui.approvalBasis = null; renderGive(); renderLedger(); renderNextStep(); renderExampleEntry(); familyChoices?.render(); kitList?.render(); villageExchange?.render(); });
   $('#next-step-go').addEventListener('click', openNextStep);
   $('#deed-visit').addEventListener('click', visitDeed);
   $('#deed-next').addEventListener('click', () => { ui.deeds.index++; renderDeed(); $('#deed-name').focus(); });

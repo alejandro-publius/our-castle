@@ -1,0 +1,29 @@
+{
+  "localChecks": {
+    "exchange-browser-final.log": "4 passed",
+    "scene-browser.log": "22 passed",
+    "scene-final.log": "6 passed",
+    "explore-final.log": "10 passed",
+    "visual-final-browser.log": "6 passed",
+    "exchange-unit-final.log": "pass 5",
+    "privacy-after.log": "pass 36",
+    "migrations-final.log": "pass 41"
+  },
+  "additionalBrowserEvidence": "visual-final-browser.log: 6 passed, 4 designed skips",
+  "diagrams": 9,
+  "rawLogHashes": {
+    "exchange-browser-final.log": "4317042aa4c634ceb5bd4cad888024a2cb6e28fe556870dfdc16a54f7f0f6fd5",
+    "scene-browser.log": "b55fdd043349e866277b880d53c3fc6e3ffab57b653d7db9b3bfd0854de8a06b",
+    "scene-final.log": "c98d9b3899df3798b49aad29abd67fcc526c30c5fa59bac2fe8a6dacfc011c84",
+    "explore-final.log": "70beec4ea9c0378b1edd948c4fb1742727a814ce2a14e8e5c27b0f8d12545f1f",
+    "visual-final-browser.log": "e29191406e264a1779cdc0e0b899f70b9c93ad4c1674c60def9c47048c8267da",
+    "exchange-unit-final.log": "047c1000bc4a7e7e3c1d9a7e42a6a2e5d72ac4f8c5bc520fd31a39585f44d545",
+    "privacy-after.log": "28f1f9c1f0bf367c87288ccb047d061ac8f9c1bdcb4724eac6b251c552064b4b",
+    "migrations-final.log": "96d9234a0d50c7fdaee3e8d9d7df46cbeae0f541f3ff7e57f60693dd24f6339b",
+    "guard-final-source.log": "81915ac665bf765ab4370d9bb233ea37aba1fb9af73b745dca4d2e4f7cbae9a8",
+    "waterfall-visual-final.log": "1e2ae707f3fe669e569d9d8712b52dd7755041ed5993c92f0c183e7d43613fda",
+    "diagram-render-final.log": "f83d9e847d44463164fddf0c635c965941cafb9f075de4db80ba5769fde07072"
+  },
+  "protectedRuntimes": "Untouched; source release only",
+  "liveProviderCalls": 0
+}

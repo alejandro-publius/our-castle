@@ -323,7 +323,7 @@ export function createKitPlan({ getState, actor, applyState, openMerchant, reser
   }
 
   function lineItem(line, plan, isAdult, merchantOn) {
-    const head = h('div', { class: 'kit-plan-line-head' }, h('strong', {}, line.name), h('span', { class: 'kit-plan-need' }, line.remaining ? `To get: ${line.remaining}` : 'Already at home'));
+    const head = h('div', { class: 'kit-plan-line-head' }, h('strong', {}, line.name), h('span', { class: 'kit-plan-need' }, line.remaining ? `To get: ${line.remaining}` : line.sharedQuantity ? 'Covered with neighbor help' : 'Already at home'));
     if (!line.remaining) return h('li', { class: 'kit-plan-line owned', 'data-line': line.lineId }, head, h('p', { class: 'fine' }, `The family has all ${line.quantity}, so no listing is needed.`));
     const find = isAdult && merchantOn && line.candidates.length < plan.maxPerLine
       ? h('button', { type: 'button', class: 'link-button', 'data-focus-key': `find:${line.lineId}`, 'aria-haspopup': 'dialog', 'aria-controls': 'merchant-dialog',

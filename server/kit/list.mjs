@@ -4,6 +4,7 @@
 import { randomBytes } from 'node:crypto';
 import { DomainError, getGoal } from '../household.mjs';
 import { transaction } from '../db.mjs';
+import { sharedItems, sharedQuantity, guardSharedEdits } from '../exchange/stock.mjs';
 import { KIT_LIMITS, checkKit, cleanKitText, kitProblemText } from '../../src/core/kit-list.js';
 
 const fail = (status, code, message) => new DomainError(status, code, message);
@@ -19,10 +20,14 @@ function storedItems(row) {
 /** What every member sees: the confirmed list (empty until an adult saves one), its revision and who saved it. */
 export function kitView(db, goal) {
   const row = db.prepare('SELECT * FROM kit_lists WHERE goal_id = ?').get(goal.id);
+  const shared = sharedItems(db, goal);
   return {
     maxItems: KIT_LIMITS.maxItems, maxQuantity: KIT_LIMITS.maxQuantity,
     revision: row?.revision ?? 0,
-    items: storedItems(row).map(({ id, name, needs, quantity, ownedQuantity, source }) => ({ id, name, needs, quantity, ownedQuantity, remaining: quantity - ownedQuantity, source })),
+    items: storedItems(row).map(item => {
+      const count = sharedQuantity(shared, item);
+      return { ...item, sharedQuantity: count, remaining: Math.max(0, item.quantity - item.ownedQuantity - count) };
+    }),
     savedBy: row?.saved_by ?? null,
     savedAt: row?.saved_at ?? null,
   };
@@ -71,6 +76,7 @@ export function saveKit(db, { householdId, goalId, actor, expectedRevision, item
       used.add(id);
       return { id, name: line.name, needs: line.needs, quantity: line.quantity, ownedQuantity: line.ownedQuantity, source };
     });
+    guardSharedEdits(db, goal, saved, fail);
     db.prepare(`INSERT INTO kit_lists (goal_id, household_id, revision, items_json, saved_by, saved_at) VALUES (?, ?, ?, ?, ?, ?)
       ON CONFLICT(goal_id) DO UPDATE SET revision = excluded.revision, items_json = excluded.items_json, saved_by = excluded.saved_by, saved_at = excluded.saved_at`)
       .run(goal.id, householdId, current + 1, JSON.stringify(saved), actor.memberId, clock.iso());

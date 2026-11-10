@@ -4,7 +4,7 @@ import { REALM_SIZE, REALM_BOUNDS, REALM_DISTRICTS, REALM_LEGENDS, REALM_BRIDGES
 import { courtResidents, courtWorldPose, courtDistrict } from '../../src/core/court.js';
 
 test('nine separate districts remain on the world map while only earned destinations and bridges open',()=>{
-  assert.deepEqual(REALM_SIZE,{width:356,depth:260,centerX:32,centerZ:0});
+  assert.deepEqual(REALM_SIZE,{width:420,depth:324,centerX:32,centerZ:0});
   const start=realmAccess({builtTier:0,estateLevel:1});
   assert.equal(start.length,9);assert.deepEqual(start.filter(d=>d.open).map(d=>d.id),['cottage']);
   assert.ok(bridgeAccess({builtTier:0,estateLevel:1}).every(b=>!b.open));
@@ -103,7 +103,7 @@ test('Rosewind adds a royal destination without moving the earlier homes or crea
 });
 
 
-test('the folklore towers use existing milestones; the hidden sword has no reward or payment gate',()=>{
+test('the folklore towers use existing milestones; the hidden discoveries have no reward or payment gate',()=>{
   const low=realmAccess({builtTier:1,gardens:4,estateLevel:3});
   assert.equal(low.find(d=>d.id==='wizard').open,false);
   assert.equal(low.find(d=>d.id==='rapunzel').open,false);
@@ -112,10 +112,12 @@ test('the folklore towers use existing milestones; the hidden sword has no rewar
   assert.equal(keep.find(d=>d.id==='rapunzel').open,false);
   assert.equal(bridgeAccess({builtTier:2,estateLevel:3}).find(b=>b.id==='wizard-bridge').open,true);
   assert.equal(bridgeAccess({builtTier:3,estateLevel:3}).find(b=>b.id==='rapunzel-bridge').open,true);
-  assert.deepEqual(REALM_LEGENDS.map(d=>d.id),['sword-stone']);
+  assert.deepEqual(REALM_LEGENDS.map(d=>d.id),['knights-rest','sword-stone']);
   assert.equal(districtById('sword-stone'),undefined);
+  assert.equal(districtById('knights-rest'),undefined);
+  assert.equal(viewLocation('knights-rest').name,'The Knights’ Rest');
   assert.equal(viewLocation('sword-stone').name,'The Sword in the Stone');
   assert.equal(viewLocation('unknown'),undefined);
-  for(const d of REALM_LEGENDS)assert.ok(riverAt(d.x,d.z).depth < -3,'the sword grove stays on dry ground');
+  for(const d of REALM_LEGENDS)assert.ok(riverAt(d.x,d.z).depth < -3,'hidden discoveries stay on dry ground');
   assert.deepEqual(REALM_ROUTE[20],{x:47,z:-16.3});
 });

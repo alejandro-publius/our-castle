@@ -25,9 +25,9 @@ const schema = (db) => db.prepare("SELECT type, name, sql FROM sqlite_master WHE
   .map((r) => `${r.type} ${r.name} ${r.sql}`).join('\n');
 const version = (db) => db.prepare('PRAGMA user_version').get().user_version;
 
-test('one sequence: main 4 has four SQL steps, then eight checked steps, twelve in all', () => {
+test('one sequence: main 4 has four SQL steps, then nine checked steps, thirteen in all', () => {
   assert.equal(MAIN.length, 4);
-  assert.deepEqual(MIGRATIONS.slice(4).map((s) => s.id), ['goal-project-kind', 'merchant-selection', 'family-access', 'deferred-refunds', 'family-choices', 'family-choice-needs', 'kit-lists', 'kit-planner']);
+  assert.deepEqual(MIGRATIONS.slice(4).map((s) => s.id), ['goal-project-kind', 'merchant-selection', 'family-access', 'deferred-refunds', 'family-choices', 'family-choice-needs', 'kit-lists', 'kit-planner', 'village-exchange']);
   assert.ok(MIGRATIONS.every(Object.isFrozen));
 });
 

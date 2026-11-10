@@ -1,0 +1,104 @@
+{
+  "date": "2026-11-10",
+  "base": "fb8563f9df788bac3073bcc30a7b9e5903fad773",
+  "branch": "codex/village-exchange-20261110",
+  "captureState": "Uncommitted feature working tree; source hashes recorded when packaging, not an independent archived snapshot for each capture.",
+  "scope": "Disposable example/family data, synthetic configuration and fake providers. Chromium desktop 1440x1000 and touch-emulated 390x844 phone. No real-family, payment or physical-device evidence.",
+  "steps": {
+    "exchange": "Compare the invented $150 kit; Market Town > Village Exchange, accept Willow offer, confirm receiving, compare $70 kit. Screenshot before return.",
+    "wideAndCamp": "Whole realm, day mode, journal closed; enable compass and select the forest camp.",
+    "waterfalls": "Visible Areas/compass/View controls and browser mouse dragging reach both springs. Night camp uses World settings > Night. No app state changed."
+  },
+  "captures": [
+    {
+      "file": "docs/screenshots/village-exchange-desktop-received.png",
+      "sha256": "2ef8a507e586e7022b54fc72e3755a7861a91f2ffdbbc556d3e7acdfdbaa7630",
+      "width": 1440,
+      "height": 1000
+    },
+    {
+      "file": "docs/screenshots/village-exchange-phone-received.png",
+      "sha256": "a7ba076d7aa669b60e1f02a84ca3c8f1b8847142576293b12b59115efeb5234d",
+      "width": 780,
+      "height": 1688
+    },
+    {
+      "file": "docs/screenshots/woodland-expanded-desktop.png",
+      "sha256": "1fa89462f6f92e131c3b56e4223dc9d00d4a6abc4a445256e4caad9abdc6dc4f",
+      "width": 1440,
+      "height": 1000
+    },
+    {
+      "file": "docs/screenshots/woodland-expanded-phone.png",
+      "sha256": "1a277706dd20491d8fba1f24f909463fc3d91e5ea138bf8fb6bee95f5e20d06a",
+      "width": 780,
+      "height": 1688
+    },
+    {
+      "file": "docs/screenshots/woodland-camp-desktop.png",
+      "sha256": "8cf58ac9e19295ff8849701cb080495e60551a181084ad555f54c8481254afcd",
+      "width": 1440,
+      "height": 1000
+    },
+    {
+      "file": "docs/screenshots/woodland-camp-phone.png",
+      "sha256": "0ad115ac048e0b716ea8832165e924616fb6004ec596e465dcacbfe76a5bb6fd",
+      "width": 780,
+      "height": 1688
+    },
+    {
+      "file": "docs/screenshots/woodland-rose-waterfall.png",
+      "sha256": "6f27b552a6c0279b5b057d3c7e13e249f35eed9a156719e3c6f8d5cd48d6d544",
+      "width": 1440,
+      "height": 1000
+    },
+    {
+      "file": "docs/screenshots/woodland-west-waterfall.png",
+      "sha256": "e78d68f4afa4a6a826510f9e49bce24d1681ae7434486920a3b906cf37639432",
+      "width": 1440,
+      "height": 1000
+    },
+    {
+      "file": "docs/screenshots/woodland-camp-night.png",
+      "sha256": "ce0cd75c99befba9037288a2f63163edee11abcd76eadb517db9ce3363d97f65",
+      "width": 1440,
+      "height": 1000
+    }
+  ],
+  "packagedSourceHashes": {
+    "scripts/demo.mjs": "079dd5f012e776b0d993e97f8ee707afb51cc02605e6d6c58bf5694d673cb739",
+    "scripts/village-exchange.mjs": "a9ebaaafce45ea05473f49eabaebe23010be8d499a0cc9c06b61249385a5bbd1",
+    "server/access/policy.mjs": "f5a3d8ac36725e808a3afd2116a76344356ddd4c09afd764ea1a013fa10d26c1",
+    "server/app.mjs": "a7bc538e19307f4c0e01c7a7931efb056360da0f3b57c034af2887ea6b75a33b",
+    "server/db.mjs": "ce7866afbb41a7da6795487bbc9fec4302d3884e2079ced03402102768dd9c02",
+    "server/exchange/index.mjs": "db3c3f031b7bbbbe2aff385182b4e4c4470febffd2bb67cd92b4ee79cea2c991",
+    "server/exchange/stock.mjs": "a0976a7847f6f7410d123d107863734e80177f2186c54a9e03b0d378945707af",
+    "server/kit/list.mjs": "c5ce1e85f172d352c1dd66c33406f5062852256d22f507f72ee74526b764784b",
+    "server/kit/planner.mjs": "c553156813211578a5f0b6811f69b3af4d757b4832efe7f53865176459b305ae",
+    "src/app/kit-list.js": "888c1406605bb7c798076b8fd94e9239ca375e4656a89cd2a1638029a4f152bc",
+    "src/app/kit-plan.js": "9c24eb1b2738523fdda0a81549bb575208f384ff50e08fb76937db96a18b358a",
+    "src/app/main.js": "dffa077e124a967b953f3635692af096809d14b023935c277bf7707889703cc0",
+    "src/app/village-exchange.js": "b34127458ecda489ce43b7459c074e45d735a1e71d2f2582c38d406a0004c133",
+    "src/core/realm.js": "f6d5a525db9fa41786d94ead27cae7bdba58ae0918ca4c3750249d6d368bd9a2",
+    "src/core/woodland-discoveries.js": "8b0ed028a0d987c0c20bb69f7c3bb8496e2cf24fe0c9b597403d2e7c194a62e0",
+    "src/world/board-scene.js": "1d69bb250480178b092ee20fd22ac8bdeacd7824fa3466a998e9ee063e00dd33",
+    "src/world/realm-models.js": "a2a4e7c96ad1c1a631f78ff33aa654b9956376bcd02510f253b28df3520953a8",
+    "src/world/woodland-discoveries.js": "2637efd79778324e12ca759e95ba895a5f2373f35240caa3870093c218c2290d",
+    "test/e2e/mountain-room.spec.mjs": "a129576a2f5e86c773c0873d77a9df4c6faa4b99d20cd7cfa5c4b2218c150fa4",
+    "test/e2e/realm-focus.spec.mjs": "e41af02dfb392132cb2399b91d664ba34b60f8f5888bb45d3ee00c909b592c3a",
+    "test/e2e/realm.spec.mjs": "a5560145044581107184aea8882e7111f7d6ac0a88475e6615fdcc55b4b6092f",
+    "test/e2e/village-exchange.spec.mjs": "799d19354766f7c61dea133a7e28f154d6c6df1346a826c3853112e842cc4c13",
+    "test/e2e/woodland-discoveries.spec.mjs": "0d9653a4b5c1f305bdd6b0178551b293726f92af7a6eca83dc2106896619d4cf",
+    "test/unit/family-access.test.mjs": "ee1bd19f8ce1bbd2ed1f9582c9c514dd70bb26a1e973ccac07b0cff0176016ed",
+    "test/unit/family-choices.test.mjs": "8593be93e15412c5886bceef59059c7d1fafbd7c7067a760a67eaaf2c7d0ea2f",
+    "test/unit/family-fit.test.mjs": "c1bc9431bc23bc9288311a6d55622f5dfff488421636bda2c69abf327c5ccf41",
+    "test/unit/kit-list.test.mjs": "a75f138896d9e6f992c24d219c147b1839f6db7e2174f6984947707095cb689e",
+    "test/unit/kit-planner.test.mjs": "feaf42e71c5c9e5b355c31166c0bc33d52d6286346b50b99f015e2adfd01236f",
+    "test/unit/migration-integration.test.mjs": "afd97bfef7f1d5cafecb65899cb77fef580b14aeae6cc4808fa1f8b50284a4eb",
+    "test/unit/realm-terrain.test.mjs": "de2c82b37da509f1b3ea982b8160abfe367a7733a826220f8b90b80db5bfaf0a",
+    "test/unit/realm.test.mjs": "b61040a111d8ed4a2531b9493575940f5480fa96d94311ce55540106bfc62d7b",
+    "test/unit/village-exchange.test.mjs": "9a154b2d1eda5af94bc76b68e6ac37316552d216fac342d26b55a202e6b10aa5",
+    "test/unit/woodland-discoveries.test.mjs": "c2458f5795ec214c1869f4a2b93aa62d82d17a39cb309c3a2f57e654835e2ba0"
+  },
+  "committedHeadBeforeFeature": "af4d9e5ad3878efc4945636e5ae9e6294ddb33ec"
+}

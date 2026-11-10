@@ -4,20 +4,21 @@
 
 Decide what the family can afford together, compare complete kits and adjust the plan when an expense changes. A living pixel woodland turns shared progress into new places to explore. Keep the village, open the Manor, cross the rivers to the Keep, and reach the Royal Citadel, Rosewind Palace and two storybook towers. Nine districts, a campsite that grows with the shared goal, short deed cards, family avatars, roaming guests and changing light sit beside one compact household journal.
 
-![Our Castle: the woodland realm beside the redesigned household journal](docs/screenshots/journal-desktop-house.png)
+![Our Castle: expanded pixel woodland, rivers and compact property arrows](docs/screenshots/woodland-expanded-desktop.png)
 
 The illustrated journal has four chapters—House, Plan, Contribute and Ledger—with an original pixel crest and castle illustration. Family heraldry stays personal. [See the journal and brand design](docs/JOURNAL-DESIGN.md).
 
 [Architecture diagram](#architecture-at-a-glance) · [Payment sequence](docs/ARCHITECTURE.md#payment-states)
 
-The source is **public on GitHub**. This source release includes the reviewed work of PRs #40–#58:
+The source is **public on GitHub**. It includes:
 - payment recovery and safety fixes;
 - opt-in music;
 - Moss's optional tour;
 - family choices and schedules;
 - shopping within the family's limits;
 - a kit list from typed text or a photo;
-- complete-kit planning and a playable family-trip example with an invented catalogue.
+- complete-kit planning and a playable family-trip example with an invented catalogue;
+- an invite-only Village Exchange that connects received loans and gifts to the kit planner.
 
 The saved Mac apps at http://localhost:3010 and http://localhost:3021 were upgraded to `b21b2d8` (database schema 12) with their original records preserved. They remain pinned to that runtime; the new family-trip example below starts a separate fresh session. [Release status and remaining video/submission steps](docs/RELEASE-READINESS.md). For an independent code review, use the [source map and evidence guide](docs/JUDGE-HANDOFF.md#6-for-source-reviewers).
 
@@ -47,6 +48,14 @@ Several people in one family, each with their own passkey? `npm run family -- --
 
 Contributing with Rachel? [Start here](START-HERE-RACHEL.md) for one small task, a clean demo and the branch/PR workflow.
 
+## Help a neighbor keep the trip
+
+**Village Exchange** gives invited families a private board for an item they still need. Offer a loan or gift, accept it, then confirm the handover. In the authored example, receiving Willow's tent lowers Alder's lowest listed kit total from **$150 to $70**. A promise alone changes nothing; borrowed equipment never becomes money in the ledger.
+
+Run **`npm run demo -- --village-exchange`** to try it in a fresh, keyless session. Open **Plan → Village Exchange**, accept Willow's offer, confirm receipt and compare what remains to buy. The same controls work between separate passkey households in the family runner. [Walkthrough, boundaries and implementation](docs/VILLAGE-EXCHANGE.md).
+
+![A received tent from an invented neighbor covers the kit item without adding a payment](docs/screenshots/village-exchange-desktop-received.png)
+
 ## A connected family journey
 
 1. **House:** name the house, choose a crest and set a shared goal.
@@ -56,7 +65,7 @@ Contributing with Rachel? [Start here](START-HERE-RACHEL.md) for one small task,
 
 Searching does not buy an item. This is goal progress, not a bank balance. Reported savings, bills, gifts, simulated contributions and PayPal sandbox receipts retain their sources. Verified utility-bill rewards require a provider connection that is not present.
 
-The **compass beside View** lets you drag between homes at your current close-up scale; switch it off to turn the map again. The **Sound button at the top right** enables quiet retro RPG music and board effects. Every page starts muted; the music loads only when enabled. [Music source and CC0 licence](assets/music/README.md). After contributing, **Review the receipt** opens that contribution in Treasury, with its saved-check status and the single steward note. [Receipt walkthrough and desktop/phone captures](docs/RECEIPT-HANDOFF.md).
+Small **arrow markers** reveal property names when selected or reached by keyboard. The map has another 32-unit square of land on every side, two animated waterfalls feeding the rivers, and a hidden camp with two resting knights. The **compass beside View** lets you drag between homes at your current close-up scale; switch it off to turn the map again. The **Sound button at the top right** enables quiet retro RPG music and board effects. Every page starts muted; the music loads only when enabled. [Music source and CC0 licence](assets/music/README.md). After contributing, **Review the receipt** opens that contribution in Treasury, with its saved-check status and the single steward note. [Receipt walkthrough and desktop/phone captures](docs/RECEIPT-HANDOFF.md).
 
 The walkthrough captures use isolated test households and simulated contributions:
 
@@ -113,6 +122,8 @@ flowchart TB
     Family["Family journal<br/>goals, offers and kit list"] --> Server["Local Node.js server<br/>access, approvals and validation"]
     Server <--> Planning["Planning engine<br/>compare complete kits and repair plans<br/>Rust solver or JavaScript reference"]
     Server <--> Records[("SQLite<br/>household and contribution records")]
+    Server <--> Exchange["Village Exchange<br/>private invitations · loans · gifts"]
+    Exchange -->|"received items reduce shopping needs"| Planning
     Server -. "configured integrations" .-> Providers["PayPal sandbox · Channel3<br/>Claude · OpenAI · Cohere"]
     Server --> View["World progress and Treasury<br/>pixel woodland · AG Grid / AG Studio"]
 ```

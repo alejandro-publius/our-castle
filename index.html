@@ -115,7 +115,7 @@
           <p id="kit-preview-changes" hidden></p>
           <details class="kit-preview-about"><summary>About this picture</summary><p id="kit-preview-about"></p></details>
         </section>
-        <div class="board-foot"><p id="realm-focus-status" class="area-status" role="status" aria-live="polite"></p><button type="button" class="chip" id="open-merchant" aria-label="Open the Market Town merchant" hidden>Merchant</button><button type="button" class="chip" id="view-deed" aria-describedby="realm-focus-status" hidden>View deed</button><p id="board-status" class="sr-only" role="status" aria-live="polite"></p><ol id="tier-track" class="sr-only" aria-label="House milestones"></ol></div>
+        <div class="board-foot"><p id="realm-focus-status" class="area-status" role="status" aria-live="polite"></p><button type="button" class="chip" id="open-merchant" aria-label="Open the Market Town merchant" hidden>Merchant</button><button type="button" class="chip" id="open-exchange" hidden>Village Exchange</button><button type="button" class="chip" id="view-deed" aria-describedby="realm-focus-status" hidden>View deed</button><p id="board-status" class="sr-only" role="status" aria-live="polite"></p><ol id="tier-track" class="sr-only" aria-label="House milestones"></ol></div>
         <p id="world-fallback" class="world-fallback" hidden>The board is unavailable. Your journal still works. <a href="references/images/our-house-castle.png">See the realm.</a></p>
         <div id="celebration" class="celebration" hidden></div>
       </section>
@@ -275,6 +275,16 @@
             <div class="form-status" id="kit-status" role="status" aria-live="polite"></div>
           </details>
           </div>
+          <details class="village-exchange" id="village-exchange" hidden>
+            <summary>Village Exchange <small id="exchange-summary"></small></summary>
+            <p class="fine">Share a need with invited neighbors. An offer is a promise; only an item you confirm receiving helps cover the kit. No money changes hands here.</p>
+            <div id="exchange-forms"></div>
+            <p class="fine" id="exchange-empty" hidden>No requests yet. Share one item your family still needs.</p>
+            <ul id="exchange-board" class="exchange-board" aria-label="Neighborhood requests"></ul>
+            <ul id="exchange-invites" class="exchange-invites" aria-label="Your open invitations"></ul>
+            <button type="button" id="exchange-compare" class="link-button">Compare what is left to buy</button>
+            <p id="exchange-status" role="status" aria-live="polite"></p>
+          </details>
           <!-- A Market Town merchant result waiting for the family's confirmation. Nothing is saved until "Save as our goal". -->
           <section class="goal-draft" id="goal-draft" hidden aria-labelledby="goal-draft-title">
             <h4 id="goal-draft-title" tabindex="-1">Draft from the market</h4>

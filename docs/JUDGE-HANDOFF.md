@@ -50,9 +50,13 @@ The map preview has separate [desktop/phone captures and focused checks](KIT-MAP
 
 The same planner and approval boundaries drive the configured app. Sample products exercise their local path; they do not establish live Channel3 prices, stock or purchasing. Switching example profiles is not passkey sign-in; use the separate family route below to inspect that implementation.
 
+### Optional neighbor-help moment
+
+Run `npm run demo -- --village-exchange` in a separate fresh session. In **Plan → Village Exchange**, Alder needs a tent and Willow has offered one. **Accept offer** leaves the kit need unchanged. **I received the item** makes the tent available; **Compare what is left to buy** and then **Compare complete kits** reduce the lowest listed total from **$150 to $70**, with recorded progress unchanged at $60. **I returned the item** restores the need. These two families and the catalogue are invented; the same service and visible controls are tested with two separate passkey households. [Complete flow and privacy boundaries](VILLAGE-EXCHANGE.md).
+
 ### Explore the plain household or configured integrations
 
-1. Name the house and choose a crest. The map starts close to Hearth Village; the **compass beside View** lets you drag between places at that scale. **Whole realm** shows all nine districts. Optionally, **Meet the Keeper** at the top of Journal → House starts Moss's eight-step tour.
+1. Name the house and choose a crest. The map starts close to Hearth Village; the **compass beside View** lets you drag between places at that scale. **Whole realm** shows all nine districts. Property markers use compact arrows; selecting one or reaching it by keyboard reveals its name. The wider forest has two waterfalls and a hidden knight camp, discoverable with the compass. Optionally, **Meet the Keeper** at the top of Journal → House starts Moss's eight-step tour.
 2. **Journal → Plan → Find an item**, or **Areas → Market Town → Merchant:** with Channel3 configured, search within a budget. **Use as goal** drafts the Plan; confirm **Save as our goal** explicitly. Manual refresh and cheaper alternatives keep changed offers subject to review; selected stock/variant checks can expire an old draft. The plain `npm run demo` keeps search disconnected; the opt-in family-trip command above supplies explicitly invented results instead.
 3. **Journal → Plan:** save a campsite, garden or schoolhouse **Build** choice with the goal, then try a weekly amount/date with **Check schedule**; a later-date suggestion only fills the form. Explicitly make, review and use a plan to save it. The AI planner is live only with a runtime key; otherwise the rules planner is labelled accordingly. The project's **Visit** control reaches the chosen place, including on a phone.
 4. **Journal → Plan → Kit list and Family choices** need no key.

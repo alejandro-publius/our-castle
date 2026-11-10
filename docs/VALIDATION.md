@@ -1,5 +1,29 @@
 # Validation
 
+## Village Exchange, quieter markers and the wider woodland — November 10, 2026
+
+The source adds an invite-only neighborhood board, equipment loans/gifts and explicit handovers connected to kit quantities. Accepting an offer reserves the request but leaves shopping needs unchanged. Confirming receipt makes the item available; returning it restores the need. In the authored example, the lowest listed kit changes from $150 to $70 with no financial credit. [Walkthrough and screenshots](VILLAGE-EXCHANGE.md).
+
+Property markers start as ivory arrows and reveal names on selection or keyboard focus. Another 32 world units on each side changes the board from 356×260 to 420×324 without moving districts, routes or thresholds. Two animated springs meet river channels; two original knight miniatures rest at a small camp. Water, fire and glow share the existing scene lifecycle and reduced-motion behavior.
+
+**Confirmed privacy correction:** the merchant-wide transaction tool allowed unrelated rows and payer metadata to reach the model. A fake transport returned one recorded household capture and an unrelated transaction referencing the same order; the before-fix regression failed with two rows instead of one. The steward now matches only server-recorded capture IDs for the current household goal (and selected order when present), deduplicates, and retains only IDs, recognized statuses and valid amount/fee fields. Merchant totals, payer data, notes and unmatched rows never reach the model. No live PayPal or model request was made.
+
+**Actual local checks:**
+
+- Steward/access/prompt-injection selection: **36 passed** after the failing privacy regression.
+- Final Exchange unit cases: **5 passed**. They cover consent, hashed/expiring/revocable/single-use invites, outsider/child/CSRF refusal, private offers, competing acceptance, receipt idempotency, returns, protected kit edits, a gift giver leaving, alias privacy after changing neighborhoods, and a loan becoming unsuitable after a date change.
+- Exchange browser journeys: **4 passed**, desktop and 390 px phone, including two separately signed-in virtual-passkey households with live updates. The sample's $150 → $70 computation, unchanged progress/contributions and return are checked.
+- Initial affected map/lifecycle selection: **22 passed, six designed skips**. After correcting the tent roof and adding the Market Town shortcut route, **six** affected Exchange/discovery/folklore cases passed across both viewports.
+- A camera check reproduced the old northward clamp at −66 instead of the enlarged board's −162. After using the actual bounds, **10 compass/discovery cases passed, two designed skips**. The first probe aimed keys at the compass rather than the View controls; that harness error was corrected before recording the real clamp failure.
+- Final water-glint and night-fire materials: **six discovery/lifecycle passes, four designed phone skips**. Both springs were reached with visible controls and browser mouse dragging; close-up/day/night probes had zero page errors, outside requests or app writes and unchanged state.
+- The one broad local unit run initially had 589 passes, four old schema-expectation failures and two skips. The four expectations now include the five new empty schema-13 tables while retaining original-row checks; the affected migration selection passed **41/41**. Local skips were the unbuilt Rust differential case and the existing SDK-managed OAuth-cache case. Final full unit/native results belong to the required hosted checks recorded on the PR.
+- The original-art/source guard passes: 47 copied art/runtime files, original 90-colour palette, renderer wiring and JavaScript syntax. **Nine Mermaid diagrams** parse and render with accessible titles/descriptions. A semicolon in the new sequence label was corrected after the renderer rejected it.
+
+Exchange and discovery browser cases join the required release selection. The full browser suite was not rerun locally. Checks use disposable data, synthetic configuration and fake/local transports; browser probes reject outside-origin traffic. This is not an OS-wide network-isolation, real-family, physical-device, live-catalogue or live-payment claim. Saved apps, records, configuration and the completed sandbox order were not accessed or changed.
+
+[Capture hashes and steps](screenshots/village-exchange-sources.json). Raw logs, before-fix traces, diagrams and probes remain ignored under test-results/village-exchange-20261110/. Saved schema-12 runtimes remain separate from this schema-13 source; see [release readiness](RELEASE-READINESS.md).
+
+
 ## Illustrated journal and generated identity — November 9 Pacific / November 10 UTC, 2026
 
 The owner requested a journal redesign and original ChatGPT-generated brand assets. [Design and actual screenshots](JOURNAL-DESIGN.md) record the reference lock: a forest cover, four chapter tabs, lighter pages, explicit planning sections, and a crest/castle identity separate from saved family heraldry. Original world art, licences, renderer and palette remain unchanged.
