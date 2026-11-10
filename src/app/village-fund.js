@@ -3,11 +3,11 @@ import { api, newRequestId } from './api.js';
 const $ = id => document.getElementById(id);
 const RAILS = Object.freeze({ simulated: 'Simulated contribution · no money moves', 'paypal-sandbox': 'PayPal sandbox · test payment', 'pyusd-devnet': 'PYUSD devnet · test tokens with no monetary value' });
 export const villageRailLabel = rail => RAILS[rail] ?? 'Unsupported contribution type';
-export function parseVillageMinor(value, decimals = 2) {
+export function parseVillageMinor(value, decimals = 2, allowZero = false) {
   if (![2, 6].includes(decimals) || typeof value !== 'string' || !new RegExp(`^\\d+(?:\\.\\d{1,${decimals}})?$`).test(value.trim())) return null;
   const [whole, fraction = ''] = value.trim().split('.');
   const minor = Number(whole + fraction.padEnd(decimals, '0'));
-  return Number.isSafeInteger(minor) && minor > 0 ? minor : null;
+  return Number.isSafeInteger(minor) && minor >= (allowZero ? 0 : 1) ? minor : null;
 }
 export function villageMoney(minor, fund) {
   if (!Number.isSafeInteger(minor)) return '—';
@@ -80,7 +80,7 @@ export function createVillageFund({ getState, actor, applyState, getScene, onSqu
   const shareAmount = input('committed', { type: 'text', inputmode: 'decimal', required: true });
   const shareApproved = input('confirmed', { type: 'checkbox', required: true });
   const shareForm = h('form', { id: 'village-share-form' }, field('Our family’s voluntary share', shareAmount), h('label', { class: 'check' }, shareApproved, ' We reviewed this share. It is a commitment, not a payment or debt.'), h('button', { type: 'submit' }, 'Save our share'));
-  shareForm.addEventListener('submit', e => { e.preventDefault(); const f = fund(), n = parseVillageMinor(shareAmount.value, f?.decimals); if (!f || !n || !shareApproved.checked) return say('Enter a valid share and review it first.'); act('/api/village', { action: 'share', fundId: f.id, committedMinor: n, expectedRevision: f.revision, confirmed: true }); });
+  shareForm.addEventListener('submit', e => { e.preventDefault(); const f = fund(), n = parseVillageMinor(shareAmount.value, f?.decimals, true); if (!f || n === null || !shareApproved.checked) return say('Enter a valid share and review it first.'); act('/api/village', { action: 'share', fundId: f.id, committedMinor: n, expectedRevision: f.revision, confirmed: true }); });
   const shareDetails = h('details', {}, h('summary', {}, 'Our family’s share'), shareForm);
   pages.project.append(title, rail, progress, summary, remaining,
     button('Visit the shared square', showSquare, { id: 'village-visit' }), paymentNote, paymentForm, vault, shareDetails);
@@ -151,7 +151,7 @@ export function createVillageFund({ getState, actor, applyState, getScene, onSqu
     });
   });
   const draftDetails = h('details', {}, h('summary', {}, 'Describe it in one sentence'), draftForm, draftResult);
-  const question = input('question', { required: true, maxlength: 400, placeholder: 'Who has contributed?' }), answer = h('p', { id: 'village-answer', role: 'status' });
+  const question = input('question', { required: true, maxlength: 300, placeholder: 'Who has contributed?' }), answer = h('p', { id: 'village-answer', role: 'status' });
   const questionForm = h('form', {}, field('Ask the treasurer', question), h('button', { type: 'submit' }, 'Read the fund records'));
   questionForm.addEventListener('submit', e => { e.preventDefault(); act('/api/village/treasurer', { fundId: selected, question: question.value.trim() }, res => { answer.textContent = res.answer; }); });
   const treasurer = h('details', {}, h('summary', {}, 'Ask the treasurer'), h('p', { class: 'fine' }, 'Answers from this fund’s records. It cannot move money.'), questionForm, answer);
@@ -264,6 +264,7 @@ export function createVillageFund({ getState, actor, applyState, getScene, onSqu
       if (res.state) applyState(res.state); else if (res.village) village = res.village;
       if (res.fundId) selected = res.fundId;
       if (review || (!res.state && !res.village && !['/api/village/draft', '/api/village/treasurer'].includes(path))) await refresh();
+      if (before !== scope() || destroyed) return null;
       say('Saved.'); after?.(res); render(); return res;
     } catch (e) { if (before === scope()) say(e.message); return null; }
     finally { busy = false; dialog.removeAttribute('aria-busy'); renderApproval(); }

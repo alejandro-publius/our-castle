@@ -202,3 +202,52 @@ test('a published outsider review restores an exact unfinished checkout without 
     expect(errors).toEqual([]); expect(outsideRequests).toEqual([]);
   } finally { await context.close(); await demo.close(); }
 });
+
+test('withdrawing a voluntary share allows zero; a delayed old-member grant cannot repopulate the new member UI', async ({ browser }, info) => {
+  test.skip(info.project.name !== 'desktop', 'Focused native-form and identity lifecycle regression.');
+  const demo = await startDemo({ villageStory: true }), context = await browser.newContext(), page = await context.newPage();
+  const errors = [], shares = []; page.on('pageerror', error => errors.push(error.message));
+  const fund = { id: 'fund_share', title: 'Invented class trip', rail: 'simulated', decimals: 2, targetMinor: 10000, revision: 1, status: 'open', progress: { netMinor: 0, remainingMinor: 10000, basisPoints: 0, stage: 0 },
+    shares: [{ familyReference: 'FAM_TEST', alias: 'Example family', committedMinor: 6000, paidMinor: 0 }], receipts: [] };
+  const village = { available: true, neighborhood: { id: 'fixture_circle', name: 'Invented families' }, funds: [fund], members: [{ familyReference: 'FAM_TEST', alias: 'Example family', mine: true }], selectedFundId: fund.id, capabilities: { mcp: true } };
+  const fixture = `<!doctype html><meta charset="utf-8"><title>Share and scope fixture</title><button id="open-village">Village fund</button><dialog id="village-fund-dialog"></dialog><section id="village-square-controls" hidden></section><script type="module">
+    import { createVillageFund } from '/src/app/village-fund.js';
+    let member={id:'adult-before',role:'adult'};const state={household:{id:'fixture-house'},access:{me:{memberId:member.id,role:'adult'}},village:${JSON.stringify(village)}};
+    window.controller=createVillageFund({getState:()=>state,actor:()=>member,applyState:()=>{},getScene:()=>null});window.controller.render();
+    window.switchMember=()=>{member={id:'adult-after',role:'adult'};state.access.me.memberId=member.id;state.village={...state.village};window.controller.render()};
+  </script>`;
+  let releaseRead, awaitingRefresh = false, holdRefresh = null, grantIssued = false;
+  await context.route('**/*', async route => {
+    const request = route.request(), url = new URL(request.url());
+    if (url.origin !== demo.url) { errors.push(`Unexpected outside request: ${url.origin}`); return route.abort(); }
+    const json = body => route.fulfill({ contentType: 'application/json', body: JSON.stringify(body) });
+    if (url.pathname === '/__share_fixture') return route.fulfill({ contentType: 'text/html', body: fixture });
+    if (url.pathname === '/api/village') {
+      if (request.method() === 'POST') { const body = request.postDataJSON(); shares.push(body); fund.shares[0].committedMinor = body.committedMinor; fund.revision++; }
+      else if (holdRefresh && grantIssued) { awaitingRefresh = true; await holdRefresh; }
+      return json({ village });
+    }
+    if (url.pathname === '/api/mcp/grants') { grantIssued = true; return json({ grantId: 'old_member_grant', fundId: fund.id, token: 'fixture_token_only', expiresAt: '2026-11-10T22:15:00Z' }); }
+    return route.continue();
+  });
+  try {
+    await page.goto(`${demo.url}/__share_fixture`); await page.locator('#open-village').click();
+    await page.locator('[data-village-tab=families]').click(); await expect(page.locator('.village-family-list')).toContainText('$60.00 voluntary share');
+    await page.locator('[data-village-tab=project]').click(); await page.getByText('Our family’s share', { exact: true }).click();
+    await page.locator('#village-share-form [name=committed]').fill('0'); await page.locator('#village-share-form [name=confirmed]').check();
+    await page.getByRole('button', { name: 'Save our share' }).click();
+    await expect.poll(() => shares.length, { timeout: 3000 }).toBe(1);
+    expect(shares[0]).toMatchObject({ action: 'share', committedMinor: 0, confirmed: true });
+    await page.locator('[data-village-tab=families]').click(); await expect(page.locator('.village-family-list')).toContainText('$0.00 voluntary share');
+    await page.locator('[data-village-tab=project]').click(); await page.locator('#village-amount').fill('0'); await page.locator('#village-approve').check(); await expect(page.locator('#village-contribute')).toBeDisabled();
+    await expect(page.locator('[name=question]')).toHaveAttribute('maxlength', '300');
+    await page.locator('[data-village-tab=records]').click(); await page.locator('#village-assistant summary').click();
+    holdRefresh = new Promise(resolve => { releaseRead = resolve; });
+    await page.getByRole('button', { name: 'Create a temporary connection' }).click();
+    await expect.poll(() => awaitingRefresh).toBe(true); await page.evaluate(() => window.switchMember()); releaseRead(); holdRefresh = null;
+    await page.locator('#open-village').click(); await page.locator('[data-village-tab=records]').click();
+    await expect(page.getByRole('button', { name: 'Create a temporary connection' })).toBeEnabled();
+    await expect(page.getByRole('button', { name: 'Revoke this connection' })).toBeHidden();
+    await expect(page.locator('[name=assistant-token]')).toHaveValue(''); expect(errors).toEqual([]);
+  } finally { releaseRead?.(); await context.close(); await demo.close(); }
+});

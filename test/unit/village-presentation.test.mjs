@@ -9,6 +9,9 @@ test('fund input preserves whole minor units and rejects ambiguous or unsafe mon
   for (const text of ['0', '-1', '1e3', '1,000', '1.001', '.5', 'Infinity', '', '9007199254740991']) assert.equal(parseVillageMinor(text), null, text);
   assert.equal(parseVillageMinor('0.0000001', 6), null);
   assert.equal(parseVillageMinor('1', 3), null);
+  assert.equal(parseVillageMinor('0.00', 2, true), 0);
+  assert.equal(parseVillageMinor('0.000000', 6, true), 0);
+  for (const text of ['', '0e0', '-1', '0.001']) assert.equal(parseVillageMinor(text, 2, true), null);
 });
 
 test('the presentation never calls valueless devnet units dollars or combines rails', () => {
