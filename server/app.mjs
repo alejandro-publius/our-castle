@@ -29,6 +29,8 @@ import {
 } from './kit/planner.mjs';
 import { transaction } from './db.mjs';
 import { exchangeView, exchangeAction, exchangeDirectory, exchangeRequest } from './exchange/index.mjs';
+import { createVillageHttp } from './village-http.mjs';
+import { clearExampleVillage } from './village/index.mjs';
 
 const MIME = {
   '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8',
@@ -131,14 +133,16 @@ const str = (v) => (typeof v === 'string' ? v : undefined);
 // Write-method routes that change no household record: calculations, provider look-ups, questions and ceremony steps.
 const UNCHANGING_WRITES = new Set(['/api/plans/preview', '/api/merchant/search', '/api/merchant/refresh', '/api/merchant/alternatives', '/api/merchant/categories', '/api/merchant/category',
   '/api/family-choices/review', '/api/family-choices/fit', KIT_READ_ROUTE, '/api/kit/compare', '/api/kit/prefer', '/api/kit/review',
-  '/api/steward', '/api/paypal/client-token', '/api/auth/passkeys/options', '/api/auth/signout']);
+  '/api/steward', '/api/paypal/client-token', '/api/auth/passkeys/options', '/api/auth/signout',
+  '/api/village/draft', '/api/village/treasurer', '/api/village/presence', '/api/mcp/grants', '/api/mcp/grants/revoke']);
 
 export function createApp({ config, db, clock, paypal = null, aiProvider = null, stewardAi = null, paypalTools = null, stewardFetch, merchant = null, kitReader = null,
-  kitSolver = null, kitReranker = null, example = null, root, live: liveLimits = {} }) {
+  kitSolver = null, kitReranker = null, villageDraftProvider = null, vaultRpc = null, subscriptionAdapter = null, example = null, root, live: liveLimits = {} }) {
   // Example mode is the single local example household. Family mode serves only households whose members enrolled their
   // own passkeys; it never creates, shows or falls back to the example household.
   const family = config.access?.mode === 'family';
-  const exchangeAvailable = family || ['village-exchange', 'village-story'].includes(example?.id);
+  const exchangeAvailable = family || ['village-exchange', 'village-story', 'village-fund'].includes(example?.id);
+  const villageAvailable = family || example?.id === 'village-fund';
   // An authored example (the demo runner's --family-trip) starts the example household from its own invented figures and
   // says so in every state. It belongs to the simulated example household only: never a shared family or sandbox records.
   if (example && (family || config.payments.mode !== 'example')) throw new Error('An authored example runs only on the simulated example household.');
@@ -194,6 +198,7 @@ export function createApp({ config, db, clock, paypal = null, aiProvider = null,
     s.kitPlan = kitPlanView(db, { householdId: scope.householdId, goal: s.goal, now: clock.now().getTime(), rankMode: rankMode() });
     s.goalKit = goalKitFor(db, s.goal);
     s.exchange = { available: exchangeAvailable, ...(exchangeAvailable ? exchangeView(db, scope) : {}) };
+    s.village = villageHttp.view(scope);
     if (example) s.example = exampleInfo;
     if (family) { s.access = access.viewer(scope); s.revision = live.revisionOf(scope.householdId); }
     return s;
@@ -204,6 +209,7 @@ export function createApp({ config, db, clock, paypal = null, aiProvider = null,
   async function seedExample({ reset = false } = {}) {
     const saveStartingState = await example.prepare();
     transaction(db, () => {
+      if (reset && example.id === 'village-fund') clearExampleVillage(db, DEMO_HOUSEHOLD_ID);
       if (reset) resetHousehold(db, clock, example.defaults);
       saveStartingState({ db });
     });
@@ -211,9 +217,22 @@ export function createApp({ config, db, clock, paypal = null, aiProvider = null,
   // Example mode's scope is the example household; family mode's comes only from a validated session (see handler).
   const exampleScope = () => Object.freeze({ mode: 'example', householdId: DEMO_HOUSEHOLD_ID, goalId: getActiveGoal(db, DEMO_HOUSEHOLD_ID).id });
   const familyOnly = () => { if (!family) throw new HttpError(404, 'not_found', 'Unknown API route.'); return access; };
+  const villageHttp = createVillageHttp({ db, clock, config, available: villageAvailable, state, paypal, vaultRpc,
+    draftProvider: villageDraftProvider, subscriptionAdapter, actorFor: choiceActor,
+    notify: householdIds => { for (const id of householdIds) live?.notify(id); },
+    resolveSessionScope(sessionId) {
+      if (!family || access.sessionEndReason(sessionId)) return null;
+      const row = db.prepare(`SELECT s.*, m.role, ms.is_owner AS owner FROM sessions s
+        JOIN members m ON m.id=s.member_id AND m.household_id=s.household_id
+        JOIN memberships ms ON ms.member_id=s.member_id AND ms.account_id=s.account_id
+        WHERE s.id=? AND ms.access='active'`).get(sessionId);
+      return row ? access.scopeOf(row) : null;
+    },
+  });
 
   // Each route returns a JSON body. Mutations return the fresh state so the board can update at once.
   const routes = [
+    ...villageHttp.routes,
     ['GET', '/api/status', () => ({ ...publicModes(config), merchant: shop.status(), kit: kitStatus(), ...(example ? { example: exampleInfo } : {}) })],
     ['GET', '/api/session', ({ session }) => (family ? { mode: 'family', ...access.sessionInfo(session) } : { mode: 'example' })],
     // Family mode: one live-update stream per open page; only change notices travel on it, never records.
@@ -897,5 +916,7 @@ export function createApp({ config, db, clock, paypal = null, aiProvider = null,
       FROM households h`).all().map((r) => [r.id, r.print]));
   }
 
-  return { handler, planner, contributions, steward, merchant: shop, state, live, seedExample: example ? seedExample : null, routes: routes.map(([method, pattern]) => ({ method, pattern })) };
+  return { handler, planner, contributions, steward, merchant: shop, state, live, village: villageHttp,
+    close() { villageHttp.close(); live?.close(); },
+    seedExample: example ? seedExample : null, routes: routes.map(([method, pattern]) => ({ method, pattern })) };
 }

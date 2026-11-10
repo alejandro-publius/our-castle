@@ -57,6 +57,8 @@ Validated provider identifiers are persisted before checking whether the request
 
 The service API is:
 
+The app now wires these through adult/CSRF routes under `/api/village/subscriptions/`. Configuration defaults to `OUR_CASTLE_SUBSCRIPTIONS=off`. Explicit `sandbox-platform` mode also requires family access, sandbox credentials, `PAYPAL_SUBSCRIPTIONS_SELLER_ONBOARDED=true`, `PAYPAL_SUBSCRIPTIONS_MERCHANT_ID`, `PAYPAL_PARTNER_ATTRIBUTION_ID` and `PAYPAL_SUBSCRIPTIONS_PRODUCT_ID`. These are operator declarations of eligibility, not evidence that PayPal granted it. Invalid or incomplete explicit setup stops startup. No UI claims automatic weekly collection.
+
 - `propose({ scope, fundId, input, assertAccess })`, where input includes `requestId`, `amountMinor`, `cycles` and `startDate`.
 - `approve({ scope, proposalId, reviewedRevision, approvalConfirmed, requestId, assertAccess })` requires the exact adult and terms. A retry uses the original approval request reference.
 - `get({ scope, proposalId, assertAccess })` reads the retained record without provider traffic.

@@ -10,6 +10,9 @@ import { createAnthropicPlanner } from './planner/anthropic-provider.mjs';
 import { createKitReader } from './kit/reader.mjs';
 import { createKitReranker } from './kit/rerank.mjs';
 import { createKitSolver } from './kit/solver.mjs';
+import { createVillageDraftProvider } from './planner/village-provider.mjs';
+import { createDevnetRpc } from './vault/devnet.mjs';
+import { createVillageSubscriptionsSdk } from './planner/village-subscriptions-sdk.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const { env, envFileLoaded } = readEnvironment({ root });
@@ -25,6 +28,13 @@ const paypalTools = sandbox ? createPayPalReadTools({ clientId: config.payments.
 const live = config.ai.mode === 'live';
 const aiProvider = live ? createAnthropicPlanner({ apiKey: config.ai.apiKey, model: config.ai.model }) : null;
 const stewardAi = live ? { apiKey: config.ai.apiKey, model: config.ai.model } : null;
+const villageDraftProvider = live ? createVillageDraftProvider({ apiKey: config.ai.apiKey, model: config.ai.model }) : null;
+// The read-only devnet client makes no request at construction. An adult must enroll a fund before scanning deposits.
+const vaultRpc = config.vault.mode === 'devnet' ? createDevnetRpc() : null;
+const subscriptionAdapter = config.villageSubscriptions.mode === 'sandbox-platform' ? createVillageSubscriptionsSdk({
+  clientId: config.payments.clientId, clientSecret: config.payments.clientSecret,
+  capabilities: config.villageSubscriptions.capabilities, productId: config.villageSubscriptions.productId, appOrigin: config.access.origin,
+}) : null;
 
 // Kit list photo reading: only with the server's own KIT_OPENAI_API_KEY. Typing a list never needs it.
 const kitReader = config.kit.mode === 'live' ? createKitReader({ apiKey: config.kit.apiKey, model: config.kit.model }) : null;
@@ -33,7 +43,8 @@ const kitSolver = createKitSolver({ root, engine: config.kitSolver.mode });
 // Ordering kits that fit by a family preference: only with the server's own KIT_COHERE_API_KEY.
 const kitReranker = config.kitRank.mode === 'live' ? createKitReranker({ apiKey: config.kitRank.apiKey, model: config.kitRank.model }) : null;
 
-const app = createApp({ config, db, clock: createClock(), paypal, aiProvider, stewardAi, paypalTools, kitReader, kitSolver, kitReranker, root });
+const app = createApp({ config, db, clock: createClock(), paypal, aiProvider, stewardAi, paypalTools, kitReader, kitSolver, kitReranker,
+  villageDraftProvider, vaultRpc, subscriptionAdapter, root });
 const server = http.createServer(app.handler);
 
 server.listen(config.port, config.host, () => {
@@ -55,7 +66,7 @@ server.listen(config.port, config.host, () => {
 });
 
 const shutdown = () => {
-  app.live?.close(); // end family live-update streams so open pages reconnect to the next server
+  app.close(); // end family streams, ephemeral visitors and assistant capabilities
   server.close(() => { db.close(); process.exit(0); });
   setTimeout(() => process.exit(0), 2000).unref();
 };

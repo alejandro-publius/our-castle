@@ -101,7 +101,22 @@ export function loadConfig(env = {}, { root = process.cwd() } = {}) {
 
   const dataDir = path.resolve(root, trimmed('OUR_CASTLE_DATA_DIR') || 'data');
   const access = accessConfig(trimmed('OUR_CASTLE_ACCESS'), trimmed('OUR_CASTLE_ORIGIN'));
-  return { port: Number.isFinite(port) ? port : 3010, host, payments, ai, merchant, kit, kitRank, kitSolver: { mode: solverMode }, studio, dataDir, access, warnings };
+  const vaultMode = trimmed('OUR_CASTLE_VAULT') || 'off';
+  if (!['off', 'devnet'].includes(vaultMode)) throw new ConfigError('OUR_CASTLE_VAULT must be "off" or "devnet". Mainnet is not supported.');
+  const subscriptionMode = trimmed('OUR_CASTLE_SUBSCRIPTIONS') || 'off';
+  if (!['off', 'sandbox-platform'].includes(subscriptionMode)) throw new ConfigError('OUR_CASTLE_SUBSCRIPTIONS must be "off" or "sandbox-platform".');
+  let villageSubscriptions = { mode: 'off' };
+  if (subscriptionMode === 'sandbox-platform') {
+    const merchantId = trimmed('PAYPAL_SUBSCRIPTIONS_MERCHANT_ID'), bnCode = trimmed('PAYPAL_PARTNER_ATTRIBUTION_ID');
+    const productId = trimmed('PAYPAL_SUBSCRIPTIONS_PRODUCT_ID');
+    if (payments.mode !== 'sandbox' || access.mode !== 'family' || trimmed('PAYPAL_SUBSCRIPTIONS_SELLER_ONBOARDED') !== 'true'
+      || !/^[A-Z0-9]{13}$/.test(merchantId) || !/^[A-Za-z0-9_-]{1,100}$/.test(bnCode) || !/^PROD-[A-Z0-9]{1,48}$/.test(productId))
+      throw new ConfigError('Sandbox platform subscriptions need family access, sandbox credentials, an onboarded merchant, BN code and seller product ID. Ordinary checkout credentials are insufficient.');
+    villageSubscriptions = { mode: subscriptionMode, productId,
+      capabilities: { environment: 'sandbox', platformSubscriptions: true, sellerOnboarded: true, merchantId, bnCode } };
+  }
+  return { port: Number.isFinite(port) ? port : 3010, host, payments, ai, merchant, kit, kitRank, kitSolver: { mode: solverMode },
+    vault: { mode: vaultMode }, villageSubscriptions, studio, dataDir, access, warnings };
 }
 
 export class ConfigError extends Error {}

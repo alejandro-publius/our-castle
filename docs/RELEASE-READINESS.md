@@ -13,6 +13,10 @@ The separate post-merge [run 42672760816](https://github.com/alejandro-publius/o
 
 ## November 10 source additions
 
+The new [shared-fund route](VILLAGE-DEMO.md), `npm run demo -- --village-fund`, uses five invented families and separate shared accounting. It includes a parchment fund sheet, original-model shared square, optional presence, reviewed fund drafts and an adult-scoped MCP bridge. Recipient-bound sandbox and read-only PYUSD devnet adapters have fake-provider evidence; actual recipient/wallet acceptance remains pending. The earlier statement below that PYUSD was only a proposal describes the preceding release. It is now implemented source, disabled unless explicitly configured, without a real devnet transfer claim. Recurring-agreement tracking is also optional and does not import charges.
+
+Source migrations append schemas 15–17 for these new records. They have been exercised only against disposable fixtures. This source update does not activate or migrate the saved runtimes below. Final source/hosted results belong in the shared-fund integration PR and validation note.
+
 [Village Exchange](VILLAGE-EXCHANGE.md) adds private neighborhood invitations and equipment handovers connected to kit planning. The source migration appends five tables (schema 13, 32 application tables). Property markers now start as compact arrows; the expanded realm is 452 × 356 world units with two waterfalls flowing into existing rivers, a hidden forest camp and a lantern glade. The steward filters transaction-list results to the current household goal's server-recorded capture IDs before the model receives them.
 
 The follow-up Exchange dashboard adds a closable map window, stable family/request references, and explicit adult opt-in to Worldwide discovery. Schema 14 adds private-by-default exchange profiles (33 application tables) and a cross-neighborhood offer alias; existing needs remain private after migration. PYUSD, utility-biller routing and payment signatures remain proposals, not active integrations. This change is tested with disposable fixtures only.

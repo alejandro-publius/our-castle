@@ -1,6 +1,9 @@
 import { DatabaseSync } from 'node:sqlite';
 import { mkdirSync } from 'node:fs';
 import path from 'node:path';
+import { ensureVillagePaymentsSchema } from './payments/village-payments.mjs';
+import { ensureVaultSchema } from './vault/index.mjs';
+import { ensureVillageSubscriptionsSchema } from './planner/village-subscriptions.mjs';
 
 const hasColumn = (db, table, column) => db.prepare(`PRAGMA table_info(${table})`).all().some((c) => c.name === column);
 // The family access tables (step 7). Every statement is IF NOT EXISTS, so it is safe to run again.
@@ -522,6 +525,11 @@ export const MIGRATIONS = Object.freeze([
       );
     `); },
   }),
+  Object.freeze({
+    id: 'village-payment-watchers',
+    ensure(db) { ensureVillagePaymentsSchema(db); ensureVaultSchema(db); },
+  }),
+  Object.freeze({ id: 'village-subscriptions', ensure: ensureVillageSubscriptionsSchema }),
 ]);
 
 export function openDatabase(file) {

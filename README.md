@@ -1,6 +1,6 @@
 # Our Castle
 
-**One family goal, a realm you build together.**
+**Families build castles. Neighbors build something together.**
 
 Decide what the family can afford together, compare complete kits and adjust the plan when an expense changes. A living pixel woodland turns shared progress into new places to explore. Keep the village, open the Manor, cross the rivers to the Keep, and reach the Royal Citadel, Rosewind Palace and two storybook towers. Nine districts, a campsite that grows with the shared goal, short deed cards, family avatars, roaming guests and changing light sit beside one compact household journal.
 
@@ -24,17 +24,19 @@ The saved Mac apps at http://localhost:3010 and http://localhost:3021 were upgra
 
 ## Try it locally
 
-Use **Node.js 22.16+**. For the focused village opening:
+Use **Node.js 22.16+**. For the focused shared-fund example:
 
 ```sh
 git clone https://github.com/alejandro-publius/our-castle.git
 cd our-castle
 npm ci
-npm run demo -- --village-story
+npm run demo -- --village-fund
 # Open the local URL printed in the terminal.
 ```
 
-The parchment journal opens at a half-funded **Village library**: explicitly approve $30, watch the schoolhouse progress, then review that exact simulated receipt. The family and starting $150 are invented; no real shared fund or recipient routing is active. [One-minute route and payment boundaries](docs/VILLAGE-STORY.md).
+Five invented families have contributed **$200 toward a $400 class trip**. In the parchment fund sheet, approve **$40**, see the shared schoolhouse advance, then inspect the contribution in Records. Each family's private savings stay separate. Visit the square to see opted-in castle appearances; people appear only after joining. Everything in this runner is simulated, with no credentials or provider traffic. [One-minute route, implementation and remaining setup](docs/VILLAGE-DEMO.md).
+
+The configured family app also includes recipient-bound PayPal sandbox orders, a read-only PYUSD devnet watcher, reviewed sentence-to-fund drafts and a scoped local MCP bridge. Those adapters have fake-provider evidence; a separate recipient account, devnet wallet and assistant-client setup are still needed for their real end-to-end checks. Subscription agreement tracking is disabled by default and does not import recurring charges. The earlier single-household library example remains available as `--village-story`.
 
 For the deeper planning journey, start a separate demo with **`npm run demo -- --family-trip`**:
 
@@ -127,6 +129,10 @@ flowchart TB
     Server <--> Planning["Planning engine<br/>compare complete kits and repair plans<br/>Rust solver or JavaScript reference"]
     Server <--> Records[("SQLite<br/>household and contribution records")]
     Server <--> Exchange["Village Exchange<br/>private invitations · loans · gifts"]
+    Exchange --> Fund["Shared village fund<br/>voluntary shares · separate receipts"]
+    Fund --> Square["Shared schoolhouse and castle appearances<br/>opt-in, expiring presence"]
+    Server <--> Fund
+    Assistant["Local MCP client<br/>one adult-selected fund, read only"] -. "short-lived access" .-> Server
     Exchange -->|"received items reduce shopping needs"| Planning
     Server -. "configured integrations" .-> Providers["PayPal sandbox · Channel3<br/>Claude · OpenAI · Cohere"]
     Server --> View["World progress and Treasury<br/>pixel woodland · AG Grid / AG Studio"]

@@ -1,5 +1,17 @@
 # Validation
 
+## Shared village fund — November 10, 2026
+
+The five source tracks are integrated on base `84a35b1`: shared fund accounting, recipient-bound sandbox payments and read-only devnet observation, the original-model village square, reviewed drafts/record answers, and an adult-scoped local MCP adapter. [The runnable route and remaining setup](VILLAGE-DEMO.md) distinguish this source from actual provider acceptance. The schema is 17 with 43 application tables; only in-memory and disposable migration fixtures were opened.
+
+Focused backend checks on Node 24.22.1 cover **184 distinct cases** across the new service/HTTP/MCP checks and affected existing access/payment/server/migration checks. Two explicit migration inventories initially failed because they still listed the preceding schema; both were updated to name the exact new steps/tables, and their affected cases passed. No preservation assertion was weakened. The original-art/runtime guard still verifies 47 copied files, the 90-color palette and renderer wiring.
+
+Review also reproduced and corrected three boundary gaps before integration: an MCP read could outlive neighborhood membership during an awaited reader; an outside payer could be incorrectly attributed to a nonmember household; and a delayed devnet scan could persist after its organizer lost access. Their regressions now cover the corrected behavior. Pending payment recovery uses the retained exact amount/recipient and stops unknown order creation retries after six hours; it does not silently free an uncertain payment reservation.
+
+Browser evidence is separated into the real authored-server journey (`village-fund-journey.spec.mjs`) and scoped UI edge cases with explicit fake API responses (`village-square.spec.mjs`). Both use desktop and 390 px emulation, disposable examples and routes that deny outside origins. The release workflow runs them in their own bounded jobs. The integration PR records the final browser result, exact tested source head and hosted run; a configured provider, physical device, human playtest or live assistant connection is not inferred from those checks.
+
+Devnet and organizer subscriptions default off. No sandbox recipient account or devnet wallet has been set up in this work. Subscription agreement tracking does not import recurring charges and is not advertised as automatic weekly collection. No saved app, `.env`, household database, existing $15 order, video, deployment or submission was changed.
+
 ## November 10 source integration and CI correction
 
 The combined release retains the eight commits from PRs #70–#77, ending at `47dbf4e`. The review covers the Exchange's private-by-default directory and participant boundaries, schema-14 migration fixtures, illustrated parchment/header, licensed local music, focused library example, and woodland/clearing additions. The production source and assets are byte-identical to that reviewed head; this integration changes only the release workflow, one browser startup assertion and release documentation.
