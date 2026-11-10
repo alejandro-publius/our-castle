@@ -1,5 +1,23 @@
 # Validation
 
+## Exchange trading hall and explicit Worldwide sharing — November 10, 2026
+
+The Exchange now opens over the map with Browse needs, Offer an item and My exchanges. Rows are searchable by item, chosen family name, optional country or stable reference. A selected request opens its own larger window; × and Escape restore row focus and preserve the directory. Two authored stove requests demonstrate distinct family and request references. [Design, screenshots and financial scope](VILLAGE-EXCHANGE.md).
+
+An adult chooses Invited neighborhoods or explicitly confirms publishing all open needs Worldwide. The authenticated directory excludes private and closed rows before searching/pagination; direct reads recheck access. Offer details stay between the offering and receiving families. Unpublishing removes discovery access while preserving participants' handovers. Requests and offers remain item-sharing records, not payment receipts. No PYUSD, utility-biller integration or payment-signature claim is introduced.
+
+Actual checks, Node 24.22.1 and Chromium:
+
+- **65 affected unit tests passed**, including four new directory cases and a populated schema-13 migration fixture. Cases cover adult consent, child/anonymous/CSRF refusal, private search/count/detail exclusion, stable distinguishable references, bounded pagination, private cross-neighborhood offers, unpublishing, completion by existing participants, idempotent handover and unchanged financial records. Existing kit/access and migration checks retain their original assertions while including schema 14's private profile table and optional offer alias.
+- The initial six-case browser selection had five passes and one desktop page-readiness timeout during the existing two-family reload, before an Exchange action. The unchanged readiness assertion passed in the next run: **six passed** on desktop 1440×1000 and emulated phone 390×844. No application startup change or timeout increase was made.
+- The extended dashboard case then passed **2/2**, checking all three sections, separate stove records, search, ×/Escape/focus/scroll, and explicit Worldwide → invited → Worldwide controls. Publishing again requires a newly checked consent. Browser outside-origin requests are refused; no page errors or horizontal overflow, and financial progress is unchanged.
+- A new sign-out check reproduced a real integration issue: the new native request window remained open behind sign-in after access ended. The session-loss path now closes both Exchange windows and cancels its pending directory read. The two-family desktop/phone regression passed **2/2** after the real invite/offer/handover journey (`session-close-after.log`).
+- The original-art/source guard passes: 47 copied art/runtime files, original 90-colour palette, renderer wiring and JavaScript syntax. No dependency pins, world artwork or payment code changed.
+
+The dashboard case joins the existing `@release` selection. Hosted results belong to the exact PR head; no full local browser suite was run. Raw checks and the failing sign-out trace are under ignored `test-results/exchange-dashboard/`. [Screenshot hashes and capture steps](screenshots/exchange-directory-sources.json) identify the authored-data captures.
+
+All app evidence uses disposable in-memory or temporary fixtures, synthetic configuration and local/fake transports, with no `.env` or saved household reads. Browser routing is not an OS-wide network isolation claim. There is no real-user, physical-device, global-adoption, verified-delivery or fraud-free claim. Owner 3010, rehearsal 3021, other previews, credentials and the completed sandbox order remain separate and unchanged; the new source appends schema 14 only in disposable fixtures.
+
 ## Village Exchange, quieter markers and the wider woodland — November 10, 2026
 
 The source adds an invite-only neighborhood board, equipment loans/gifts and explicit handovers connected to kit quantities. Accepting an offer reserves the request but leaves shopping needs unchanged. Confirming receipt makes the item available; returning it restores the need. In the authored example, the lowest listed kit changes from $150 to $70 with no financial credit. [Walkthrough and screenshots](VILLAGE-EXCHANGE.md).

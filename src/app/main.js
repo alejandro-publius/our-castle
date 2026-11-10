@@ -397,6 +397,7 @@ function sessionLost(error) {
   if (family.lost) return;
   family.lost = true;
   kitPlan?.closePreview(); // nothing of this household's plan stays drawn on the map
+  villageExchange?.close(); // these native windows sit outside the hidden household shell
   family.live?.stop();
   clearInterval(family.timer); clearTimeout(family.statusTimer); clearTimeout(family.retryTimer);
   showLiveStatus(false);
@@ -821,7 +822,7 @@ function syncRealmMarkers({focus,points,exploring=false,free=false}){
   const d=regions.find(d=>d.id===focus);
   const merchantButton = $('#open-merchant');
   if (merchantButton.hidden !== (focus !== 'market')) merchantButton.hidden = focus !== 'market';
-  $('#open-exchange').hidden = focus !== 'market' || !state.exchange?.available;
+  $('#open-exchange').hidden = !state.exchange?.available;
   const deedButton = $('#view-deed');
   deedButton.hidden = !d?.open;
   if (d?.open) {
@@ -2200,12 +2201,12 @@ function bindEvents() {
   familyChoices = createFamilyChoices({ getState: () => state, actor: persona, openMerchant: (from, options) => merchant.open(from, options), onReview: useFamilyChoice, applyState,
     onProposed: () => $('#plan-headline').focus() });
   villageExchange = createVillageExchange({ getState: () => state, actor: persona, applyState,
-    onCompare: () => { $('#kit-list').open = true; $('#kit-plan-compare').scrollIntoView({ block: 'center' }); $('#kit-plan-compare').focus(); } });
+    onCompare: () => { selectTab('plan'); setJournalOpen(true); $('#kit-list').open = true; $('#kit-plan-compare').scrollIntoView({ block: 'center' }); $('#kit-plan-compare').focus(); } });
   kitList = createKitList({ getState: () => state, actor: persona, applyState, onRender: () => kitPlan?.render() });
   kitPlan = createKitPlan({ getState: () => state, actor: persona, applyState, openMerchant: (from, options) => merchant.open(from, options),
     reserve: () => { const src = familyChoices?.fitSource(); return { cents: src?.reserveCents ?? 0, invalid: Boolean(src?.reserveInvalid) }; },
     onReview: useKitReview, listEditing: () => kitList?.editing() ?? false, onPreview: showKitPreview });
-  $('#open-exchange').addEventListener('click', () => { selectTab('plan'); setJournalOpen(true); villageExchange.open(); });
+  $('#open-exchange').addEventListener('click', () => villageExchange.open());
   for (const opener of [$('#open-merchant'), $('#find-goal-item')]) opener.addEventListener('click', (e) => merchant.open(e.currentTarget));
   $('#visit-campsite').addEventListener('click', visitCampsite);
   for (const id of ['#example-entry-go', '#example-to-kits', '#example-to-trial']) $(id).addEventListener('click', openExample);

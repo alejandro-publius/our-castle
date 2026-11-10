@@ -1,0 +1,47 @@
+{
+  "sourceBase": "254216a42fee30a45374db45e5b1159ba5cd4fa2",
+  "capture": "test/e2e/exchange-dashboard.spec.mjs on the working source branch codex/exchange-dashboard-20261110",
+  "scope": "Chromium, reduced motion, in-memory example data, synthetic configuration, browser non-origin requests refused. No real families, live providers or saved records. Captures precede the separate session-close hook; that hook changes no visible design.",
+  "files": [
+    {
+      "file": "exchange-directory-desktop-dashboard.png",
+      "sha256": "c3da1000820a65b668730aed6b14c510b28393e84c3af437a4eed8f3fb456d88",
+      "viewport": [
+        1440,
+        1000
+      ],
+      "deviceScaleFactor": 1,
+      "steps": "Open Village Exchange; for request details search Stove and select Cedar; for dashboard clear the search and return scroll to the top."
+    },
+    {
+      "file": "exchange-directory-desktop-request.png",
+      "sha256": "f24e11348ca47e84c2da56593a487a4ddac8ae67337f263dfc51023a964ff366",
+      "viewport": [
+        1440,
+        1000
+      ],
+      "deviceScaleFactor": 1,
+      "steps": "Open Village Exchange; for request details search Stove and select Cedar; for dashboard clear the search and return scroll to the top."
+    },
+    {
+      "file": "exchange-directory-phone-dashboard.png",
+      "sha256": "4835ae1de6f53570fafd13ee6383c09888be01b2a107170a67bf9618db1edaed",
+      "viewport": [
+        390,
+        844
+      ],
+      "deviceScaleFactor": 2,
+      "steps": "Open Village Exchange; for request details search Stove and select Cedar; for dashboard clear the search and return scroll to the top."
+    },
+    {
+      "file": "exchange-directory-phone-request.png",
+      "sha256": "13a342cbbccc87de3ff763d28b420bb977d27697d4f455f8d8c3fdf69eb62d01",
+      "viewport": [
+        390,
+        844
+      ],
+      "deviceScaleFactor": 2,
+      "steps": "Open Village Exchange; for request details search Stove and select Cedar; for dashboard clear the search and return scroll to the top."
+    }
+  ]
+}

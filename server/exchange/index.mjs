@@ -14,7 +14,9 @@ const count = value => { if (!Number.isSafeInteger(value) || value < 1 || value 
 const date = (value, today) => { if (!isIsoDate(value) || value < today) throw fail(400, 'exchange_date', 'Choose today or a later date.'); return value; };
 const membership = (db, householdId) => db.prepare('SELECT * FROM exchange_members WHERE household_id = ?').get(householdId);
 const circle = (db, id) => db.prepare('SELECT * FROM exchange_circles WHERE id = ?').get(id);
-const offered = (db, requestId) => db.prepare("SELECT o.*, COALESCE(m.alias, 'Former neighbor') AS alias FROM exchange_offers o JOIN exchange_requests r ON r.id = o.request_id LEFT JOIN exchange_members m ON m.household_id = o.household_id AND m.circle_id = r.circle_id WHERE o.request_id = ? ORDER BY o.created_at, o.id").all(requestId);
+const profile = (db, id) => db.prepare('SELECT * FROM exchange_profiles WHERE household_id = ?').get(id);
+const ensureProfile = (db, id, alias, now) => db.prepare('INSERT OR IGNORE INTO exchange_profiles(household_id,family_ref,alias,updated_at) VALUES(?,?,?,?)').run(id,newId('family'),alias,now);
+const offered = (db, requestId) => db.prepare("SELECT o.*, COALESCE(o.shared_alias, m.alias, 'Former neighbor') AS alias FROM exchange_offers o JOIN exchange_requests r ON r.id = o.request_id LEFT JOIN exchange_members m ON m.household_id = o.household_id AND m.circle_id = r.circle_id WHERE o.request_id = ? ORDER BY o.created_at, o.id").all(requestId);
 const allMembers = (db, circleId) => db.prepare('SELECT household_id FROM exchange_members WHERE circle_id = ?').all(circleId).map(r => r.household_id);
 const kitLine = (db, request) => {
   const goal = getGoal(db, request.goal_id);
@@ -23,22 +25,53 @@ const kitLine = (db, request) => {
   return line;
 };
 
-/** Only explicitly shared need fields leave a household; offers are visible to the two participating families. */
-export function exchangeView(db, scope) {
-  const member = membership(db, scope.householdId);
-  if (!member) return { neighborhood: null, requests: [], invites: [] };
-  const group = circle(db, member.circle_id);
-  const own = group.owner_household_id === scope.householdId;
-  const requests = db.prepare(`SELECT r.*, m.alias FROM exchange_requests r JOIN exchange_members m ON m.household_id = r.household_id
-    WHERE r.circle_id = ? ORDER BY r.created_at DESC, r.id`).all(group.id).map(r => {
+const reference = (prefix, id) => `${prefix}-${id.slice(id.indexOf('_')+1).toUpperCase()}`;
+function requestView(db, scope, r) {
+      const p = profile(db, r.household_id), m = membership(db, r.household_id);
       const offers = offered(db, r.id), mine = r.household_id === scope.householdId;
       const held = offers.filter(o => ['accepted', 'received'].includes(o.status)).reduce((n, o) => n + o.quantity, 0);
-      return { id: r.id, family: r.alias, mine, item: r.item_name, needs: r.needs, quantity: r.quantity,
+      const local = membership(db,scope.householdId)?.circle_id === r.circle_id;
+      return { id: r.id, reference: reference('REQ',r.id), familyReference: p ? reference('FAM',p.family_ref) : null,
+        family: local ? m?.alias ?? 'Former neighbor' : p?.alias ?? 'Former neighbor', country: p?.country ?? '',
+        visibility: p?.visibility ?? 'neighborhood', mine, item: r.item_name, needs: r.needs, quantity: r.quantity,
         neededUntil: r.needed_until, note: r.note, status: r.status, openQuantity: Math.max(0, r.quantity - held),
         offers: offers.filter(o => mine || o.household_id === scope.householdId).map(o => ({ id: o.id, mine: o.household_id === scope.householdId,
-          family: o.alias, quantity: o.quantity, kind: o.kind, returnBy: o.return_by, note: o.note, status: o.status })) };
-    });
-  return { neighborhood: { name: group.name, alias: member.alias, owner: own, households: allMembers(db, group.id).length }, requests,
+          reference: reference('OFFER',o.id), family: o.alias, quantity: o.quantity, kind: o.kind, returnBy: o.return_by, note: o.note, status: o.status })) };
+}
+const participant = (db, id, hh) => Boolean(db.prepare('SELECT 1 FROM exchange_offers WHERE request_id = ? AND household_id = ?').get(id,hh));
+function canRead(db, scope, r) {
+  return r && (r.household_id === scope.householdId || membership(db,scope.householdId)?.circle_id === r.circle_id ||
+    (r.status === 'open' && profile(db,r.household_id)?.visibility === 'worldwide') || participant(db,r.id,scope.householdId));
+}
+
+/** Only explicitly shared need fields leave a household; offer details stay between participants. */
+export function exchangeRequest(db, scope, id) {
+  const r = db.prepare('SELECT * FROM exchange_requests WHERE id = ?').get(id);
+  if (!canRead(db,scope,r)) throw fail(404,'exchange_request','This request is no longer shared with your family.');
+  return requestView(db,scope,r);
+}
+
+/** A bounded, authenticated directory. Private requests never enter its search or count. */
+export function exchangeDirectory(db, scope, params) {
+  const query = text(params.get('q') ?? '',80,false).toLowerCase().replace(/^req-/,'need_').replace(/^fam-/,'family_'), raw = params.get('offset') ?? '0';
+  if (!/^\d{1,6}$/.test(raw)) throw fail(400,'exchange_page','Choose a valid directory page.');
+  const offset = Number(raw), limit = 30;
+  const rows = db.prepare(`SELECT r.* FROM exchange_requests r JOIN exchange_profiles p ON p.household_id=r.household_id
+    WHERE p.visibility='worldwide' AND r.status='open'
+      AND instr(lower(r.item_name || ' ' || p.alias || ' ' || p.country || ' ' || r.id || ' ' || p.family_ref),?) > 0
+    ORDER BY r.created_at DESC,r.id LIMIT ? OFFSET ?`).all(query,limit+1,offset);
+  return { requests:rows.slice(0,limit).map(r=>requestView(db,scope,r)), nextOffset:rows.length>limit?offset+limit:null };
+}
+
+export function exchangeView(db, scope) {
+  const member = membership(db, scope.householdId), p = profile(db,scope.householdId);
+  const group = member && circle(db, member.circle_id), own = group?.owner_household_id === scope.householdId;
+  const requests = db.prepare(`SELECT r.* FROM exchange_requests r WHERE r.circle_id = ? OR r.household_id = ?
+    OR EXISTS(SELECT 1 FROM exchange_offers o WHERE o.request_id=r.id AND o.household_id=?)
+    ORDER BY r.created_at DESC,r.id`).all(group?.id ?? '',scope.householdId,scope.householdId).map(r=>requestView(db,scope,r));
+  return { settings: { visibility:p?.visibility ?? 'neighborhood', alias:p?.alias ?? member?.alias ?? '', country:p?.country ?? '',
+      familyReference:p ? reference('FAM',p.family_ref) : null },
+    neighborhood: group ? { name: group.name, alias: member.alias, owner: own, households: allMembers(db, group.id).length } : null, requests,
     invites: own ? db.prepare('SELECT id, expires_at AS expiresAt, used_at AS usedAt, revoked_at AS revokedAt FROM exchange_invites WHERE circle_id = ? ORDER BY rowid DESC LIMIT 12').all(group.id) : [] };
 }
 
@@ -51,7 +84,24 @@ export function exchangeAction(db, { scope, actor, action, input }, clock) {
     const now = clock.iso(), today = clock.today();
     const needMember = () => { if (!m) throw fail(403, 'exchange_membership', 'Join a neighborhood first.'); return circle(db, m.circle_id); };
     const requireOwner = () => { const g = needMember(); if (g.owner_household_id !== scope.householdId) throw fail(403, 'exchange_owner', 'Only the neighborhood’s founding family manages its invitations.'); return g; };
-    const done = (extra = {}) => ({ ...extra, changedHouseholds: m ? allMembers(db, m.circle_id) : [scope.householdId] });
+    let touched = [];
+    const done = (extra = {}) => ({ ...extra, changedHouseholds: [...new Set([scope.householdId,...(m ? allMembers(db,m.circle_id):[]),...touched])] });
+    if (action === 'settings') {
+      const visibility=input.visibility, alias=text(input.alias,40), country=text(input.country ?? '',60,false);
+      if (!['neighborhood','worldwide'].includes(visibility)) throw fail(400,'exchange_visibility','Choose invited neighborhoods or worldwide.');
+      if (visibility==='worldwide' && input.confirmed!==true) throw fail(400,'exchange_confirm','Confirm sharing your open needs and chosen family name worldwide.');
+      ensureProfile(db,scope.householdId,alias,now);
+      // A private home circle gives a family a place for requests before it invites anyone.
+      if (!m) {
+        const id=newId('village');
+        db.prepare('INSERT INTO exchange_circles VALUES(?,?,?,?)').run(id,`${alias}'s neighborhood`,scope.householdId,now);
+        db.prepare('INSERT INTO exchange_members VALUES(?,?,?,?)').run(scope.householdId,id,alias,now);
+        m=membership(db,scope.householdId);
+      }
+      db.prepare('UPDATE exchange_profiles SET alias=?,country=?,visibility=?,updated_at=? WHERE household_id=?').run(alias,country,visibility,now,scope.householdId);
+      touched=db.prepare('SELECT DISTINCT o.household_id FROM exchange_offers o JOIN exchange_requests r ON r.id=o.request_id WHERE r.household_id=?').all(scope.householdId).map(r=>r.household_id);
+      return done();
+    }
     const invitation = token => {
       if (typeof token !== 'string' || !/^[a-f0-9]{48}$/.test(token)) throw fail(404, 'exchange_invite', 'This invitation is invalid, used or expired.');
       const i = db.prepare('SELECT * FROM exchange_invites WHERE token_hash = ? AND used_at IS NULL AND revoked_at IS NULL AND expires_at > ?').get(hash(token), now);
@@ -63,6 +113,7 @@ export function exchangeAction(db, { scope, actor, action, input }, clock) {
       const name = text(input.name, 50), alias = text(input.alias, 40), id = newId('village');
       db.prepare('INSERT INTO exchange_circles VALUES (?, ?, ?, ?)').run(id, name, scope.householdId, now);
       db.prepare('INSERT INTO exchange_members VALUES (?, ?, ?, ?)').run(scope.householdId, id, alias, now);
+      ensureProfile(db,scope.householdId,alias,now);
       m = membership(db, scope.householdId); return done();
     }
     if (action === 'preview' || action === 'join') {
@@ -74,6 +125,7 @@ export function exchangeAction(db, { scope, actor, action, input }, clock) {
       const alias = text(input.alias, 40);
       if (db.prepare('SELECT 1 FROM exchange_members WHERE circle_id = ? AND lower(alias) = lower(?)').get(g.id, alias)) throw fail(409, 'exchange_alias', 'Choose a different family name for this neighborhood.');
       db.prepare('INSERT INTO exchange_members VALUES (?, ?, ?, ?)').run(scope.householdId, g.id, alias, now);
+      ensureProfile(db,scope.householdId,alias,now);
       db.prepare('UPDATE exchange_invites SET used_at = ? WHERE id = ?').run(now, i.id);
       m = membership(db, scope.householdId); return done();
     }
@@ -100,6 +152,7 @@ export function exchangeAction(db, { scope, actor, action, input }, clock) {
       db.prepare("UPDATE exchange_offers SET status = 'withdrawn', updated_at = ? WHERE household_id = ? AND status = 'offered'").run(now, scope.householdId);
       db.prepare('DELETE FROM exchange_requests WHERE household_id = ?').run(scope.householdId);
       db.prepare('DELETE FROM exchange_members WHERE household_id = ?').run(scope.householdId);
+      db.prepare("UPDATE exchange_profiles SET visibility='neighborhood',updated_at=? WHERE household_id=?").run(now,scope.householdId);
       if (g.owner_household_id === scope.householdId) db.prepare('DELETE FROM exchange_circles WHERE id = ?').run(g.id);
       return { changedHouseholds: peers };
     }
@@ -118,8 +171,9 @@ export function exchangeAction(db, { scope, actor, action, input }, clock) {
       db.prepare('INSERT INTO exchange_requests VALUES (?,?,?,?,?,?,?,?,?,?,?,?)').run(id,g.id,scope.householdId,goal.id,line.id,line.name,line.needs,quantity,needed,text(input.note ?? '',160,false),'open',now);
       return done({ requestId: id });
     }
-    const request = db.prepare('SELECT * FROM exchange_requests WHERE id = ? AND circle_id = ?').get(input.requestId ?? '', g.id);
-    if (!request) throw fail(404, 'exchange_request', 'That request is not on your neighborhood board.');
+    const request = db.prepare('SELECT * FROM exchange_requests WHERE id = ?').get(input.requestId ?? '');
+    if (!canRead(db,scope,request)) throw fail(404, 'exchange_request', 'That request is not shared with your family.');
+    touched = [request.household_id,...offered(db,request.id).map(o=>o.household_id)];
     const mine = request.household_id === scope.householdId;
     if (action === 'close') {
       if (!mine) throw fail(403, 'exchange_owner', 'Only the requesting family closes a request.');
@@ -129,6 +183,7 @@ export function exchangeAction(db, { scope, actor, action, input }, clock) {
     }
     if (action === 'offer') {
       if (mine || request.status !== 'open') throw fail(403, 'exchange_offer', 'Offer an item to another family’s open request.');
+      if (request.circle_id!==g.id && profile(db,request.household_id)?.visibility!=='worldwide') throw fail(404,'exchange_request','This family now shares only with invited neighbors.');
       const quantity = count(input.quantity), kind = input.kind;
       if (!['loan','gift'].includes(kind) || quantity > request.quantity) throw fail(400, 'exchange_offer', 'Choose a loan or gift within the requested quantity.');
       const returnBy = kind === 'loan' ? date(input.returnBy,today) : null;
@@ -136,7 +191,8 @@ export function exchangeAction(db, { scope, actor, action, input }, clock) {
       const offers = offered(db,request.id);
       if (offers.length >= 24 || offers.some(o => o.household_id === scope.householdId && ['offered','accepted','received'].includes(o.status))) throw fail(409, 'exchange_duplicate', 'Resolve your existing offer before making another.');
       const id = newId('loan');
-      db.prepare('INSERT INTO exchange_offers VALUES (?,?,?,?,?,?,?,?,?,?)').run(id,request.id,scope.householdId,quantity,kind,returnBy,text(input.note ?? '',160,false),'offered',now,now); return done({ offerId:id });
+      const sharedAlias=request.circle_id===g.id?null:profile(db,scope.householdId)?.alias ?? m.alias;
+      db.prepare('INSERT INTO exchange_offers(id,request_id,household_id,quantity,kind,return_by,note,status,created_at,updated_at,shared_alias) VALUES (?,?,?,?,?,?,?,?,?,?,?)').run(id,request.id,scope.householdId,quantity,kind,returnBy,text(input.note ?? '',160,false),'offered',now,now,sharedAlias); return done({ offerId:id });
     }
     const offer = db.prepare('SELECT * FROM exchange_offers WHERE id = ? AND request_id = ?').get(input.offerId ?? '',request.id);
     if (!offer || (!mine && offer.household_id !== scope.householdId)) throw fail(404, 'exchange_offer', 'That offer is not available to your family.');

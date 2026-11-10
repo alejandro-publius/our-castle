@@ -277,13 +277,8 @@
           </div>
           <details class="village-exchange" id="village-exchange" hidden>
             <summary>Village Exchange <small id="exchange-summary"></small></summary>
-            <p class="fine">Share a need with invited neighbors. An offer is a promise; only an item you confirm receiving helps cover the kit. No money changes hands here.</p>
-            <div id="exchange-forms"></div>
-            <p class="fine" id="exchange-empty" hidden>No requests yet. Share one item your family still needs.</p>
-            <ul id="exchange-board" class="exchange-board" aria-label="Neighborhood requests"></ul>
-            <ul id="exchange-invites" class="exchange-invites" aria-label="Your open invitations"></ul>
-            <button type="button" id="exchange-compare" class="link-button">Compare what is left to buy</button>
-            <p id="exchange-status" role="status" aria-live="polite"></p>
+            <p class="fine">Find a family’s need, lend an item, or share one of your own.</p>
+            <button type="button" id="exchange-browse">Browse family needs</button>
           </details>
           <!-- A Market Town merchant result waiting for the family's confirmation. Nothing is saved until "Save as our goal". -->
           <section class="goal-draft" id="goal-draft" hidden aria-labelledby="goal-draft-title">
@@ -520,6 +515,55 @@
         <p id="merchant-source" class="merchant-source" hidden></p>
       </div>
     </article>
+  </dialog>
+  <dialog id="exchange-dialog" class="exchange-window" aria-labelledby="exchange-title">
+    <header class="exchange-window-head">
+      <img src="assets/brand/our-castle/crest.webp" alt="" width="40" height="44">
+      <div><p class="exchange-eyebrow">Our Castle · family needs</p><h2 id="exchange-title" tabindex="-1">Village Exchange</h2></div>
+      <button type="button" id="exchange-close" class="exchange-close" aria-label="Close Village Exchange">×</button>
+    </header>
+    <div class="exchange-market-layout">
+    <nav class="exchange-market-nav" aria-label="Village Exchange sections">
+      <img src="assets/area-cards/market.png" alt="" width="200" height="128" class="exchange-market-art">
+      <p class="exchange-market-motto">A little help.<br>A shared adventure.</p>
+      <button type="button" data-exchange-view="browse" aria-pressed="true"><span aria-hidden="true">01</span> Browse needs</button>
+      <button type="button" data-exchange-view="offer" aria-pressed="false"><span aria-hidden="true">02</span> Offer an item</button>
+      <button type="button" data-exchange-view="manage" aria-pressed="false"><span aria-hidden="true">03</span> My exchanges</button>
+      <p class="exchange-market-note">Borrow, lend or give.<br>Every handover is a choice.</p>
+    </nav>
+    <div class="exchange-window-body">
+      <p id="exchange-demo-note" class="fine" hidden>Example families and requests. These are invented listings in this local demo.</p>
+      <form id="exchange-search-form" class="exchange-toolbar" role="search">
+        <label class="field"><span>Find a need or family</span><input type="search" id="exchange-search" maxlength="80" placeholder="Item, family, country or reference"></label>
+        <label class="field"><span>Browse</span><select id="exchange-scope"><option value="neighborhood">My neighborhood &amp; exchanges</option><option value="worldwide">Worldwide</option></select></label>
+        <button type="submit">Search</button>
+        <button type="button" id="exchange-refresh" class="link-button">Refresh</button>
+      </form>
+      <div class="exchange-list-head"><h3 id="exchange-list-title">Family requests</h3><span id="exchange-count" class="fine" role="status"></span></div>
+      <p class="fine" id="exchange-view-note" hidden></p>
+      <p id="exchange-directory-status" role="status" aria-live="polite"></p>
+      <p class="fine" id="exchange-empty" hidden>No requests here yet. Choose Worldwide or share an item your family needs.</p>
+      <ul id="exchange-list" class="exchange-directory" aria-labelledby="exchange-list-title"></ul>
+      <button type="button" id="exchange-more" hidden>Show more requests</button>
+      <details id="exchange-manage" class="exchange-manage"><summary>Your sharing &amp; requests</summary>
+        <div id="exchange-forms"></div>
+        <ul id="exchange-invites" class="exchange-invites" aria-label="Your open invitations"></ul>
+      </details>
+      <p id="exchange-status" role="status" aria-live="polite"></p>
+    </div>
+    </div>
+  </dialog>
+  <dialog id="exchange-detail-dialog" class="exchange-window exchange-detail-window" aria-labelledby="exchange-detail-title">
+    <header class="exchange-window-head">
+      <div><p class="exchange-eyebrow">Village Exchange · request details</p><h2 id="exchange-detail-title" tabindex="-1">Family request</h2></div>
+      <button type="button" id="exchange-detail-close" class="exchange-close" aria-label="Close request details">×</button>
+    </header>
+    <div class="exchange-window-body">
+      <button type="button" id="exchange-back" class="link-button">← Back to requests</button>
+      <ul id="exchange-board" class="exchange-board" aria-label="Selected family request"></ul>
+      <p id="exchange-detail-status" role="status" aria-live="polite"></p>
+      <button type="button" id="exchange-compare" class="link-button">Compare what is left to buy</button>
+    </div>
   </dialog>
 </body>
 </html>

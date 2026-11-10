@@ -234,6 +234,8 @@ Rust is a bounded optimizer, not an AI model. The reference solver is used only 
 
 ## Village Exchange lifecycle
 
+The diagram below follows the invited-neighborhood route. The directory also allows an adult to explicitly publish open needs worldwide. Authenticated reads search only published, open requests; direct detail reads recheck publication, membership or participation. A separate profile holds the chosen display name, optional country and stable family reference. Unpublishing removes discovery access while preserving existing participants' handover records. Offer details stay between those participants. The same loan/gift lifecycle applies in either route; directory references are not payment identifiers.
+
 ```mermaid
 sequenceDiagram
     accTitle: Private neighborhood and confirmed item sharing
@@ -284,7 +286,7 @@ The transaction checks current kit requirements and reserved quantity before acc
 
 ## Data relationships
 
-This diagram groups the principal relationships rather than reproducing every column in all 32 tables. The ordered migrations in [db.mjs](../server/db.mjs) are authoritative.
+This diagram groups the principal relationships rather than reproducing every column in all 33 tables. Schema 14 also adds household-owned `exchange_profiles` for directory visibility and stable family references. The ordered migrations in [db.mjs](../server/db.mjs) are authoritative.
 
 ```mermaid
 erDiagram

@@ -28,7 +28,7 @@ import {
   addCandidate, adoptKit, chooseKit, compareKits, goalKitFor, keepLine, kitDescription, kitPlanView, refreshCandidate, removeCandidate, reviewKit, withPreference,
 } from './kit/planner.mjs';
 import { transaction } from './db.mjs';
-import { exchangeView, exchangeAction } from './exchange/index.mjs';
+import { exchangeView, exchangeAction, exchangeDirectory, exchangeRequest } from './exchange/index.mjs';
 
 const MIME = {
   '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8',
@@ -415,6 +415,14 @@ export function createApp({ config, db, clock, paypal = null, aiProvider = null,
     }],
     // ---- Kit list: a family's short checklist of things to bring for its goal. Typing a list needs no server call; only
     // "Save this list" writes, and only the kit list. Reading a photo writes nothing and tells no other page. ----
+    ['GET', '/api/exchange/requests', ({ req, scope }) => {
+      if (!family && example?.id !== 'village-exchange') throw new DomainError(409,'exchange_off','Open the family Exchange to browse needs.');
+      return exchangeDirectory(db,scope,new URL(req.url,'http://localhost').searchParams);
+    }],
+    ['GET', /^\/api\/exchange\/requests\/([\w-]+)$/, ({ params, scope }) => {
+      if (!family && example?.id !== 'village-exchange') throw new DomainError(409,'exchange_off','Open the family Exchange to browse needs.');
+      return { request:exchangeRequest(db,scope,params[0]) };
+    }],
     ['POST', '/api/exchange', ({ body, scope }) => {
       if (!family && example?.id !== 'village-exchange') throw new DomainError(409, 'exchange_off', 'Neighborhood sharing is available in the family runner.');
       refuseForeign(body, scope);

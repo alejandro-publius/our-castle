@@ -15,6 +15,8 @@ The separate post-merge [run 42672760816](https://github.com/alejandro-publius/o
 
 [Village Exchange](VILLAGE-EXCHANGE.md) adds private neighborhood invitations and equipment handovers connected to kit planning. The source migration appends five tables (schema 13, 32 application tables). Property markers now start as compact arrows; the realm is 420 × 324 world units with two waterfalls flowing into existing rivers and an optional hidden forest camp. The steward filters transaction-list results to the current household goal's server-recorded capture IDs before the model receives them.
 
+The follow-up Exchange dashboard adds a closable map window, stable family/request references, and explicit adult opt-in to Worldwide discovery. Schema 14 adds private-by-default exchange profiles (33 application tables) and a cross-neighborhood offer alias; existing needs remain private after migration. PYUSD, utility-biller routing and payment signatures remain proposals, not active integrations. This change is tested with disposable fixtures only.
+
 These changes are source-only. The saved 3010/3021 runtimes and their schema-12 records below were not read, migrated or restarted. Use `npm run demo -- --village-exchange` for the separate in-memory example. See the latest [validation](VALIDATION.md) and the expanded [architecture diagrams](ARCHITECTURE.md).
 
 ## Playable local example
