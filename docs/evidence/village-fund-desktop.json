@@ -1,0 +1,34 @@
+{
+  "project": "desktop",
+  "viewport": {
+    "width": 1440,
+    "height": 1000
+  },
+  "initial": {
+    "sharedMinor": 20000,
+    "stage": 1,
+    "privateCents": 6000,
+    "families": 5
+  },
+  "after": {
+    "sharedMinor": 24000,
+    "stage": 2,
+    "privateCents": 6000,
+    "receipts": 5
+  },
+  "reloaded": {
+    "sharedMinor": 24000,
+    "privateCents": 6000,
+    "receipts": 5
+  },
+  "writes": [
+    {
+      "method": "POST",
+      "path": "/api/village/payments"
+    }
+  ],
+  "errors": [],
+  "apiFailures": [],
+  "outside": [],
+  "oneRenderer": true
+}
