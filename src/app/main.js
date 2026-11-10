@@ -329,9 +329,11 @@ async function boot() {
   try {
     if (family.on && invite) family.dialog.open({ invite, signedIn: true });
     applyState(await api.get('/api/state'), { animate: false });
+    const openingVillageStory = state.example?.id === 'village-story' && !sessionTab.get() && pref.get('journal') !== 'closed';
     selectTab(resumeTab(), { focus: false, remember: false, open: false });
     setJournalOpen(pref.get('journal') !== 'closed', { remember: false });
-    scene?.focusDistrict(homeDistrict(state.board.builtTier).id);
+    if (state.example?.id === 'village-story') scene?.focusLegend(FAMILY_PROJECT_SITE.id);
+    else scene?.focusDistrict(homeDistrict(state.board.builtTier).id);
     if (family.on) startFamilyLive();
     // Moss, the castle keeper: an optional authored tour, offered only while payments are simulated. It may only show
     // a journal tab; it never presses a control, writes a record or saves a preference.
@@ -345,6 +347,15 @@ async function boot() {
         autoStart: new URLSearchParams(location.search).get('tour') === '1',
       });
     } catch (error) { console.warn('[our-castle] the keeper tour is unavailable', error); } // optional; never blocks the house
+    // On a narrow screen the journal follows the map. Put the first story chapter in view without another navigation;
+    // preserve a returning visitor's tab/closed journal and never take focus from a control they already reached.
+    if (openingVillageStory) {
+      await layoutSettled($('#journey'));
+      if (document.activeElement === document.body && $('#give-heading').getBoundingClientRect().bottom > innerHeight) {
+        $('#journey').scrollIntoView({ block: 'start', behavior: 'instant' });
+        $('#give-heading').focus({ preventScroll: true });
+      }
+    }
   } catch (error) {
     $('#honesty').textContent = `Could not load the household: ${error.message}`;
   }
@@ -505,6 +516,7 @@ function acceptFamilyState(next) {
 function resumeTab() {
   const chosen = sessionTab.get();
   if (!state.household.setupComplete) return 'house';
+  if (state.example?.id === 'village-story' && !TABS.includes(chosen)) return 'give';
   return TABS.includes(chosen) ? chosen : TABS.includes(ui.next?.step) ? ui.next.step : 'ledger';
 }
 
@@ -1050,7 +1062,7 @@ function renderPlan() { renderPlanForm(); renderExampleEntry(); familyChoices?.r
 // surface and a link each way between its two parts: the one-off expense in Family choices and Complete kits in the Kit
 // list. They open those sections and move focus; they press no control, fill no field and write nothing.
 function renderExampleEntry() {
-  const example = state.example ?? null;
+  const example = state.example?.id === 'village-story' ? null : state.example ?? null;
   $('#example-entry').hidden = !example;
   for (const id of ['#example-to-kits', '#example-to-trial']) $(id).hidden = !example;
   if (!example) return;
@@ -1560,6 +1572,10 @@ function amountCheck() {
 
 function renderGive() {
   const { household, goal, progress } = state;
+  const villageStory = state.example?.id === 'village-story';
+  $('#village-story-intro').hidden = !villageStory || goal.name !== 'Village library' || goal.projectKind !== 'schoolhouse';
+  $('#give-heading').textContent = villageStory ? goal.name : 'Contribute';
+  if (villageStory) $('#village-story-progress').textContent = `${money(progress.progressCents)} of ${money(goal.targetCents)} recorded · ${money(progress.remainingCents)} to go`;
   const setup = household.setupComplete;
   const done = progress.remainingCents <= 0;
   $('#give-context').textContent = !setup ? 'Create your house to contribute.' : done ? 'Goal complete.' : '';
@@ -2187,6 +2203,7 @@ function renderFooter() {
   const sandbox = modes.payments.mode === 'sandbox';
   // A shared family signs in with passkeys; the example household's members are demo profiles.
   const mode = sandbox ? 'PayPal sandbox · test money only.' : state.access ? 'Simulated payments.'
+    : state.example?.id === 'village-story' ? 'Example village library · invented families and book offers · simulated payments.'
     : state.example ? `${state.example.title} · the family, shops, listings and prices are invented · simulated payments.` : 'Demo mode · simulated payments.';
   const people = state.access ? 'Each member signs in with their own passkey.' : 'Demo profiles, not sign-in.';
   $('#honesty').textContent = `${mode} ${people} Reported savings and bills are unverified; progress is not a bank balance.`;
@@ -2225,6 +2242,7 @@ function bindEvents() {
   $('#open-exchange').addEventListener('click', () => villageExchange.open());
   for (const opener of [$('#open-merchant'), $('#find-goal-item')]) opener.addEventListener('click', (e) => merchant.open(e.currentTarget));
   $('#visit-campsite').addEventListener('click', visitCampsite);
+  $('#village-story-visit').addEventListener('click', visitCampsite);
   for (const id of ['#example-entry-go', '#example-to-kits', '#example-to-trial']) $(id).addEventListener('click', openExample);
   $('#kit-preview-close').addEventListener('click', closeKitPreview);
   $('#kit-preview .kit-preview-about').addEventListener('toggle', () => scene?.reframe());

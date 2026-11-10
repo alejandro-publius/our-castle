@@ -90,6 +90,14 @@ export function nextAction(state, { persona = null, receipt = null, receiptRevie
     notes.push(`The ${TIERS[board.builtTier].name} stands as a keepsake from an earlier milestone. That money is not in the goal now: current progress is ${money(progress.progressCents)}.`);
   }
 
+  const approval = persona?.role === 'adult' ? null : `${persona?.name ?? 'This persona'} is a child persona: switch “Acting as” to an adult to approve a payment.`;
+  // This authored opening starts with a goal already chosen. Planning remains available, but its initial CTA follows
+  // the requested contribution story. Pending payments and unreviewed receipts above still take precedence.
+  if (!plan && state.example?.id === 'village-story' && state.modes?.payments?.mode === 'example') {
+    return step('contribute-example-project', 'give', `Help ${goal.name}`, [
+      `${money(progress.remainingCents)} is still needed. Contributions in this example are simulated.`, approval, ...notes,
+    ], 'Choose a contribution', '#give-heading');
+  }
   if (!plan) {
     return step('make-plan', 'plan', 'Make a plan', [
       'Set the goal, a target date and the weekly amount you choose. The planner shows its arithmetic, and nothing is paid.', ...notes,
@@ -101,7 +109,6 @@ export function nextAction(state, { persona = null, receipt = null, receiptRevie
     ], 'Review your plan', '#plan-headline');
   }
 
-  const approval = persona?.role === 'adult' ? null : `${persona?.name ?? 'This persona'} is a child persona: switch “Acting as” to an adult to approve a payment.`;
   const milestone = board.nextMilestone ? `The ${board.nextMilestone.name} needs ${money(board.nextMilestone.awayCents)} more.` : null;
   if (nextStep?.week) {
     return step('contribute-week', 'give', `Week ${nextStep.week}: add ${money(nextStep.dueCents)}`, [

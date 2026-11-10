@@ -24,15 +24,19 @@ The saved Mac apps at http://localhost:3010 and http://localhost:3021 were upgra
 
 ## Try it locally
 
-Use **Node.js 22.16+**. Start with the playable family-trip example:
+Use **Node.js 22.16+**. For the focused village opening:
 
 ```sh
 git clone https://github.com/alejandro-publius/our-castle.git
 cd our-castle
 npm ci
-npm run demo -- --family-trip
+npm run demo -- --village-story
 # Open the local URL printed in the terminal.
 ```
+
+The parchment journal opens at a half-funded **Village library**: explicitly approve $30, watch the schoolhouse progress, then review that exact simulated receipt. The family and starting $150 are invented; no real shared fund or recipient routing is active. [One-minute route and payment boundaries](docs/VILLAGE-STORY.md).
+
+For the deeper planning journey, start a separate demo with **`npm run demo -- --family-trip`**:
 
 An invented family (Rowan, Ash and Wren), a kit list and six sample listings are ready in **Plan**. Choose **Try a one-off expense**, enter `90`, then compare complete kits. Choose the $180 kit, keep its stove and choose **Preview on map**. Change the expense to `120`: the map shows a temporary $150 smallest-change proposal that switches only the tent. The chosen $180 kit stays unchanged until you explicitly choose the repair. At `200`, no kit fits: the chosen $180 preview is $110 short, while the separate closest $150 kit is $80 short. The family, shops and prices are labelled examples; the kits, dates, shortfalls and repairs are calculated by the existing engine. [Full walkthrough, screenshots and limits](docs/FAMILY-TRIP-EXAMPLE.md).
 
