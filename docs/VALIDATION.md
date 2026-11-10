@@ -1,5 +1,15 @@
 # Validation
 
+## November 10 source integration and CI correction
+
+The combined release retains the eight commits from PRs #70–#77, ending at `47dbf4e`. The review covers the Exchange's private-by-default directory and participant boundaries, schema-14 migration fixtures, illustrated parchment/header, licensed local music, focused library example, and woodland/clearing additions. The production source and assets are byte-identical to that reviewed head; this integration changes only the release workflow, one browser startup assertion and release documentation.
+
+[PR #76's run 42879225242](https://github.com/alejandro-publius/our-castle/actions/runs/42879225242) exposed two concrete check failures. The combined native-kit job reached its 900-second suite limit after **15 passes**, leaving three cases unrun. Desktop and phone now have separate isolated jobs with the same 900-second budget and all original assertions and per-test timeouts. A test-list audit confirms **18 unique cases: nine desktop and nine phone**, with no omissions or duplicates.
+
+The two-family Exchange case also exhausted its standalone 15-second reload-readiness assertion before an exchange action. Its trace contains no page error. The same failure reproduced locally. Reload now uses the existing `settled` family helper, already used for sign-in: it requires both page readiness and the signed-in access state within 30 seconds. This is a bounded test-startup correction, not an application performance claim. All invitation, offer, handover, no-cash-credit and session-loss assertions remain.
+
+The original 47-file art/runtime guard, 90-color palette, renderer wiring and syntax checks pass. The seven newly bundled music/UI assets and 14 source-stamped screenshots match their provenance hashes. Raw before/after browser evidence and the kit-case inventory are ignored under `test-results/main-integration/`. Final local and exact-head hosted results are recorded on the integration PR. No owner runtime, saved database, private configuration, provider call or financial record is part of this source integration.
+
 ## Realm soundtrack — November 10, 2026
 
 The owner approved HydroGene and Bit By Bit Sound for more retro music. The realm now rotates six local recordings: the existing shop song plus five original files from those two packs. Village, woods, market and night select the next playlist at a natural ending; camera motion never restarts the current recording. One native audio element fades recording edges, pauses while hidden and remains muted until explicit opt-in. A reload starts silent. No new controls, service or dependency.

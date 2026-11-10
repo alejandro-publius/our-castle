@@ -3,7 +3,7 @@ import { mkdirSync } from 'node:fs';
 import { startDemo } from '../../scripts/demo.mjs';
 import { openMenu } from './support/game-controls.mjs';
 import { closeDeedsWhenTheyAppear } from './support/deeds.mjs';
-import { familyServer, person, createFamily, openTab, csrfFetch, isLive } from './support/family.mjs';
+import { familyServer, person, createFamily, openTab, csrfFetch, isLive, settled } from './support/family.mjs';
 const read = page=>page.evaluate(async()=>(await fetch('/api/state')).json());
 const openExchange=async page=>{await page.locator('#open-exchange').click();await page.locator('#exchange-manage > summary').click();};
 const selectNeed=async(page,name)=>{await page.locator('#exchange-list').getByRole('button',{name:new RegExp(`View ${name}`)}).click();};
@@ -55,7 +55,7 @@ test('two signed-in households join privately, offer and receive through the jou
     // Fixture: one saved kit item. All exchange steps below use visible controls.
     const initial=await read(a.page);
     expect((await csrfFetch(a.page,'PUT','/api/kit',{goalId:initial.goal.id,expectedRevision:0,items:[{name:'Four-person tent',needs:'Rain cover',quantity:1,ownedQuantity:0,from:'typed'}]})).status).toBe(200);
-    await a.page.reload();await expect(a.page.locator('body')).toHaveAttribute('data-ready','true');
+    await a.page.reload();await settled(a.page);
     await openExchange(a.page);
     await a.page.getByText('Start a neighborhood',{exact:true}).click();
     await a.page.getByLabel('Neighborhood name',{exact:true}).fill('Woodland neighbors');
