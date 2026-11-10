@@ -42,6 +42,8 @@ test('the silent pixel chase yields to the actual ready realm without waiting fo
     await expect(page.locator('#realm-loader [role="status"]')).toHaveText('Loading…');
     await expect(page.locator('.shell')).toHaveAttribute('inert', '');
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    // The small scene is drawn on a plain bitmap canvas: a GPU-backed one stalls startup where the GPU is emulated.
+    expect(await page.locator('#realm-loader canvas').evaluate(c => c.getContext('2d').getContextAttributes().willReadFrequently)).toBe(true);
     const first = await canvasPixels(page);
     await expect.poll(() => canvasPixels(page)).not.toBe(first);
     await page.screenshot({ path: info.outputPath('loading.png') });

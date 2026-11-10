@@ -3,7 +3,10 @@ import { drawDragonChase, CHASE_WIDTH, CHASE_HEIGHT } from '../ui/dragon-chase.j
 // Cosmetic startup only. It must never hold the app open to finish the joke.
 export function mountRealmLoader({ root = document.querySelector('#realm-loader'), maximumMs = 12000 } = {}) {
   if (!root) return () => {};
-  const canvas = root.querySelector('canvas'), ctx = canvas?.getContext('2d');
+  // A plain bitmap canvas, not a GPU-backed one. This 384 x 176 scene is a few thousand small fills; setting up a GPU
+  // surface for it stalls the main thread (over a second where the GPU is emulated in software) at the very moment the
+  // app is trying to start. `willReadFrequently` is how a page asks for the bitmap kind; browsers without it ignore it.
+  const canvas = root.querySelector('canvas'), ctx = canvas?.getContext('2d', { willReadFrequently: true });
   if (!ctx) { root.remove(); return () => {}; }
   canvas.width = CHASE_WIDTH;
   canvas.height = CHASE_HEIGHT;
