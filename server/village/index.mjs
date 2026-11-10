@@ -288,6 +288,10 @@ export function recordVillageReceipt(db, event, clock) {
 export function assertVillageLeaveAllowed(db, householdId) {
   const m = member(db, householdId);
   if (!m) return;
+  if (db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name='village_payment_intents'").get()
+    && db.prepare(`SELECT 1 FROM village_payment_intents i JOIN village_funds f ON f.id=i.fund_id
+      WHERE i.household_id=? AND f.circle_id=? AND i.status!='completed' LIMIT 1`).get(householdId, m.circle_id))
+    throw fail(409, 'village_payment_pending', 'Resolve your pending village contribution before leaving so its confirmation stays with the right family.');
   const circle = db.prepare('SELECT * FROM exchange_circles WHERE id = ?').get(m.circle_id);
   if (circle.owner_household_id === householdId && db.prepare('SELECT 1 FROM village_funds WHERE circle_id = ? LIMIT 1').get(m.circle_id))
     throw fail(409, 'village_history_retained', 'The organizing family keeps this neighborhood while its fund history exists.');

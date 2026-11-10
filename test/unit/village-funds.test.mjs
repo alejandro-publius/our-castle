@@ -30,6 +30,15 @@ function fixture(file = ':memory:') {
   return { db, a, b, c, stranger, exchange, act, create, event };
 }
 const rejects = (fn, status, code) => assert.throws(fn, e => e.status === status && (!code || e.code === code), code);
+function intentFixture(db, fundId, scope, { id = 'vpay_fixture', revision = 1, status = 'created', attributionHouseholdId = null } = {}) {
+  // Populate the separately owned payment schema when present; the foundation also works on its own schema15.
+  db.exec('CREATE TABLE IF NOT EXISTS village_payment_intents (fund_id TEXT,household_id TEXT,member_id TEXT,status TEXT)');
+  const values = { id, request_id: `${id}_request`, fund_id: fundId, household_id: scope.householdId, member_id: scope.memberId,
+    source: 'simulated', amount_minor: 100, currency: 'USD', recipient_json: 'null', fund_revision: revision,
+    target_minor: 10000, status, attribution_household_id: attributionHouseholdId, created_at: clock.iso(), updated_at: clock.iso() };
+  const columns = db.prepare('PRAGMA table_info(village_payment_intents)').all().map(c => c.name).filter(c => Object.hasOwn(values, c));
+  db.prepare(`INSERT INTO village_payment_intents(${columns.join(',')}) VALUES(${columns.map(() => '?').join(',')})`).run(...columns.map(c => values[c]));
+}
 
 test('funds have one immutable rail and voluntary own-family commitments; no private cash moves', () => {
   const f = fixture(); try {
@@ -215,15 +224,7 @@ test('unpublishing blocks new outsider payments; only the actual adult with an e
     f.act(f.a, 'publish', { fundId: id, expectedRevision: 1, published: true, confirmed: true });
     const published = villagePaymentContext(f.db, f.stranger, id);
     assert.equal(published.published, true);
-    // The domain works before or after A's separately owned migration. Populate an actual intent row if schema16 is
-    // present, or its minimal ownership columns in this foundation-only test; caller-supplied claims never suffice.
-    f.db.exec('CREATE TABLE IF NOT EXISTS village_payment_intents (fund_id TEXT,household_id TEXT,member_id TEXT)');
-    const values = { id: 'vpay_fixture', request_id: 'outside_fixture', fund_id: id, household_id: f.stranger.householdId,
-      member_id: f.stranger.memberId, source: 'simulated', amount_minor: 100, currency: 'USD', recipient_json: 'null',
-      fund_revision: published.revision, target_minor: 10000, status: 'created', attribution_household_id: null,
-      created_at: clock.iso(), updated_at: clock.iso() };
-    const columns = f.db.prepare('PRAGMA table_info(village_payment_intents)').all().map(c => c.name).filter(c => Object.hasOwn(values, c));
-    f.db.prepare(`INSERT INTO village_payment_intents(${columns.join(',')}) VALUES(${columns.map(() => '?').join(',')})`).run(...columns.map(c => values[c]));
+    intentFixture(f.db, id, f.stranger, { revision: published.revision });
     f.act(f.a, 'publish', { fundId: id, expectedRevision: 2, published: false, confirmed: true });
     rejects(() => villagePaymentContext(f.db, f.stranger, id), 404);
     rejects(() => villageReview(f.db, f.stranger, id), 404);
@@ -235,5 +236,16 @@ test('unpublishing blocks new outsider payments; only the actual adult with an e
     rejects(() => villagePaymentContext(f.db, f.stranger, second, { allowSettled: true }), 404);
     f.db.prepare('DELETE FROM village_payment_intents').run();
     rejects(() => villagePaymentContext(f.db, f.stranger, id, { allowSettled: true }), 404);
+  } finally { f.db.close(); }
+});
+
+test('a pending member contribution must resolve before leaving; another family’s intent does not block departure', () => {
+  const f = fixture(); try {
+    const id = f.create();
+    intentFixture(f.db, id, f.b, { attributionHouseholdId: f.b.householdId });
+    rejects(() => assertVillageLeaveAllowed(f.db, f.b.householdId), 409, 'village_payment_pending');
+    assertVillageLeaveAllowed(f.db, f.c.householdId);
+    f.db.prepare("UPDATE village_payment_intents SET status='completed'").run();
+    assertVillageLeaveAllowed(f.db, f.b.householdId);
   } finally { f.db.close(); }
 });

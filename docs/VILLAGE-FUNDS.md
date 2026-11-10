@@ -24,7 +24,7 @@ Project stages reuse the existing schoolhouse thresholds, 0%, 25%, 60% and 100%.
 
 ## Storage and evidence
 
-Schema 15 appends `village_funds`, `village_shares`, `village_receipts` and `village_presentations`. Existing records are preserved. `assertVillageLeaveAllowed` keeps the organizing neighborhood's fund history and requires an adult to withdraw an open voluntary commitment before leaving. HTTP integration calls it before Exchange leave. Closed funds retain their receipts.
+Schema 15 appends `village_funds`, `village_shares`, `village_receipts` and `village_presentations`. Existing records are preserved. `assertVillageLeaveAllowed` keeps the organizing neighborhood's fund history and requires an adult to withdraw an open voluntary commitment and resolve a pending contribution before leaving. That prevents a first payment confirmation from arriving after its contributing family has left. HTTP integration calls it before Exchange leave. Closed funds retain their receipts.
 
 `clearExampleVillage` is restricted to an in-memory database whose entire neighborhood consists of authored example households. It exists only for the separate demo's Reset. It refuses saved database files and real-family fixtures.
 
