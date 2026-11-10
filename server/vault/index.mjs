@@ -30,14 +30,19 @@ export function createVaultWatcher({db,clock,rpc=null,contextFor,recordReceipt,p
     return c;
   }
   function needRpc() { if (typeof rpc!=='function') throw fail(409,'vault_off','The optional devnet watcher is not configured.'); }
+  function reauthorize(scope,fundId,recipientJSON,assertAccess) {
+    assertAccess();
+    if(JSON.stringify(context(scope,fundId).recipient)!==recipientJSON) throw fail(409,'vault_changed','The watched recipient differs from this fund.');
+  }
   const status = row => row ? {fundId:row.fund_id,address:row.address,mint:PYUSD_DEVNET_MINT,label:DEVNET_LABEL,
     baselineSlot:row.baseline_slot,cursorSlot:row.cursor_slot,lastScanAt:row.last_scan_at,
     transfers:db.prepare('SELECT COUNT(*) AS n FROM village_vault_events WHERE fund_id=?').get(row.fund_id).n,
     reviewCount:db.prepare('SELECT COUNT(*) AS n FROM village_vault_issues WHERE fund_id=?').get(row.fund_id).n,
     custody:'The address is controlled outside Our Castle. Watching does not restrict spending.'} : null;
   return {
-    async enroll({scope,fundId}) {
-      const c=context(scope,fundId), old=rowFor(fundId); needRpc();
+    async enroll({scope,fundId,assertAccess=()=>{}}) {
+      assertAccess();
+      const c=context(scope,fundId), old=rowFor(fundId), recipientJSON=JSON.stringify(c.recipient); needRpc();
       if (old) {
         if (old.recipient_json!==JSON.stringify(c.recipient)) throw fail(409,'vault_changed','The watched recipient differs from this fund.');
         return status(old);
@@ -46,19 +51,25 @@ export function createVaultWatcher({db,clock,rpc=null,contextFor,recordReceipt,p
       const slot=await rpc('getSlot',[finalized]);
       if (!Number.isSafeInteger(slot)||slot<0) throw fail(502,'vault_slot','Devnet did not supply a valid finalized slot.');
       return transaction(db,()=>{
-        const prior=rowFor(fundId); if(prior) return status(prior);
+        reauthorize(scope,fundId,recipientJSON,assertAccess);
+        const prior=rowFor(fundId); if(prior) {
+          if(prior.recipient_json!==recipientJSON) throw fail(409,'vault_changed','The watched recipient differs from this fund.');
+          return status(prior);
+        }
         if(db.prepare('SELECT 1 FROM village_vault_watches WHERE address=?').get(c.recipient.address)) throw fail(409,'vault_in_use','Use a separate watched address for each fund.');
         db.prepare('INSERT INTO village_vault_watches(fund_id,address,recipient_json,baseline_slot,cursor_slot,created_at) VALUES(?,?,?,?,?,?)')
-          .run(fundId,c.recipient.address,JSON.stringify(c.recipient),slot,slot,clock.iso());
+          .run(fundId,c.recipient.address,recipientJSON,slot,slot,clock.iso());
         return status(rowFor(fundId));
       });
     },
     status({scope,fundId}) { context(scope,fundId); return status(rowFor(fundId)); },
-    async scan({scope,fundId}) {
+    async scan({scope,fundId,assertAccess=()=>{}}) {
+      assertAccess();
       const c=context(scope,fundId), row=rowFor(fundId); needRpc();
       if(!row) throw fail(409,'vault_enroll','Start watching this address before checking new transfers.');
       if(row.recipient_json!==JSON.stringify(c.recipient)) throw fail(409,'vault_changed','The watched recipient differs from this fund.');
-      if(scans.has(fundId)) return scans.get(fundId);
+      const guard=()=>reauthorize(scope,fundId,row.recipient_json,assertAccess);
+      if(scans.has(fundId)) {const out=await scans.get(fundId);guard();return out;}
       const work=(async()=>{
         await rpc('getAccountInfo',[PYUSD_DEVNET_MINT,{...finalized,encoding:'jsonParsed'}]).then(validateMint);
         const highSlot=await rpc('getSlot',[finalized]);
@@ -94,13 +105,14 @@ export function createVaultWatcher({db,clock,rpc=null,contextFor,recordReceipt,p
           transfers.push(...parsed.transfers);issues.push(...parsed.issues.map(i=>({...i,signature})));
         }
         return transaction(db,()=>{
+          guard();
           const changed=new Set();let added=0;
           // All pages and transaction reads succeeded before any receipt or cursor changes.
           for(const transfer of transfers){
             const old=db.prepare('SELECT * FROM village_vault_events WHERE signature=? AND instruction_path=?').get(transfer.eventRef,transfer.eventIndex);
             if(old){if(old.fund_id!==fundId||old.amount_minor!==transfer.amountMinor) throw fail(409,'vault_replay','That transaction was already assigned differently.');continue;}
             const r=recordReceipt({fundId,source:'pyusd-devnet',eventRef:transfer.eventRef,eventIndex:transfer.eventIndex,kind:'transfer',amountMinor:transfer.amountMinor,
-              familyHouseholdId:null,recipient:c.recipient,at:clock.iso()});
+              familyHouseholdId:null,recipient:JSON.parse(row.recipient_json),at:clock.iso()});
             for(const id of r.changedHouseholds??[])changed.add(id);
             db.prepare('INSERT INTO village_vault_events VALUES(?,?,?,?,?,?,?)').run(fundId,transfer.eventRef,transfer.eventIndex,transfer.slot,transfer.amountMinor,transfer.senderAddress,clock.iso());added++;
           }
@@ -110,7 +122,7 @@ export function createVaultWatcher({db,clock,rpc=null,contextFor,recordReceipt,p
           return {vault:status(rowFor(fundId)),added,unmatched:added,changedHouseholds:[...changed]};
         });
       })().finally(()=>scans.delete(fundId));
-      scans.set(fundId,work);return work;
+      scans.set(fundId,work);const out=await work;guard();return out;
     },
   };
 }

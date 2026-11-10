@@ -32,7 +32,7 @@ function fixture(options={}){
   const recordReceipt=e=>{if(state.failRecord&&e.eventIndex==='1')throw Error('fixture database rejection');db.prepare('INSERT OR IGNORE INTO test_receipts VALUES(?,?,?,?)').run(e.eventRef,e.eventIndex,e.amountMinor,e.familyHouseholdId);return{changedHouseholds:['house_test']};};
   const create=extra=>createVaultWatcher({db,clock,rpc,contextFor,recordReceipt,...options,...extra});
   const add=(n,slot,amounts)=>{const sig=signature(n);state.signatures.unshift({signature:sig,slot,err:null,confirmationStatus:'finalized'});state.transactions.set(sig,transaction(sig,slot,amounts));};
-  return{db,clock,calls,state,create,watcher:create(),recipient,add,input:{scope:{householdId:'house_test',memberId:'adult_test'},fundId:'fund_test'}};
+  return{db,clock,calls,state,rpc,create,watcher:create(),recipient,add,input:{scope:{householdId:'house_test',memberId:'adult_test'},fundId:'fund_test'}};
 }
 
 test('devnet decoder accepts exact 32-byte public keys and 64-byte signatures only',()=>{
@@ -94,6 +94,45 @@ test('receipt persistence failure rolls back all transfers and cursor in the bat
   const e=fixture();try{await e.watcher.enroll(e.input);e.state.slot=110;e.add(6,105,[1000000,2000000]);e.state.failRecord=true;
     await assert.rejects(e.watcher.scan(e.input),/database rejection/);assert.equal(e.db.prepare('SELECT COUNT(*) AS n FROM test_receipts').get().n,0);assert.equal(e.watcher.status(e.input).cursorSlot,100);
     e.state.failRecord=false;assert.equal((await e.watcher.scan(e.input)).added,2);
+  }finally{e.db.close();}
+});
+
+test('enrollment revoked while the finalized-slot RPC is pending saves no watcher',async()=>{
+  const e=fixture();try{
+    let release,entered,active=true;const waiting=new Promise(r=>{entered=r;}),gate=new Promise(r=>{release=r;});
+    const watcher=e.create({rpc:async(method,params)=>{const result=await e.rpc(method,params);if(method==='getSlot'){entered();await gate;}return result;}});
+    const enroll=watcher.enroll({...e.input,assertAccess:()=>{if(!active)throw Error('organizer access revoked');}});
+    await waiting;active=false;release();
+    await assert.rejects(enroll,/organizer access revoked/);
+    assert.equal(e.db.prepare('SELECT COUNT(*) AS n FROM village_vault_watches').get().n,0);
+  }finally{e.db.close();}
+});
+
+test('scan rechecks organizer access and the current recipient after delayed transaction reads',async()=>{
+  for(const revoke of ['session','recipient']){
+    const e=fixture();try{
+      await e.watcher.enroll(e.input);e.state.slot=110;e.add(6,105,[1000000]);
+      let release,entered,active=true;const waiting=new Promise(r=>{entered=r;}),gate=new Promise(r=>{release=r;});
+      const watcher=e.create({rpc:async(method,params)=>{const result=await e.rpc(method,params);if(method==='getTransaction'){entered();await gate;}return result;}});
+      const scan=watcher.scan({...e.input,assertAccess:()=>{if(!active)throw Error('organizer access revoked');}});
+      await waiting;if(revoke==='session')active=false;else e.recipient.revision++;release();
+      await assert.rejects(scan,e=>revoke==='session'?/organizer access revoked/.test(e.message):e.code==='vault_changed');
+      assert.equal(e.db.prepare('SELECT cursor_slot FROM village_vault_watches').get().cursor_slot,100);
+      for(const table of ['test_receipts','village_vault_events','village_vault_accounts','village_vault_issues'])assert.equal(e.db.prepare(`SELECT COUNT(*) AS n FROM ${table}`).get().n,0);
+    }finally{e.db.close();}
+  }
+});
+
+test('a coalesced scan caller must still have access when the shared result completes',async()=>{
+  const e=fixture();try{
+    await e.watcher.enroll(e.input);e.state.slot=110;e.add(6,105,[1000000]);
+    let release,entered,secondActive=true;const waiting=new Promise(r=>{entered=r;}),gate=new Promise(r=>{release=r;});
+    const watcher=e.create({rpc:async(method,params)=>{const result=await e.rpc(method,params);if(method==='getTransaction'){entered();await gate;}return result;}});
+    const first=watcher.scan({...e.input,assertAccess:()=>{}});await waiting;
+    const second=watcher.scan({...e.input,assertAccess:()=>{if(!secondActive)throw Error('second session revoked');}});
+    const refusal=assert.rejects(second,/second session revoked/);secondActive=false;release();
+    assert.equal((await first).added,1);await refusal;
+    assert.equal(e.calls.filter(c=>c.method==='getTransaction').length,1);assert.equal(e.db.prepare('SELECT COUNT(*) AS n FROM test_receipts').get().n,1);
   }finally{e.db.close();}
 });
 
