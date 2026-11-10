@@ -58,7 +58,7 @@ test.describe('at 320 by 568', () => {
 });
 
 
-test('the starting home is larger, parchment names stay inside the map, and overview retains all nine districts', async ({ page }) => {
+test('property arrows are the default, selection reveals a name and overview retains all nine districts', async ({ page }) => {
   const writes = trackWrites(page);
   await ready(page);
   await page.evaluate(() => document.fonts.ready);
@@ -66,8 +66,12 @@ test('the starting home is larger, parchment names stay inside the map, and over
   expect(close.view.focus).toBe('cottage');
   const marker = page.locator('#realm-markers [data-district="cottage"]');
   await expect(marker).toBeVisible();
+  await expect(marker.locator('.realm-marker-caption')).toBeHidden();
+  await marker.click();
+  await expect(marker.locator('.realm-marker-caption')).toBeVisible();
+  await expect(marker).toHaveAttribute('aria-expanded', 'true');
   const look = await marker.evaluate((el) => {
-    const label = el.querySelector('strong'), style = getComputedStyle(el), text = getComputedStyle(label);
+    const label = el.querySelector('strong'), style = getComputedStyle(el.querySelector('.realm-marker-caption')), text = getComputedStyle(label);
     return { background: style.backgroundColor, ink: style.color, font: text.fontFamily, size: parseFloat(text.fontSize) };
   });
   expect(look.background).toBe('rgb(246, 237, 214)');
@@ -79,7 +83,8 @@ test('the starting home is larger, parchment names stay inside the map, and over
   expect(overview.view.worldPerPixel / close.view.worldPerPixel).toBeGreaterThan(2);
   expect(overview.districts).toHaveLength(9);
   expect(await page.locator('#realm-districts button').count()).toBe(9);
-  if(page.viewportSize().width<640) await expect(page.locator('#realm-markers button[data-district]:visible')).toHaveCount(1);
+  expect(await page.locator('#realm-markers button[data-district]:visible').count()).toBeGreaterThan(1);
+  await expect(page.locator('#realm-markers .realm-marker-caption:visible')).toHaveCount(0);
   expect(overview.districts.filter((d) => d.open).map((d) => d.id)).toEqual(['cottage']);
   for (const el of await page.locator('#realm-markers button[data-district]:visible').all()) {
     expect(await el.evaluate((el) => {

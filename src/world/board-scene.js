@@ -13,7 +13,7 @@ import { createKitPreview } from './kit-preview.js';
 import { createSponsorSigns } from './sponsor-signs.js';
 import { FAMILY_PROJECT_SITE, projectSite } from '../core/family-project.js';
 import { PLAN_GROUND } from '../core/kit-preview.js';
-import { REALM_INTERIOR, REALM_SIZE, REALM_BOUNDS, REALM_DISTRICTS, REALM_LEGENDS, REALM_BRIDGES, REALM_ROUTE, homeDistrict, districtById, legendById, viewLocation, journeyLeg, journeyPosition } from '../core/realm.js';
+import { REALM_SIZE, REALM_BOUNDS, REALM_DISTRICTS, REALM_LEGENDS, REALM_BRIDGES, REALM_ROUTE, homeDistrict, districtById, legendById, viewLocation, journeyLeg, journeyPosition } from '../core/realm.js';
 import { MOUNTAIN_PEAKS } from '../core/realm-terrain.js';
 
 // The playable woodland board. It extends the original art-preview vocabulary (MiniBuilder,
@@ -544,14 +544,9 @@ export function createBoardScene(container, { reducedMotion = false, isOccluded 
     const e = camera.matrixWorld.elements, along = -(e[1] * right + e[5] * up) / e[9];
     return { x: e[0] * right + e[4] * up + e[8] * along, z: e[2] * right + e[6] * up + e[10] * along };
   }
-  // Include every playable place's footprint: the family project's west meadow extends beyond the older interior.
-  const explorePlaces = [...REALM_DISTRICTS, ...REALM_LEGENDS, FAMILY_PROJECT_SITE];
-  const exploreBounds = {
-    minX: Math.min(REALM_INTERIOR.centerX - REALM_INTERIOR.width / 2, ...explorePlaces.map((p) => p.x - p.width / 2)),
-    maxX: Math.max(REALM_INTERIOR.centerX + REALM_INTERIOR.width / 2, ...explorePlaces.map((p) => p.x + p.width / 2)),
-    minZ: Math.min(REALM_INTERIOR.centerZ - REALM_INTERIOR.depth / 2, ...explorePlaces.map((p) => p.z - p.depth / 2)),
-    maxZ: Math.max(REALM_INTERIOR.centerZ + REALM_INTERIOR.depth / 2, ...explorePlaces.map((p) => p.z + p.depth / 2)),
-  };
+  // Exploring reaches the added forest, springs and camp as well as the districts.
+  // Keep the camera target on actual land, including after repeated drags at an edge.
+  const exploreBounds = REALM_BOUNDS;
   const keepInside = (x, z) => ({ x: Math.max(exploreBounds.minX, Math.min(exploreBounds.maxX, x)), z: Math.max(exploreBounds.minZ, Math.min(exploreBounds.maxZ, z)) });
   const clampZoom = (z) => Math.min(ZOOM.max, Math.max(ZOOM.min, z));
   function wheelZoom(deltaY) { viewRevision++; view.zoom = clampZoom(view.zoom * Math.exp(-deltaY * 0.001)); resize(); }
@@ -777,7 +772,7 @@ export function createBoardScene(container, { reducedMotion = false, isOccluded 
       const t = groups.token.position;
       return { spaces, travelers: toScreen(t.x, t.y + 1.5, t.z), canvas: { left: rect.left, top: rect.top, width: rect.width, height: rect.height } };
     },
-    debug: () => ({ region: REALM_SIZE, estateLevel: state.estateLevel, view: { ...view }, previewFeature: state.previewFeature, tier: state.builtTier, position: state.position, shownPosition, gardens: state.gardens, crest: { ...state.crest }, playMode: state.playMode, familyAvatars: householdParty().map((m, i) => ({ memberId: m.id, avatarId: memberAvatar(m, i).id, role: m.role })), animating, frames, ambient: Boolean(ambientTimer), ambientFrames, grazers: grazers.length, butterflies: flutterers.length, court: court.debug(), legends: REALM_LEGENDS.map(({id,x,z})=>({id,x,z})), districts: realm.districts.map(({id,open,status,greyPaint,drawMeshes,hues})=>({id,open,status,greyPaint,drawMeshes,hues})), bridges: realm.bridges.map(({id,open,panels,gate,river})=>({id,open,gate,river,raised:panels.some(p=>Math.abs(p.group.rotation.z)>.01)})), landscape: realm.landscape, sponsors: sponsors.debug(), tavern: realmModels.tavernDebug(), farm: realmModels.farmDebug(), folklore: realmModels.legendsDebug(), project: { ...project.debug(), ...projectMeshes() }, kitPreview: previewDebug(), riverCurrent: realmModels.currentDebug(), fountains: fountains.debug(), surround: pipeline.cloudSurroundDebug(), atmosphere: atmosphereDebug(), render: { ...perf, averageMs: perf.draws ? perf.totalMs / perf.draws : 0, geometries: renderer.info.memory.geometries, materials: builder.materials.size } }),
+    debug: () => ({ region: REALM_SIZE, estateLevel: state.estateLevel, view: { ...view }, previewFeature: state.previewFeature, tier: state.builtTier, position: state.position, shownPosition, gardens: state.gardens, crest: { ...state.crest }, playMode: state.playMode, familyAvatars: householdParty().map((m, i) => ({ memberId: m.id, avatarId: memberAvatar(m, i).id, role: m.role })), animating, frames, ambient: Boolean(ambientTimer), ambientFrames, grazers: grazers.length, butterflies: flutterers.length, court: court.debug(), legends: REALM_LEGENDS.map(({id,x,z})=>({id,x,z})), districts: realm.districts.map(({id,open,status,greyPaint,drawMeshes,hues})=>({id,open,status,greyPaint,drawMeshes,hues})), bridges: realm.bridges.map(({id,open,panels,gate,river})=>({id,open,gate,river,raised:panels.some(p=>Math.abs(p.group.rotation.z)>.01)})), landscape: realm.landscape, sponsors: sponsors.debug(), tavern: realmModels.tavernDebug(), farm: realmModels.farmDebug(), folklore: realmModels.legendsDebug(), project: { ...project.debug(), ...projectMeshes() }, kitPreview: previewDebug(), riverCurrent: realmModels.currentDebug(), discoveries: realmModels.discoveriesDebug(), fountains: fountains.debug(), surround: pipeline.cloudSurroundDebug(), atmosphere: atmosphereDebug(), render: { ...perf, averageMs: perf.draws ? perf.totalMs / perf.draws : 0, geometries: renderer.info.memory.geometries, materials: builder.materials.size } }),
     dispose() { disposed = true; for (const [name,fn,options] of interactions) renderer.domElement.removeEventListener(name,fn,options); clearInterval(ambientTimer); ambientTimer = null; observer?.disconnect(); fountains?.dispose(); sponsors?.dispose(); court?.dispose(); for (const g of Object.values(groups)) disposeGroup(g); flutterGeo?.dispose(); builder?.dispose(); pipeline?.dispose(); renderer?.dispose(); },
   };
 

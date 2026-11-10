@@ -292,7 +292,7 @@ export function createKitList({ getState, actor, applyState, onRender = () => {}
     const box = $('kit-saved');
     // Redraw only when what it shows changed, so a live re-read never moves focus or scrolls a list being read. The key
     // names whose list it is (household, goal and person): another one's list is always drawn, whatever it shares.
-    const shownKey = JSON.stringify([scopeKey(), kit.revision, kit.savedAt, adult(), nameOf(kit.savedBy)]);
+    const shownKey = JSON.stringify([scopeKey(), kit.revision, kit.savedAt, kit.items.map(i => [i.id, i.sharedQuantity, i.remaining]), adult(), nameOf(kit.savedBy)]);
     if (box.dataset.shown === shownKey) return;
     box.dataset.shown = shownKey;
     if (!kit.items.length) {
@@ -305,7 +305,7 @@ export function createKitList({ getState, actor, applyState, onRender = () => {}
       h('p', { class: 'kit-saved-title', id: 'kit-saved-title', tabindex: '-1' }, 'Saved list'),
       h('ul', { class: 'kit-saved-list', 'aria-labelledby': 'kit-saved-title' }, ...kit.items.map((item) => h('li', {},
         h('span', { class: 'kit-item-name' }, item.name, item.needs ? h('span', { class: 'kit-item-needs' }, item.needs) : null),
-        h('span', { class: 'kit-item-counts' }, `Need ${item.quantity} · Have ${item.ownedQuantity} · To get `, h('strong', {}, String(item.remaining)))))),
+        h('span', { class: 'kit-item-counts' }, `Need ${item.quantity} · Have ${item.ownedQuantity}${item.sharedQuantity ? ` · From neighbors ${item.sharedQuantity}` : ''} · To get `, h('strong', {}, String(item.remaining)))))),
       h('p', { class: 'kit-saved-note' }, `${how}, checked and saved by ${nameOf(kit.savedBy)} · ${time(kit.savedAt)}. “Have” is what the family says it already has; nothing is bought or paid.`));
   }
 

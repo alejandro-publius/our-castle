@@ -20,7 +20,7 @@ test('complete mountain slopes fit the wider realm while close views, clouds and
   const before = await (await request.get('/api/state')).json();
   const scene = () => page.evaluate(() => window.__ourCastle.scene());
   const initial = await scene();
-  expect(initial.region).toEqual({ width: 356, depth: 260, centerX: 32, centerZ: 0 });
+  expect(initial.region).toEqual({ width: 420, depth: 324, centerX: 32, centerZ: 0 });
   expect(initial.view.focus).toBe('cottage');
   if (await page.locator('#journey').isVisible()) await page.locator('#journal-toggle').click();
   await openMenu(page, 'world-settings');

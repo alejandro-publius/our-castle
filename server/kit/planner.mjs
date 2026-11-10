@@ -65,7 +65,7 @@ function issueOf(row, line, goal) {
 
 /** Opaque optimistic-concurrency token over the kit list and everything added or chosen for it. Not an authorization. */
 function planRevision(kit, rows, selections) {
-  const facts = ['kit-plan-v1', kit.revision, kit.items.map((i) => [i.id, i.name, i.needs, i.quantity, i.ownedQuantity]),
+  const facts = ['kit-plan-v1', kit.revision, kit.items.map((i) => [i.id, i.name, i.needs, i.quantity, i.ownedQuantity, i.sharedQuantity]),
     rows.map((r) => [r.id, r.line_id, r.line_name, r.line_needs, r.product_id, r.merchant, r.price_cents, r.currency, r.availability, r.condition, r.selection_json,
       r.weight_mg, r.per_listing, r.checked_at, parse(r.need_json, null)?.check?.status ?? null]),
     [...selections].sort((a, b) => (a.line_id < b.line_id ? -1 : 1)).map((s) => [s.line_id, s.candidate_id, s.kept])];
@@ -82,7 +82,7 @@ export function kitPlanView(db, { householdId, goal, now, rankMode = 'off' }) {
   const selections = selectionRows(db, goal.id);
   const names = new Map(getMembers(db, householdId).map((m) => [m.id, m.name]));
   const lines = kit.items.map((item) => ({
-    lineId: item.id, name: item.name, needs: item.needs, quantity: item.quantity, ownedQuantity: item.ownedQuantity, remaining: item.remaining,
+    lineId: item.id, name: item.name, needs: item.needs, quantity: item.quantity, ownedQuantity: item.ownedQuantity, sharedQuantity: item.sharedQuantity, remaining: item.remaining,
     candidates: rows.filter((r) => r.line_id === item.id).map((r) => {
       const need = parse(r.need_json, null);
       return {

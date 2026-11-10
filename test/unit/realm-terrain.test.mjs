@@ -26,7 +26,7 @@ test('the rocky perimeter has visible relief, lower foreground peaks and flat ri
   assert.ok(heights.every(p=>Number.isFinite(p.h)&&p.h>=0&&p.h<=28));
 });
 test('the extra land row contains complete mountain feet and river mouths on every side',()=>{
-  assert.deepEqual([REALM_SIZE.width,REALM_SIZE.depth],[356,260]);
+  assert.deepEqual([REALM_SIZE.width,REALM_SIZE.depth],[420,324]);
   // The broad foot extends sqrt(2) times each radius, beyond the sharp peak's diamond.
   for(const p of MOUNTAIN_PEAKS){
     assert.ok(p.x-p.rx*Math.SQRT2>=REALM_BOUNDS.minX+2,'west foot');

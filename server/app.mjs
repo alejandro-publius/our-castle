@@ -28,6 +28,7 @@ import {
   addCandidate, adoptKit, chooseKit, compareKits, goalKitFor, keepLine, kitDescription, kitPlanView, refreshCandidate, removeCandidate, reviewKit, withPreference,
 } from './kit/planner.mjs';
 import { transaction } from './db.mjs';
+import { exchangeView, exchangeAction } from './exchange/index.mjs';
 
 const MIME = {
   '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8',
@@ -191,6 +192,7 @@ export function createApp({ config, db, clock, paypal = null, aiProvider = null,
     s.kit = kitView(db, s.goal);
     s.kitPlan = kitPlanView(db, { householdId: scope.householdId, goal: s.goal, now: clock.now().getTime(), rankMode: rankMode() });
     s.goalKit = goalKitFor(db, s.goal);
+    s.exchange = { available: family || example?.id === 'village-exchange', ...((family || example?.id === 'village-exchange') ? exchangeView(db, scope) : {}) };
     if (example) s.example = exampleInfo;
     if (family) { s.access = access.viewer(scope); s.revision = live.revisionOf(scope.householdId); }
     return s;
@@ -413,6 +415,14 @@ export function createApp({ config, db, clock, paypal = null, aiProvider = null,
     }],
     // ---- Kit list: a family's short checklist of things to bring for its goal. Typing a list needs no server call; only
     // "Save this list" writes, and only the kit list. Reading a photo writes nothing and tells no other page. ----
+    ['POST', '/api/exchange', ({ body, scope }) => {
+      if (!family && example?.id !== 'village-exchange') throw new DomainError(409, 'exchange_off', 'Neighborhood sharing is available in the family runner.');
+      refuseForeign(body, scope);
+      const result = exchangeAction(db, { scope, actor: choiceActor(body, scope), action: body.action, input: body }, clock);
+      for (const id of result.changedHouseholds) if (id !== scope.householdId) { live?.touch(id); live?.notify(id); }
+      const { changedHouseholds, ...publicResult } = result;
+      return { status: 'ok', ...publicResult, state: state(scope) };
+    }],
     ['POST', KIT_READ_ROUTE, async ({ body, scope, assertAccess }) => {
       refuseForeign(body, scope);
       const actor = choiceActor(body, scope);

@@ -157,7 +157,7 @@ test('only recognised monetary fields are trusted amounts: a note that is just "
   const transactions = {
     transaction_details: [{
       transaction_info: {
-        transaction_id: 'TXN_REAL', transaction_status: 'S',
+        transaction_id: env.service.contributions(env.goalId)[0].captures[0].captureId, transaction_status: 'S',
         transaction_amount: { currency_code: 'USD', value: '15.00' },
         fee_amount: { currency_code: 'USD', value: '-0.74' },
         transaction_note: '500.00',

@@ -305,11 +305,11 @@ test('example mode: the labelled example adult can save and read a photo; a chil
   } finally { await s.close(); }
 });
 
-test('a schema-10 database gains the kit_lists table (and the later kit-planner tables); every earlier row is unchanged', () => {
+test('a schema-10 database gains the kit_lists table (and the later kit-planner/exchange tables); every earlier row is unchanged', () => {
   // A disposable file in the system's temporary folder (left in place), never a saved household database.
   const file = path.join(mkdtempSync(path.join(tmpdir(), 'our-castle-kit-migration-')), 'before.sqlite');
   const step = MIGRATIONS.findIndex((m) => m.id === 'kit-lists');
-  assert.deepEqual([step, MIGRATIONS.length], [10, 12], 'the kit list is step 11, the kit planner step 12');
+  assert.deepEqual([step, MIGRATIONS.length], [10, 13], 'the kit list is step 11, the kit planner step 12');
   const old = new DatabaseSync(file);
   MIGRATIONS.slice(0, step).forEach((m, i) => { if (typeof m === 'string') old.exec(m); else m.ensure(old); old.exec(`PRAGMA user_version = ${i + 1}`); });
   old.exec(`INSERT INTO households (id, name, play_mode, crest_field, crest_charge, is_example, setup_complete, created_at) VALUES ('hh_old', 'House of Alder', 'family', 'cobalt', 'stag', 0, 1, '2026-11-01T12:00:00.000Z');
@@ -323,13 +323,13 @@ test('a schema-10 database gains the kit_lists table (and the later kit-planner 
   const beforeTables = tables(old), before = rows(old, beforeTables);
   old.close();
   const db = openDatabase(file);
-  assert.equal(db.prepare('PRAGMA user_version').get().user_version, 12);
-  assert.deepEqual(tables(db), [...beforeTables, 'goal_kits', 'kit_candidates', 'kit_lists', 'kit_selections'].sort());
-  assert.equal(tables(db).length, 27);
+  assert.equal(db.prepare('PRAGMA user_version').get().user_version, 13);
+  assert.deepEqual(tables(db), [...beforeTables, 'exchange_circles', 'exchange_invites', 'exchange_members', 'exchange_offers', 'exchange_requests', 'goal_kits', 'kit_candidates', 'kit_lists', 'kit_selections'].sort());
+  assert.equal(tables(db).length, 32);
   assert.deepEqual(rows(db, beforeTables), before, 'every earlier row is unchanged');
   assert.deepEqual(rows(db, ['kit_lists']).kit_lists, []);
   db.close();
   const again = openDatabase(file);
-  assert.equal(again.prepare('PRAGMA user_version').get().user_version, 12);
+  assert.equal(again.prepare('PRAGMA user_version').get().user_version, 13);
   again.close();
 });

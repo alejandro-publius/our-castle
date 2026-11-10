@@ -647,12 +647,15 @@ button { font: inherit; }
 .goal-item a { color:#6e4a12; }
 
 
-/* Ivory printed plaques; the lock is the only extra mark on the map. */
-.realm-marker { position:absolute; pointer-events:auto; transform:translate(-50%,-100%); display:flex; align-items:center; justify-content:center; gap:8px; background:var(--paper-3); color:var(--ink); border:1px solid var(--brass-dark); border-radius:0; padding:10px 14px; max-width:224px; min-height:44px; text-align:center; box-shadow:inset 0 0 0 2px var(--paper-3),inset 0 0 0 3px #c9ab6e,0 2px 0 #382f2550; }
-.realm-marker::after { content:''; position:absolute; left:50%; bottom:-7px; width:1px; height:7px; background:var(--brass-dark); }
+/* Small ivory arrows leave the woodland clear; only the selected property's name unfolds. */
+.realm-marker { position:absolute; pointer-events:auto; transform:translate(-50%,-100%); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:0; background:transparent; color:var(--ink); border:0; border-radius:0; padding:4px; max-width:224px; min-width:44px; min-height:44px; text-align:center; box-shadow:none; }
+.realm-marker::after { content:none; }
+.realm-arrow { display:block; width:36px; height:36px; flex:none; filter:drop-shadow(0 2px 1px #382f2550); }
+.realm-arrow svg { display:block; width:100%; height:100%; }
+.realm-marker-caption { display:none; align-items:center; gap:7px; padding:8px 12px; background:var(--paper-3); border:1px solid var(--brass-dark); box-shadow:inset 0 0 0 2px var(--paper-3),inset 0 0 0 3px #c9ab6e; }
+.realm-marker[data-named='true'] .realm-marker-caption { display:flex; }
 .realm-marker strong { display:block; font:400 19px/1.2 Uncial,Georgia,serif; text-wrap:balance; }
 .realm-lock { flex:none; display:flex; color:var(--ink-muted); }
-.realm-marker[data-status='open'] { border-color:var(--brass); }
 .realm-stop { background:var(--paper-3); color:var(--ink); border-color:var(--ink-line); border-radius:0; }
 .realm-stop strong { font:400 17px/1.25 Uncial,Georgia,serif; }
 .realm-stop small,.realm-stop[aria-pressed='true'] small { color:var(--ink-muted); }
@@ -688,7 +691,7 @@ button { font: inherit; }
  .menu-panel { max-height:min(calc(100svh - 240px),var(--world-menu-height,320px)); }
  .settings-panel { width:min(280px,calc(100vw - 44px)); }
  #camera-menu .menu-panel { left:auto; right:0; }
- .realm-marker { max-width:164px; padding:8px 10px; gap:6px; }.realm-marker strong { font-size:16px; }
+ .realm-marker { max-width:164px; padding:4px; gap:0; }.realm-marker strong { font-size:16px; }
  .celebration { top:76px; }
 }
 @media(max-width:400px) {
@@ -977,3 +980,21 @@ body[data-signed-in='false'] .shell { visibility:hidden; }
 .brand > div,.brand-house { min-width:0; }
 .brand-house #house-eyebrow { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .steps button[aria-selected="true"]:focus-visible { outline-color:#344f3c; }
+
+/* Village Exchange uses the journal's existing paper, rules and type. */
+.village-exchange { margin-block: 20px; border-block: 1px solid var(--ink-line); padding-block: 16px; }
+.village-exchange > summary { cursor: pointer; font-weight: 700; min-height: 44px; }
+.village-exchange > summary small { font-weight: 400; margin-inline-start: 8px; }
+.exchange-board, .exchange-invites { list-style: none; padding: 0; }
+.exchange-request { padding-block: 18px; border-top: 1px solid var(--ink-line); }
+.exchange-request-heading { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px; }
+.exchange-request h4 { margin: 0; font-size: 1.12em; }
+.exchange-request p { margin-block: 8px; }
+.exchange-form { display: grid; gap: 12px; padding-block: 12px; }
+.exchange-form input, .exchange-form select, .exchange-form textarea { max-width: 100%; min-width: 0; }
+.exchange-form > button { justify-self: start; }
+.exchange-offer { border-left: 3px solid var(--ink-line); padding: 10px 14px; margin-block: 12px; }
+.village-exchange details > summary { cursor: pointer; padding-block: 12px; min-height: 44px; }
+.exchange-invite-output textarea { width: 100%; overflow-wrap: anywhere; }
+.exchange-invites li { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.exchange-confirm { border-block: 1px solid var(--ink-line); padding-block: 12px; }

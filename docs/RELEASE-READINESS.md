@@ -1,4 +1,4 @@
-# Release readiness — November 9, 2026
+# Release readiness — November 10, 2026
 
 **Public source:** [PR #59](https://github.com/alejandro-publius/our-castle/pull/59) integrated the reviewed PR #40–#58 source at `b21b2d8`; [PR #60](https://github.com/alejandro-publius/our-castle/pull/60) recorded the saved-app activation and live synthetic photo evidence. This source also includes the [playable family-trip example](FAMILY-TRIP-EXAMPLE.md) and its [temporary kit map preview](KIT-MAP-PREVIEW.md); [selected product scope](PRODUCT-COMPLETION.md) reconciles the completed features and evidence limits. The latest source checks are recorded at the top of [validation](VALIDATION.md); the two saved runtimes below remain pinned separately.
 
@@ -10,6 +10,12 @@ It includes household snapshots and restart recovery; refund ordering, including
 - Native complete-kit journey: two desktop/390 px phone passes.
 
 The separate post-merge [run 42672760816](https://github.com/alejandro-publius/our-castle/actions/runs/42672760816) encountered GitHub internal errors. Its second attempt passed all four jobs GitHub created (three unit/Rust jobs and the native-kit journey); GitHub never created its release-browser job and refused another retry. It is not a fully green post-merge run. The passing equivalent-tree PR run above remains distinct evidence. These are fake-provider checks, not live payment or ranking-quality evidence.
+
+## November 10 source additions
+
+[Village Exchange](VILLAGE-EXCHANGE.md) adds private neighborhood invitations and equipment handovers connected to kit planning. The source migration appends five tables (schema 13, 32 application tables). Property markers now start as compact arrows; the realm is 420 × 324 world units with two waterfalls flowing into existing rivers and an optional hidden forest camp. The steward filters transaction-list results to the current household goal's server-recorded capture IDs before the model receives them.
+
+These changes are source-only. The saved 3010/3021 runtimes and their schema-12 records below were not read, migrated or restarted. Use `npm run demo -- --village-exchange` for the separate in-memory example. See the latest [validation](VALIDATION.md) and the expanded [architecture diagrams](ARCHITECTURE.md).
 
 ## Playable local example
 
