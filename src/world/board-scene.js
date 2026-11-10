@@ -759,7 +759,7 @@ export function createBoardScene(container, { reducedMotion = false, isOccluded 
     setVillage(next) {
       if (disposed) return null;
       const on = Boolean(next);
-      if (on && !villageActive) { realmView = { ...view }; realmVisibility = Object.fromEntries(Object.entries(groups).map(([name, group]) => [name, group.visible])); viewRevision++; Object.assign(view, framed, { focus: VILLAGE_FRAME.id, crossing: null, zoom: 1, panX: 0, panY: 0 }); }
+      if (on && !villageActive) { realmView = { ...view }; realmVisibility = Object.fromEntries(Object.entries(groups).map(([name, group]) => [name, group.visible])); viewRevision++; Object.assign(view, framed, { focus: VILLAGE_FRAME.id, crossing: null, zoom: 1.13, panX: 0, panY: 0 }); }
       if (!on && villageActive && realmView) { viewRevision++; Object.assign(view, realmView); realmView = null; }
       const switched = on !== villageActive; villageActive = on;
       for (const [name, group] of Object.entries(groups)) group.visible = name === 'village' ? on : on ? false : realmVisibility?.[name] ?? group.visible;

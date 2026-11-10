@@ -15,8 +15,15 @@ export function createVillageSquare({ part, models, tree, colours: C, reducedMot
   function build(group, data) {
     school.reset(); actors = new Map(); seconds = null;
     const root = new THREE.Group(); root.name = 'village-square'; root.position.set(VILLAGE_FRAME.x, 0, VILLAGE_FRAME.z); group.add(root);
-    part(root, 'box', 0, -1.0, 0, 82, 2, 78, C.soil);
-    part(root, 'box', 0, .05, 0, 82, .4, 78, C.grass);
+    // The clearing belongs to a forest, rather than floating on an empty presentation canvas.
+    // This is a separate view group; the household terrain underneath is preserved unchanged.
+    part(root, 'box', 0, -1.0, 0, 220, 2, 220, C.soil);
+    part(root, 'box', 0, .05, 0, 220, .4, 220, C.grass);
+    for (let x = -102; x <= 102; x += 12) for (let z = -102; z <= 102; z += 12) {
+      if (Math.abs(x) < 43 && Math.abs(z) < 43) continue;
+      const n = ((x + 102) / 12) * 17 + ((z + 102) / 12) * 11;
+      tree(root, x + Math.sin(n) * 2, z + Math.cos(n) * 2, 4.6 + n % 3 * .3, n % 4 === 0);
+    }
     part(root, 'round', 0, .3, 0, 32, .14, 32, C.path);
     part(root, 'round', 0, .38, 0, 29, .1, 29, C.dust);
     // Six places around the common green. The full family list remains available in the paper.

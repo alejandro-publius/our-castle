@@ -11,9 +11,10 @@ export function parseVillageMinor(value, decimals = 2) {
 }
 export function villageMoney(minor, fund) {
   if (!Number.isSafeInteger(minor)) return '—';
-  const decimals = fund?.decimals === 6 ? 6 : 2, scale = 10 ** decimals;
-  if (fund?.rail === 'pyusd-devnet') return `${(minor / scale).toLocaleString('en-US', { maximumFractionDigits: 6 })} test PYUSD`;
-  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(minor / scale);
+  const decimals = fund?.decimals === 6 ? 6 : 2, scale = 10n ** BigInt(decimals), value = BigInt(minor), magnitude = value < 0 ? -value : value;
+  const whole = (magnitude / scale).toLocaleString('en-US'), fraction = String(magnitude % scale).padStart(decimals, '0'), sign = value < 0 ? '−' : '';
+  if (fund?.rail === 'pyusd-devnet') { const tail = fraction.replace(/0+$/, ''); return `${sign}${whole}${tail ? `.${tail}` : ''} test PYUSD`; }
+  return `${sign}$${whole}.${fraction}`;
 }
 const h = (tag, attrs = {}, ...children) => {
   const el = document.createElement(tag);
@@ -31,15 +32,18 @@ const input = (name, attrs = {}) => h('input', { name, ...attrs });
 const day = value => /^\d{4}-\d{2}-\d{2}$/.test(value ?? '') ? value : 'No date set';
 
 /** One paper for shared funds. It reads server projections; it never guesses payment or presence outcomes. */
-export function createVillageFund({ getState, actor, applyState, getScene, onSquare = () => {} }) {
+export function createVillageFund({ getState, actor, applyState, getScene, onSquare = () => {}, onFundView = () => {} }) {
   const opener = $('open-village'), dialog = $('village-fund-dialog'), controls = $('village-square-controls');
-  let village = null, stateVillage = null, selected = null, pane = 'project', scopeKey = null, openedBy = null;
+  let village = null, stateVillage = null, review = null, recoveryFundId = null, selected = null, pane = 'project', scopeKey = null, openedBy = null;
   let busy = false, square = false, destroyed = false, generation = 0, polling = false, lastRead = 0, lastPresenceRead = 0;
   let presence = { members: [], selfId: null }, joined = false, presenceEpoch = 0, lastHeartbeat = 0, paymentKey = null, paymentRequest = null, pendingPayment = null, draft = null;
   const watched = new Set(); let lastVaultRead = 0;
+  let ownPaymentsKey = null, paymentReadEpoch = 0, assistantGrant = null;
   const scope = () => JSON.stringify([getState()?.household?.id, actor()?.id]);
   const adult = () => actor()?.role === 'adult';
-  const fund = () => village?.funds?.find(f => f.id === selected) ?? null;
+  const fund = () => review?.fund?.id === selected ? review.fund : village?.funds?.find(f => f.id === selected) ?? null;
+  const outside = () => review?.fund?.id === selected && (review.viewerMember ?? review.fund.viewerMember) === false;
+  const orderScope = id => JSON.stringify([scope(), id]);
   const memberInput = () => getState()?.access ? {} : { memberId: actor()?.id, approverId: actor()?.id };
   const memberQuery = () => getState()?.access ? '' : `&memberId=${encodeURIComponent(actor()?.id ?? '')}`;
   const status = h('p', { id: 'village-status', class: 'village-status', role: 'status', 'aria-live': 'polite' });
@@ -79,13 +83,38 @@ export function createVillageFund({ getState, actor, applyState, getScene, onSqu
   shareForm.addEventListener('submit', e => { e.preventDefault(); const f = fund(), n = parseVillageMinor(shareAmount.value, f?.decimals); if (!f || !n || !shareApproved.checked) return say('Enter a valid share and review it first.'); act('/api/village', { action: 'share', fundId: f.id, committedMinor: n, expectedRevision: f.revision, confirmed: true }); });
   const shareDetails = h('details', {}, h('summary', {}, 'Our family’s share'), shareForm);
   pages.project.append(title, rail, progress, summary, remaining,
-    button('Visit the shared square', showSquare, { id: 'village-visit' }), paymentNote, paymentForm, paymentFollowup, vault, shareDetails);
+    button('Visit the shared square', showSquare, { id: 'village-visit' }), paymentNote, paymentForm, vault, shareDetails);
   const families = h('ul', { class: 'village-family-list' });
   const shareCastle = button('Share our castle’s appearance', () => act('/api/village', { action: 'share-castle', shared: !village.members?.find(m => m.mine)?.shared, confirmed: true }));
   pages.families.append(h('h3', {}, 'Building together'), h('p', { class: 'fine' }, 'Only this shared project’s commitments and contributions appear here. A family’s household balance stays private.'), families,
     shareCastle, h('p', { class: 'fine' }, 'Sharing shows your castle’s tier and crest to this neighborhood. Otherwise a plain starter home stands in its place. No amounts appear on the map.'));
   const records = h('ol', { class: 'village-records' });
   pages.records.append(h('h3', {}, 'Contribution records'), h('p', { class: 'fine' }, 'Confirmed captures add progress. Refunds subtract it. Promised shares never count as payments.'), records);
+  const assistantStatus = h('p', { class: 'fine', role: 'status' });
+  const assistantToken = input('assistant-token', { type: 'password', readonly: true, autocomplete: 'off', 'aria-label': 'Private assistant token, shown only this time', hidden: true });
+  const assistantCreate = button('Create a temporary connection', () => { const id = selected; act('/api/mcp/grants', { fundId: id }, res => { assistantGrant = { ...res, token: dialog.open && selected === id ? res.token : undefined }; renderAssistant(); }); });
+  const assistantCopy = button('Copy local assistant configuration', async () => {
+    if (!assistantGrant?.token) return;
+    const config = { mcpServers: { 'our-castle': { command: 'node', args: ['/absolute/path/to/our-castle/scripts/mcp.mjs'], env: { OUR_CASTLE_MCP_URL: location.origin, OUR_CASTLE_MCP_TOKEN: assistantGrant.token } } } };
+    try { await navigator.clipboard.writeText(JSON.stringify(config, null, 2)); assistantStatus.textContent = 'Copied. Set the script’s absolute path in your assistant. Keep this temporary configuration private.'; }
+    catch { assistantStatus.textContent = 'Clipboard permission is unavailable. The connection was not copied.'; }
+  }, { hidden: true });
+  const assistantRevoke = button('Revoke this connection', () => assistantGrant && act('/api/mcp/grants/revoke', { grantId: assistantGrant.grantId }, () => { assistantGrant = null; renderAssistant(); }), { hidden: true });
+  const assistantDetails = h('details', { id: 'village-assistant' }, h('summary', {}, 'Connect a local assistant'),
+    h('p', { class: 'fine' }, 'Read this fund only. Cannot make payments. Use the local Node adapter from your copy of Our Castle; edit its absolute path in the copied configuration. The token expires within 15 minutes and ends with this passkey session.'),
+    assistantStatus, assistantToken, assistantCreate, assistantCopy, assistantRevoke);
+  pages.records.append(assistantDetails);
+
+  function renderAssistant() {
+    const local = location.protocol === 'http:' && ['localhost', '127.0.0.1', '[::1]'].includes(location.hostname) && Number(location.port) >= 1024;
+    assistantDetails.hidden = !getState()?.access || !adult() || outside() || !village?.capabilities?.mcp;
+    assistantCreate.disabled = !local || Boolean(assistantGrant);
+    assistantCopy.hidden = assistantToken.hidden = !assistantGrant?.token;
+    assistantToken.value = assistantGrant?.token ?? '';
+    assistantRevoke.hidden = !assistantGrant;
+    assistantStatus.textContent = assistantGrant ? `Private connection for ${assistantGrant.fundId} expires ${new Date(assistantGrant.expiresAt).toLocaleString()}.${assistantGrant.token ? ' Copy it before closing this window.' : ' Its token is no longer displayed; revoke it before making another.'}` : local ? 'Choose this only when you are ready to configure your local assistant. Nothing is connected automatically.' : 'The local adapter requires this app on a loopback address with an explicit port.';
+  }
+  function forgetAssistantToken() { if (assistantGrant) assistantGrant = { ...assistantGrant, token: undefined }; assistantToken.value = ''; assistantToken.hidden = assistantCopy.hidden = true; }
 
   const createTitle = input('title', { required: true, maxlength: 100 }), createAmount = input('target', { required: true, type: 'text', inputmode: 'decimal' });
   const createDate = input('deadline', { required: true, type: 'date' });
@@ -131,7 +160,7 @@ export function createVillageFund({ getState, actor, applyState, getScene, onSqu
   const shareLink = h('details', { id: 'village-review-link-details' }, h('summary', {}, 'Review link (this computer)'),
     h('p', { class: 'fine' }, 'This local link opens on this computer. It is not a public fundraiser or a way to pay from another device.'), publishButton, h('div', { class: 'village-qr' }, qr, reviewLink));
   shareLink.addEventListener('toggle', () => { if (shareLink.open) renderReviewLink(); });
-  sheet.append(field('Shared project', selection), empty, tabs, ...Object.values(pages), treasurer, shareLink);
+  sheet.append(field('Shared project', selection), empty, tabs, ...Object.values(pages), paymentFollowup, treasurer, shareLink);
   dialog.replaceChildren(h('header', { class: 'exchange-window-head' }, h('img', { src: 'assets/brand/our-castle/crest.webp', width: 40, height: 44, alt: '' }), h('div', {}, neighborhood, heading), button('×', close, { class: 'exchange-close', 'aria-label': 'Close village fund' })),
     h('div', { class: 'exchange-window-body village-paper' }, sheet, status, draftDetails, createDetails));
   dialog.addEventListener('cancel', e => { e.preventDefault(); close(); });
@@ -148,12 +177,13 @@ export function createVillageFund({ getState, actor, applyState, getScene, onSqu
 
   function renderPane() {
     for (const [name, page] of Object.entries(pages)) page.hidden = pane !== name || !fund();
-    for (const b of tabs.querySelectorAll('button')) b.setAttribute('aria-pressed', String(b.dataset.villageTab === pane));
+    for (const b of tabs.querySelectorAll('button')) { b.hidden = outside() && b.dataset.villageTab !== 'project'; b.setAttribute('aria-pressed', String(b.dataset.villageTab === pane)); }
   }
   function renderApproval() {
     const f = fund(), n = parseVillageMinor(amount.value, f?.decimals);
     approvalText.textContent = ` I approve ${n ? villageMoney(n, f) : 'this amount'} toward ${f?.title ?? 'this project'}${f?.rail === 'simulated' ? ' (simulated)' : ' in PayPal sandbox'}.`;
-    paymentButton.disabled = busy || !adult() || !n || !approved.checked || f?.status !== 'open' || (f?.rail === 'paypal-sandbox' && village?.capabilities?.paypal === false);
+    const unresolved = f?.rail === 'paypal-sandbox' && (ownPaymentsKey !== orderScope(f.id) || Boolean(pendingPayment));
+    paymentButton.disabled = busy || !adult() || !n || !approved.checked || unresolved || f?.status !== 'open' || (f?.rail === 'paypal-sandbox' && village?.capabilities?.paypal === false);
     paymentButton.textContent = f?.rail === 'simulated' ? 'Add simulated contribution' : 'Create PayPal sandbox checkout';
   }
   function renderReviewLink() {
@@ -171,21 +201,23 @@ export function createVillageFund({ getState, actor, applyState, getScene, onSqu
   function render() {
     if (destroyed) return;
     const nextScope = scope();
-    if (scopeKey !== null && nextScope !== scopeKey) { generation++; presenceEpoch++; close(); leaveSquare({ notify: false }); selected = null; village = null; watched.clear(); paymentRequest = null; pendingPayment = null; paymentFollowup.replaceChildren(); amount.value = ''; approved.checked = false; draft = null; draftResult.replaceChildren(); answer.textContent = ''; }
+    if (scopeKey !== null && nextScope !== scopeKey) { generation++; presenceEpoch++; paymentReadEpoch++; close(); leaveSquare({ notify: false }); selected = null; village = null; review = null; recoveryFundId = null; assistantGrant = null; watched.clear(); ownPaymentsKey = null; paymentRequest = null; pendingPayment = null; paymentFollowup.replaceChildren(); amount.value = ''; approved.checked = false; draft = null; draftResult.replaceChildren(); answer.textContent = ''; }
     scopeKey = nextScope;
     if (stateVillage !== getState()?.village) { stateVillage = getState()?.village; village = stateVillage; generation++; }
     const available = Boolean(village?.available); opener.hidden = !available;
     if (!available) { close(); leaveSquare(); return; }
-    const choices = village.funds ?? [];
-    if (!choices.some(f => f.id === selected)) selected = village.selectedFundId ?? choices[0]?.id ?? null;
+    const choices = [...(village.funds ?? [])];
+    if (review?.fund && !choices.some(f => f.id === review.fund.id)) choices.push(review.fund);
+    if (recoveryFundId && !review) selected = null;
+    else if (!choices.some(f => f.id === selected)) selected = village.selectedFundId ?? choices[0]?.id ?? null;
     const ids = JSON.stringify(choices.map(f => [f.id, f.title]));
     if (selection.dataset.options !== ids) { selection.replaceChildren(...choices.map(f => h('option', { value: f.id }, f.title))); selection.dataset.options = ids; }
     selection.value = selected ?? ''; selection.closest('label').hidden = choices.length < 2;
-    neighborhood.textContent = village.neighborhood?.name ?? 'Private neighborhood';
+    neighborhood.textContent = outside() ? `Published project · ${fund()?.organizer?.alias ?? 'Organizer'}` : village.neighborhood?.name ?? 'Private neighborhood';
     const f = fund(); empty.hidden = Boolean(f); tabs.hidden = !f; treasurer.hidden = !f; shareLink.hidden = !f;
     const owner = getState()?.exchange?.neighborhood?.owner === true;
-    createDetails.hidden = draftDetails.hidden = !adult() || !village.neighborhood || !owner;
-    if (!village.neighborhood) empty.textContent = 'Start or join an invited neighborhood in Village Exchange, then create a shared project.';
+    createDetails.hidden = draftDetails.hidden = !adult() || outside() || !village.neighborhood || !owner;
+    empty.textContent = recoveryFundId ? 'This project’s review link is no longer available. An existing checkout can still be checked below.' : !village.neighborhood ? 'Start or join an invited neighborhood in Village Exchange, then create a shared project.' : 'A shared project begins with a purpose, an amount and a date.';
     if (!f) { leaveSquare(); renderPane(); return; }
     title.textContent = f.title; rail.textContent = villageRailLabel(f.rail);
     progress.value = Math.max(0, Math.min(10000, f.progress?.basisPoints ?? 0));
@@ -194,27 +226,34 @@ export function createVillageFund({ getState, actor, applyState, getScene, onSqu
     paymentForm.hidden = !adult() || f.rail === 'pyusd-devnet' || f.status !== 'open'; vault.hidden = f.rail !== 'pyusd-devnet';
     paymentNote.textContent = f.rail === 'simulated' ? 'Practice together with simulated contributions. No money moves.' : f.rail === 'paypal-sandbox' ? 'The recipient is fixed on this fund. Continue only after reviewing the amount and organizer.' : 'Test-token progress is separate from money. These tokens cannot buy the project.';
     vaultAddress.textContent = f.recipient?.address ?? '';
-    vaultWatch.disabled = !adult() || !village.capabilities?.devnet || watched.has(f.id);
+    vaultWatch.disabled = !adult() || !f.canManage || !village.capabilities?.devnet || watched.has(f.id);
     vaultRefresh.disabled = !adult() || !village.capabilities?.devnet || !watched.has(f.id);
+    vaultWatch.hidden = vaultRefresh.hidden = outside();
     vaultStatus.textContent = !village.capabilities?.devnet ? 'A devnet connection is not configured. No wallet requests are running.' : watched.has(f.id) ? 'Watching new deposits while this fund is visible. Leave this page to stop its refreshes.' : 'An adult starts the watch before new deposits are checked. Existing wallet history is not credited automatically.';
     if (f.rail === 'paypal-sandbox' && village.capabilities?.paypal === false) paymentNote.textContent = 'PayPal sandbox is not configured. The project is saved, but checkout cannot start yet.';
-    shareDetails.hidden = !adult() || f.status !== 'open';
+    shareDetails.hidden = !adult() || outside() || f.status !== 'open';
+    treasurer.hidden = outside(); $('village-visit').hidden = outside();
     const key = JSON.stringify([scope(), f.id, f.revision, f.rail]);
     if (key !== paymentKey) { approved.checked = false; paymentKey = key; paymentRequest = null; shareApproved.checked = false; answer.textContent = ''; }
     renderApproval();
     const shares = new Map((f.shares ?? []).map(s => [s.familyReference, s]));
     shareCastle.hidden = !adult(); shareCastle.textContent = village.members?.find(m => m.mine)?.shared ? 'Hide our castle’s appearance' : 'Share our castle’s appearance';
-    families.replaceChildren(...(village.members ?? []).map(m => { const s = shares.get(m.familyReference); return h('li', {}, h('div', {}, h('strong', {}, m.alias), h('small', {}, m.familyReference)), h('div', {}, h('span', {}, s ? `${villageMoney(s.paidMinor ?? 0, f)} contributed` : 'No contribution recorded'), h('small', {}, s ? `${villageMoney(s.committedMinor ?? 0, f)} voluntary share` : 'No share chosen'))); }));
+    families.replaceChildren(...(outside() ? [] : village.members ?? []).map(m => { const s = shares.get(m.familyReference); return h('li', {}, h('div', {}, h('strong', {}, m.alias), h('small', {}, m.familyReference)), h('div', {}, h('span', {}, s ? `${villageMoney(s.paidMinor ?? 0, f)} contributed` : 'No contribution recorded'), h('small', {}, s ? `${villageMoney(s.committedMinor ?? 0, f)} voluntary share` : 'No share chosen'))); }));
     records.replaceChildren(...(f.receipts ?? []).map(r => h('li', {}, h('div', {}, h('strong', {}, `${['refund', 'reversal'].includes(r.kind) ? '−' : '+'}${villageMoney(r.amountMinor, f)}`), h('span', {}, r.alias ?? 'Unmatched contribution')), h('small', {}, `${r.reference ?? r.id} · ${r.kind} · ${new Date(r.at).toLocaleString()}`), h('small', {}, villageRailLabel(f.rail)))));
     if (!f.receipts?.length) records.append(h('li', {}, 'No confirmed contribution yet.'));
-    if (square) { squareName.textContent = f.title; squareNote.textContent = villageRailLabel(f.rail); getScene()?.setVillage({ fundId: f.id, stage: f.progress?.stage ?? 0, members: village.members ?? [] }); getScene()?.setVillagePresence(presence.members); }
-    renderPane(); renderReviewLink();
+    if (square) { squareName.textContent = f.title; squareNote.textContent = villageRailLabel(f.rail); getScene()?.setVillage({ fundId: f.id, stage: f.progress?.stage ?? 0, members: village.members ?? [] }); getScene()?.setVillagePresence(presence.members); onFundView(f); }
+    renderPane(); renderReviewLink(); renderAssistant();
   }
   async function refresh({ background = false } = {}) {
-    const stamp = ++generation, before = scope();
+    const stamp = ++generation, before = scope(), reviewId = review?.fund?.id;
     const res = await api.get('/api/village', { background });
     if (destroyed || stamp !== generation || before !== scope()) return;
-    village = res.village ?? res; render();
+    village = res.village ?? res;
+    if (reviewId) {
+      try { const nextReview = await api.get(`/api/village/review/${encodeURIComponent(reviewId)}`, { background }); if (stamp === generation && before === scope()) review = nextReview; }
+      catch (error) { if (stamp === generation && before === scope()) { review = null; recoveryFundId = reviewId; selected = null; say(error.message); } }
+    }
+    if (!destroyed && stamp === generation && before === scope()) render();
   }
   async function act(path, body, after) {
     if (busy || (!adult() && path !== '/api/village/treasurer')) return null;
@@ -224,7 +263,7 @@ export function createVillageFund({ getState, actor, applyState, getScene, onSqu
       if (before !== scope() || destroyed) return null;
       if (res.state) applyState(res.state); else if (res.village) village = res.village;
       if (res.fundId) selected = res.fundId;
-      if (!res.state && !res.village && !['/api/village/draft', '/api/village/treasurer'].includes(path)) await refresh();
+      if (review || (!res.state && !res.village && !['/api/village/draft', '/api/village/treasurer'].includes(path))) await refresh();
       say('Saved.'); after?.(res); render(); return res;
     } catch (e) { if (before === scope()) say(e.message); return null; }
     finally { busy = false; dialog.removeAttribute('aria-busy'); renderApproval(); }
@@ -232,24 +271,57 @@ export function createVillageFund({ getState, actor, applyState, getScene, onSqu
   async function contribute() {
     const f = fund(), n = parseVillageMinor(amount.value, f?.decimals);
     if (!f || !n || !approved.checked || !adult()) return;
+    if (f.rail === 'paypal-sandbox' && (pendingPayment || ownPaymentsKey !== orderScope(f.id))) return say('Check the existing checkout before starting another one.');
     paymentRequest ??= newRequestId();
-    await act('/api/village/payments', { fundId: f.id, amountMinor: n, expectedRevision: f.revision, approvalConfirmed: true, requestId: paymentRequest }, res => {
-      approved.checked = false; const result = res.payment ?? res, p = result.contribution ?? result; pendingPayment = { ...p, fundId: f.id };
-      paymentFollowup.replaceChildren();
+    const response = await act('/api/village/payments', { fundId: f.id, amountMinor: n, expectedRevision: f.revision, approvalConfirmed: true, requestId: paymentRequest }, res => {
+      approved.checked = false;
       if (f.rail === 'simulated') { say('Simulated contribution recorded. The shared project now reflects the latest records.'); paymentRequest = null; return; }
-      const raw = p.approveUrl ?? p.approvalUrl ?? p.order?.approvalUrl;
-      let url; try { url = new URL(raw); } catch { /* fail closed */ }
-      if (url?.protocol === 'https:' && url.hostname === 'www.sandbox.paypal.com' && !url.username && !url.password) {
-        paymentFollowup.append(h('a', { href: url.href, target: '_blank', rel: 'noopener noreferrer', class: 'village-paypal-link' }, 'Continue to PayPal sandbox'));
-      }
-      const orderId = p.id ?? p.orderId;
-      if (orderId) paymentFollowup.append(button('I approved in PayPal — check payment', () => act('/api/village/payments/capture', { fundId: pendingPayment.fundId, orderId }, () => { paymentFollowup.replaceChildren(); pendingPayment = null; say('Payment checked. See its confirmed state in Records.'); })));
+      receivePayment(res, f.id);
       say('Order created. Progress changes only after the server confirms the payment.');
     });
+    if (!response && f.rail === 'paypal-sandbox') await loadOwnPayments(f.id);
   }
-  function choose(id) { leaveSquare(); selected = id; paymentFollowup.replaceChildren(); pendingPayment = null; amount.value = ''; approved.checked = false; paymentRequest = null; pane = 'project'; render(); }
-  function open() { if (!village?.available) return; openedBy = document.activeElement; presenceEpoch++; if (joined) changePresence('leave'); if (!dialog.open) dialog.showModal(); heading.focus(); refresh().catch(e => say(e.message)); }
-  function close() { if (!dialog.open) return; dialog.close(); if (openedBy?.isConnected) openedBy.focus({ preventScroll: true }); }
+  function receivePayment(res, id) {
+    const result = res.payment ?? res, p = result.contribution ?? result;
+    pendingPayment = p.status === 'completed' ? null : { ...p, fundId: id };
+    if (!pendingPayment) paymentRequest = null;
+    ownPaymentsKey = orderScope(id); renderPendingPayment();
+    say(p.status === 'completed' ? 'Payment confirmed by the server. Its contribution is recorded.' : 'This checkout is unfinished. Check it before creating another payment.');
+  }
+  function renderPendingPayment() {
+    paymentFollowup.replaceChildren(); paymentFollowup.hidden = !pendingPayment;
+    if (!pendingPayment) return;
+    const p = pendingPayment, f = fund();
+    paymentFollowup.append(h('h4', {}, 'Your unfinished checkout'), h('p', {}, `${villageMoney(p.amountMinor, { rail: 'paypal-sandbox', decimals: 2 })} toward ${f?.id === p.fundId ? f.title : 'the previously reviewed project'}`),
+      h('p', { class: 'fine' }, `Reference ${p.id} · ${p.status}. This is your existing approved amount; a new checkout is blocked.`));
+    if (p.recipient?.merchantId) paymentFollowup.append(h('p', { class: 'fine' }, `Sandbox recipient: ${p.recipient.merchantId}`));
+    let url; try { url = new URL(p.approveUrl); } catch { /* fail closed */ }
+    const safe = url?.origin === 'https://www.sandbox.paypal.com' && !url.username && !url.password;
+    if (safe) paymentFollowup.append(h('a', { href: url.href, target: '_blank', rel: 'noopener noreferrer', class: 'village-paypal-link' }, 'Continue to PayPal sandbox'));
+    if (!p.providerOrderId || !safe) paymentFollowup.append(button('Recover this checkout', () => act('/api/village/payments/resume', { orderId: p.id }, res => receivePayment(res, p.fundId)), { id: 'village-resume-payment' }));
+    if (p.providerOrderId) paymentFollowup.append(button('I approved in PayPal — check payment', () => act('/api/village/payments/capture', { fundId: p.fundId, orderId: p.id }, res => receivePayment(res, p.fundId)), { id: 'village-check-payment' }));
+  }
+  async function loadOwnPayments(id = recoveryFundId ?? selected) {
+    const f = fund(), epoch = ++paymentReadEpoch, before = scope();
+    if (!id || !adult() || (f && f.rail !== 'paypal-sandbox')) { pendingPayment = null; ownPaymentsKey = null; renderPendingPayment(); renderApproval(); return; }
+    ownPaymentsKey = null; renderApproval(); say('Checking your existing checkouts…');
+    try {
+      const res = await api.get(`/api/village/payments?fundId=${encodeURIComponent(id)}${memberQuery()}`);
+      if (destroyed || epoch !== paymentReadEpoch || before !== scope() || id !== (recoveryFundId ?? selected)) return;
+      pendingPayment = (res.payments ?? []).filter(p => ['creating', 'created', 'pending'].includes(p.status)).sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)))[0] ?? null;
+      ownPaymentsKey = orderScope(id); renderPendingPayment(); renderApproval();
+      say(pendingPayment ? 'An unfinished checkout was restored. Review or check that exact payment before starting another.' : 'Ready to review a contribution.');
+    } catch (error) { if (epoch === paymentReadEpoch && before === scope()) say(`Existing checkouts could not be checked: ${error.message}`); }
+  }
+  function choose(id) { leaveSquare(); forgetAssistantToken(); if (id !== review?.fund?.id) review = null; recoveryFundId = null; selected = id; ownPaymentsKey = null; paymentFollowup.replaceChildren(); pendingPayment = null; amount.value = ''; approved.checked = false; paymentRequest = null; pane = 'project'; render(); if (dialog.open) loadOwnPayments(); }
+  function open() { if (!village?.available) return; openedBy = document.activeElement; presenceEpoch++; if (joined) changePresence('leave'); if (!dialog.open) dialog.showModal(); heading.focus(); refresh().then(() => loadOwnPayments()).catch(e => say(e.message)); }
+  async function openReview(id) {
+    if (!id || !village?.available) return;
+    const before = scope(); leaveSquare(); pendingPayment = null; ownPaymentsKey = null; paymentFollowup.replaceChildren();
+    try { const res = await api.get(`/api/village/review/${encodeURIComponent(id)}`); if (before !== scope() || destroyed) return; review = res; recoveryFundId = null; selected = id; pane = 'project'; render(); open(); }
+    catch (error) { if (before !== scope() || destroyed) return; review = null; recoveryFundId = id; selected = null; render(); open(); say(error.message); }
+  }
+  function close() { forgetAssistantToken(); if (!dialog.open) return; dialog.close(); if (openedBy?.isConnected) openedBy.focus({ preventScroll: true }); }
   function showSquare() { if (!fund() || !getScene()) return; square = true; controls.hidden = false; document.body.dataset.villageSquare = 'true'; onSquare(true); render(); close(); $('village-back').focus({ preventScroll: true }); controls.scrollIntoView({ block: 'nearest' }); }
   function leaveSquare({ notify = true } = {}) { if (!square) return; presenceEpoch++; if (joined && notify) changePresence('leave'); square = false; joined = false; presence = { members: [], selfId: null }; controls.hidden = true; delete document.body.dataset.villageSquare; getScene()?.setVillage(null); onSquare(false); renderPresence(); }
   function renderPresence() { join.textContent = joined ? 'Leave the square' : 'Join the square'; movement.hidden = !joined; presenceText.textContent = presence.members.length ? `${presence.members.length} ${presence.members.length === 1 ? 'person' : 'people'} here now` : 'No one is in the square right now.'; if (square) getScene()?.setVillagePresence(presence.members); }
@@ -293,7 +365,7 @@ export function createVillageFund({ getState, actor, applyState, getScene, onSqu
   const timer = setInterval(tick, 1000);
   const hidden = () => { if (document.hidden) { presenceEpoch++; if (joined) changePresence('leave'); joined = false; presence = { members: [], selfId: null }; renderPresence(); } else tick(); };
   document.addEventListener('visibilitychange', hidden);
-  return { render, open, close, leaveSquare, select: choose,
+  return { render, open, openReview, close, leaveSquare, select: choose, activeFund: () => square ? fund() : null,
     dispose() { destroyed = true; generation++; clearInterval(timer); document.removeEventListener('visibilitychange', hidden); close(); leaveSquare(); },
     debug: () => ({ selected, square, joined, people: presence.members.length }),
   };

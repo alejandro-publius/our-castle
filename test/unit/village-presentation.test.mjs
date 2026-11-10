@@ -14,6 +14,8 @@ test('fund input preserves whole minor units and rejects ambiguous or unsafe mon
 test('the presentation never calls valueless devnet units dollars or combines rails', () => {
   assert.equal(villageMoney(20000, { rail: 'simulated', decimals: 2 }), '$200.00');
   assert.equal(villageMoney(1, { rail: 'pyusd-devnet', decimals: 6 }), '0.000001 test PYUSD');
+  assert.equal(villageMoney(Number.MAX_SAFE_INTEGER, { rail: 'simulated', decimals: 2 }), '$90,071,992,547,409.91');
+  assert.equal(villageMoney(Number.MAX_SAFE_INTEGER, { rail: 'pyusd-devnet', decimals: 6 }), '9,007,199,254.740991 test PYUSD');
   assert.match(villageRailLabel('pyusd-devnet'), /no monetary value/);
   assert.match(villageRailLabel('paypal-sandbox'), /test payment/);
   assert.match(villageRailLabel('simulated'), /no money moves/);
