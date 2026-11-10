@@ -11,9 +11,19 @@
   <link rel="stylesheet" href="src/ui/parchment.css">
   <link rel="stylesheet" href="src/ui/castle-header.css">
   <link rel="stylesheet" href="src/ui/village-fund.css">
+  <link rel="stylesheet" href="src/ui/realm-loader.css">
+  <script type="module" src="src/app/realm-loader.js"></script>
   <script type="importmap">{"imports":{"three":"./vendor/three/three.module.js"}}</script>
 </head>
 <body>
+  <section id="realm-loader" class="realm-loader" aria-label="Opening Our Castle" hidden>
+    <div class="realm-loader-inner">
+      <p class="realm-loader-brand"><img src="assets/brand/our-castle/crest.webp" width="42" height="48" alt="">Our Castle</p>
+      <figure class="realm-loader-stage"><canvas width="384" height="176" aria-hidden="true"></canvas></figure>
+      <p class="realm-loader-title">A little trouble at the gates</p>
+      <p class="realm-loader-note" role="status">Loading…</p>
+    </div>
+  </section>
   <a class="skip-link" href="#journey">Skip to the household journey</a>
   <div class="shell">
     <header class="topbar">

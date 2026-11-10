@@ -1,0 +1,54 @@
+.realm-loader {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: grid;
+  place-items: center;
+  overflow: auto;
+  padding: 28px 20px;
+  background: var(--bg, #101c22);
+  color: var(--ivory, #f6eddb);
+}
+.realm-loader-inner { width: min(100%, 772px); text-align: center; }
+.realm-loader-brand {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  margin: 0 0 28px;
+  font: 28px/1.2 Uncial, Georgia, serif;
+}
+.realm-loader-brand img { width: 42px; height: 48px; object-fit: contain; }
+.realm-loader-stage {
+  position: relative;
+  margin: 0;
+  border: 2px solid var(--brass-dark, #8d6c3a);
+  background: #101c22;
+  box-shadow: 0 0 0 5px #1c302f, 0 0 0 6px #304642;
+}
+.realm-loader-stage::before, .realm-loader-stage::after {
+  content: '';
+  position: absolute;
+  width: 15px;
+  height: 15px;
+  pointer-events: none;
+  border-color: var(--gold, #ddba79);
+  border-style: solid;
+}
+.realm-loader-stage::before { top: -2px; left: -2px; border-width: 3px 0 0 3px; }
+.realm-loader-stage::after { right: -2px; bottom: -2px; border-width: 0 3px 3px 0; }
+.realm-loader-stage canvas { display: block; width: 100%; aspect-ratio: 24/11; image-rendering: crisp-edges; image-rendering: pixelated; }
+.realm-loader-title { margin: 29px 0 5px; font: clamp(21px, 3vw, 28px)/1.3 Uncial, Georgia, serif; }
+.realm-loader-note { margin: 0; color: var(--muted, #b9bda9); font-size: 18px; }
+.realm-preview-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 16px; margin-top: 24px; }
+.realm-preview-actions button { min-width: 76px; min-height: 44px; }
+@media (max-width: 480px) {
+  .realm-loader { padding: 24px 14px; }
+  .realm-loader-brand { font-size: 24px; gap: 10px; margin-bottom: 24px; }
+  .realm-loader-brand img { width: 34px; height: 39px; }
+  .realm-loader-note { font-size: 16px; }
+}
+@media (forced-colors: active) {
+  .realm-loader-stage { border-color: CanvasText; box-shadow: none; }
+  .realm-loader-stage::before, .realm-loader-stage::after { border-color: CanvasText; }
+}
