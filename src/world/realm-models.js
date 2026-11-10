@@ -37,7 +37,13 @@ function clearingDepth(x, z, d) {
   const corner = (.89 - ax / d.width - az / d.depth) * Math.min(d.width, d.depth) * .7;
   return Math.min(d.width / 2 - ax, d.depth / 2 - az, corner);
 }
-const ALL_CLEARINGS = [...REALM_DISTRICTS, ...REALM_LEGENDS, ...FRONTIER_CLEARINGS];
+// Wider lawns let the castle walls read separately from the forest canopy.
+// These are scenery footprints only: district bounds, camera frames and progression stay independent.
+const CASTLE_GROUNDS_MARGIN = Object.freeze({keep:6,castle:9,palace:9});
+const ALL_CLEARINGS = [...REALM_DISTRICTS.map(d=>{
+  const margin=CASTLE_GROUNDS_MARGIN[d.id]??0;
+  return margin ? {...d,width:d.width+margin*2,depth:d.depth+margin*2} : d;
+}), ...REALM_LEGENDS, ...FRONTIER_CLEARINGS];
 const deepestClearing = (x, z) => ALL_CLEARINGS.reduce((best, d) => Math.max(best, clearingDepth(x, z, d)), -Infinity);
 const nearBridge = (x, z, margin) => REALM_BRIDGES.some(({ a, b }) => {
   const dx = b[0] - a[0], dz = b[1] - a[1], t = Math.max(-.15, Math.min(1.15, ((x - a[0]) * dx + (z - a[1]) * dz) / (dx * dx + dz * dz)));
@@ -240,8 +246,10 @@ export function createRealmModels({ builder, part: addPart, models, colours: C }
 
   // ---------- Districts: meadow clearings with their own copses and flowers ----------
   function terrain(group,d,helpers){
-    // Each clearing has its own copses rather than a single square tree border.
-    for(let i=0;i<24;i++){
+    // Small neighborhoods keep their copses; castle lawns keep the walls and towers clear.
+    // Deliberate garden planting is added separately in decor().
+    const treeCount=CASTLE_GROUNDS_MARGIN[d.id]?0:24;
+    for(let i=0;i<treeCount;i++){
       const x=Math.sin(i*2.37)*(d.width/2-3),z=Math.cos(i*3.73)*(d.depth/2-3);
       if(inTavernPlot(d.id,x,z,.7)||inFarmPlot(d.id,x,z,1.2)||d.id==='palace'&&Math.abs(x)<19&&z>-12&&z<22||Math.abs(x)<12*d.scale&&Math.abs(z)<11*d.scale||nearJourney(d.x+x,d.z+z))continue;
       helpers.tree(group,x,z,1.1+(i%5)*.16,i%3!==0);
