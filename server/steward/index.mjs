@@ -96,6 +96,26 @@ export function reconcileOrder(order, contribution) {
   return { ...facts, verdict: 'differs', note: 'PayPal and the ledger disagree. Nothing was changed; review this contribution.' };
 }
 
+// Transaction search is merchant-wide. Match only server-recorded capture IDs before any result
+// reaches the model, the amount checker or the browser. Caller-supplied references are not ownership.
+export function householdTransactions(result, orders) {
+  if (result?.error) return { error: { message: 'PayPal transaction search is unavailable.' } };
+  const captures = new Set(orders.flatMap(order => order.captures.map(c => c.captureId)).filter(Boolean));
+  const seen = new Set();
+  const moneyField = value => value && typeof value.currency_code === 'string' && /^[A-Z]{3}$/.test(value.currency_code)
+    && typeof value.value === 'string' && /^-?\d+\.\d{2}$/.test(value.value)
+    ? { currency_code: value.currency_code, value: value.value } : undefined;
+  const details = Array.isArray(result?.transaction_details) ? result.transaction_details : [];
+  return { scope: 'recorded captures for this household and goal', transaction_details: details.flatMap(row => {
+    const info = row?.transaction_info;
+    if (!captures.has(info?.transaction_id) || seen.has(info.transaction_id)) return [];
+    seen.add(info.transaction_id);
+    return [{ transaction_info: { transaction_id: info.transaction_id,
+      transaction_status: ['S', 'P', 'D', 'V'].includes(info.transaction_status) ? info.transaction_status : null,
+      transaction_amount: moneyField(info.transaction_amount), fee_amount: moneyField(info.fee_amount) } }];
+  }) };
+}
+
 export function createSteward({ db, contributions, householdId, ai = null, paypalTools = null, fetch: fetchImpl, clock }) {
   const client = ai ? new Anthropic({ apiKey: ai.apiKey, baseURL: 'https://api.anthropic.com', timeout: 90_000, maxRetries: 1, ...(fetchImpl ? { fetch: fetchImpl } : {}) }) : null;
 
@@ -156,7 +176,7 @@ export function createSteward({ db, contributions, householdId, ai = null, paypa
     if (paypalTools) {
       tools.push({
         name: 'list_transactions',
-        description: 'PayPal Agent Toolkit (read-only): list PayPal sandbox transactions from the last N days (1–31). Status S = successful, P = pending, D = denied, V = reversed. Recent payments may not appear yet.',
+        description: 'PayPal Agent Toolkit (read-only): list only this household’s recorded captures found in PayPal sandbox transactions from the last N days (1–31). Status S = successful, P = pending, D = denied, V = reversed. Recent payments may not appear yet.',
         strict: true,
         input_schema: { type: 'object', properties: { days: { type: 'integer' }, status: { type: 'string', enum: ['S', 'P', 'D', 'V'] } }, required: ['days', 'status'], additionalProperties: false },
       });
@@ -213,9 +233,10 @@ export function createSteward({ db, contributions, householdId, ai = null, paypa
           return order;
         }
         if (name === 'list_transactions' && paypalTools) {
-          const result = await paypalTools.listTransactions({ days: input?.days, status: input?.status });
+          const raw = await paypalTools.listTransactions({ days: input?.days, status: input?.status });
+          const result = householdTransactions(raw, focus ? paypalOrders.filter(c => c.providerOrderId === focus) : paypalOrders);
           const count = Array.isArray(result?.transaction_details) ? result.transaction_details.length : null;
-          checks.push({ tool: name, source: 'PayPal sandbox via Agent Toolkit', summary: result?.error ? 'Asked PayPal for recent transactions: PayPal returned an error.' : `Listed PayPal sandbox transactions (last ${Math.min(31, Math.max(1, input?.days ?? 7))} days, status ${input?.status ?? 'S'}): ${count ?? 0} found.` });
+          checks.push({ tool: name, source: 'PayPal sandbox via Agent Toolkit', summary: result?.error ? 'Asked PayPal for recent transactions: PayPal returned an error.' : `Listed this household’s PayPal sandbox transactions (last ${Math.min(31, Math.max(1, input?.days ?? 7))} days, status ${input?.status ?? 'S'}): ${count ?? 0} found.` });
           return result;
         }
         return { error: `Tool "${name}" is not available to the steward.` };
