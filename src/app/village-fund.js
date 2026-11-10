@@ -32,7 +32,7 @@ const input = (name, attrs = {}) => h('input', { name, ...attrs });
 const day = value => /^\d{4}-\d{2}-\d{2}$/.test(value ?? '') ? value : 'No date set';
 
 /** One paper for shared funds. It reads server projections; it never guesses payment or presence outcomes. */
-export function createVillageFund({ getState, actor, applyState, getScene, onSquare = () => {}, onFundView = () => {} }) {
+export function createVillageFund({ getState, actor, applyState, getScene, onSquare = () => {}, onFundView = () => {}, onExchange = () => {} }) {
   const opener = $('open-village'), dialog = $('village-fund-dialog'), controls = $('village-square-controls');
   let village = null, stateVillage = null, review = null, recoveryFundId = null, selected = null, pane = 'project', scopeKey = null, scopeHousehold = null, scopeSignedIn = false, openedBy = null;
   let busy = false, square = false, destroyed = false, generation = 0, polling = false, lastRead = 0, lastPresenceRead = 0;
@@ -54,6 +54,11 @@ export function createVillageFund({ getState, actor, applyState, getScene, onSqu
   const progress = h('progress', { id: 'village-progress', max: 10000, value: 0, 'aria-label': 'Shared project progress' });
   const summary = h('p', { class: 'village-progress-copy' }), remaining = h('p', { class: 'fine' });
   const empty = h('p', { id: 'village-empty' }, 'A shared project begins with a purpose, an amount and a date.');
+  // First use. A fund needs a neighborhood and a neighborhood needs a second family; both already have their own reviewed
+  // forms in Village Exchange. These only open that form over this paper. They create, join and send nothing themselves.
+  const startNeighborhood = button('Start a new neighborhood', () => onExchange('start'), { id: 'village-start', class: 'village-action' });
+  const joinNeighborhood = button('Join with an invitation code', () => onExchange('join'), { id: 'village-join', class: 'village-action' });
+  const begin = h('div', { class: 'village-begin', hidden: true }, startNeighborhood, joinNeighborhood);
   const sheet = h('section', { class: 'village-fund-sheet' });
   const heading = h('h2', { id: 'village-fund-title', tabindex: '-1' }, 'The village fund');
   const neighborhood = h('p', { class: 'exchange-eyebrow' });
@@ -85,9 +90,11 @@ export function createVillageFund({ getState, actor, applyState, getScene, onSqu
   pages.project.append(title, rail, progress, summary, remaining,
     button('Visit the shared square', showSquare, { id: 'village-visit' }), paymentNote, paymentForm, vault, shareDetails);
   const families = h('ul', { class: 'village-family-list' });
-  const shareCastle = button('Share our castle’s appearance', () => act('/api/village', { action: 'share-castle', shared: !village.members?.find(m => m.mine)?.shared, confirmed: true }));
+  const shareCastle = button('Share our castle’s appearance', () => act('/api/village', { action: 'share-castle', shared: !village.members?.find(m => m.mine)?.shared, confirmed: true }), { class: 'village-action' });
+  const inviteFamily = button('Invite a family', () => onExchange('invite'), { id: 'village-invite', class: 'village-action' });
+  const invite = h('div', { class: 'village-invite', hidden: true }, inviteFamily, h('p', { class: 'fine' }, 'Opens Village Exchange. You create a one-family code there and share it yourself.'));
   pages.families.append(h('h3', {}, 'Building together'), h('p', { class: 'fine' }, 'Only this shared project’s commitments and contributions appear here. A family’s household balance stays private.'), families,
-    shareCastle, h('p', { class: 'fine' }, 'Sharing shows your castle’s tier and crest to this neighborhood. Otherwise a plain starter home stands in its place. No amounts appear on the map.'));
+    invite, shareCastle, h('p', { class: 'fine' }, 'Sharing shows your castle’s tier and crest to this neighborhood. Otherwise a plain starter home stands in its place. No amounts appear on the map.'));
   const records = h('ol', { class: 'village-records' });
   pages.records.append(h('h3', {}, 'Contribution records'), h('p', { class: 'fine' }, 'Confirmed captures add progress. Refunds subtract it. Promised shares never count as payments.'), records);
   const assistantStatus = h('p', { class: 'fine', role: 'status' });
@@ -147,20 +154,20 @@ export function createVillageFund({ getState, actor, applyState, getScene, onSqu
       draftResult.append(h('p', {}, `${d.title} · ${villageMoney(d.targetMinor, d)} · by ${day(d.deadline)}`), h('p', { class: 'fine' }, villageRailLabel(d.rail)),
         h('ul', {}, (d.shares ?? []).map(s => h('li', {}, `${s.alias}: proposed ${villageMoney(s.committedMinor, d)}`))),
         h('p', { class: 'fine' }, 'No payment or recurring charge is scheduled. Each family chooses its own share.'),
-        button('I reviewed this — create project', () => draft && act('/api/village/draft/accept', { revision: draft.draft.revision, confirmed: true }, res => { selected = res.fundId ?? selected; draft = null; draftResult.replaceChildren(); render(); })));
-    });
+        button('I reviewed this — create project', () => draft && act('/api/village/draft/accept', { revision: draft.draft.revision, confirmed: true }, res => { selected = res.fundId ?? selected; draft = null; draftResult.replaceChildren(); draftText.value = ''; draftDetails.open = false; render(); }), { class: 'village-action primary' }));
+    }, res => res.status === 'ready' ? 'Draft ready to review. Nothing is created until you accept it.' : 'A few details are missing. Nothing was created.');
   });
   const draftDetails = h('details', {}, h('summary', {}, 'Describe it in one sentence'), draftForm, draftResult);
   const question = input('question', { required: true, maxlength: 300, placeholder: 'Who has contributed?' }), answer = h('p', { id: 'village-answer', role: 'status' });
   const questionForm = h('form', {}, field('Ask the treasurer', question), h('button', { type: 'submit' }, 'Read the fund records'));
-  questionForm.addEventListener('submit', e => { e.preventDefault(); act('/api/village/treasurer', { fundId: selected, question: question.value.trim() }, res => { answer.textContent = res.answer; }); });
+  questionForm.addEventListener('submit', e => { e.preventDefault(); act('/api/village/treasurer', { fundId: selected, question: question.value.trim() }, res => { answer.textContent = res.answer; }, ''); });
   const treasurer = h('details', {}, h('summary', {}, 'Ask the treasurer'), h('p', { class: 'fine' }, 'Answers from this fund’s records. It cannot move money.'), questionForm, answer);
   const reviewLink = h('a', { id: 'village-review-link' }), qr = h('img', { width: 160, height: 160, alt: 'QR code for this project’s review link' });
   const publishButton = button('Publish this project’s review link', () => { const f = fund(); act('/api/village', { action: 'publish', fundId: f.id, expectedRevision: f.revision, published: !f.published, confirmed: true }); });
   const shareLink = h('details', { id: 'village-review-link-details' }, h('summary', {}, 'Review link (this computer)'),
     h('p', { class: 'fine' }, 'This local link opens on this computer. It is not a public fundraiser or a way to pay from another device.'), publishButton, h('div', { class: 'village-qr' }, qr, reviewLink));
   shareLink.addEventListener('toggle', () => { if (shareLink.open) renderReviewLink(); });
-  sheet.append(field('Shared project', selection), empty, tabs, ...Object.values(pages), paymentFollowup, treasurer, shareLink);
+  sheet.append(field('Shared project', selection), empty, begin, tabs, ...Object.values(pages), paymentFollowup, treasurer, shareLink);
   dialog.replaceChildren(h('header', { class: 'exchange-window-head' }, h('img', { src: 'assets/brand/our-castle/crest.webp', width: 40, height: 44, alt: '' }), h('div', {}, neighborhood, heading), button('×', close, { class: 'exchange-close', 'aria-label': 'Close village fund' })),
     h('div', { class: 'exchange-window-body village-paper' }, sheet, status, draftDetails, createDetails));
   dialog.addEventListener('cancel', e => { e.preventDefault(); close(); });
@@ -217,9 +224,11 @@ export function createVillageFund({ getState, actor, applyState, getScene, onSqu
     const ids = JSON.stringify(choices.map(f => [f.id, f.title]));
     if (selection.dataset.options !== ids) { selection.replaceChildren(...choices.map(f => h('option', { value: f.id }, f.title))); selection.dataset.options = ids; }
     selection.value = selected ?? ''; selection.closest('label').hidden = choices.length < 2;
-    neighborhood.textContent = outside() ? `Published project · ${fund()?.organizer?.alias ?? 'Organizer'}` : village.neighborhood?.name ?? 'Private neighborhood';
+    neighborhood.textContent = outside() ? `Published project · ${fund()?.organizer?.alias ?? 'Organizer'}` : village.neighborhood?.name ?? 'No neighborhood yet';
     const f = fund(); empty.hidden = Boolean(f); tabs.hidden = !f; treasurer.hidden = !f; shareLink.hidden = !f;
-    const owner = getState()?.exchange?.neighborhood?.owner === true;
+    const owner = getState()?.exchange?.neighborhood?.owner === true, exchange = getState()?.exchange?.available === true;
+    begin.hidden = Boolean(f) || Boolean(village.neighborhood) || Boolean(recoveryFundId) || !adult() || !exchange;
+    invite.hidden = !f || !adult() || outside() || !owner || !exchange;
     createDetails.hidden = draftDetails.hidden = !adult() || outside() || !village.neighborhood || !owner;
     empty.textContent = recoveryFundId ? 'This project’s review link is no longer available. An existing checkout can still be checked below.' : !village.neighborhood ? 'Start or join an invited neighborhood in Village Exchange, then create a shared project.' : 'A shared project begins with a purpose, an amount and a date.';
     if (!f) { leaveSquare(); renderPane(); return; }
@@ -259,7 +268,7 @@ export function createVillageFund({ getState, actor, applyState, getScene, onSqu
     }
     if (!destroyed && stamp === generation && before === scope()) render();
   }
-  async function act(path, body, after) {
+  async function act(path, body, after, done = 'Saved.') {
     if (busy || (!adult() && path !== '/api/village/treasurer')) return null;
     const before = scope(); busy = true; generation++; dialog.setAttribute('aria-busy', 'true'); renderApproval(); say('Working…');
     try {
@@ -269,7 +278,7 @@ export function createVillageFund({ getState, actor, applyState, getScene, onSqu
       if (res.fundId) selected = res.fundId;
       if (review || (!res.state && !res.village && !['/api/village/draft', '/api/village/treasurer'].includes(path))) await refresh();
       if (before !== scope() || destroyed) return null;
-      say('Saved.'); after?.(res); render(); return res;
+      say(typeof done === 'function' ? done(res) : done); after?.(res); render(); return res;
     } catch (e) { if (before === scope()) say(e.message); return null; }
     finally { busy = false; dialog.removeAttribute('aria-busy'); renderApproval(); }
   }
@@ -327,8 +336,20 @@ export function createVillageFund({ getState, actor, applyState, getScene, onSqu
     catch (error) { if (before !== scope() || destroyed) return; review = null; recoveryFundId = id; selected = null; render(); open(); say(error.message); }
   }
   function close() { forgetAssistantToken(); if (!dialog.open) return; dialog.close(); if (openedBy?.isConnected) openedBy.focus({ preventScroll: true }); }
+  // Back from Village Exchange, which was opened over this paper: draw what its change made possible and put focus on the
+  // next useful control. The control that opened the Exchange may no longer exist (a neighborhood now does).
+  function resume() {
+    if (destroyed || !dialog.open) return;
+    render();
+    const f = fund(), describing = !f && !draftDetails.hidden;
+    if (describing) draftDetails.open = true;
+    const next = [!begin.hidden && startNeighborhood, describing && draftDetails.querySelector('summary'), f && pane === 'families' && !invite.hidden && inviteFamily, f && pane === 'project' && title].find(Boolean) || heading;
+    next.focus(); next.scrollIntoView({ block: 'nearest' });
+  }
   function showSquare() { if (!fund() || !getScene()) return; square = true; controls.hidden = false; document.body.dataset.villageSquare = 'true'; onSquare(true); render(); close(); $('village-back').focus({ preventScroll: true }); controls.scrollIntoView({ block: 'nearest' }); }
-  function leaveSquare({ notify = true } = {}) { if (!square) return; presenceEpoch++; if (joined && notify) changePresence('leave'); square = false; joined = false; presence = { members: [], selfId: null }; controls.hidden = true; delete document.body.dataset.villageSquare; getScene()?.setVillage(null); onSquare(false); renderPresence(); }
+  function leaveSquare({ notify = true } = {}) { if (!square) return; const held = controls.contains(document.activeElement); presenceEpoch++; if (joined && notify) changePresence('leave'); square = false; joined = false; presence = { members: [], selfId: null }; controls.hidden = true; delete document.body.dataset.villageSquare; getScene()?.setVillage(null); onSquare(false); renderPresence();
+    // The square's own controls are gone; focus goes to the button that leads back to this project.
+    if (held && !opener.hidden) opener.focus({ preventScroll: true }); }
   function renderPresence() { join.textContent = joined ? 'Leave the square' : 'Join the square'; movement.hidden = !joined; presenceText.textContent = presence.members.length ? `${presence.members.length} ${presence.members.length === 1 ? 'person' : 'people'} here now` : 'No one is in the square right now.'; if (square) getScene()?.setVillagePresence(presence.members); }
   let presenceBusy = false;
   async function changePresence(action, point = {}, background = false) {
@@ -370,7 +391,7 @@ export function createVillageFund({ getState, actor, applyState, getScene, onSqu
   const timer = setInterval(tick, 1000);
   const hidden = () => { if (document.hidden) { presenceEpoch++; if (joined) changePresence('leave'); joined = false; presence = { members: [], selfId: null }; renderPresence(); } else tick(); };
   document.addEventListener('visibilitychange', hidden);
-  return { render, open, openReview, close, leaveSquare, select: choose, activeFund: () => square ? fund() : null,
+  return { render, open, openReview, close, resume, leaveSquare, select: choose, activeFund: () => square ? fund() : null,
     dispose() { destroyed = true; generation++; clearInterval(timer); document.removeEventListener('visibilitychange', hidden); close(); leaveSquare(); },
     debug: () => ({ selected, square, joined, people: presence.members.length }),
   };

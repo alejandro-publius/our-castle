@@ -309,3 +309,67 @@ test('a signed-in scope change waits for its own fund projection; only an exampl
     expect(writes).toEqual([]); expect(errors).toEqual([]);
   } finally { await context.close(); await demo.close(); }
 });
+
+// First use: the empty fund and the Families view lead into the existing Exchange forms (the two-family journey drives
+// them for real). Who is offered them is decided here, on the fund controller alone.
+test('the first-use actions are an adult’s, the invitation is the founding family’s, and each only asks for its own Exchange form', async ({ browser }, info) => {
+  test.skip(info.project.name !== 'desktop', 'Who is offered an action is the same code on both layouts.');
+  const demo = await startDemo({ villageStory: true }), context = await browser.newContext(), page = await context.newPage();
+  const errors = [], writes = []; page.on('pageerror', error => errors.push(error.message));
+  const fund = { id: 'fund_first', title: 'First project', rail: 'simulated', decimals: 2, targetMinor: 10000, revision: 1, status: 'open', progress: { netMinor: 0, remainingMinor: 10000, basisPoints: 0, stage: 0 }, shares: [], receipts: [] };
+  const none = { available: true, neighborhood: null, funds: [], members: [], selectedFundId: null };
+  const circle = { ...none, neighborhood: { id: 'circle_first', name: 'First neighbors' }, members: [{ familyReference: 'FAM_FIRST', alias: 'First family', mine: true }] };
+  const fixture = `<!doctype html><meta charset="utf-8"><title>First-use fixture</title><button id="open-village">Village fund</button><dialog id="village-fund-dialog"></dialog><section id="village-square-controls" hidden></section><script type="module">
+    import { createVillageFund } from '/src/app/village-fund.js';
+    let member={id:'fixture-adult',role:'adult'};window.asked=[];
+    const state={household:{id:'fixture-house'},exchange:{available:true,neighborhood:null},village:${JSON.stringify(none)}};
+    window.controller=createVillageFund({getState:()=>state,actor:()=>member,applyState:()=>{},getScene:()=>null,onExchange:section=>window.asked.push(section)});window.controller.render();
+    window.memberIs=role=>{member={id:'fixture-'+role,role};window.controller.render()};
+    window.stateIs=(village,exchange)=>{state.village=village;state.exchange=exchange;window.controller.render()};
+  </script>`;
+  let served = none;
+  await context.route('**/*', async route => {
+    const request = route.request(), url = new URL(request.url());
+    if (url.origin !== demo.url) { errors.push(`Unexpected outside request: ${url.origin}`); return route.abort(); }
+    if (url.pathname === '/__first_use_fixture') return route.fulfill({ contentType: 'text/html', body: fixture });
+    if (request.method() !== 'GET') { writes.push(url.pathname); return route.fulfill({ status: 400, contentType: 'application/json', body: '{"error":{"message":"Unexpected write in UI fixture"}}' }); }
+    if (url.pathname === '/api/village') return route.fulfill({ contentType: 'application/json', body: JSON.stringify({ village: served }) });
+    return route.continue();
+  });
+  const start = page.locator('#village-start'), join = page.locator('#village-join'), invite = page.locator('#village-invite');
+  const becomes = async (village, exchange) => { served = village; await page.evaluate(([v, e]) => window.stateIs(v, e), [village, exchange]); };
+  const asked = () => page.evaluate(() => window.asked);
+  try {
+    await page.goto(`${demo.url}/__first_use_fixture`); await page.locator('#open-village').click();
+    // No neighborhood: an adult is offered both ways in. Each asks for exactly its own form and does nothing else.
+    await expect(page.locator('.exchange-eyebrow')).toHaveText('No neighborhood yet');
+    await expect(start).toBeVisible(); await expect(join).toBeVisible(); await expect(invite).toBeHidden();
+    await start.click(); await join.click(); expect(await asked()).toEqual(['start', 'join']);
+    // A child is offered neither, and no create or draft form.
+    await page.evaluate(() => window.memberIs('child')); await page.locator('#open-village').click();
+    await expect(page.locator('#village-empty')).toBeVisible(); await expect(start).toBeHidden(); await expect(join).toBeHidden();
+    await expect(page.locator('#village-create')).toBeHidden();
+    // Without the Exchange there is nowhere to send an adult.
+    await page.evaluate(() => window.memberIs('adult')); await page.locator('#open-village').click();
+    await becomes(none, { available: false }); await expect(start).toBeHidden(); await expect(join).toBeHidden();
+    // A neighborhood and no project: back from the Exchange, the founding adult lands on the sentence draft.
+    await becomes(circle, { available: true, neighborhood: { owner: true } });
+    await expect(start).toBeHidden(); await expect(join).toBeHidden();
+    const describe = page.locator('details').filter({ has: page.getByLabel('Describe a shared project', { exact: true }) });
+    await expect(describe).not.toHaveAttribute('open', '');
+    await page.evaluate(() => window.controller.resume());
+    await expect(describe).toHaveAttribute('open', ''); await expect(describe.locator('summary')).toBeFocused();
+    // A project: only the founding family's adult is offered the invitation.
+    const funded = { ...circle, funds: [fund], selectedFundId: fund.id };
+    await becomes(funded, { available: true, neighborhood: { owner: true } });
+    await page.locator('[data-village-tab=families]').click();
+    await expect(invite).toBeVisible(); await invite.click(); expect(await asked()).toEqual(['start', 'join', 'invite']);
+    await page.evaluate(() => window.controller.resume()); await expect(invite).toBeFocused();
+    await becomes({ ...funded }, { available: true, neighborhood: { owner: false } }); await expect(invite).toBeHidden();
+    await becomes({ ...funded }, { available: true, neighborhood: { owner: true } }); await expect(invite).toBeVisible();
+    await page.evaluate(() => window.memberIs('child')); await page.locator('#open-village').click(); await page.locator('[data-village-tab=families]').click();
+    await expect(page.locator('.village-family-list > li')).toHaveCount(1); await expect(invite).toBeHidden();
+    await expect(page.getByRole('button', { name: 'Share our castle’s appearance', exact: true })).toBeHidden();
+    expect(await asked()).toEqual(['start', 'join', 'invite']); expect(writes).toEqual([]); expect(errors).toEqual([]);
+  } finally { await context.close(); await demo.close(); }
+});

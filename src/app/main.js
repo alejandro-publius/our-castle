@@ -2256,10 +2256,11 @@ function bindEvents() {
     fitSource: () => familyChoices?.fitSource() ?? null, onKitListing: addKitListing });
   familyChoices = createFamilyChoices({ getState: () => state, actor: persona, openMerchant: (from, options) => merchant.open(from, options), onReview: useFamilyChoice, applyState,
     onProposed: () => $('#plan-headline').focus() });
-  villageExchange = createVillageExchange({ getState: () => state, actor: persona, applyState,
+  villageExchange = createVillageExchange({ getState: () => state, actor: persona, applyState, onReturn: () => villageFund?.resume(),
     onCompare: () => { selectTab('plan'); setJournalOpen(true); $('#kit-list').open = true; $('#kit-plan-compare').scrollIntoView({ block: 'center' }); $('#kit-plan-compare').focus(); } });
   villageFund = createVillageFund({ getState: () => state, actor: persona, applyState, getScene: () => scene,
-    onSquare: (shown) => { if (shown) { closeKitPreview(); setJournalOpen(false); } renderQuest(); scene?.reframe(); }, onFundView: renderQuest });
+    onSquare: (shown) => { if (shown) { closeKitPreview(); setJournalOpen(false); } renderQuest(); scene?.reframe(); }, onFundView: renderQuest,
+    onExchange: (section) => villageExchange?.open({ from: 'fund', section }) });
   kitList = createKitList({ getState: () => state, actor: persona, applyState, onRender: () => kitPlan?.render() });
   kitPlan = createKitPlan({ getState: () => state, actor: persona, applyState, openMerchant: (from, options) => merchant.open(from, options),
     reserve: () => { const src = familyChoices?.fitSource(); return { cents: src?.reserveCents ?? 0, invalid: Boolean(src?.reserveInvalid) }; },

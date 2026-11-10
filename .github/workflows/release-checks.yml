@@ -111,8 +111,10 @@ jobs:
           package-manager-cache: false
       - name: Install locked dependencies and Chromium
         run: npm ci && npx playwright install --with-deps chromium
-      - name: Shared fund and scoped presentation journeys (disposable, no providers)
-        run: npx playwright test test/e2e/village-fund-journey.spec.mjs test/e2e/village-square.spec.mjs --project=${{ matrix.project }} --global-timeout=600000
+      # The seeded five-family journey, the scoped presentation cases, and two fresh passkey families who build one
+      # shared project from nothing through visible controls.
+      - name: Shared fund, scoped presentation and fresh two-family journeys (disposable, no providers)
+        run: npx playwright test test/e2e/village-fund-journey.spec.mjs test/e2e/village-square.spec.mjs test/e2e/village-first-use.spec.mjs --project=${{ matrix.project }} --global-timeout=600000
       - name: Keep failure traces (fake data only)
         if: ${{ failure() }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
