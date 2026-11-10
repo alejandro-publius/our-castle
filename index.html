@@ -10,6 +10,7 @@
   <link rel="stylesheet" href="app.css">
   <link rel="stylesheet" href="src/ui/parchment.css">
   <link rel="stylesheet" href="src/ui/castle-header.css">
+  <link rel="stylesheet" href="src/ui/village-fund.css">
   <script type="importmap">{"imports":{"three":"./vendor/three/three.module.js"}}</script>
 </head>
 <body>
@@ -120,8 +121,9 @@
           <p id="kit-preview-changes" hidden></p>
           <details class="kit-preview-about"><summary>About this picture</summary><p id="kit-preview-about"></p></details>
         </section>
-        <div class="board-foot"><p id="realm-focus-status" class="area-status" role="status" aria-live="polite"></p><button type="button" class="chip" id="open-merchant" aria-label="Open the Market Town merchant" hidden>Merchant</button><button type="button" class="chip" id="open-exchange" hidden>Village Exchange</button><button type="button" class="chip" id="view-deed" aria-describedby="realm-focus-status" hidden>View deed</button><p id="board-status" class="sr-only" role="status" aria-live="polite"></p><ol id="tier-track" class="sr-only" aria-label="House milestones"></ol></div>
+        <div class="board-foot"><p id="realm-focus-status" class="area-status" role="status" aria-live="polite"></p><button type="button" class="chip" id="open-merchant" aria-label="Open the Market Town merchant" hidden>Merchant</button><button type="button" class="chip" id="open-exchange" hidden>Village Exchange</button><button type="button" class="chip" id="open-village" hidden>Village fund</button><button type="button" class="chip" id="view-deed" aria-describedby="realm-focus-status" hidden>View deed</button><p id="board-status" class="sr-only" role="status" aria-live="polite"></p><ol id="tier-track" class="sr-only" aria-label="House milestones"></ol></div>
         <p id="world-fallback" class="world-fallback" hidden>The board is unavailable. Your journal still works. <a href="references/images/our-house-castle.png">See the realm.</a></p>
+        <section id="village-square-controls" class="village-square-controls" aria-label="Shared village square" hidden></section>
         <div id="celebration" class="celebration" hidden></div>
       </section>
 
@@ -526,6 +528,7 @@
       </div>
     </article>
   </dialog>
+  <dialog id="village-fund-dialog" class="exchange-window village-window" aria-labelledby="village-fund-title"></dialog>
   <dialog id="exchange-dialog" class="exchange-window" aria-labelledby="exchange-title">
     <header class="exchange-window-head">
       <img src="assets/brand/our-castle/crest.webp" alt="" width="40" height="44">

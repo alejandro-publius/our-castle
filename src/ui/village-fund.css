@@ -1,0 +1,67 @@
+/* A shared-fund leaf in the existing illustrated journal. Keep the generated paper,
+   original type and ink; financial status stays native text, never painted into art. */
+.village-window { width:min(900px,calc(100vw - 40px)); }
+.village-paper { padding:10px 22px 24px; }
+.village-paper h3 { margin:16px 0 8px; color:#3f2b17; font:26px/1.25 Uncial,Georgia,serif; text-wrap:balance; }
+.village-tabs { display:flex; gap:18px; border-bottom:1px solid #aa8750; padding:8px 0; }
+.village-tabs button { border:0; border-radius:0; padding:8px 5px; background:transparent; color:#60482d; box-shadow:none; font-size:17px; }
+.village-tabs button[aria-pressed='true'] { font-weight:700; color:#2e3e23; box-shadow:0 3px 0 #694b27; }
+.village-rail { color:#6b4823; font-size:14px; margin:8px 0 12px; }
+.village-fund-sheet progress { width:100%; height:14px; accent-color:#526747; display:block; }
+.village-fund-sheet progress::-webkit-progress-bar { background:#b99a603f; border:1px solid #967243; }
+.village-fund-sheet progress::-webkit-progress-value { background:#526747; }
+.village-progress-copy { font-size:24px; line-height:1.25; font-weight:700; color:#3f2b17; margin:12px 0 0; }
+.village-fund-sheet .fine { font-size:14px; line-height:1.5; }
+.village-paper details { border-top:1px solid #aa8750; padding:13px 0; }
+.village-paper details summary { cursor:pointer; min-height:30px; color:#4d341b; font-weight:700; }
+.village-paper details form { margin-top:12px; }
+.village-paper .check { display:flex; gap:10px; align-items:flex-start; margin:12px 0; color:#513a21; font-size:15px; line-height:1.4; }
+.village-paper form > button,.village-paper #village-visit { background:#344b32; color:#fff0c8; border:1px solid #ba913f; box-shadow:inset 0 0 0 2px #6c795055; padding:10px 16px; border-radius:2px; }
+.village-paper form > button:disabled { opacity:.55; }
+.village-paper #village-visit { margin:4px 0 10px; background:#dcc18a; color:#3f2b17; }
+.village-contribution { border-top:1px solid #aa8750; padding:16px 0; margin-top:16px; }
+.village-contribution .field { max-width:300px; }
+.village-family-list,.village-records { padding:0; list-style:none; }
+.village-family-list li,.village-records li { border-bottom:1px solid #aa8750; padding:14px 0; }
+.village-family-list li { display:flex; justify-content:space-between; gap:18px; }
+.village-family-list li > div { display:flex; flex-direction:column; gap:5px; min-width:0; }
+.village-family-list li > div:last-child { text-align:right; }
+.village-family-list small,.village-records small { font-size:13px; color:#6d4b27; overflow-wrap:anywhere; }
+.village-records li > div { display:flex; justify-content:space-between; gap:16px; }
+.village-records small { display:block; margin-top:6px; }
+.village-create-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px 16px; }
+.village-create-grid > .check,.village-create-grid > .fine,.village-create-grid > button { grid-column:1/-1; }
+.village-create-grid > label:has([name=recipient]) { grid-column:1/-1; }
+.village-create-grid .field { margin:0; }
+.village-status { min-height:1em; font-size:15px; line-height:1.4; color:#654219; }
+.village-address { display:block; overflow-wrap:anywhere; user-select:all; font-size:14px; padding:12px; border:1px solid #aa8750; background:#f8e9c56e; }
+.village-payment-followup { display:flex; flex-wrap:wrap; gap:12px; margin-bottom:12px; align-items:center; }
+.village-paypal-link { font-weight:700; }
+.village-qr { display:flex; align-items:center; gap:20px; margin-top:14px; }
+.village-qr a { overflow-wrap:anywhere; font-size:14px; }
+.village-qr img { flex:0 0 160px; background:white; image-rendering:pixelated; }
+.village-square-controls { position:absolute; left:18px; right:18px; top:58px; z-index:5; padding:14px 16px; border:12px solid transparent; border-image:url('../../assets/ui/parchment/woodland-panel.webp') 128 fill / 22px / 0 stretch; color:#3f2b17; box-shadow:0 5px 18px #0005; }
+.village-square-controls[hidden] { display:none; }
+.village-square-heading { display:flex; align-items:center; gap:12px; }
+.village-square-heading > div { flex:1; display:flex; flex-direction:column; min-width:0; gap:4px; }
+.village-square-heading strong { font:20px/1.25 Uncial,Georgia,serif; }
+.village-square-heading .fine { color:#63492c; font-size:12px; }
+.village-square-controls button { min-height:44px; border:1px solid #a37a3d; background:#e8ce98; color:#3f2b17; border-radius:2px; padding:5px 10px; font-size:14px; }
+.village-presence-controls { display:flex; align-items:center; gap:12px; margin-top:10px; flex-wrap:wrap; font-size:13px; }
+.village-walk { display:flex; gap:4px; }
+.village-walk[hidden] { display:none; }
+body[data-village-square='true'] #realm-markers,body[data-village-square='true'] #district-menu,body[data-village-square='true'] #realm-focus-status,body[data-village-square='true'] #view-deed,body[data-village-square='true'] #kit-preview { display:none; }
+body[data-village-square='true'] .world-hud > button[data-view='overview'] { display:none; }
+@media(max-width:640px) {
+  .village-window { width:calc(100vw - 16px); }
+  .village-paper { padding:8px 8px 20px; }
+  .village-create-grid { grid-template-columns:1fr; }
+  .village-family-list li { flex-direction:column; gap:8px; }
+  .village-family-list li > div:last-child { text-align:left; }
+  .village-square-controls { left:8px; right:8px; top:58px; padding:8px; }
+  .village-square-heading { flex-wrap:wrap; gap:7px; }
+  .village-square-heading > div { flex-basis:100%; }
+  .village-square-heading strong { font-size:18px; }
+  .village-presence-controls { gap:7px; margin-top:7px; }
+  .village-qr { align-items:flex-start; flex-direction:column; }
+}
