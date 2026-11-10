@@ -169,6 +169,7 @@ function applySky() {
   const resolved = resolveAtmosphere({ timeMode: sky.time, weatherMode: sky.weather, now: new Date(),
     local: sky.weather === 'local' ? { place: sky.place, result: sky.result?.place?.id === sky.place?.id ? sky.result : null, error: sky.error, loading: sky.loading } : null });
   sky.resolved = resolved;
+  sound.setEnvironment({ period: resolved.period });
   scene?.setAtmosphere({ period: resolved.period, weather: resolved.weather });
   if ($('#time-mode').value !== sky.time) $('#time-mode').value = sky.time;
   if ($('#weather-mode').value !== sky.weather) $('#weather-mode').value = sky.weather;
@@ -779,6 +780,7 @@ function renderRealmNavigation() {
 const VIEW_HINT = { turning: 'Drag to turn. Shift-drag to pan. Scroll to zoom.', exploring: 'Drag to pan. Scroll to zoom.' };
 function syncRealmMarkers({focus,points,exploring=false,free=false}){
   lastMarkerView = {focus,points,exploring,free};
+  sound.setEnvironment({ district: focus });
   if (!focus && !free && !document.activeElement?.matches('#realm-markers [data-district]')) namedDistrict = null;
   for (const marker of $$('#realm-markers [data-district]')) {
     const expanded = marker.dataset.district === namedDistrict;
@@ -2243,11 +2245,11 @@ function bindEvents() {
     e.preventDefault();
     selectTab(TABS[next]);
   });
-  sound.onChange(({ enabled, message }) => {
+  sound.onChange(({ enabled, message, track }) => {
     const toggle = $('#sound-toggle');
     toggle.setAttribute('aria-pressed', String(enabled));
     toggle.setAttribute('aria-label', enabled ? 'Sound on. Turn music and sound off' : 'Sound off. Turn music and sound on');
-    toggle.title = enabled ? 'Turn music and sound off' : 'Turn music and sound on';
+    toggle.title = enabled ? `Turn music and sound off${track ? ` · ${track.title} — ${track.artist}` : ''}` : 'Turn music and sound on';
     $('#sound-label').textContent = enabled ? 'Sound on' : 'Sound off';
     $('#sound-status').textContent = message;
   });

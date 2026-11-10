@@ -1,3 +1,4 @@
+import { openMenu, closeMenu, chooseDistrict, clickView } from './support/game-controls.mjs';
 import { test, expect } from '@playwright/test';
 
 // Real local media, with the browser output muted by the test runner. No streaming/provider calls.
@@ -5,6 +6,9 @@ test.use({ reducedMotion: 'reduce' });
 const ready = async (page) => {
   await page.goto('/');
   await page.waitForFunction(() => document.body.dataset.ready === 'true');
+  await openMenu(page, 'world-settings');
+  await page.selectOption('#time-mode', 'day');
+  await closeMenu(page, 'world-settings');
 };
 const audioState = (page) => page.evaluate(() => {
   const audio = window.__musicElements.at(-1);
@@ -30,7 +34,7 @@ test.beforeEach(async ({ page, request, baseURL }) => {
   });
 });
 
-test('header music is opt-in, loops locally, stops, and opens silent again after reload', { tag: '@release' }, async ({ page }, info) => {
+test('header music is opt-in, rotates local recordings, stops, and opens silent again after reload', { tag: '@release' }, async ({ page }, info) => {
   const audioRequests = [], errors = [];
   page.on('request', (request) => { if (request.url().includes('/assets/music/')) audioRequests.push(request.url()); });
   page.on('pageerror', (error) => errors.push(error.message));
@@ -53,16 +57,18 @@ test('header music is opt-in, loops locally, stops, and opens silent again after
   expect(layout.height).toBeGreaterThanOrEqual(44);
   expect(layout.y).toBeLessThan(120);
   const progress = await page.locator('#progress-amount').textContent();
-  const response = page.waitForResponse((res) => res.url().includes('/assets/music/welcome-to-the-item-shop.mp3'));
+  const response = page.waitForResponse((res) => res.url().includes('/assets/music/hydrogene/peaceful-village.mp3'));
   await toggle.focus(); await page.keyboard.press('Enter');
   await expect(toggle).toHaveAttribute('aria-pressed', 'true');
   expect((await response).headers()['content-type']).toBe('audio/mpeg');
-  await expect.poll(async () => (await audioState(page))?.currentTime).toBeGreaterThan(0.15);
-  expect(await audioState(page)).toMatchObject({ paused: false, muted: false, loop: true, volume: 0.16 });
-  expect(new URL((await audioState(page)).src).pathname).toBe('/assets/music/welcome-to-the-item-shop.mp3');
-  // Exercise a real native loop boundary, not only the loop flag.
-  await page.evaluate(() => { const audio = window.__musicElements.at(-1); audio.currentTime = audio.duration - 0.2; });
-  await expect.poll(async () => (await audioState(page)).currentTime).toBeLessThan(2);
+  await expect.poll(async () => (await audioState(page))?.currentTime).toBeGreaterThan(1);
+  expect(await audioState(page)).toMatchObject({ paused: false, muted: false, loop: false, volume: 0.16 });
+  expect(new URL((await audioState(page)).src).pathname).toBe('/assets/music/hydrogene/peaceful-village.mp3');
+  // Accelerate real decoding to its native ending; no synthetic event or unsupported range seek.
+  await page.evaluate(() => { const audio = window.__musicElements.at(-1); audio.addEventListener('ended', () => { audio.playbackRate = 1; }, { once: true }); audio.playbackRate = 16; });
+  await expect.poll(async () => (await audioState(page)).src).toContain('/bitbybit/farm-life.ogg');
+  await expect.poll(async () => (await audioState(page)).currentTime).toBeGreaterThan(.1);
+  expect(await page.evaluate(() => window.__musicElements.length)).toBe(1);
   await page.screenshot({ path: info.outputPath('music-on.png'), fullPage: true });
   await toggle.click();
   await expect(toggle).toHaveAttribute('aria-pressed', 'false');
@@ -131,7 +137,7 @@ test('turning sound off wins over a late native play completion', async ({ page 
 
 test('a failed music download can retry from the same Sound button', async ({ page }, info) => {
   let fail = true;
-  await page.route('**/assets/music/*.mp3', (route) => fail ? route.abort('failed') : route.continue());
+  await page.route('**/assets/music/**/*.mp3', (route) => fail ? route.abort('failed') : route.continue());
   await ready(page);
   await page.locator('.topbar').screenshot({ path: info.outputPath('music-header-off.png') });
   const toggle = page.locator('#sound-toggle');
@@ -144,4 +150,53 @@ test('a failed music download can retry from the same Sound button', async ({ pa
   await expect(toggle).toHaveAttribute('aria-pressed', 'true');
   await toggle.click();
   expect(await audioState(page)).toMatchObject({ paused: true, muted: true });
+});
+
+
+test('all six recordings play; map and night changes take effect only at a natural ending', async ({ page }) => {
+  test.setTimeout(150_000);
+  const errors = [], writes = [], files = new Set();
+  page.on('pageerror', error => errors.push(error.message));
+  page.on('request', request => {
+    if (request.method() !== 'GET') writes.push(request.method() + ' ' + request.url());
+    if (request.url().includes('/assets/music/')) files.add(new URL(request.url()).pathname);
+  });
+  await ready(page);
+  await page.locator('#sound-toggle').click();
+  const playing = async path => {
+    await expect.poll(async () => (await audioState(page))?.src).toContain(path);
+    await expect.poll(async () => (await audioState(page)).currentTime).toBeGreaterThan(1);
+    expect(await audioState(page)).toMatchObject({ paused: false, muted: false, loop: false, volume: .16 });
+    // Ogg duration estimates can change while buffering; require a usable duration, not an arbitrary song length.
+    const duration = (await audioState(page)).duration;
+    expect(Number.isFinite(duration)).toBe(true);
+    expect(duration).toBeGreaterThan(0);
+  };
+  const finish = async () => {
+    await page.evaluate(() => { const audio = window.__musicElements[0]; audio.addEventListener('ended', () => { audio.playbackRate = 1; }, { once: true }); audio.playbackRate = 16; });
+  };
+  await playing('peaceful-village.mp3');
+  await finish(); await playing('farm-life.ogg');
+  const before = await audioState(page);
+  await chooseDistrict(page, 'garden');
+  await clickView(page, 'Zoom in');
+  const after = await audioState(page);
+  expect(after.src).toBe(before.src);
+  expect(after.currentTime).toBeGreaterThanOrEqual(before.currentTime);
+  await finish(); await playing('wood-forest-town.mp3');
+  await finish(); await playing('spirits-forest.mp3');
+  await openMenu(page, 'world-settings'); await page.selectOption('#time-mode', 'night'); await closeMenu(page, 'world-settings');
+  expect((await audioState(page)).src).toContain('spirits-forest.mp3');
+  await finish(); await playing('ancient-library.mp3');
+  await openMenu(page, 'world-settings'); await page.selectOption('#time-mode', 'day'); await closeMenu(page, 'world-settings');
+  await chooseDistrict(page, 'market');
+  expect((await audioState(page)).src).toContain('ancient-library.mp3');
+  await finish(); await playing('welcome-to-the-item-shop.mp3');
+  expect(files.size).toBe(6);
+  expect(await page.evaluate(() => window.__musicElements.length)).toBe(1);
+  await page.locator('#sound-toggle').click();
+  expect(await audioState(page)).toMatchObject({ paused: true, muted: true });
+  expect(writes).toEqual([]); expect(errors).toEqual([]);
+  await expect(page.getByRole('link', { name: 'Music composed by Bert Cole' })).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)).toBe(false);
 });

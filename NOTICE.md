@@ -10,7 +10,13 @@ Hollybrook Open and Nightshoal are inspiration links/descriptions only. Their so
 
 ## Optional music
 
-“Welcome to the Item Shop” by congusbongus is bundled under CC0 1.0, converted from the author’s original Ogg to MP3. It is an original retro RPG track, separate from the owner’s artwork and from Nintendo/Pokémon music. Source, licence and conversion hashes are in [assets/music/README.md](assets/music/README.md) and its provenance file. Playback starts only after Sound is explicitly enabled. Existing board effects remain synthesized locally with Web Audio.
+The six local recordings retain their own licences and are **not covered by the application code's MIT licence**:
+
+- “Welcome to the Item Shop” by **congusbongus**: CC0 1.0; the existing MP3 was converted from the author's Ogg.
+- “Peaceful Village”, “Wood Forest Town”, “Spirits Forest” and “Ancient Library” by **HydroGene**: CC0 1.0; original MP3 files, unchanged.
+- “Farm Life”: **Music composed by Bert Cole**, [bitbybitsound.com](https://bitbybitsound.com). Used under the [16-Bit Starter Pack's included custom licence](assets/music/bitbybit/LICENSE-original.txt), with attribution. The recording is unchanged. This is not CC0: the licence forbids resale and derivative works and applies to one person/company. Its presence in this game does not grant a standalone music licence; obtain your own free licence from the artist for another project.
+
+[Sources, original notices and file hashes](assets/music/README.md). These are original retro game recordings, not Nintendo/Pokémon music. Every page starts silent; only an explicit Sound opt-in requests music. Existing board effects remain synthesized locally with Web Audio.
 
 ## Dependencies added for the application
 

@@ -1,4 +1,7 @@
-// Optional local CC0 music and synthesized board cues. See assets/music/README.md.
+import { createMusicPlayer } from './music-player.js';
+import { tracksForRealm } from '../core/music.js';
+
+// Optional local licensed music and synthesized board cues. See assets/music/README.md.
 // Every page starts silent; neither the audio file nor an AudioContext is created before opt-in.
 // The board and the payment flow never call this directly; main.js routes bus events here.
 
@@ -7,18 +10,22 @@ let master = null;
 let wet = null;
 let enabled = false;
 const played = [];
-let music = null;
-let playRequest = 0;
 const listeners = new Set();
-const MUSIC_URL = '/assets/music/welcome-to-the-item-shop.mp3';
+const environment = { period: 'day', district: null };
+const music = createMusicPlayer({
+  getTracks: () => tracksForRealm(environment),
+  createAudio: () => new Audio(),
+  isHidden: () => document.hidden,
+  onError: turnOff,
+  onTrack: () => notify(),
+});
 
 function notify(message = '') {
-  for (const listener of listeners) listener({ enabled, message });
+  for (const listener of listeners) listener({ enabled, message, track: music.current() });
 }
 
 function pauseSounds() {
-  playRequest++;
-  if (music) { music.muted = true; music.pause(); }
+  music.pause();
   // Closing the cue context stops a fanfare immediately and prevents stale notes resuming later.
   if (ctx) { ctx.close().catch(() => {}); ctx = null; master = null; wet = null; }
 }
@@ -30,33 +37,7 @@ function turnOff(message = '') {
 }
 
 function playMusic() {
-  if (!enabled || document.hidden) return;
-  try {
-    if (!music) {
-      const audio = new Audio();
-      audio.preload = 'none';
-      audio.loop = true;
-      audio.volume = 0.16;
-      audio.addEventListener('error', () => {
-        if (music !== audio || !enabled) return;
-        turnOff('Sound could not start. Try the Sound button again.');
-        music = null; // A fresh element on retry can recover from a failed media load.
-      });
-      audio.src = MUSIC_URL;
-      music = audio;
-    }
-    const audio = music, request = ++playRequest;
-    audio.muted = false;
-    Promise.resolve(audio.play()).then(() => {
-      // A delayed play promise must never make an off or hidden page audible.
-      if (!enabled || document.hidden) { audio.muted = true; audio.pause(); }
-    }).catch(() => {
-      if (music === audio && request === playRequest && enabled && !document.hidden)
-        turnOff('Sound could not start. Try the Sound button again.');
-    });
-  } catch {
-    turnOff('Sound is unavailable in this browser.');
-  }
+  if (enabled && !document.hidden) music.resume();
 }
 
 function resumeSounds() {
@@ -148,6 +129,8 @@ const CUES = {
 
 export const sound = {
   get enabled() { return enabled; },
+  // Camera/sky updates select the next playlist without fetching or restarting audio.
+  setEnvironment(next) { Object.assign(environment, next); },
   /** Turn sound on or off. Must be called from a user gesture the first time. */
   setEnabled(on) {
     if (!on) { turnOff(); return false; }
@@ -167,7 +150,7 @@ export const sound = {
   },
   onChange(listener) {
     listeners.add(listener);
-    listener({ enabled, message: '' });
+    listener({ enabled, message: '', track: music.current() });
     return () => listeners.delete(listener);
   },
   /** Test hook: names of the most recent cues played. */

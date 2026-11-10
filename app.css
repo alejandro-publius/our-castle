@@ -154,6 +154,9 @@ select,input,textarea,button { font:inherit; }
 .game-notice { margin:0; max-width:1100px; }
 .art-credit { color:var(--muted); white-space:nowrap; text-decoration:none; }
 .art-credit:hover { color:var(--ivory); }
+.realm-credits { display:flex; flex-wrap:wrap; justify-content:flex-end; column-gap:14px; row-gap:2px; text-align:right; }
+.music-credit { color:inherit; text-underline-offset:3px; }
+.music-credit:hover { color:var(--ivory); }
 .celebration { position:absolute; z-index:4; left:50%; top:90px; transform:translateX(-50%); width:min(360px,calc(100% - 32px)); padding:16px; text-align:center; background:var(--paper); color:var(--ink); border:1px solid var(--ink-line); }
 .celebration h3 { font-size:21px; }.celebration p { margin:4px 0 0; font-size:14px; }
 

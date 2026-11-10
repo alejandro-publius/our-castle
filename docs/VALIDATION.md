@@ -1,5 +1,22 @@
 # Validation
 
+## Realm soundtrack — November 10, 2026
+
+The owner approved HydroGene and Bit By Bit Sound for more retro music. The realm now rotates six local recordings: the existing shop song plus five original files from those two packs. Village, woods, market and night select the next playlist at a natural ending; camera motion never restarts the current recording. One native audio element fades recording edges, pauses while hidden and remains muted until explicit opt-in. A reload starts silent. No new controls, service or dependency.
+
+Actual focused checks on Node 24.22.1 / Chromium:
+
+- **7/7 player unit cases**: lazy creation, fair rotation, unsupported-codec fallback, quiet fade edges, off/hidden and late-promise races, failed load retry and playback refusal.
+- **11/11 existing HTTP server unit cases** with disposable databases and fake providers. Static responses now include their byte length and the Ogg MIME type. The first original MP3 check reproduced an indeterminate browser duration without the size header.
+- **10 distinct browser cases passed** across desktop 1440×1000 and emulated phone 390×844: eight existing opt-in/rotation/stop/reload, refusal/retry/visibility and late-play checks, followed by two new full six-recording journeys. The latter play every bundled recording and advance by actual native endings at accelerated playback speed, without synthetic ended events. They also check camera/sky changes leave the current song playing, all six files are used, only one media element exists, progress has no writes, credits are visible and the page has no horizontal overflow or errors.
+- The original-art/palette/renderer/syntax guard passed. All five new audio files and both artist notices match their source archive bytes and hashes. Diff whitespace checks pass, with only the two untouched third-party notices explicitly retaining their original CRLF/spaces. Desktop and phone screenshots were inspected; the existing illustrated header and compact footer remain clear.
+
+The full-playlist test initially imposed an arbitrary minimum duration on a still-buffering Ogg; that assertion was corrected to require a finite positive duration, and only those two cases were rerun (2/2 passed in 1.8 minutes). An earlier test attempted a range seek the static server does not support; the final checks decode to real endings at 16× speed. These harness corrections do not claim additional product defects. The eight other browser cases passed in the preceding focused run. No full local suite was repeated.
+
+Source/credit/licence details are in [the music readme](../assets/music/README.md) and [new recording provenance](../assets/music/soundtrack-provenance.json). Bert Cole's recording has its own attribution licence, not CC0 or MIT. Original music files are unchanged; only playback volume is adjusted.
+
+Raw evidence: ignored `test-results/realm-soundtrack/` (`music-player-unit.log`, `server-unit.log`, `music-browser.log`, `music-browser-six-tracks.log`, `source-guard.log`, `asset-integrity.json`, `source-hashes.json` and initial browser captures). App checks use local disposable example data with `.env` disabled, synthetic configuration and fake providers; browser routes deny outside origins. Public artist archives were downloaded separately. No OS-wide network isolation, physical-phone, subjective listening or human-playtest result is claimed. No owner app, saved database, credential, sandbox order, main merge, recording or deployment was changed. This branch depends on unmerged PR #72, exact base `7e0904dc3664a0f701d3085e5323b2f08e295b3b`; one exact-head hosted run is reported on its PR.
+
 ## Castle header — November 10, 2026
 
 The approved header now has a shallow parchment goal ribbon, a smaller crest/wordmark group with a separate Example badge, the active member's saved avatar, an original generated Journal book and a brass Sound control. Passkey identity remains fixed; the existing example member selector, money values, next action, Journal state and opt-in music behavior are retained. [Design, screenshots and provenance](JOURNAL-DESIGN.md#castle-header-november-10-2026).

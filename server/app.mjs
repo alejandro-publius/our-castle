@@ -34,7 +34,7 @@ const MIME = {
   '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8',
   '.mjs': 'text/javascript; charset=utf-8', '.json': 'application/json; charset=utf-8', '.png': 'image/png',
   '.webp': 'image/webp', '.svg': 'image/svg+xml', '.ttf': 'font/ttf', '.glb': 'model/gltf-binary', '.txt': 'text/plain; charset=utf-8',
-  '.md': 'text/plain; charset=utf-8', '.py': 'text/plain; charset=utf-8', '.mp3': 'audio/mpeg',
+  '.md': 'text/plain; charset=utf-8', '.py': 'text/plain; charset=utf-8', '.mp3': 'audio/mpeg', '.ogg': 'audio/ogg',
 };
 const STATIC_FILES = new Set(['index.html', 'app.css', 'art-preview.html', 'art-preview.css']);
 const STATIC_PREFIXES = ['src/', 'assets/', 'vendor/', 'references/'];
@@ -747,6 +747,7 @@ export function createApp({ config, db, clock, paypal = null, aiProvider = null,
     if (!info?.isFile()) return sendJson(res, 404, { error: { code: 'not_found', message: 'Not found' } });
     const headers = {
       'Content-Type': MIME[path.extname(file)] ?? 'application/octet-stream',
+      'Content-Length': info.size,
       'X-Content-Type-Options': 'nosniff',
       'Referrer-Policy': 'same-origin',
       'Cache-Control': relative.endsWith('.html') || relative.startsWith('src/') || relative.endsWith('.css') ? 'no-cache' : 'public, max-age=3600',
