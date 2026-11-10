@@ -1,0 +1,102 @@
+{
+  "sourceCommit": "63f7ce6f87e1d3cc2c572c69e01e6973b5725597",
+  "sourceTree": "f142ef1627377584f562485bc488bc3b3bf3c8e9",
+  "base": "3dd2a9f7d6c69adbd34fb6bfbb2b08cc8fbe3625",
+  "whatThisIs": "Five actual browser captures of the running family-trip example and its temporary kit preview. Invented family, shops, sample products, prices, weights and stock; existing native Rust planner computes the choices and repairs. No live shopping offers or transactions.",
+  "environment": "Headless Chromium on macOS arm64, SwiftShader, reduced motion. Desktop 1440x1000; phone 390x844 touch emulation at device scale 2, not a physical device.",
+  "clock": "Server day pinned to 2026-11-08, target 2026-12-27; normal demo uses the current day.",
+  "spec": "test/e2e/kit-preview.spec.mjs",
+  "command": "KIT_SOLVER_REQUIRED=1 playwright test test/e2e/kit-preview.spec.mjs --config <repository config without shared webServer>; tests start their own disposable in-memory servers. Minimal environment, OUR_CASTLE_ENV_FILE=none, corrected Node TCP/fetch guard plus browser origin interception.",
+  "checks": {
+    "passed": 6,
+    "failed": 0,
+    "skipped": 0,
+    "browserOutsideOriginRequests": 0,
+    "pageErrors": 0,
+    "previewChangesSavedChoiceOrMoney": false
+  },
+  "guard": "Tested Node TCP/fetch paths and browser interception; not an OS firewall or a direct-DNS/UDP/arbitrary-child transport guarantee.",
+  "solverBinarySha256": "f151bd874022b56f9f3ea9790fea721b33dc12eadb4dc25cbae55ac9c437abdb",
+  "sources": {
+    "index.html": "f3e29077926b90c6a1f09411bccbe7188a7527a1b00a1c354926f0c2406d088e",
+    "app.css": "913603b70c7a73e1c0dff685818d568945505016d2c2e3bd0c5aa706df4eab33",
+    "scripts/demo.mjs": "b250548933abb96cfd698a80185ddc803794454c1abf6caeedad6ea1ac4ca47d",
+    "scripts/family-trip.mjs": "46a701ae7d382ee974817dc23a89a5ae7abcc1483f8d6f2233700dabfa272002",
+    "server/app.mjs": "6a39200fb9c107c271b3e486e3da0e760d7d6d125066d5038536d771f2fdb102",
+    "server/household.mjs": "174c258a0185107d65c7ee5023f637852bc8c64c8b7e274cced51aa28c12d2f4",
+    "server/family-choices.mjs": "f5812ce0c28428bef70b292412595ec55d6efc85fc162effb8a12c54d9881b15",
+    "server/kit/list.mjs": "f67c369bbab39ea1b78c468cc36f18d2d6d8d35fccf33cd66243fcdd8d6e71e3",
+    "server/kit/planner.mjs": "ce73fc5a9cb1aeae4bf75fc97f534aa63e5b069daf500ea0eaa74c8fcbd1a59c",
+    "server/kit/solver.mjs": "4e109b3bcdcbbc72b0941ee87736df173e5f40ab7e8a4a11808f47d29522d1d6",
+    "server/merchant/channel3.mjs": "d7827d12b18a7c41fccedf4039f793da5054f564953a4bfb88b4363f97a1adad",
+    "src/app/main.js": "accfde4e0f6a536463c9bfe5743b03510f08e3875013c5daf804bc64db80d8d8",
+    "src/app/kit-plan.js": "0de2a470c8a76ad1e5eb48f34f4261dd182027f06aa7cab8b234470e122da392",
+    "src/app/family-choices.js": "ea4f4b3b54eba6ffbdada4cbdd85f2666e27105a9cbb0b7f78f318483a9f04a1",
+    "src/app/merchant.js": "cc1b1a775cdb7d8e32f58b83b0474946a26202c595dddd2fcb4f44a23de5f59e",
+    "src/core/catalogue.js": "6eb2809e4be855247e5165b88455e4cdb70e0092f54f0073861fe04793292dff",
+    "src/core/kit-plan.js": "cbf3fa7db9770fecc6c463608887d359169d86fc2a2cc13db532ac3b01b1a08a",
+    "src/core/family-choices.js": "9640a8d3f85f950f3a1480c0d9e79b4572262bf1a1132c8058f990e13946b064",
+    "src/core/family-fit.js": "11d09409b301ca010a308848b61ae584d2007d204e31acb14c4d5c857a8989d6",
+    "solver/src/lib.rs": "fa7fff96dde25f7cbc76910924de0c127eb2f6a62e287ec7a25527d5811e27c6",
+    "solver/src/main.rs": "020956e3553401268f10bd178c7019d4837a56f5885ff297a6fecda48e97da95",
+    "solver/Cargo.toml": "05634e24de3df3f465970ed212be23c5605aaf8b1ef0d1fb6563ccefd01ba5f0",
+    "solver/Cargo.lock": "111ed384a18b543dfcaa32b00fb8821a7b838241f54f8c6b6567185ae206f16a",
+    "solver/rust-toolchain.toml": "284106289bf75e0a2082a5a829684c1205eabd9c90883a39d59bf74d519641b5",
+    "test/e2e/family-trip.spec.mjs": "268cb11d865606419a89ce37c158b90c0112d69b0f8a0c0c88180cab5eb73b49",
+    "test/e2e/support/deeds.mjs": "13f17839d9f22002b90a363ae433110ea641eaf0d2c712c8bf43f284ee11bb91",
+    "playwright.config.mjs": "20fa9f257409ffc57aa65ffcb4f059cc05a790176c525cf565de660cf55622a1",
+    "src/core/kit-preview.js": "7085e334ca8e20666b90b262a882f1686251b726c89908675d27a1fd8c17d719",
+    "src/world/kit-preview.js": "409ae9ac975c451d50a243ad451ef6ac079d414b22d25c04287018e10327caa5",
+    "src/world/board-scene.js": "9d6f24617ccd533c5a1101060633fc49ed9041d290b87513d0c79ef73ae6e01c",
+    "src/world/family-project.js": "c8dddc34a698392189ec7fc84bb9a3a2096ef101ed7ef4e9debb93df374a7ec7",
+    "test/e2e/kit-preview.spec.mjs": "ed2e93ac034977d1f32e5ea154891ca9940e657b9afcf8e9181a695803eb2182",
+    "test/unit/kit-preview.test.mjs": "3fab6916f1abf6eedbd26e2774501f01b1a1886f7c7835e11f436ac376161c29"
+  },
+  "images": [
+    {
+      "path": "docs/screenshots/kit-preview-desktop-chosen.png",
+      "sha256": "15d39b8d5d51b7c75aa5b42309ed96e6cacbfb4dd93bc9cd9667f7e9ffb087d7",
+      "pixels": [
+        1440,
+        1000
+      ],
+      "capturedAt": "2026-11-09T23:57:39.489683+00:00"
+    },
+    {
+      "path": "docs/screenshots/kit-preview-desktop-repair.png",
+      "sha256": "721ef3dea9d2a6235020457bb59c99d2a8786d80852e593491b6f57c2f835f62",
+      "pixels": [
+        1440,
+        1000
+      ],
+      "capturedAt": "2026-11-09T23:57:41.157231+00:00"
+    },
+    {
+      "path": "docs/screenshots/kit-preview-desktop-closest.png",
+      "sha256": "13e100840ec84765fb908d3438b0d06f7514accae7ce26fb6367869f3288f64f",
+      "pixels": [
+        1440,
+        1000
+      ],
+      "capturedAt": "2026-11-09T23:57:44.502019+00:00"
+    },
+    {
+      "path": "docs/screenshots/kit-preview-phone-repair.png",
+      "sha256": "f157023fdf7850d345a135cc19ee9e193e44940d76f5e7849591194a59f9197c",
+      "pixels": [
+        780,
+        1688
+      ],
+      "capturedAt": "2026-11-09T23:58:58.941327+00:00"
+    },
+    {
+      "path": "docs/screenshots/kit-preview-phone-closest.png",
+      "sha256": "43cb8c603a150cc3de4c61cc20d764b08200028fd34dd59f833b6a6f9f4f465a",
+      "pixels": [
+        780,
+        1688
+      ],
+      "capturedAt": "2026-11-09T23:59:01.328933+00:00"
+    }
+  ]
+}

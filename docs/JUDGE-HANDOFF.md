@@ -48,9 +48,13 @@ In the family-trip example, Plan opens with an invented family and packing list 
 
 1. Choose **Try a one-off expense** and enter **90**. Rowan offers $20 a week and Ash $10. The two torches already at home need no purchase.
 2. Choose **See which complete kits fit**, then **Compare complete kits**. Inspect the computed **$150** lower-total kit and **$180** lighter kit. The deadline is seven weeks after this demo starts.
-3. Choose the $180 kit, then **Keep stove as it is**. Choose **Change the one-off expense** and enter **120**. The smallest repair switches only the tent, bringing the listed total to $150 while keeping the stove.
-4. Choose the repair and **Review this kit**. Inspect the unsaved draft, then explicitly **Save goal and propose this schedule** if wanted. Comparison and repair have not moved money or changed the goal.
-5. In **Contribute**, approve an exact simulated amount. After the deed, choose **Review the receipt** to see that contribution in the Treasury. Its simulated label stays visible; it does not gain a fabricated PayPal Match.
+3. Choose the $180 kit, then **Keep stove as it is** and **Preview on map**. The temporary planning groundsheet shows the kit beside the funded project; it earns nothing.
+4. Choose **Change the one-off expense** and enter **120**. The map shows a $150 **Proposal · smallest change** switching only the tent and keeping the stove. The saved chosen kit is still $180 until you explicitly choose the repair.
+5. Try **200**. The chosen $180 preview no longer fits and is $110 short. The separate closest-kit card is $150 and $80 short; neither is an affordable answer at the $70 limit.
+6. Return to **120**, choose the repair and **Review this kit**. Inspect the unsaved draft, then explicitly **Save goal and propose this schedule** if wanted. **Use this plan** remains a separate confirmation. Comparison and preview have moved no money or changed the goal.
+7. In **Contribute**, approve an exact simulated amount. After the deed, choose **Review the receipt** to see that contribution in Treasury. Its simulated label stays visible; it does not gain a fabricated PayPal Match.
+
+The map preview has separate [desktop/phone captures and focused checks](KIT-MAP-PREVIEW.md). [Selected product scope](PRODUCT-COMPLETION.md) distinguishes completed features from presentation and live-evidence limits.
 
 The same planner and approval boundaries drive the configured app. Sample products exercise their local path; they do not establish live Channel3 prices, stock or purchasing. Switching example profiles is not passkey sign-in; use the separate family route below to inspect that implementation.
 

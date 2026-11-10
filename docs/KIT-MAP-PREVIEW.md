@@ -26,10 +26,24 @@ Secondary references, and the one thing taken from each:
 | The preview follows the kit the family asked to see. If that is their chosen kit and it stops fitting, the planner's smallest change is shown instead, labelled as a proposal, with the chosen kit left as it was | The saved choice never changes silently. Going back to an amount that fits shows the chosen kit again |
 | If the previewed kit can no longer be matched to the current result, the preview closes and says how to preview the current one | No stale picture |
 | The camera uses the existing campsite view, drawn closer to the plan while a preview is open. The compass and free navigation keep working | The strip is small, so the plan is drawn smaller than life and needs the closer view to be read. Closing the preview returns the ordinary campsite view. No new camera mode or control |
-| Close with the button or Escape; focus returns to the button that opened it | Keyboard and screen-reader route |
+| Close with the button or Escape; focus returns to the origin or a usable Plan control | Keyboard and screen-reader route |
 
 Rejected: a new map mode, a full-screen or large modal, a second comparison table, product photos or product-exact models, automatic journal jumps, and any change to payments, progress or the server.
 
-## Status: checkpoint, not finished
+## Behavior and reviewed fixes
 
-This branch was handed back to ROOT at a checkpoint on November 9, 2026, at the owner's request. The preview is implemented and was looked at once on the desktop through the family-trip example. It has no committed tests yet, the 390 px phone layout has not been looked at, and no hosted check has run. The handoff note with the exact state is in the ignored evidence folder `test-results/kit-map-preview-20261109/HANDOFF.md` of the worktree.
+The preview is driven by the current comparison, not a canned scene. At a $120 expense the chosen $180 kit can show a $150 smallest-change proposal while its saved choice remains unchanged. At $200, the chosen preview is $110 short; explicitly previewing the closest $150 card shows its separate $80 shortfall. A stale, failed, invalid or different-member comparison cannot silently revive a closed preview.
+
+Shapes illustrate only the six invented sample listings. Other listings use one crate per item to get, including items in packs. A picture draws at most six per line; its caption retains the full quantities and explains the cap. Kept-line pegs and switched-line tiles are included in the layout bounds. The compact plaque can scroll when long and stays clear of the map controls. The compass still pans/turns the real scene; nearby trees or lamps can naturally overlap a miniature from some views.
+
+Review found and corrected four behavioral defects: a maximum-size kit exceeded the ground because the old layout stopped shrinking at a fixed minimum scale; closing during recalculation tried to focus a disabled button; automatic caption growth failed to reframe, and asynchronous invalidation could leave focus on the body. The latter two interaction paths now measure the old caption before changing it and recover only stranded focus, respecting an open dialog or another active control. The planning ground was moved inward and framed closer after visual inspection.
+
+## Checks and evidence
+
+- **Pure unit checks:** 16/16 passed, including identity matching, chosen/proposal/closest semantics, sample-only shapes, pack quantities, drawing caps and independent bounds/non-overlap across 353 arrangements. The eight-line/six-tent counterexample failed before the layout fix.
+- **Browser:** 6/6 passed, no skips, across desktop and 390 px touch-emulated phone. They exercise actual native-kit comparison and repair, distinct no-fit captions, unchanged saved choice/progress, Close/Escape, pending and out-of-order answers, invalid values, a delayed failure while the preview owns focus, member changes, repeated cleanup, generic packed-item markers, and all four stages of campsite/garden/schoolhouse.
+- The existing family-trip comparison/adoption/simulated-contribution journey also passed on both viewports. The source/art/palette/renderer/syntax guard passed. This was a focused local selection, not the whole browser suite.
+- The initial test authoring pass used the wrong closest-title word order and a malformed fake error envelope; those test fixtures were corrected. A later assertion counted hidden old buttons rather than accessible child controls; it was corrected to test the visible role-based interface. Those failures did not justify application changes.
+- All runs used disposable example data, no loaded credentials, fake providers, the corrected Node TCP/fetch preload and browser origin interception. No page error or outside-origin browser request occurred. Guard coverage is limited to the tested transports, not an OS firewall or every possible network API.
+
+The browser cases are tagged `@kit-planner` for the native-solver hosted job. [Five real captures with source hashes](screenshots/kit-preview-sources.json); [walkthrough](FAMILY-TRIP-EXAMPLE.md). Local raw evidence is ignored under `test-results/product-completion-20261109/` and `test-results/kit-preview/`. This is automated Chromium evidence, not a human playtest, physical-device test, live catalogue benchmark or purchase.
