@@ -13,7 +13,7 @@ const prepare = (overrides = {}) => {
   return approveVillageSubscriptionIntent({ ...input, storedProposal, reviewedRevision: storedProposal.revision, approvalConfirmed: true, capabilities });
 };
 
-function transport({ transformPlan = plan => plan, transformSubscription = subscription => subscription, after = () => {} } = {}) {
+function transport({ transformPlan = plan => plan, transformSubscription = subscription => subscription, transformAgreement = agreement => agreement, after = () => {} } = {}) {
   const calls = [], plans = new Map(), subscriptions = new Map();
   let sequence = 0;
   const adapter = async config => {
@@ -29,7 +29,12 @@ function transport({ transformPlan = plan => plan, transformSubscription = subsc
       if (!plans.has(key)) plans.set(key, { ...body, id: `P-TEST${++sequence}` });
       response = plans.get(key);
     } else if (pathname.startsWith('/v1/billing/plans/')) response = transformPlan([...plans.values()].find(plan => plan.id === pathname.split('/').at(-1)));
-    else if (pathname === '/v1/billing/subscriptions') {
+    else if (pathname.startsWith('/v1/billing/subscriptions/')) {
+      const sub = [...subscriptions.values()].find(subscription => subscription.id === pathname.split('/').at(-1));
+      const plan = [...plans.values()].find(p => p.id === sub.plan_id);
+      response = transformAgreement({ ...sub, status: 'ACTIVE', status_update_time: '2026-11-10T12:00:00Z',
+        subscriber: { payer_id: 'TESTBUYER1234' }, plan: { billing_cycles: plan.billing_cycles, payment_preferences: plan.payment_preferences } });
+    } else if (pathname === '/v1/billing/subscriptions') {
       const key = headers['paypal-request-id'];
       if (!subscriptions.has(key)) subscriptions.set(key, { ...body, id: `I-TEST${++sequence}`, status: 'APPROVAL_PENDING',
         links: [{ rel: 'approve', href: 'https://www.sandbox.paypal.com/webapps/billing/subscriptions?ba_token=FAKE', method: 'GET' }] });
@@ -141,4 +146,39 @@ test('retrying the same reviewed intent reuses both PayPal idempotency keys', as
   const creates = fake.calls.filter(call => call.method === 'POST' && call.pathname !== '/v1/oauth2/token');
   assert.equal(creates[0].headers['paypal-request-id'], creates[2].headers['paypal-request-id']);
   assert.equal(creates[1].headers['paypal-request-id'], creates[3].headers['paypal-request-id']);
+});
+
+test('agreement readback verifies the effective terms and buyer state without importing a charge', async () => {
+  const fake = transport(), adapter = createVillageSubscriptionsSdk({ ...base, httpAdapter: fake.adapter }), prepared = prepare();
+  const pending = await adapter.createApproval({ prepared });
+  const result = await adapter.readAgreement({ prepared, planId: pending.planId, subscriptionId: pending.subscriptionId });
+  assert.equal(result.status, 'active');
+  assert.equal(result.buyerAgreementVerified, true);
+  assert.equal(result.chargesImported, false);
+  assert.equal(result.statusUpdatedAt, '2026-11-10T12:00:00.000Z');
+  assert.equal(fake.calls.at(-2).method, 'GET');
+  assert.match(fake.calls.at(-2).url, /fields=plan/);
+  assert.equal(fake.calls.at(-1).method, 'GET');
+  assert.ok(!('payerId' in result), 'buyer identity is checked but not published in the village DTO');
+});
+
+test('agreement readback rejects a missing buyer, effective-plan change or absent provider status time', async () => {
+  for (const transformAgreement of [
+    a => ({ ...a, subscriber: {} }), a => ({ ...a, status_update_time: undefined }),
+    a => ({ ...a, plan: undefined }), a => ({ ...a, plan_overridden: true }),
+    a => ({ ...a, plan: { ...a.plan, billing_cycles: [{ ...a.plan.billing_cycles[0], total_cycles: 0 }] } }),
+    a => ({ ...a, plan: { ...a.plan, payment_preferences: { auto_bill_outstanding: true, payment_failure_threshold: 1 } } }),
+  ]) {
+    const fake = transport({ transformAgreement }), adapter = createVillageSubscriptionsSdk({ ...base, httpAdapter: fake.adapter }), prepared = prepare();
+    const pending = await adapter.createApproval({ prepared });
+    await assert.rejects(adapter.readAgreement({ prepared, planId: pending.planId, subscriptionId: pending.subscriptionId }), { code: 'subscription_agreement_mismatch' });
+  }
+});
+
+test('validated provider identity is saved before a late response-access loss is reported', async () => {
+  const fake = transport(), adapter = createVillageSubscriptionsSdk({ ...base, httpAdapter: fake.adapter }), prepared = prepare();
+  let persisted = null;
+  await assert.rejects(adapter.createApproval({ prepared, onApproval: result => { persisted = result; }, assertResponseAccess: () => { throw new Error('signed out'); } }), /signed out/);
+  assert.equal(persisted.status, 'approval_pending');
+  assert.match(persisted.subscriptionId, /^I-/);
 });
