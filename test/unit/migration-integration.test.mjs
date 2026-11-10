@@ -20,15 +20,16 @@ const BRANCHES = {
   'family access (6: project kind, access tables)': { version: 6, steps: [...MAIN, step('goal-project-kind'), step('family-access')] },
   'integrated (7)': { version: 7, steps: MIGRATIONS.slice(0, 7) },
   'village exchange (13)': { version: 13, steps: MIGRATIONS.slice(0,13) },
+  'exchange directory (14)': { version: 14, steps: MIGRATIONS.slice(0,14) },
   'current': { version: MIGRATIONS.length, steps: MIGRATIONS },
 };
 const schema = (db) => db.prepare("SELECT type, name, sql FROM sqlite_master WHERE name NOT LIKE 'sqlite_%' ORDER BY type, name").all()
   .map((r) => `${r.type} ${r.name} ${r.sql}`).join('\n');
 const version = (db) => db.prepare('PRAGMA user_version').get().user_version;
 
-test('one sequence: main 4 has four SQL steps, then ten checked steps, fourteen in all', () => {
+test('one sequence: main 4 has four SQL steps, then eleven checked steps, fifteen in all', () => {
   assert.equal(MAIN.length, 4);
-  assert.deepEqual(MIGRATIONS.slice(4).map((s) => s.id), ['goal-project-kind', 'merchant-selection', 'family-access', 'deferred-refunds', 'family-choices', 'family-choice-needs', 'kit-lists', 'kit-planner', 'village-exchange', 'exchange-directory']);
+  assert.deepEqual(MIGRATIONS.slice(4).map((s) => s.id), ['goal-project-kind', 'merchant-selection', 'family-access', 'deferred-refunds', 'family-choices', 'family-choice-needs', 'kit-lists', 'kit-planner', 'village-exchange', 'exchange-directory', 'village-funds']);
   assert.ok(MIGRATIONS.every(Object.isFrozen));
 });
 
