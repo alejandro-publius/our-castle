@@ -1,5 +1,17 @@
 # Validation
 
+## Complete-kit map preview and product completion — November 9, 2026
+
+Source `63f7ce6` completes the worker checkpoint with a temporary map preview driven by the actual kit comparison. It keeps proposed purchases separate from funded progress and saved choices. The product route is now **compare → choose/keep → preview → change an expense → review and explicitly adopt → approve a contribution → review its receipt**. [Selected scope](PRODUCT-COMPLETION.md) and [current walkthrough](FAMILY-TRIP-EXAMPLE.md).
+
+**Local evidence:** 16/16 new pure unit cases; 6/6 new desktop/390 px phone browser cases with the compiled Rust solver required; 2/2 existing family-trip browser cases; original-art/source/palette/renderer/syntax guard and diff check. No new case was skipped. The broader browser suite was not rerun locally. The integrating PR records exact-head hosted checks separately.
+
+Review reproduced the large-kit layout overflow, hidden-focus return on pending Close, stale camera scale after automatic caption growth (0.01939818 versus the correctly reframed 0.02172725 in the probe), and body focus after asynchronous failure. The fixes retain the failing behaviors as regressions. Tests also distinguish the chosen $180/$110-short preview from the closest $150/$80-short alternative and prove the preview changes no saved choice, money or funded project. [Implementation, test-authoring corrections and limits](KIT-MAP-PREVIEW.md).
+
+The guarded runs use fresh in-memory example households, a minimal no-key environment and origin-blocked browser traffic. The preload is the corrected `dcaf05bd…` Node TCP/fetch guard plus the exact-localhost adapter; it is not a general firewall. The native binary has the same `f151bd87…` SHA-256 as the earlier reviewed build, with unchanged solver sources; hosted CI rebuilds the pinned Rust source. [Capture hashes and full provenance](screenshots/kit-preview-sources.json).
+
+Claude handed back a clean checkpoint and has no ongoing assignment. The source changes and final review were completed in the coordinating chat. Saved apps on 3010/3021, their records/configuration, the completed $15 sandbox order and the separate video preview were not changed. No live provider call, recording, human playtest, deployment or submission occurred.
+
 ## Playable family decision and final source integration — November 9, 2026
 
 [PR #61](https://github.com/alejandro-publius/our-castle/pull/61), source `c6aa3e4` and guide/captures `a792654`, supplies the no-key catalogue missing from the ordinary demo. `npm run demo -- --family-trip` opens the existing Plan surface with an invented family, its offers, an editable kit list and six labelled sample listings. It uses the existing services and actual complete-kit/repair calculations. The ordinary blank demo remains available.

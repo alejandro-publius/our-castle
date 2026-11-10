@@ -18,13 +18,13 @@ The journal opens on **Plan**. One line there says what is invented and offers *
 
 1. **Try a one-off expense.** It opens Family choices and the Kit list and puts the cursor in **One-off amount**. It fills nothing in. Type `90`.
 2. **See which complete kits fit**, then **Compare complete kits.** Two different kits fit: $150 (lowest listed total, one shop) and $180 (lower listed weight).
-3. **Choose this kit** on the $180 kit, then **Keep** its stove.
-4. **Change the one-off expense** to `120`. The comparison follows without another search.
-   - The chosen $180 kit would now finish a week late, $30 short by the date.
-   - The **smallest change** comes first: only the tent is switched, making $150. The kept stove stays.
-5. Type `200`. No kit fits $70, and nothing is invented to fill the gap. The closest kit is shown with how late it would finish and how much short it is by the date.
-6. Back at `120`: **Choose this kit**, then **Review this kit**. The Plan form shows an unsaved goal draft. **Save goal and propose this schedule** saves the goal and proposes its weeks. The schedule still needs **Use this plan**; no payment is made.
-7. **Contribute:** tick the approval yourself, then **Simulate approved payment**. One simulated contribution is credited once, with its receipt.
+3. **Choose this kit** on the $180 kit, then **Keep stove as it is**. Choose **Preview on map** for that kit. A temporary planning groundsheet shows the compared items beside the funded project; it does not change earned progress.
+4. **Change the one-off expense** to `120`. The comparison follows without another search. The chosen $180 kit is now $30 short by the date. The map shows **Proposal · smallest change**, a $150 kit switching only the tent and keeping the stove. This preview does not replace the chosen $180 kit; choosing the repair remains a separate action.
+5. Type `200`. No kit fits the $70 limit. The preview returns to **Your chosen kit · does not fit**: $180, $110 short by the date. The separate closest complete-kit card is $150 and $80 short. These describe different kits; preview that closest card explicitly to see it on the map.
+6. Back at `120`: **Choose this kit** on the $150 repair, then **Review this kit**. The Plan form shows an unsaved goal draft. **Save goal and propose this schedule** saves the goal and proposes its weeks. The schedule still needs **Use this plan**; no payment is made.
+7. **Contribute:** enter an exact amount and tick the approval yourself, then **Simulate approved payment**. After the deed, choose **Review the receipt** to reach that contribution in Treasury. It stays labelled simulated and gains no PayPal Match.
+
+**Map-preview checks:** six focused browser cases passed on desktop and a 390 px touch-emulated phone, using the compiled Rust solver, plus 16 pure unit cases. [Behavior, fixes and limits](KIT-MAP-PREVIEW.md).
 
 Choose **Wren** in the profile list at the top to see what a child reads and cannot change. **Ledger → Reset the example household** starts the example again.
 
@@ -32,7 +32,15 @@ Choose **Wren** in the profile list at the top to see what a child reads and can
 | --- | --- | --- |
 | ![Example data: after a $90 one-off, two complete kits of invented "Sample" listings fit by Dec 27, $150 finishing Dec 20 and $180 finishing Dec 27](screenshots/family-trip-desktop-comparison.png) | ![Example data: after a $120 one-off, one kit fits, $150, switching only the tent from the chosen $180 kit and keeping the stove](screenshots/family-trip-desktop-repair.png) | ![Example data on a 390 px phone: the $150 smallest change, the switched tent, the kept stove and the note that the listings are invented](screenshots/family-trip-phone-repair.png) |
 
-All three captures show invented example data: the family, both shops (`sample-shop-one.example`, `sample-shop-two.example`), all six "Sample:" listings and their prices, weights and stock. The server's day was pinned to Nov 8, 2026 for the captures, so the dates match the worked example below. [Provenance and hashes](screenshots/family-trip-sources.json).
+These retained captures predate the map-preview extension and show the journal comparison only. All three captures show invented example data: the family, both shops (`sample-shop-one.example`, `sample-shop-two.example`), all six "Sample:" listings and their prices, weights and stock. The server's day was pinned to Nov 8, 2026 for the captures, so the dates match the worked example below. [Provenance and hashes](screenshots/family-trip-sources.json).
+
+## The plan on the map
+
+| Chosen kit | Smallest-change proposal | Phone proposal |
+| --- | --- | --- |
+| ![Invented example: chosen $180 kit on the temporary planning ground](screenshots/kit-preview-desktop-chosen.png) | ![Invented example: temporary $150 repair leaves the $180 choice unchanged](screenshots/kit-preview-desktop-repair.png) | ![The same repair on a 390 px touch-emulated phone](screenshots/kit-preview-phone-repair.png) |
+
+The [desktop closest-kit view](screenshots/kit-preview-desktop-closest.png) and [phone closest-kit view](screenshots/kit-preview-phone-closest.png) show the $80 shortfall of the $150 alternative. These are actual application captures with invented data, not product photographs or evidence of a purchase. [Capture/source hashes](screenshots/kit-preview-sources.json).
 
 ## What is invented, and what is computed
 
@@ -53,7 +61,7 @@ With the worked example's day (Nov 8, 2026, goal date Dec 27):
 | --- | --- | --- |
 | $90 | $180 | Two kits of the 8 compared: **$150** (finishes Dec 20) and **$180** (finishes Dec 27) |
 | $120, with the $180 kit chosen and its stove kept | $150 | **$150**, the smallest change: the tent switched, the stove kept. The $180 kit would finish Jan 3, $30 short by Dec 27 |
-| $200 | $70 | No kit fits. The closest, $150, would finish Jan 17, three weeks late, $80 short by Dec 27 |
+| $200, with the $180 kit still chosen | $70 | The chosen-kit preview is $110 short. The separate closest $150 kit would finish Jan 17, three weeks late, $80 short by Dec 27 |
 
 On any other day the dates move with it; the weeks, totals and kits are the same.
 
@@ -69,7 +77,9 @@ On any other day the dates move with it; the weeks, totals and kits are the same
 
 One defect was found while building it and fixed, because it erased the example's whole starting state. Saving the house or crest re-created every example member, and each member's weekly offer, the kit list and its listings were deleted with the old rows. A member who stays now keeps their row and those records; only a member who leaves is removed. The ordinary demo had the same defect for Rowan's own offer and list (reproduced), and `npm start`'s example household uses the same code.
 
-## Checks
+## Earlier family-trip checks
+
+These results concern the earlier family-trip implementation, before the map-preview extension. The current preview has its own [focused evidence](KIT-MAP-PREVIEW.md).
 
 All checks used the example's invented data, local transports and disposable in-memory households. No provider was contacted.
 
@@ -79,7 +89,7 @@ All checks used the example's invented data, local transports and disposable in-
   - The example household had no second adult, so Ash's offer could not be made.
   - Saving the house erased Rowan's weekly offer and the kit list.
 - **Unit and HTTP:** 12 new cases in [test/unit/family-trip-example.test.mjs](../test/unit/family-trip-example.test.mjs). The whole unit suite passed on Node 26 with the compiled Rust solver required: 569 tests, 568 passed, 1 existing skip.
-- **Browser:** [test/e2e/family-trip.spec.mjs](../test/e2e/family-trip.spec.mjs) walks the route above through visible controls, on the desktop and the 390 px phone project, with the compiled solver. Together with the eleven existing spec files that exercise the changed page and server code, 97 checks passed and 1 was skipped by design. The reset button was checked once in the page, outside the committed tests.
+- **Browser:** [test/e2e/family-trip.spec.mjs](../test/e2e/family-trip.spec.mjs) walks the earlier comparison/repair/adoption route through visible controls, on the desktop and the 390 px phone project, with the compiled solver. Together with the eleven existing spec files that exercise the changed page and server code, 97 checks passed and 1 was skipped by design. The reset button was checked once in the page, outside the committed tests.
 - **Test sensitivity:** nineteen deliberate source changes each made at least one selected test fail, including member re-creation, false catalogue labels, pre-ticked approval and a destructive reset. These earlier probes used fake transports and empty configuration, but their runner did not load the corrected TCP preload. They are separate from the final guarded checks and are not network-isolation evidence.
 - **Final transport controls.** The passing unit/browser batches and reset probe used the corrected Node TCP/fetch preload with per-process refusal checks; browser requests outside the page origin were intercepted and counted. No outside-origin request or new tab was observed in the family-trip journey. This is not an OS firewall and does not cover direct DNS, UDP or arbitrary child-process network APIs.
 - **The guard and Playwright, as it happened.** The guard at first refused 58 checks in four existing files (`channel3-merchant`, `game-shell`, `journey`, `member-avatars`). Playwright's own request helper reaches the test server by the name `localhost` with its own lookup function, which the guard cannot check. These were refusals of this computer's own address by the test harness, not failures of the app.

@@ -11,10 +11,12 @@ This source also includes:
 
 [Release status](RELEASE-READINESS.md) records actual runtime evidence and remaining recording/submission gaps. This is not a submitted entry.
 
-It keeps the reviewed scene lifecycle and Treasury stalled-asset recovery fixes, and [credential-free CI](VALIDATION.md#release-checks-workflow--november-7-2026). On this source (`3aae283`), [run 42659078905](https://github.com/alejandro-publius/our-castle/actions/runs/42659078905) passed:
-- 557 unit tests with one existing skip on each of Node 22.16.0, 24 and 26, with the Rust solver built and tested;
-- the complete-kit journey (2 passed);
-- 45 desktop/phone browser checks, with 3 designed skips.
+The reviewed scene lifecycle, Treasury stalled-asset recovery and [credential-free CI](VALIDATION.md#release-checks-workflow--november-7-2026) remain in the source. The family-trip integration [PR #62](https://github.com/alejandro-publius/our-castle/pull/62) passed all six jobs in [run 42714353423](https://github.com/alejandro-publius/our-castle/actions/runs/42714353423):
+- 568 unit passes and one existing skip on each of Node 22.16.0, 24 and 26, plus nine Rust tests per build;
+- 25 desktop and 22 phone release-browser passes, with three designed phone skips;
+- four native-solver browser passes.
+
+The checked merge tree equals main `3dd2a9f`. These counts describe that integration, not an untested later head. [Validation](VALIDATION.md) records subsequent changes separately.
 
 These source suites use fake providers. Both saved Mac apps now run the integrated source `b21b2d8` at schema 12; the later local upgrade and one live synthetic OpenAI photo check are recorded separately in [validation](VALIDATION.md#saved-mac-runtime-activation--november-9-2026).
 
@@ -46,9 +48,13 @@ In the family-trip example, Plan opens with an invented family and packing list 
 
 1. Choose **Try a one-off expense** and enter **90**. Rowan offers $20 a week and Ash $10. The two torches already at home need no purchase.
 2. Choose **See which complete kits fit**, then **Compare complete kits**. Inspect the computed **$150** lower-total kit and **$180** lighter kit. The deadline is seven weeks after this demo starts.
-3. Choose the $180 kit, then **Keep stove as it is**. Choose **Change the one-off expense** and enter **120**. The smallest repair switches only the tent, bringing the listed total to $150 while keeping the stove.
-4. Choose the repair and **Review this kit**. Inspect the unsaved draft, then explicitly **Save goal and propose this schedule** if wanted. Comparison and repair have not moved money or changed the goal.
-5. In **Contribute**, approve an exact simulated amount. After the deed, choose **Review the receipt** to see that contribution in the Treasury. Its simulated label stays visible; it does not gain a fabricated PayPal Match.
+3. Choose the $180 kit, then **Keep stove as it is** and **Preview on map**. The temporary planning groundsheet shows the kit beside the funded project; it earns nothing.
+4. Choose **Change the one-off expense** and enter **120**. The map shows a $150 **Proposal · smallest change** switching only the tent and keeping the stove. The saved chosen kit is still $180 until you explicitly choose the repair.
+5. Try **200**. The chosen $180 preview no longer fits and is $110 short. The separate closest-kit card is $150 and $80 short; neither is an affordable answer at the $70 limit.
+6. Return to **120**, choose the repair and **Review this kit**. Inspect the unsaved draft, then explicitly **Save goal and propose this schedule** if wanted. **Use this plan** remains a separate confirmation. Comparison and preview have moved no money or changed the goal.
+7. In **Contribute**, approve an exact simulated amount. After the deed, choose **Review the receipt** to see that contribution in Treasury. Its simulated label stays visible; it does not gain a fabricated PayPal Match.
+
+The map preview has separate [desktop/phone captures and focused checks](KIT-MAP-PREVIEW.md). [Selected product scope](PRODUCT-COMPLETION.md) distinguishes completed features from presentation and live-evidence limits.
 
 The same planner and approval boundaries drive the configured app. Sample products exercise their local path; they do not establish live Channel3 prices, stock or purchasing. Switching example profiles is not passkey sign-in; use the separate family route below to inspect that implementation.
 

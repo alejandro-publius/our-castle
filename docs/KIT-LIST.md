@@ -62,7 +62,7 @@ All captures use invented test data: the camping list `1 x 4-person tent; 2 x sl
 
 ## Data and access
 
-- **Storage.** Migration 11 adds one table, `kit_lists`: one row per goal. A fresh database now has 24 tables.
+- **Storage.** Migration 11 added one table, `kit_lists`: one row per goal. At that stage a fresh database had 24 tables; complete-kit planning subsequently added migration 12. [Current schema and saved runtimes](RELEASE-READINESS.md#current-mac-app).
   - The row holds the list's revision, who saved it and when.
   - Each line keeps a stable id, name, details, Need, Have, and whether it was typed or read from a photo.
   - No other table or row changes. Upgrading a schema-10 database keeps every earlier row unchanged.
@@ -76,7 +76,7 @@ All captures use invented test data: the camping list `1 x 4-person tent; 2 x sl
   - clears any message about the previous list;
   - draws that one's own saved list.
 - **Typing while another adult saves the first list.** Text typed, or a photo chosen, in the empty list's box stays there, with its focus. The new saved list shows above it to compare. Checking it makes a draft that says it replaces that list, and only **Save this list** does, against the revision the adult has seen. With nothing entered, the box closes.
-- **Next stage.** Stage 019 can use the saved typed lines (ids, Need and Have, with the details as editable text), never a raw reading. Comparing complete kits against the family's planning limit belongs to that stage and is not implemented here.
+- **Complete kits.** The integrated [kit planner](KIT-PLANNER.md) uses these saved, adult-reviewed lines (ids, Need and Have, with the details as editable text), never a raw photo reading. It compares the remaining quantities against the family's offers and date, and keeps agreed lines fixed when repairing a plan.
 
 ## Checks
 

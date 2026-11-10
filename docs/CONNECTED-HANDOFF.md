@@ -1,8 +1,8 @@
 # Connected experience: merchant, Treasury, APIMatic
 
-**Current owner Mac:** the active 3010 app uses `~/projects/our-castle-reviewed`; its ignored environment/data links preserve the originals. Keep `~/projects/our-house` at its existing source while the separate 3021 rehearsal is preserved. Source is public. Read [release readiness](RELEASE-READINESS.md#current-mac-app) before local edits; older activation/workstream notes below are historical.
+**Current owner Mac:** the saved 3010 and 3021 apps run `b21b2d8` from `~/projects/our-castle-runtime-release-20261109`; their original records are preserved. The original `~/projects/our-house` checkout remains unchanged. Current main also offers a separate fresh [family-trip example](FAMILY-TRIP-EXAMPLE.md). Read [release readiness](RELEASE-READINESS.md#current-mac-app) before local edits; the connected-experience implementation and checks below are historical.
 
-The reviewed build is on canonical `main`, promoted from `feature/connected-experience` (implementation handoff `68e1c61`, based on `877764e`). The feature worktree is retained for reference. The nine-district forest, four-tab journal, art, palette, fonts, clouds, rivers, bridges, farm, tavern, avatars and unlock cards are unchanged.
+The original connected-experience build was integrated into canonical `main`, promoted from `feature/connected-experience` (implementation handoff `68e1c61`, based on `877764e`). The feature worktree is retained for reference. The nine-district forest, four-tab journal, art, palette, fonts, clouds, rivers, bridges, farm, tavern, avatars and unlock cards are unchanged.
 
 ## Current status of the three tools
 
