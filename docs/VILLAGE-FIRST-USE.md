@@ -56,6 +56,32 @@ Deliberately not changed:
 - **Other plain buttons inside closed disclosures** of the fund sheet (review link, local assistant, devnet watch) still use the system style. They are outside this path.
 - **Scope rules.** A signed-in scope change still closes the fund and shows nothing until its own state arrives.
 
+## Waits on this path (mapped before the change)
+
+Mapped on the merged first-use and dragon source, desktop and 390 px, by holding each real request for a moment with a local route and then releasing it unchanged. One save was answered with a local failure. Nothing was mocked into success.
+
+| Wait | What was visible | Kept or changed |
+| --- | --- | --- |
+| Starting the app, the reload after a passkey sign-in, and a review link opened at start | The dragon scene, until the realm is ready or a dialog needs the person | Kept. This is the one place a whole view is waiting on a read |
+| Opening the fund while its foreground read is slow | The project, total and controls at once, from the state already held | Kept quiet. Nothing is waiting |
+| Visiting the shared square | Immediate | Kept. No pause is added |
+| Background refreshes and presence heartbeats | Nothing | Kept quiet |
+| Saving a share; drafting a project | "Working…" and the result, in view | Kept |
+| One approved contribution | The amount and approval stay; the button dims. "Working…" and then "recorded" were **outside the visible part of the window** | **Changed** |
+| A treasurer question | Nothing visible changed; "Working…" was outside the visible part | **Changed** |
+| Creating a neighborhood in Village Exchange | Nothing visible changed; "Saving…" was below the fold | **Changed** |
+| Reviewing an invitation | "Saving…", although nothing is being saved | **Changed** |
+| A member or household change during a request | The old "Working…" stayed in the status line for the next person | **Changed** |
+
+| Change | Why |
+| --- | --- |
+| Each window's one status line stays inside the visible part of the window while it has something to say: the wait, its result or its error | The existing line already says the right thing; it was simply out of sight. No second indicator, spinner, percentage or cover |
+| While a window is busy, its submit buttons dim, as the kit preview and Market Town results already do | The house pattern for "this is being worked on". Nothing is disabled that was not already; the amount, approval and every record stay readable |
+| The Exchange marks its own window busy, and says "Checking the invitation…" while it reviews one | Say what is happening, where it is happening |
+| A member or household change clears the fund's status line | A wait or result belongs to the person who started it |
+
+Not changed: the dragon is not shown for any of these. It covers the whole view, so it is used only when the whole view is what is waiting. No request is retried, no draft is cleared and no state changes to fill time.
+
 ## The path now
 
 1. **Family A** signs in to a fresh household, opens **Village fund**, and chooses **Start a new neighborhood**. Village Exchange opens over the fund at that form. After **Create neighborhood**, **Back to the village fund** (or Escape, or Close) returns to the fund with the sentence draft open.
