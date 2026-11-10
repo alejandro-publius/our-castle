@@ -89,3 +89,22 @@ test('too many lines is a repairable draft up to 20 and refused beyond; too much
   assert.deepEqual(parseKitText(42), { lines: [], problem: { code: 'empty' } });
   assert.deepEqual(checkKit([]).problems, ['empty']);
 });
+
+
+test('explicit Have annotations preserve written or unknown counts without changing ordinary typed lines', () => {
+  assert.deepEqual(parseKitLine('2 x torch [have 2]'), { name: 'torch', needs: null, quantity: 2, ownedQuantity: 2 });
+  assert.deepEqual(parseKitLine('1 x stove [have ?]'), { name: 'stove', needs: null, quantity: 1, ownedQuantity: null });
+  assert.deepEqual(parseKitLine('? x 2 person tent [have 0]'), { name: '2 person tent', needs: null, quantity: null, ownedQuantity: 0 });
+  assert.deepEqual(parseKitLine('0 x pegs (steel) [have 0]'), { name: 'pegs', needs: 'steel', quantity: 0, ownedQuantity: 0 });
+  assert.deepEqual(parseKitLine('3 x mug [have 4]'), { name: 'mug', needs: null, quantity: 3, ownedQuantity: 4 });
+  assert.equal(checkKit(parseKitText('3 x mug [have 4]').lines).ready, false, 'an invalid reported count stays invalid');
+  assert.equal(checkKit(parseKitText('1 x stove [have ?]').lines).ready, false, 'unknown Have is not zero');
+  assert.deepEqual(parseKitLine('2 x torch'), { name: 'torch', needs: null, quantity: 2 });
+});
+
+test('a minus sign is not a bullet that silently turns a negative quantity positive', () => {
+  assert.deepEqual(parseKitLine('-2 x torch'), { name: '-2 x torch', needs: null, quantity: null });
+  assert.deepEqual(parseKitLine('-1 torch'), { name: '-1 torch', needs: null, quantity: null });
+  assert.deepEqual(parseKitLine('- 2 x torch'), { name: 'torch', needs: null, quantity: 2 });
+  assert.deepEqual(parseKitLine('•2 x torch'), { name: 'torch', needs: null, quantity: 2 });
+});
