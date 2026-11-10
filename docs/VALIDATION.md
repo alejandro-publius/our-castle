@@ -12,6 +12,23 @@ Browser evidence is separated into the real authored-server journey (`village-fu
 
 Devnet and organizer subscriptions default off. No sandbox recipient account or devnet wallet has been set up in this work. Subscription agreement tracking does not import recurring charges and is not advertised as automatic weekly collection. No saved app, `.env`, household database, existing $15 order, video, deployment or submission was changed.
 
+### Member-selector correction and exact-head hosted review
+
+**Reproduced at `9eb7601`.** In the real `--village-fund` example, with the real member selector and the page's state object unchanged (one state read in total), the Village fund control was hidden after adult → child and stayed hidden after child → adult, including eight seconds later. A fresh load with the child already selected showed it. The fund sheet dropped its projection on every scope change and took the state's again only when a new state object arrived; the example selector redraws without one.
+
+**Correction.** An example member choice inside one household takes the projection the state already holds. The example server builds that projection per household and names no member in it. Every other scope change still shows nothing until its own state arrives: a signed-in member, another household, and a change between an example and a signed-in scope in either direction. A child still gets no payment form, and what a child entered is cleared for the adult.
+
+**Regressions**, both in the existing village jobs:
+- The real-server journey, desktop and 390 px: adult → child → adult through the selector on one state read. The child sees the project with the payment, share and create forms hidden; a payment form filled and submitted directly sends nothing. The adult's amount and approval start empty. The server's records are unchanged and the page wrote nothing.
+- A fixture case, desktop: five scope changes are each withheld until a new projection arrives (a signed-in member, a signed-in household, signed-in to example, another example household, example to signed-in); the example member choice is drawn for child and adult.
+- Each was broken on purpose. Without the correction, and with each of its three conditions removed in turn, the fixture case failed at that condition's own step. With both client-side adult checks removed, the journey failed on a payment request being sent; the server's records were still unchanged.
+
+**Hosted [run 42895401398](https://github.com/alejandro-publius/our-castle/actions/runs/42895401398) at `9eb7601`: six jobs passed, four failed.** Passed: both kit-planner jobs (9 and 9), the three release-browser jobs (17, 17, and 31 with three designed skips) and the phone village job (3, two designed skips). Failed:
+- **All three unit jobs, the same five cases** (725 results: 719 passed, 5 failed, 1 skipped). Four older migration inventories still expected schema 14 and 33 tables; they now name schema 17, the ten village tables and 43 tables, with every exact-list and unchanged-row assertion kept. The fifth expected the full `npm run demo -- --family-trip` command in the unknown-option help, which had been shortened; the help gives the full command again and the assertion is unchanged.
+- **The desktop village job, one case** (4 passed, 1 failed). After a step in the square, the check read the drawn position before the server's answer had returned. It now waits for the same expected position.
+
+**Local checks on the corrected source**, Node 26.0.0, under the transport guard with no refusal other than its self-checks: the source guard; the seven affected unit files, 66 results, all passed (JavaScript reference solver; the hosted jobs compile the Rust one); the village selection, desktop 7 passed and phone 4 passed with three designed skips. The whole unit and release-browser suites were not rerun locally. The hosted result for the corrected head belongs on the integration PR. Raw logs, the reproduction and the mutation runs are ignored under `test-results/village-handoff-20261110/`.
+
 ## November 10 source integration and CI correction
 
 The combined release retains the eight commits from PRs #70–#77, ending at `47dbf4e`. The review covers the Exchange's private-by-default directory and participant boundaries, schema-14 migration fixtures, illustrated parchment/header, licensed local music, focused library example, and woodland/clearing additions. The production source and assets are byte-identical to that reviewed head; this integration changes only the release workflow, one browser startup assertion and release documentation.

@@ -36,6 +36,10 @@ The branch includes neighborhood-bound funds, voluntary own-family commitments, 
 4. Review the integration PR's exact-head hosted checks and any raw failure evidence. Fix only concrete failures, preserving assertions and dependency pins. The workflow has three unit/Rust jobs, three release-browser jobs, two kit-planner jobs and two village jobs. Run only affected local checks; run required hosted checks for a changed head.
 5. Report exact head, changed files, actual checks and remaining limits. Keep the PR unmerged for final integration review; no saved-runtime activation belongs in this task. This bounded correction is the next stopping point, not an open-ended feature campaign.
 
+### Result of the first bounded task
+
+The suspected defect was reproduced with the real member selector and corrected in `src/app/village-fund.js` only for an example member choice inside one household; signed-in and cross-household scope changes still wait for their own state. Two regressions were added to the existing village jobs. The exact-head hosted run had four failed jobs with six failing cases: four stale schema inventories, one shortened help line and one check that read the square too early. All are corrected without weakening an assertion. [What was reproduced, changed and run](VALIDATION.md#member-selector-correction-and-exact-head-hosted-review).
+
 ## Remaining setup is not implemented proof
 
 The owner has no separate sandbox recipient or Solana devnet wallet yet. Guide their setup later; never ask for a recovery phrase or paste credentials into chat. Fake transports do not establish seller eligibility, cross-account capture/refund behavior, or an actual devnet transfer. A watched wallet neither enforces spending votes nor proves a utility bill was paid.

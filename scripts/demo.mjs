@@ -62,7 +62,7 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
   const options = process.argv.slice(2);
   const unknown = options.filter((option) => !['--family-trip','--village-exchange','--village-story','--village-fund'].includes(option));
   if (unknown.length) {
-    console.error(`Unknown option: ${unknown.join(' ')}\nUse "npm run demo" for the fresh demo, "--family-trip" for planning, "--village-exchange" for item sharing, "--village-story" for the earlier library opening, or "--village-fund" for the shared class trip.`);
+    console.error(`Unknown option: ${unknown.join(' ')}\nUse "npm run demo" for the fresh demo, "npm run demo -- --family-trip" for planning, "--village-exchange" for item sharing, "--village-story" for the earlier library opening, or "--village-fund" for the shared class trip.`);
     process.exit(2);
   }
   const familyTrip = options.includes('--family-trip');

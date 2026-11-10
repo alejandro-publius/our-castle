@@ -77,7 +77,8 @@ test('a reviewed shared contribution grows the original-model square; presence i
     await page.locator('#village-presence-join').click(); await expect(page.locator('#village-presence-status')).toHaveText('1 person here now');
     await page.getByRole('button', { name: 'Walk east', exact: true }).click();
     expect(moves.some(m => m.action === 'move' && m.x === 3 && m.z === 0)).toBe(true);
-    square = await page.evaluate(() => window.__ourCastle.scene().village); expect(square.presence[0].x).toBe(3);
+    // The server has the step; the square draws it when that answer returns, so wait for the drawn position.
+    await expect.poll(async () => (await page.evaluate(() => window.__ourCastle.scene().village)).presence[0]?.x).toBe(3);
     await page.locator('#village-back').click();
     await expect.poll(() => moves.filter(m => m.action === 'leave').length).toBe(1);
     const returned = await page.evaluate(() => window.__ourCastle.scene());
