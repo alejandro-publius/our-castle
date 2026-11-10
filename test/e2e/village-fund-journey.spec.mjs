@@ -122,3 +122,85 @@ test('five families contribute to the shared class trip, visit its square and ke
       writes, errors, apiFailures, outside, oneRenderer: true }, null, 2)}\n`);
   } finally { await context.close(); await demo.close(); }
 });
+
+// The example's member selector redraws the page from the state it already holds: no new state arrives. The same
+// actual server and page as above, with the real selector.
+test('the example member selector keeps the shared fund in reach for adult, child and adult again; only an adult can approve', { tag: '@village-fund' }, async ({ browser }, info) => {
+  test.setTimeout(120_000);
+  const demo = await startDemo({ villageFund: true });
+  const { viewport, isMobile, hasTouch, deviceScaleFactor } = info.project.use;
+  const context = await browser.newContext({ viewport, isMobile, hasTouch, deviceScaleFactor, reducedMotion: 'reduce' });
+  const outside = [], errors = [], writes = [], stateReads = [];
+  await context.route('**/*', route => {
+    const request = route.request(), url = new URL(request.url());
+    if (url.origin !== demo.url) { outside.push(request.url()); return route.abort(); }
+    if (!['GET', 'HEAD'].includes(request.method())) writes.push({ method: request.method(), path: url.pathname });
+    if (url.pathname === '/api/state') stateReads.push(request.method());
+    return route.continue();
+  });
+  const page = await context.newPage();
+  page.on('pageerror', e => errors.push(e.message));
+  const dialog = page.locator('#village-fund-dialog'), opener = page.locator('#open-village'), member = page.locator('#persona');
+  const amount = page.locator('#village-amount'), approval = page.locator('#village-approve'), contribute = page.locator('#village-contribute');
+  const closeFund = () => page.getByRole('button', { name: 'Close village fund', exact: true }).click();
+  // The page's own state object, held from before the first change: every check below is made against that one projection.
+  const unchanged = async () => ({ sameProjection: await page.evaluate(() => window.__ourCastle.state.village === window.__villageDrawn), stateReads: stateReads.length });
+  try {
+    await closeDeedsWhenTheyAppear(page);
+    await page.goto(demo.url);
+    await expect(page.locator('body')).toHaveAttribute('data-ready', 'true', { timeout: 30_000 });
+    await expect(dialog).toBeVisible();
+    await closeFund();
+    await expect(dialog).toBeHidden();
+    const people = await page.evaluate(() => window.__ourCastle.state.members.map(({ id, role }) => ({ id, role })));
+    const adult = people.find(m => m.role === 'adult'), child = people.find(m => m.role === 'child');
+    expect(adult).toBeTruthy(); expect(child).toBeTruthy();
+    await expect(member).toHaveValue(adult.id);
+    expect(await opener.isVisible()).toBe(true);
+    await page.evaluate(() => { window.__villageDrawn = window.__ourCastle.state.village; });
+    expect(stateReads).toHaveLength(1);
+
+    // Adult to child. The selector's own redraw has finished when the choice returns, so this is read once, not awaited.
+    await member.selectOption(child.id);
+    expect(await opener.isVisible()).toBe(true);
+    expect(await unchanged()).toEqual({ sameProjection: true, stateReads: 1 });
+    await opener.click();
+    await expect(page.locator('#village-project-title')).toHaveText('Class trip together');
+    await expect(page.locator('.village-progress-copy')).toHaveText('$200.00 of $400.00 recorded');
+    await expect(page.locator('#village-payment-form')).toBeHidden();
+    await expect(contribute).toBeDisabled();
+    await expect(page.locator('#village-share-form')).toBeHidden();
+    await expect(page.locator('#village-create')).toBeHidden();
+    // A child gets no approval even past the hidden form: fill and submit it directly.
+    await page.evaluate(() => {
+      const form = document.getElementById('village-payment-form'), value = document.getElementById('village-amount'), ok = document.getElementById('village-approve');
+      value.value = '40.00'; value.dispatchEvent(new Event('input', { bubbles: true }));
+      ok.checked = true; ok.dispatchEvent(new Event('change', { bubbles: true }));
+      form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    });
+    await expect(contribute).toBeDisabled();
+    await closeFund();
+
+    // Child to adult. What the child typed and ticked is not carried over; the adult approves their own amount.
+    await member.selectOption(adult.id);
+    expect(await opener.isVisible()).toBe(true);
+    expect(await unchanged()).toEqual({ sameProjection: true, stateReads: 1 });
+    await opener.click();
+    await expect(page.locator('#village-payment-form')).toBeVisible();
+    await expect(amount).toHaveValue('');
+    await expect(approval).not.toBeChecked();
+    await expect(contribute).toBeDisabled();
+    await amount.fill('40.00');
+    await expect(contribute).toBeDisabled();
+    await approval.check();
+    await expect(contribute).toBeEnabled();
+    await closeFund();
+
+    // Nothing was written by any of it, the child's forced submit included.
+    const kept = await page.evaluate(async () => { const s = await (await fetch('/api/state')).json(), f = s.village.funds.find(x => x.id === s.village.selectedFundId); return { receipts: f.receipts.length, netMinor: f.progress.netMinor, privateCents: s.progress.progressCents }; });
+    expect(kept).toEqual({ receipts: 4, netMinor: 20000, privateCents: 6000 });
+    expect(writes).toEqual([]);
+    expect(errors).toEqual([]);
+    expect(outside).toEqual([]);
+  } finally { await context.close(); await demo.close(); }
+});

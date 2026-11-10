@@ -34,7 +34,7 @@ const day = value => /^\d{4}-\d{2}-\d{2}$/.test(value ?? '') ? value : 'No date 
 /** One paper for shared funds. It reads server projections; it never guesses payment or presence outcomes. */
 export function createVillageFund({ getState, actor, applyState, getScene, onSquare = () => {}, onFundView = () => {} }) {
   const opener = $('open-village'), dialog = $('village-fund-dialog'), controls = $('village-square-controls');
-  let village = null, stateVillage = null, review = null, recoveryFundId = null, selected = null, pane = 'project', scopeKey = null, openedBy = null;
+  let village = null, stateVillage = null, review = null, recoveryFundId = null, selected = null, pane = 'project', scopeKey = null, scopeHousehold = null, scopeSignedIn = false, openedBy = null;
   let busy = false, square = false, destroyed = false, generation = 0, polling = false, lastRead = 0, lastPresenceRead = 0;
   let presence = { members: [], selfId: null }, joined = false, presenceEpoch = 0, lastHeartbeat = 0, paymentKey = null, paymentRequest = null, pendingPayment = null, draft = null;
   const watched = new Set(); let lastVaultRead = 0;
@@ -200,10 +200,14 @@ export function createVillageFund({ getState, actor, applyState, getScene, onSqu
   }
   function render() {
     if (destroyed) return;
-    const nextScope = scope();
-    if (scopeKey !== null && nextScope !== scopeKey) { generation++; presenceEpoch++; paymentReadEpoch++; close(); leaveSquare({ notify: false }); selected = null; village = null; review = null; recoveryFundId = null; assistantGrant = null; watched.clear(); ownPaymentsKey = null; paymentRequest = null; pendingPayment = null; paymentFollowup.replaceChildren(); amount.value = ''; approved.checked = false; draft = null; draftResult.replaceChildren(); answer.textContent = ''; }
-    scopeKey = nextScope;
-    if (stateVillage !== getState()?.village) { stateVillage = getState()?.village; village = stateVillage; generation++; }
+    const state = getState(), nextScope = scope(), changed = scopeKey !== null && nextScope !== scopeKey;
+    if (changed) { generation++; presenceEpoch++; paymentReadEpoch++; close(); leaveSquare({ notify: false }); selected = null; village = null; review = null; recoveryFundId = null; assistantGrant = null; watched.clear(); ownPaymentsKey = null; paymentRequest = null; pendingPayment = null; paymentFollowup.replaceChildren(); amount.value = ''; approved.checked = false; draft = null; draftResult.replaceChildren(); answer.textContent = ''; }
+    // An example member choice is a local selector over one household's own projection, which names no member, and it
+    // redraws without a new state: the state already held is the newly chosen member's too. Any other scope change
+    // (a signed-in member or another household) shows nothing until that scope's own new state arrives.
+    const exampleMember = changed && !state?.access && !scopeSignedIn && state?.household?.id === scopeHousehold;
+    scopeKey = nextScope; scopeHousehold = state?.household?.id; scopeSignedIn = Boolean(state?.access);
+    if (stateVillage !== state?.village || exampleMember) { stateVillage = state?.village; village = stateVillage; generation++; }
     const available = Boolean(village?.available); opener.hidden = !available;
     if (!available) { close(); leaveSquare(); return; }
     const choices = [...(village.funds ?? [])];

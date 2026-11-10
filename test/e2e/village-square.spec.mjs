@@ -251,3 +251,60 @@ test('withdrawing a voluntary share allows zero; a delayed old-member grant cann
     await expect(page.locator('[name=assistant-token]')).toHaveValue(''); expect(errors).toEqual([]);
   } finally { releaseRead?.(); await context.close(); await demo.close(); }
 });
+
+// The example's member choice redraws the fund from the state already held (see the real-selector journey). That
+// allowance is for one example household only: every other scope change shows nothing until its own state arrives.
+test('a signed-in scope change waits for its own fund projection; only an example member choice in one household redraws the one already held', async ({ browser }, info) => {
+  test.skip(info.project.name !== 'desktop', 'Identity lifecycle of the fund controller; the same code on both layouts.');
+  const demo = await startDemo({ villageStory: true }), context = await browser.newContext(), page = await context.newPage();
+  const errors = [], writes = []; page.on('pageerror', error => errors.push(error.message));
+  const villageOf = name => ({ available: true, neighborhood: { id: `circle_${name}`, name: `Circle ${name}` }, members: [{ familyReference: `FAM_${name}`, alias: `Family ${name}`, mine: true }], selectedFundId: `fund_${name}`,
+    funds: [{ id: `fund_${name}`, title: `Project ${name}`, rail: 'simulated', decimals: 2, targetMinor: 10000, revision: 1, status: 'open', progress: { netMinor: 0, remainingMinor: 10000, basisPoints: 0, stage: 0 }, shares: [], receipts: [] }] });
+  const fixture = `<!doctype html><meta charset="utf-8"><title>Fund scope fixture</title><button id="open-village">Village fund</button><dialog id="village-fund-dialog"></dialog><section id="village-square-controls" hidden></section><script type="module">
+    import { createVillageFund } from '/src/app/village-fund.js';
+    let member={id:'adult-a',role:'adult'};const state={household:{id:'house-a'},access:{me:{memberId:'adult-a',role:'adult'}},village:${JSON.stringify(villageOf('A'))}};
+    window.controller=createVillageFund({getState:()=>state,actor:()=>member,applyState:()=>{},getScene:()=>null});window.controller.render();
+    // Each change redraws at once, as the page does. Only newState brings a new projection object.
+    window.memberIs=(id,role='adult')=>{member={id,role};if(state.access)state.access.me.memberId=id;window.controller.render()};
+    window.householdIs=id=>{state.household={id};window.controller.render()};
+    window.signOutToExample=id=>{delete state.access;member={id,role:'adult'};window.controller.render()};
+    window.signIn=id=>{member={id,role:'adult'};state.access={me:{memberId:id,role:'adult'}};window.controller.render()};
+    window.newState=village=>{state.village=village;window.controller.render()};
+  </script>`;
+  let served = villageOf('A');
+  await context.route('**/*', async route => {
+    const request = route.request(), url = new URL(request.url());
+    if (url.origin !== demo.url) { errors.push(`Unexpected outside request: ${url.origin}`); return route.abort(); }
+    if (url.pathname === '/__scope_fixture') return route.fulfill({ contentType: 'text/html', body: fixture });
+    if (request.method() !== 'GET') { writes.push(url.pathname); return route.fulfill({ status: 400, contentType: 'application/json', body: '{"error":{"message":"Unexpected write in UI fixture"}}' }); }
+    if (url.pathname === '/api/village') return route.fulfill({ contentType: 'application/json', body: JSON.stringify({ village: served }) });
+    return route.continue();
+  });
+  const opener = page.locator('#open-village'), dialog = page.locator('#village-fund-dialog'), title = page.locator('#village-project-title');
+  const shown = async name => { await expect(opener).toBeVisible(); await opener.click(); await expect(title).toHaveText(`Project ${name}`); await expect(page.locator('.exchange-eyebrow')).toHaveText(`Circle ${name}`); };
+  const withheld = async () => { expect(await opener.isHidden()).toBe(true); expect(await dialog.isHidden()).toBe(true); expect(await page.evaluate(() => window.controller.debug().selected)).toBe(null); };
+  const arrives = async name => { served = villageOf(name); await page.evaluate(village => window.newState(village), served); };
+  try {
+    await page.goto(`${demo.url}/__scope_fixture`); await shown('A');
+    // Signed in: another member, then another household, each with the earlier household's projection still in the state.
+    await page.evaluate(() => window.memberIs('adult-b')); await withheld();
+    await arrives('B'); await shown('B');
+    await page.evaluate(() => window.householdIs('house-c')); await withheld();
+    await arrives('C'); await shown('C');
+    // Leaving a signed-in scope for an example one is not an example member choice either.
+    await page.evaluate(() => window.signOutToExample('example-adult')); await withheld();
+    await arrives('D'); await shown('D');
+    // The example: a member choice in the same household redraws the projection already held, for a child too...
+    await page.evaluate(() => window.memberIs('example-child', 'child')); expect(await dialog.isHidden()).toBe(true); await shown('D');
+    await expect(page.locator('#village-payment-form')).toBeHidden(); await expect(page.locator('#village-contribute')).toBeDisabled();
+    await page.evaluate(() => window.memberIs('example-adult')); expect(await dialog.isHidden()).toBe(true); await shown('D');
+    await expect(page.locator('#village-payment-form')).toBeVisible();
+    // ...but another example household does not.
+    await page.evaluate(() => window.householdIs('house-e')); await withheld();
+    await arrives('E'); await shown('E');
+    // Nor does signing in from an example scope: the state now names a signed-in member.
+    await page.evaluate(() => window.signIn('adult-f')); await withheld();
+    await arrives('F'); await shown('F');
+    expect(writes).toEqual([]); expect(errors).toEqual([]);
+  } finally { await context.close(); await demo.close(); }
+});
