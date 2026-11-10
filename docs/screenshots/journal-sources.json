@@ -1,0 +1,44 @@
+{
+  "base": "3a973fed73857b932ae37dafd461497b61802d5a",
+  "runner": "startDemo({familyTrip:true}) with fixed November 8 clock; new in-memory data, empty config; Chromium, reduced motion; click real chapter tabs",
+  "art": "OpenAI generated crest and castle; local lossless WebP derivatives",
+  "raw": "test-results/journal-brand-20261109/visual-report.json",
+  "screenshots": {
+    "journal-desktop-house.png": {
+      "sha256": "2250eefe73382448f5a346738c7a966fcbabbaed41d1331cc2536d7fe60c670f",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      }
+    },
+    "journal-desktop-plan.png": {
+      "sha256": "2023b445d1bff4fae51bda51d3baacb6c5c907f91329994f0d9bad1c132f6ec9",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      }
+    },
+    "journal-phone-plan.png": {
+      "sha256": "81b2e1e678e1111d51ec3d335e7687a59be429313e09dc340051a21b015315bb",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      }
+    },
+    "journal-phone-give.png": {
+      "sha256": "62c553f905ae25dbbab4e23e531c65ec805be721c99106a77a685e8f27f4ee9a",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      }
+    }
+  },
+  "limits": "Invented family/catalogue and simulated payments; emulated phone, no human usability test or provider call",
+  "sourceHashes": {
+    "app.css": "e5caae87044165c5e6e13f590767e4ad2a2d6c23c7fec6d805a9931495320518",
+    "index.html": "630ee77612690639eae19af8ce829095113ee2ef6ffdbe63a152f0b165cc62ba",
+    "src/app/main.js": "f1b14ef0e0aba4bbe05013abed8b6406bba0fd7a6371602895a533e45d1c002a",
+    "assets/brand/our-castle/crest.webp": "503dab2ca9b82ad8519677c3be87a6813472bd7f90c6b8292300c018f9754434",
+    "assets/brand/our-castle/castle.webp": "94d8dfaac52668ee92362cec777a8e0296621ba3d04eff7e51eca923455c2cb0"
+  }
+}

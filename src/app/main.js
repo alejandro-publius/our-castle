@@ -627,7 +627,7 @@ function openNextStep(e) {
 // ---------- header, quest, board ----------
 function renderHeader() {
   const { household, modes, members } = state;
-  $('#brand-crest').innerHTML = crestSvg(household.crest, { title: `${household.name} crest` });
+  $('#house-crest').innerHTML = crestSvg(household.crest, { title: `${household.name} crest` });
   $('#house-eyebrow').textContent = household.setupComplete
     ? `${household.name}${state.example ? ' · example family' : ''}`
     : 'Your household';

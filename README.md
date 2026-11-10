@@ -4,7 +4,9 @@
 
 Decide what the family can afford together, compare complete kits and adjust the plan when an expense changes. A living pixel woodland turns shared progress into new places to explore. Keep the village, open the Manor, cross the rivers to the Keep, and reach the Royal Citadel, Rosewind Palace and two storybook towers. Nine districts, a campsite that grows with the shared goal, short deed cards, family avatars, roaming guests and changing light sit beside one compact household journal.
 
-![The connected woodland realm and mountain border](docs/screenshots/mountain-border-day.png)
+![Our Castle: the woodland realm beside the redesigned household journal](docs/screenshots/journal-desktop-house.png)
+
+The illustrated journal has four chapters—House, Plan, Contribute and Ledger—with an original pixel crest and castle illustration. Family heraldry stays personal. [See the journal and brand design](docs/JOURNAL-DESIGN.md).
 
 The source is **public on GitHub**. This source release includes the reviewed work of PRs #40–#58:
 - payment recovery and safety fixes;

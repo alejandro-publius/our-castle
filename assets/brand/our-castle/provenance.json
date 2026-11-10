@@ -1,0 +1,24 @@
+{
+  "generatedAtUTC": "2026-11-10",
+  "tool": "ChatGPT OpenAI image generator",
+  "ownerRequest": "A total journal design update and better generated brand assets for the crest and Our Castle",
+  "referenceImages": [],
+  "assets": {
+    "crest": {
+      "originalSha256": "d5f39285198db6586b3bb240c0358593bb136d8c110966f7ae39458c15b421cb",
+      "originalBytes": 1126603,
+      "webpSha256": "503dab2ca9b82ad8519677c3be87a6813472bd7f90c6b8292300c018f9754434",
+      "webpBytes": 697346,
+      "conversion": "cwebp -lossless; no crop, resize or artwork modification"
+    },
+    "castle": {
+      "originalSha256": "06dfbf521be6d442f5245d180af073b06d0e82e5e6ae92020f31c37724e74350",
+      "originalBytes": 1887977,
+      "webpSha256": "94d8dfaac52668ee92362cec777a8e0296621ba3d04eff7e51eca923455c2cb0",
+      "webpBytes": 1110258,
+      "conversion": "cwebp -lossless; no crop, resize or artwork modification"
+    }
+  },
+  "role": "Decorative product identity, independent of saved household heraldry and earned map buildings",
+  "originals": "Original PNGs preserved in local ignored journal-brand evidence. Lossless WebP conversion preserves visible pixels and alpha without resizing."
+}

@@ -1,5 +1,19 @@
 # Validation
 
+## Illustrated journal and generated identity — November 9 Pacific / November 10 UTC, 2026
+
+The owner requested a journal redesign and original ChatGPT-generated brand assets. [Design and actual screenshots](JOURNAL-DESIGN.md) record the reference lock: a forest cover, four chapter tabs, lighter pages, explicit planning sections, and a crest/castle identity separate from saved family heraldry. Original world art, licences, renderer and palette remain unchanged.
+
+- Existing family-trip and planning-edit browser cases: **10 passed** across desktop and 390 px phone. The complete-kit trial, repair, explicit simulated contribution and delayed-response protections still work.
+- New journal navigation case: **2 passed**, desktop and phone. It checks all four tabs, keyboard selection, closing/reopening with an unsaved goal name, loaded local artwork, and unchanged state with zero writes or outside requests. Its first version incorrectly focused an inactive tab programmatically while treating it as selected; correcting the test to select House before ArrowRight fixed that harness assumption. No production navigation change was needed.
+- Visual inspection: all four chapters at **1440×1000, 390×844 and 320×720**; twelve captures, no horizontal page overflow, page errors or outside requests. Phone sizes are emulated Chromium. The new PNG source assets were converted losslessly to local WebP with provenance hashes; no payment/model request generated app evidence.
+- The first hosted run exposed a test-fixture limitation: the kit-list mini DOM could not parse the new decorative SVGs (camel-case `viewBox` and self-closing paths). Its narrow parser now preserves those icons and their following form elements; malformed nesting still fails. The existing kit-page cases and two parser regressions pass **21/21** locally, with no application behavior change.
+- The phone release check also exposed an old music-layout assertion requiring Sound to sit to the right of the brand. The new phone design puts controls on the row below it. The check now requires that vertical separation on narrow phones while retaining the desktop horizontal separation, viewport bounds, 44px target, keyboard, opt-in, loop, reload and retry checks. All **8 music cases passed** across desktop and phone (1.8 minutes); no audio implementation changed.
+- Original-art/source guard: 47 copied art/runtime files, the 90-colour palette, renderer wiring and JavaScript syntax pass. The changed HTML has unique IDs and balanced nesting.
+
+Checks use disposable in-memory example data, no .env and local fake providers. The reviewed Node loopback preload and browser origin route restrict these checks; this is not an OS-wide network isolation or production-readiness claim. Owner apps, records and credentials are untouched. Hosted results are recorded on the pull request; this note describes local evidence only.
+
+
 ## Planning edits during slow replies — November 10, 2026 (UTC)
 
 Four desktop regressions failed on `03fc881` before changing the app:
