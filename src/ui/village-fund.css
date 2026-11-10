@@ -36,6 +36,8 @@
 .village-status { min-height:1em; font-size:15px; line-height:1.4; color:#654219; }
 .village-address { display:block; overflow-wrap:anywhere; user-select:all; font-size:14px; padding:12px; border:1px solid #aa8750; background:#f8e9c56e; }
 .village-payment-followup { display:flex; flex-wrap:wrap; gap:12px; margin-bottom:12px; align-items:center; }
+.village-payment-followup[hidden] { display:none; }
+.village-payment-followup h4,.village-payment-followup p { flex-basis:100%; margin:4px 0; overflow-wrap:anywhere; }
 .village-paypal-link { font-weight:700; }
 .village-qr { display:flex; align-items:center; gap:20px; margin-top:14px; }
 .village-qr a { overflow-wrap:anywhere; font-size:14px; }
@@ -52,6 +54,7 @@
 .village-walk[hidden] { display:none; }
 body[data-village-square='true'] #realm-markers,body[data-village-square='true'] #district-menu,body[data-village-square='true'] #realm-focus-status,body[data-village-square='true'] #view-deed,body[data-village-square='true'] #kit-preview { display:none; }
 body[data-village-square='true'] .world-hud > button[data-view='overview'] { display:none; }
+body[data-village-square='true'] .quest #next-step { display:none; }
 @media(max-width:640px) {
   .village-window { width:calc(100vw - 16px); }
   .village-paper { padding:8px 8px 20px; }

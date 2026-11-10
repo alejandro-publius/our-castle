@@ -69,6 +69,8 @@ test('a reviewed shared contribution grows the original-model square; presence i
     await expect(page.locator('#village-fund-dialog')).not.toBeVisible(); await expect(page.locator('#world canvas')).toHaveCount(1);
     let square = await page.evaluate(() => window.__ourCastle.scene().village);
     expect(square.active).toBe(true); expect(square.homes).toHaveLength(6); expect(square.stage).toBe(2); expect(square.presence).toHaveLength(0);
+    await expect(page.locator('#goal-name')).toHaveText('Class trip'); await expect(page.locator('#progress-amount')).toHaveText('$240.00');
+    await expect(page.locator('#next-step')).toBeHidden();
     expect(moves).toHaveLength(0);
     const evidence = 'test-results/village-world'; mkdirSync(evidence, { recursive: true });
     await page.screenshot({ path: `${evidence}/${info.project.name}-square.png`, fullPage: false });
@@ -81,6 +83,7 @@ test('a reviewed shared contribution grows the original-model square; presence i
     const returned = await page.evaluate(() => window.__ourCastle.scene());
     expect(returned.village.active).toBe(false); expect(returned.tier).toBe(sceneBefore.tier); expect(returned.position).toBe(sceneBefore.position);
     expect(returned.view.focus).toBe(sceneBefore.view.focus);
+    await expect(page.locator('#goal-name')).toHaveText('Village library'); await expect(page.locator('#progress-amount')).toHaveText('$150.00');
     // A slow join cannot restore an avatar/heartbeat after the viewer leaves the square.
     let finishJoin; holdJoin = new Promise(resolve => { finishJoin = resolve; });
     await page.locator('#open-village').click(); await page.locator('#village-visit').click();
@@ -96,5 +99,106 @@ test('a reviewed shared contribution grows the original-model square; presence i
     await page.screenshot({ path: `${evidence}/${info.project.name}-paper.png`, fullPage: false });
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     expect(payments).toHaveLength(1); expect(errors).toEqual([]); expect(outside).toEqual([]);
+  } finally { await context.close(); await demo.close(); }
+});
+
+test('local assistant access is explicitly granted, copied and revoked without persisting its token', async ({ browser }, info) => {
+  test.skip(info.project.name !== 'desktop', 'This token lifecycle uses the same native controls on both layouts.');
+  const demo = await startDemo({ villageStory: true });
+  const context = await browser.newContext(), page = await context.newPage(), writes = [], outside = [];
+  const fund = { id: 'fund_local', title: 'Local test project', rail: 'simulated', decimals: 2, targetMinor: 10000, revision: 1, status: 'open', progress: { netMinor: 0, remainingMinor: 10000, basisPoints: 0, stage: 0 }, shares: [], receipts: [] };
+  const village = { available: true, neighborhood: { id: 'test_circle', name: 'Invented families' }, funds: [fund], members: [], selectedFundId: fund.id, capabilities: { mcp: true } };
+  const fixture = `<!doctype html><meta charset="utf-8"><title>Local assistant UI fixture</title><button id="open-village">Village fund</button><dialog id="village-fund-dialog"></dialog><section id="village-square-controls" hidden></section><script type="module">
+    import { createVillageFund } from '/src/app/village-fund.js';
+    const state={household:{id:'fixture-house'},access:{me:{memberId:'fixture-adult',role:'adult'}},village:${JSON.stringify(village)}};
+    window.controller=createVillageFund({getState:()=>state,actor:()=>({id:'fixture-adult',role:'adult'}),applyState:()=>{},getScene:()=>null});window.controller.render();
+    Object.defineProperty(navigator,'clipboard',{configurable:true,value:{writeText:async text=>{window.copiedConfig=JSON.parse(text)}}});
+  </script>`;
+  await context.route('**/*', async route => {
+    const request = route.request(), url = new URL(request.url());
+    if (url.origin !== demo.url) { outside.push(url.href); return route.abort(); }
+    const json = body => route.fulfill({ contentType: 'application/json', body: JSON.stringify(body) });
+    if (url.pathname === '/__assistant_fixture') return route.fulfill({ contentType: 'text/html', body: fixture });
+    if (url.pathname === '/api/village') return json({ village });
+    if (url.pathname.startsWith('/api/mcp/')) {
+      writes.push({ path: url.pathname, body: request.postDataJSON() });
+      if (url.pathname.endsWith('/revoke')) return json({ revoked: true });
+      return json({ grantId: 'grant_fixture', fundId: fund.id, token: 'ocm_fixture_only_not_a_real_token', expiresAt: '2026-11-10T22:15:00Z' });
+    }
+    return route.continue();
+  });
+  try {
+    await page.goto(`${demo.url}/__assistant_fixture`); await page.locator('#open-village').click(); await page.locator('[data-village-tab=records]').click();
+    await page.locator('#village-assistant summary').click(); expect(writes).toHaveLength(0);
+    await page.getByRole('button', { name: 'Create a temporary connection' }).click();
+    await expect(page.locator('[name=assistant-token]')).toHaveValue('ocm_fixture_only_not_a_real_token');
+    await page.getByRole('button', { name: 'Copy local assistant configuration' }).click();
+    const copied = await page.evaluate(() => window.copiedConfig.mcpServers['our-castle']);
+    expect(copied.command).toBe('node'); expect(copied.env.OUR_CASTLE_MCP_URL).toBe(demo.url); expect(copied.args[0]).toBe('/absolute/path/to/our-castle/scripts/mcp.mjs');
+    expect(await page.evaluate(() => [localStorage.length, sessionStorage.length])).toEqual([0, 0]);
+    await page.getByRole('button', { name: 'Close village fund' }).click(); await expect(page.locator('[name=assistant-token]')).toHaveValue('');
+    await page.locator('#open-village').click(); await expect(page.getByRole('button', { name: 'Copy local assistant configuration' })).toBeHidden();
+    await page.getByRole('button', { name: 'Revoke this connection' }).click();
+    await expect(page.getByRole('button', { name: 'Create a temporary connection' })).toBeEnabled();
+    expect(writes.map(w => w.path)).toEqual(['/api/mcp/grants', '/api/mcp/grants/revoke']); expect(writes[1].body.grantId).toBe('grant_fixture'); expect(outside).toEqual([]);
+  } finally { await context.close(); await demo.close(); }
+});
+
+test('a published outsider review restores an exact unfinished checkout without exposing private families or creating a duplicate', async ({ browser }, info) => {
+  test.setTimeout(180000);
+  const demo = await startDemo({ villageStory: true });
+  const { viewport, isMobile, hasTouch, deviceScaleFactor } = info.project.use;
+  const context = await browser.newContext({ viewport, isMobile, hasTouch, deviceScaleFactor, reducedMotion: 'reduce' });
+  const page = await context.newPage(), errors = [], writes = [], outsideRequests = [];
+  page.on('pageerror', error => errors.push(error.message));
+  const village = { available: true, neighborhood: null, funds: [], members: [], selectedFundId: null, capabilities: { paypal: true, devnet: false } };
+  const fund = { id: 'fund_published', title: 'School trip', rail: 'paypal-sandbox', currency: 'USD', decimals: 2, targetMinor: 40000,
+    deadline: '2026-12-12', revision: 3, status: 'open', canManage: false, published: true,
+    organizer: { alias: 'Willow family' }, recipient: { kind: 'paypal', merchantId: 'MOCKRECIPIENT1', revision: 1 }, shares: [], receipts: [],
+    progress: { netMinor: 20000, remainingMinor: 20000, basisPoints: 5000, stage: 1 } };
+  const order = { id: 'vpay_restore_1', fundId: fund.id, source: 'paypal-sandbox', amountMinor: 4000, currency: 'USD', recipient: fund.recipient,
+    revision: 2, status: 'creating', providerOrderId: null, approveUrl: 'https://untrusted.invalid/approve', createdAt: '2026-11-10T20:00:00Z' };
+  let published = true, checks = 0;
+  await context.route('**/*', async route => {
+    const request = route.request(), url = new URL(request.url());
+    if (url.origin !== demo.url) { outsideRequests.push(url.href); return route.abort(); }
+    const json = (body, status = 200) => route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(body) });
+    if (url.pathname === '/api/state') { const response = await route.fetch(), state = await response.json(); state.village = village; return json(state); }
+    if (url.pathname === '/api/village') return json({ village });
+    if (url.pathname === `/api/village/review/${fund.id}`) return published ? json({ fund, viewerMember: false }) : json({ error: { message: 'This project is not available.', code: 'fund_not_found' } }, 404);
+    if (url.pathname === '/api/village/payments' && request.method() === 'GET') return json({ payments: [order] });
+    if (url.pathname.startsWith('/api/village/') && request.method() === 'POST') {
+      const body = request.postDataJSON(); writes.push({ path: url.pathname, body });
+      if (url.pathname === '/api/village/payments/resume') { expect(body.orderId).toBe(order.id); order.status = 'created'; order.providerOrderId = 'MOCK_ORDER_1'; order.approveUrl = 'https://www.sandbox.paypal.com/checkoutnow?token=MOCK_ORDER_1'; return json({ payment: { contribution: order }, village }); }
+      if (url.pathname === '/api/village/payments/capture') { expect(body.orderId).toBe(order.id); checks++; order.status = checks === 1 ? 'pending' : 'completed'; if (checks > 1) fund.progress = { netMinor: 24000, remainingMinor: 16000, basisPoints: 6000, stage: 2 }; return json({ payment: { contribution: order }, village }); }
+      return json({ error: { message: 'Unexpected write in UI fixture' } }, 400);
+    }
+    return route.continue();
+  });
+  try {
+    await page.goto(`${demo.url}/?villageFund=${fund.id}`);
+    await expect(page.locator('#village-project-title')).toHaveText('School trip');
+    await expect(page.locator('.exchange-eyebrow').filter({ hasText: 'Published project' })).toContainText('Willow family');
+    await expect(page.locator('[data-village-tab=families]')).toBeHidden(); await expect(page.locator('[data-village-tab=records]')).toBeHidden();
+    await expect(page.locator('#village-visit')).toBeHidden(); await expect(page.locator('.village-family-list > li')).toHaveCount(0);
+    await expect(page.locator('.village-payment-followup')).toContainText('$40.00');
+    await expect(page.locator('.village-payment-followup')).toContainText(order.id);
+    await expect(page.locator('.village-paypal-link')).toHaveCount(0); // an untrusted supplied approval link is never exposed
+    await page.locator('#village-amount').fill('80'); await page.locator('#village-approve').check(); await expect(page.locator('#village-contribute')).toBeDisabled();
+    expect(writes).toHaveLength(0);
+    await page.locator('#village-resume-payment').click();
+    await expect(page.locator('.village-paypal-link')).toHaveAttribute('href', order.approveUrl);
+    await page.locator('#village-check-payment').click(); await expect(page.locator('.village-payment-followup')).toContainText('pending');
+    await expect(page.locator('#village-contribute')).toBeDisabled();
+    await page.locator('#village-check-payment').click(); await expect(page.locator('.village-payment-followup')).toBeHidden();
+    await expect(page.locator('#village-project')).toContainText('$240.00 of $400.00 recorded');
+    expect(writes.filter(w => w.path === '/api/village/payments')).toHaveLength(0);
+    // Withdrawing a review link removes public project information, but not this adult's exact pending recovery.
+    published = false; order.status = 'pending'; await page.reload();
+    await expect(page.locator('#village-empty')).toContainText('no longer available');
+    await expect(page.locator('#village-project')).toBeHidden();
+    await expect(page.locator('#village-check-payment')).toBeVisible();
+    await expect(page.locator('.village-payment-followup')).toContainText(order.id);
+    expect(errors).toEqual([]); expect(outsideRequests).toEqual([]);
   } finally { await context.close(); await demo.close(); }
 });

@@ -24,7 +24,7 @@ import { createFamilyChoices } from './family-choices.js';
 import { createKitList } from './kit-list.js';
 import { createKitPlan } from './kit-plan.js';
 import { createVillageExchange } from './village-exchange.js';
-import { createVillageFund } from './village-fund.js';
+import { createVillageFund, villageMoney, villageRailLabel } from './village-fund.js';
 import { scheduleLines } from '../core/family-choices.js';
 import { needSummary } from '../core/family-fit.js';
 import { catalogueOf } from '../core/catalogue.js';
@@ -340,8 +340,8 @@ async function boot() {
     else scene?.focusDistrict(homeDistrict(state.board.builtTier).id);
     const villageParams = new URLSearchParams(location.search);
     const requestedVillage = villageParams.get('villageFund') ?? villageParams.get('village');
-    if (requestedVillage) villageFund?.select(requestedVillage);
-    if (state.example?.id === 'village-fund' || requestedVillage) villageFund?.open();
+    if (requestedVillage) await villageFund?.openReview(requestedVillage);
+    else if (state.example?.id === 'village-fund') villageFund?.open();
     if (family.on) startFamilyLive();
     // Moss, the castle keeper: an optional authored tour, offered only while payments are simulated. It may only show
     // a journal tab; it never presses a control, writes a record or saves a preference.
@@ -682,7 +682,19 @@ function renderActiveMember() {
   if (index >= 0) portrait.src = avatarImage(memberAvatar(state.members[index], index).id);
 }
 
-function renderQuest() {
+function renderQuest(shared = villageFund?.activeFund()) {
+  if (shared) {
+    const net = shared.progress?.netMinor ?? 0, scale = 10 ** shared.decimals;
+    $('#goal-name').textContent = shared.title; $('#goal-name').title = shared.title;
+    $('#progress-amount').textContent = villageMoney(net, shared); $('#target-amount').textContent = villageMoney(shared.targetMinor, shared);
+    $('#meter-fill').style.width = `${Math.min(100, (shared.progress?.basisPoints ?? 0) / 100)}%`;
+    $('#meter').setAttribute('aria-valuemax', String(shared.targetMinor / scale)); $('#meter').setAttribute('aria-valuenow', String(Math.min(net, shared.targetMinor) / scale));
+    $('#meter').setAttribute('aria-valuetext', `${villageMoney(net, shared)} of ${villageMoney(shared.targetMinor, shared)} for the shared project`);
+    $('#meter-ticks').replaceChildren();
+    $('#quest-next').textContent = `${villageMoney(shared.progress?.remainingMinor ?? 0, shared)} to go · ${villageRailLabel(shared.rail)}`;
+    $('#progress-breakdown').textContent = 'Shared project progress comes from recorded contributions minus refunds. Family promises do not count as payments.';
+    return;
+  }
   const { goal, progress, board } = state;
   $('#goal-name').textContent = goal.name;
   $('#goal-name').title = goal.name;
@@ -2247,7 +2259,7 @@ function bindEvents() {
   villageExchange = createVillageExchange({ getState: () => state, actor: persona, applyState,
     onCompare: () => { selectTab('plan'); setJournalOpen(true); $('#kit-list').open = true; $('#kit-plan-compare').scrollIntoView({ block: 'center' }); $('#kit-plan-compare').focus(); } });
   villageFund = createVillageFund({ getState: () => state, actor: persona, applyState, getScene: () => scene,
-    onSquare: (shown) => { if (shown) { closeKitPreview(); setJournalOpen(false); } scene?.reframe(); } });
+    onSquare: (shown) => { if (shown) { closeKitPreview(); setJournalOpen(false); } renderQuest(); scene?.reframe(); }, onFundView: renderQuest });
   kitList = createKitList({ getState: () => state, actor: persona, applyState, onRender: () => kitPlan?.render() });
   kitPlan = createKitPlan({ getState: () => state, actor: persona, applyState, openMerchant: (from, options) => merchant.open(from, options),
     reserve: () => { const src = familyChoices?.fitSource(); return { cents: src?.reserveCents ?? 0, invalid: Boolean(src?.reserveInvalid) }; },
