@@ -1,5 +1,19 @@
 # Validation
 
+## Castle header — November 10, 2026
+
+The approved header now has a shallow parchment goal ribbon, a smaller crest/wordmark group with a separate Example badge, the active member's saved avatar, an original generated Journal book and a brass Sound control. Passkey identity remains fixed; the existing example member selector, money values, next action, Journal state and opt-in music behavior are retained. [Design, screenshots and provenance](JOURNAL-DESIGN.md#castle-header-november-10-2026).
+
+Actual checks on Node 24.22.1 / Chromium:
+
+- **11 affected browser cases passed, 0 failed, 1 intentional desktop skip** (7.9 minutes). The selected scenarios cover the complete example family-trip flow on both viewports, Journal keyboard/draft/focus behavior, saved portrait/reload/persona switching, child approval staying disabled, opt-in/loop/stop/reload-silent music, and the phone passkey identity. The passkey case runs only on the phone by design.
+- The visual pass checked **320, 390, 768, 1100 and 1440 px widths**, including long family/goal labels. No horizontal overflow, page errors, outside browser requests or API writes; goal and progress remained equal. The Sound target is 58×58 px at every width. The capture harness now explicitly waits for images to load before measuring; its first attempt checked that too early.
+- The original-art/palette/renderer/syntax guard passed (47 copied files; original 90-colour palette). Diff whitespace checks and the generated-asset/four-screenshot hashes pass.
+
+The existing tests were extended for the new portrait and separate Example label. No full local suite was rerun for this presentation change. The one exact-head hosted run is reported on the PR. [Reproducible capture and hashes](screenshots/castle-header-sources.json); raw logs, source hashes, reference lock and visual measurements are in ignored `test-results/castle-header/`.
+
+All app checks use disposable example/family data, synthetic configuration and local/fake providers. Browser routes deny outside origins; this is not an OS-wide network-isolation claim. Phone evidence is emulated Chromium, not a real-device or human-playtest result. The header branch depends on reviewed, unmerged PR #71 at `1511f8f21b42d9daec30baf733404febea430648`, whose hosted run 42782530257 completed successfully. No owner app, saved database, credential, existing sandbox order, main branch, provider service, recording or deployment was changed.
+
 ## Generated parchment and bounded woodland detail pass
 
 The owner requested the illustrated game-shop feel before further scenery work. The Journal and Village Exchange now use a locally served, original image-generated parchment/wood/brass/ivy panel. The Exchange adds a top icon rail and a live illustrated selection preview, preserving the full request window and its native controls. [Design and provenance](JOURNAL-DESIGN.md#painted-parchment-revision).

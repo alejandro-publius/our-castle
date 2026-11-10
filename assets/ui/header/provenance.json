@@ -1,0 +1,16 @@
+{
+  "generatedAtUTC": "2026-11-10",
+  "tool": "OpenAI image generator",
+  "ownerRequest": "Illustrated Journal button in the castle header",
+  "sourceFile": "exec-df05ba78-6d81-4255-914b-711432fef7ac.png",
+  "sourceSHA256": "672da974e757db6553a7799170cf824cd979500986884934fde7f083ec22ae35",
+  "output": "household-journal.webp",
+  "outputSHA256": "d23e347076e69c6922daab4d7718fc032bbbaf245052c20be75dda45acb91b18",
+  "dimensions": [
+    1254,
+    1254
+  ],
+  "conversion": "WebP quality 88 encoding only; original composition and transparency preserved. Original PNG retained in ignored evidence.",
+  "role": "Decorative original closed forest-green journal, brass corners and castle emblem. Button name and state remain native HTML.",
+  "outputBytes": 154134
+}

@@ -1,0 +1,116 @@
+/* The woodland's carved lintel, a paper goal ribbon and a physical journal.
+   All financial values, identity and control states remain live HTML. */
+.topbar {
+  --header-gold:#b59857; --header-cream:#f5e6bf;
+  grid-template-columns:minmax(240px,.9fr) minmax(330px,1.45fr) auto;
+  gap:24px; padding:4px 2px 14px; position:relative;
+  border-bottom:1px solid #8d794555;
+  box-shadow:0 1px 0 #070f0c,0 2px 0 #c5a65d22;
+}
+.topbar .brand { gap:10px; }
+.topbar .brand-crest { width:50px; height:57px; }
+.topbar .brand-copy { min-width:0; }
+.topbar .brand h1 { font-size:28px; color:var(--header-cream); }
+.topbar .brand-house { gap:5px; }
+.topbar .brand-house #house-eyebrow {
+  min-width:0; max-width:180px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  font-size:13px; color:#c8c5ad;
+}
+.header-example {
+  flex:none; border:1px solid #8d7945; padding:2px 4px; border-radius:2px;
+  color:#d8c69c; font:10px/1.1 Alegreya,Arial,sans-serif; letter-spacing:.04em;
+}
+.topbar .quest {
+  position:relative; padding:10px 22px 3px; gap:0 12px; color:#332516;
+  background:#ead3a0 url('../../assets/ui/parchment/woodland-panel.webp') center / 140% auto;
+  border-block:1px solid #c1a364;
+  clip-path:polygon(0 0,100% 0,98.5% 50%,100% 100%,0 100%,1.5% 50%);
+}
+.topbar .quest h2 { color:#382a18; font-size:16px; font-weight:700; }
+.topbar .quest-amount { color:#59462c; }
+.topbar .quest-amount strong { color:#332516; font-size:22px; }
+.topbar .quest-amount>span { font-size:13px; }
+.topbar .meter { height:5px; margin:7px 0 1px; background:#9e895b55; box-shadow:inset 0 1px 1px #65431c44; }
+.topbar .meter-fill { background:#93651d; border-top:1px solid #d8b465; }
+.topbar .quest-next { color:#5e4425; font-size:13px; }
+.topbar .next-step button { color:#634011; font-weight:700; }
+.topbar .next-step button:focus-visible { outline:2px solid #634011; outline-offset:2px; }
+.topbar-tools { gap:14px; max-width:none; flex-wrap:wrap; }
+.member-control { display:flex; align-items:center; min-width:0; gap:5px; }
+.active-member-portrait { width:40px; height:40px; object-fit:contain; image-rendering:pixelated; flex:none; }
+.topbar .persona { min-width:0; }
+.topbar .persona select {
+  width:100%; max-width:160px; padding:8px 3px; color:var(--header-cream);
+  border:0; border-bottom:1px solid #8d794577; border-radius:0;
+  font-size:15px; background:transparent;
+}
+.topbar .signed-in { padding:0 3px; max-width:170px; font-size:15px; border-color:#8d794577; color:var(--header-cream); }
+.topbar .journal-toggle,.topbar .journal-toggle[aria-expanded='true'] {
+  width:auto; min-height:58px; padding:2px 3px; gap:5px; border:0; border-radius:2px;
+  color:var(--header-cream); background:transparent; box-shadow:none;
+}
+.topbar .journal-toggle span { display:inline; font-size:17px; }
+.journal-book { width:44px; height:48px; object-fit:contain; filter:drop-shadow(0 2px 1px #0009); }
+.topbar .journal-toggle[aria-expanded='true'] span { text-decoration:underline; text-decoration-color:#b59857; text-underline-offset:7px; }
+.topbar .journal-toggle:hover { color:#ffe2a0; }
+.topbar .sound-toggle {
+  flex:none; flex-direction:column; width:58px; height:58px; min-width:58px; padding:5px 0; gap:2px;
+  color:#f5e6bf; border:2px solid #9f854e; border-radius:50%; background:#253b30;
+  box-shadow:inset 0 0 0 2px #14251e,inset 0 0 0 3px #9b814b66,0 2px 2px #0006;
+}
+.topbar .sound-toggle svg { width:21px; height:21px; }
+.topbar .sound-toggle span { display:block; font-size:11px; line-height:1; }
+.topbar .sound-toggle[aria-pressed='true'] { background:#ddbf7b; color:#263824; border-color:#f0d79c; }
+.topbar .sound-toggle:hover { border-color:#e6c77e; }
+.topbar :is(.journal-toggle,.sound-toggle,.persona select):focus-visible { outline:3px solid #efcf83; outline-offset:4px; }
+.topbar .live-status { flex-basis:100%; justify-content:flex-end; order:5; min-height:30px; }
+
+@media(max-width:1200px) and (min-width:1051px) {
+  .topbar { gap:16px; grid-template-columns:minmax(210px,.8fr) minmax(300px,1fr) auto; }
+  .topbar .brand h1 { font-size:25px; }.topbar .brand-crest { width:43px; height:50px; }
+  .topbar-tools { gap:8px; }.topbar .persona select { max-width:138px; }
+  .active-member-portrait { width:32px; height:36px; }
+  .topbar .quest { padding-inline:15px; }.topbar .quest-amount strong { font-size:20px; }
+}
+@media(max-width:1050px) {
+  .topbar { grid-template-columns:minmax(0,1fr) auto; gap:10px 18px; }
+  .topbar .quest { grid-column:1/-1; grid-row:2; }
+  .topbar .quest h2 { font-size:17px; }
+  .topbar-tools { max-width:none; gap:12px; }
+}
+@media(max-width:640px) {
+  .topbar { grid-template-columns:minmax(0,1fr) auto; gap:6px 12px; padding:0 0 10px; }
+  .topbar .brand { grid-column:1; grid-row:1; gap:8px; }
+  .topbar .brand h1 { font-size:25px; }
+  .topbar .brand-crest { width:40px; height:48px; }
+  .topbar .brand-house #house-eyebrow { max-width:none; font-size:12px; }
+  .topbar-tools { display:contents; }
+  .topbar .sound-toggle { grid-row:1; grid-column:2; justify-self:end; }
+  .member-control { grid-column:1; grid-row:2; }
+  .topbar .persona { flex:0 1 auto; }
+  .topbar .persona select { max-width:none; padding:8px 3px; font-size:15px; }
+  .topbar .signed-in { max-width:none; font-size:15px; }
+  .topbar .journal-toggle { grid-column:2; grid-row:2; justify-self:end; min-height:52px; gap:3px; }
+  .journal-book { width:36px; height:44px; }
+  .topbar .journal-toggle span { font-size:16px; }
+  .topbar .quest { grid-column:1/-1; grid-row:3; margin-top:0; padding:10px 16px 3px; }
+  .topbar .quest-head { grid-column:1/-1; }
+  .topbar .quest-amount { grid-column:1/-1; margin-top:3px; }
+  .topbar .quest-next { font-size:13px; }
+  .topbar .live-status { grid-column:1/-1; grid-row:4; justify-content:flex-start; }
+  .topbar .live-status .live-text { position:static; width:auto; height:auto; overflow:visible; clip:auto; }
+}
+@media(max-width:360px) {
+  .topbar { column-gap:8px; }.topbar .brand h1 { font-size:22px; }
+  .topbar .brand-crest { width:32px; height:42px; }
+  .topbar .brand-house { gap:3px; }.topbar #house-crest { width:11px; }
+  .topbar .header-example { padding:2px 3px; font-size:9px; }
+  .topbar .quest { padding-inline:14px; }
+}
+@media(forced-colors:active) {
+  .topbar { border-color:CanvasText; box-shadow:none; }
+  .topbar .quest { background:Canvas; color:CanvasText; clip-path:none; border:1px solid CanvasText; }
+  .topbar .quest :is(h2,p,strong,button) { color:CanvasText; }
+  .topbar .meter { border:1px solid CanvasText; }.topbar .meter-fill { background:Highlight; }
+  .topbar .sound-toggle,.topbar .journal-toggle { border:1px solid ButtonText; color:ButtonText; background:ButtonFace; box-shadow:none; }
+}

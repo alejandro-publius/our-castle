@@ -287,6 +287,10 @@ test('sign-in and the family section fit a 390 px phone with full-size touch tar
     await owner.page.getByLabel('Your name').fill('Rowan');
     await owner.page.getByRole('button', { name: 'Create passkey and family' }).tap();
     await settled(owner.page);
+    await expect(owner.page.locator('#signed-in')).toHaveText('Rowan · Adult');
+    await expect(owner.page.locator('#persona')).toBeHidden();
+    await expect(owner.page.locator('#header-example')).toBeHidden();
+    await expect(owner.page.locator('#active-member-portrait')).toHaveAttribute('src', '/assets/member-avatars/ranger.png');
     await invite(owner, 'Wren', 'child');
     for (const sel of ['#invite-name', '#invite-role', '#copy-invite', '#sign-out', '#add-passkey']) expect((await owner.page.locator(sel).boundingBox()).height, sel).toBeGreaterThanOrEqual(44);
     await owner.page.getByRole('button', { name: 'Withdraw the invitation for Wren' }).tap();

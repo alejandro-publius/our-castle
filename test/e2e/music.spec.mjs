@@ -46,9 +46,8 @@ test('header music is opt-in, loops locally, stops, and opens silent again after
       viewport: innerWidth, overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth };
   });
   expect(layout.overflow).toBeLessThanOrEqual(0);
-  // Narrow phones place the controls on their own row below the brand; desktop keeps them to its right.
-  if (layout.viewport <= 480) expect(layout.y).toBeGreaterThanOrEqual(layout.brandBottom);
-  else expect(layout.x).toBeGreaterThanOrEqual(layout.brandRight);
+  // The brass sound control stays to the right of the brand, including the phone's first row.
+  expect(layout.x).toBeGreaterThanOrEqual(layout.brandRight);
   expect(layout.right).toBeLessThanOrEqual(layout.viewport);
   expect(layout.width).toBeGreaterThanOrEqual(44);
   expect(layout.height).toBeGreaterThanOrEqual(44);

@@ -632,8 +632,10 @@ function renderHeader() {
   const { household, modes, members } = state;
   $('#house-crest').innerHTML = crestSvg(household.crest, { title: `${household.name} crest` });
   $('#house-eyebrow').textContent = household.setupComplete
-    ? `${household.name}${state.example ? ' · example family' : ''}`
+    ? household.name
     : 'Your household';
+  $('#house-eyebrow').title = $('#house-eyebrow').textContent;
+  $('#header-example').hidden = !state.example;
   $('#mode-badges').replaceChildren(...[
     h('li', { class: `mode-badge ${modes.payments.mode === 'sandbox' ? 'live' : 'example'}`, title: modes.payments.mode === 'sandbox' ? 'Real PayPal sandbox API calls with test money' : 'No PayPal calls; payments are simulated and labeled' },
       modes.payments.mode === 'sandbox' ? 'PayPal sandbox' : 'Simulated payments'),
@@ -644,13 +646,23 @@ function renderHeader() {
   const select = $('#persona');
   select.closest('.persona').hidden = Boolean(state.access);
   $('#signed-in').hidden = !state.access;
+  renderActiveMember();
   if (state.access) { const me = members.find((m) => m.id === state.access.me.memberId); $('#signed-in').textContent = `${me?.name ?? ''} · ${state.access.me.role === 'adult' ? 'Adult' : 'Child'}`; return; }
   select.replaceChildren(...members.map((m) => h('option', { value: m.id, selected: m.id === ui.personaId }, `${m.name} · ${m.role === 'adult' ? 'Adult' : 'Child'}`)));
+}
+
+function renderActiveMember() {
+  const id = state.access?.me.memberId ?? ui.personaId;
+  const index = state.members.findIndex((member) => member.id === id);
+  const portrait = $('#active-member-portrait');
+  portrait.hidden = index < 0;
+  if (index >= 0) portrait.src = avatarImage(memberAvatar(state.members[index], index).id);
 }
 
 function renderQuest() {
   const { goal, progress, board } = state;
   $('#goal-name').textContent = goal.name;
+  $('#goal-name').title = goal.name;
   $('#progress-amount').textContent = money(progress.progressCents);
   $('#target-amount').textContent = money(goal.targetCents);
   const pct = Math.min(100, progress.percentTenths / 10);
@@ -662,7 +674,7 @@ function renderQuest() {
   $('#meter-ticks').replaceChildren(...board.tiers.slice(1).map((t) => h('span', { style: `left:calc(${t.percent}% - 1px)`, 'data-label': t.name })));
   const next = board.nextMilestone;
   $('#quest-next').textContent = next
-    ? `${next.name} · ${money(next.awayCents)} to go`
+    ? `Next: ${next.name} · ${money(next.awayCents)} to go`
     : 'Goal reached. The castle stands.';
   const parts = [`${money(progress.startingCents)} reported savings`];
   if (progress.contributedCents) parts.push(`${money(progress.contributedCents)} confirmed in PayPal sandbox`);
@@ -2266,7 +2278,7 @@ function bindEvents() {
     e.currentTarget.textContent = on ? 'Pixel art' : 'Raw 3D';
     scene?.setPixelMode(on);
   });
-  $('#persona').addEventListener('change', (e) => { ui.personaId = e.target.value; pref.set('persona', ui.personaId); ui.refundArm = null; $('#give-approve').checked = false; ui.approvalBasis = null; renderGive(); renderLedger(); renderNextStep(); renderExampleEntry(); familyChoices?.render(); kitList?.render(); villageExchange?.render(); });
+  $('#persona').addEventListener('change', (e) => { ui.personaId = e.target.value; pref.set('persona', ui.personaId); renderActiveMember(); ui.refundArm = null; $('#give-approve').checked = false; ui.approvalBasis = null; renderGive(); renderLedger(); renderNextStep(); renderExampleEntry(); familyChoices?.render(); kitList?.render(); villageExchange?.render(); });
   $('#next-step-go').addEventListener('click', openNextStep);
   $('#deed-visit').addEventListener('click', visitDeed);
   $('#deed-next').addEventListener('click', () => { ui.deeds.index++; renderDeed(); $('#deed-name').focus(); });

@@ -47,3 +47,19 @@ Actual desktop/phone screenshots and affected navigation/planning checks are rec
 ![Plan chapter on a 390px emulated phone](screenshots/journal-phone-plan.png)
 
 [Capture steps, viewport sizes and hashes](screenshots/journal-sources.json). These are real app screenshots using an invented family.
+
+## Castle header (November 10, 2026)
+
+The owner's approved header continues the painted parchment language above. The crest and a smaller wordmark anchor the left; the family name carries a separate Example badge only for authored example data. A shallow paper ribbon holds the goal, “toward” amount, progress and next milestone. Its live values and next-action button remain native HTML.
+
+The Journal control is an original generated forest-green leather book with brass corners and a castle emblem, with a visible Journal label and expanded state. [Asset provenance](../assets/ui/header/provenance.json) records the original and delivered hashes. The current member's existing saved avatar appears beside the native member menu; passkey mode still shows only the authenticated member's fixed identity. The brass Sound medallion stays at the right, keeps a visible Sound off/on label, and starts muted on every page load.
+
+The primary reference is Our Castle's existing crest and generated parchment. Bounded references are [Haley Park](https://haleys.design) for an engraved forest-and-gold navigation treatment and [Playdate](https://play.date) for illustrated physical controls. Their page layouts and marketing styles were not copied. At narrow widths the brand and Sound occupy the first row, identity and Journal the second, and the goal ribbon the third. The map remains the main surface; there is no new panel or money action.
+
+The [capture script](screenshots/castle-header-capture.mjs) uses a fresh in-memory example, blocks outside browser traffic, verifies no writes, and checks phone, tablet and desktop layouts. Source and browser results are recorded in VALIDATION.md.
+
+![Castle header on desktop](screenshots/castle-header-desktop-1440-header.webp)
+
+![Castle header on a 390 px phone](screenshots/castle-header-phone-390-header.webp)
+
+[Capture conditions and image hashes](screenshots/castle-header-sources.json).

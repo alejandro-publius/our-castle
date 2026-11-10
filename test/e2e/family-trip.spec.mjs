@@ -61,7 +61,9 @@ test('a visitor tries a one-off expense, sees the real planner repair the kit, a
 
     // 1. What the visitor is told before touching anything: this family, these shops and these prices are invented.
     await expect(page.locator('#tab-plan')).toHaveAttribute('aria-selected', 'true'); // the journal opens on Plan
-    await expect(page.locator('#house-eyebrow')).toHaveText('House of Alder · example family');
+    await expect(page.locator('#house-eyebrow')).toHaveText('House of Alder');
+    await expect(page.locator('#header-example')).toBeVisible();
+    await expect(page.locator('#header-example')).toHaveText('Example');
     await expect(page.locator('#honesty')).toHaveText('Example family trip · the family, shops, listings and prices are invented · simulated payments. Demo profiles, not sign-in. Reported savings and bills are unverified; progress is not a bank balance.');
     await expect(page.locator('#mode-badges')).toContainText('Example catalogue');
     await expect(page.locator('#persona option')).toHaveText(['Rowan · Adult', 'Ash · Adult', 'Wren · Child']);
