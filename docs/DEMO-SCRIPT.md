@@ -1,22 +1,20 @@
 # Demo script
 
-**November 5 release handoff:** [SUBMISSION-SHOTLIST.md](SUBMISSION-SHOTLIST.md) is the current 2:45 plan for the nine-district interface and three sponsor integrations. It specifies the still-missing approved sandbox insert. This document and the media kits below preserve older talk tracks and recorded versions; no new video or successful checkout is implied.
+**Current recording plan — November 10 UTC:** use [SUBMISSION-SHOTLIST.md](SUBMISSION-SHOTLIST.md), a proposed **2:55** family-decision story with separate historical AI and PayPal evidence. It follows the current [journal](JOURNAL-DESIGN.md) and [four-step judge route](JUDGE-HANDOFF.md#2-a-short-review-route). It has not been recorded; recording remains paused.
 
-**Current interface:** the live app now uses a compact game frame and one household journal. Preserved recordings below show their recorded source versions and earlier controls; they have not been overwritten or relabelled as footage of this interface. World settings now holds time, weather, sound, pixel mode and integration status. No new payment/AI evidence is implied by this design pass.
+**Latest existing cut:** the [2:42 current-review kit](demos/current-review/README.md) remains the preserved review export, with an unfilmed insert. The 2:51 woodland cut and the talk tracks below are historical alternatives. They are not current operator instructions or new evidence of checkout, AI, music or the journal.
 
-**Current recorded review:** use [the woodland/family cut](demos/woodland-review/README.md), its [measured narration](demos/woodland-review/narration.md) and [editable timeline](demos/woodland-review/timeline.json). It is 2:51 with a clearly unfilmed approved sandbox insert at 2:17–2:41. The older talk tracks below are reference, not proof that an in-app checkout or same-order get_order has been filmed.
-
-There are three pieces:
+The historical material below has three pieces:
 
 - **Part A** describes the clip that already exists. It is a silent 36-second world tour recorded in example mode.
-- **Part B** is a proposed judge demo, under three minutes, showing the PayPal and AI features. It has **not been recorded**, and two of its steps are not yet verified live.
-- **Part C** is the now-rendered [2:36.36 private review draft](demos/judge-review/our-castle-judge-review-draft.mp4): current example-world footage, earlier recorded live AI and historical evidence, with an explicit owner-insert slate. It is locally playable, not submitted, and not a fully live end-to-end recording.
+- **Part B** preserves an earlier proposed demo. Its readiness labels describe the evidence available when that plan was written; they are not the current integration status.
+- **Part C** preserves the [earlier 2:36.36 review draft](demos/judge-review/our-castle-judge-review-draft.mp4): example-world footage of that build, earlier recorded live AI and historical evidence, with an explicit owner-insert slate. It is not the latest cut or a fully live end-to-end recording.
 
 Status and evidence: [JUDGE-HANDOFF.md](JUDGE-HANDOFF.md). Publishing, uploading and submitting are the repository owner's decisions.
 
 ## Part A: the finished world clip (36 s, silent)
 
-File: [`docs/demos/our-castle-connected-realm.mp4`](demos/our-castle-connected-realm.mp4), with a [provenance note](demos/README.md). It is a byte-identical copy of the original in the owner's git-ignored `test-results/realm-promotion/`. Tracked in this private branch; not uploaded.
+File: [`docs/demos/our-castle-connected-realm.mp4`](demos/our-castle-connected-realm.mp4), with a [provenance note](demos/README.md). It is a byte-identical copy of the original in the owner's git-ignored `test-results/realm-promotion/`. Preserved in the public source repository; not a submitted video.
 
 - **Format:** 1920×1080 H.264 with burned-in titles and captions and no audio.
 - **Source:** an isolated example database on port 3134, not the owner's sandbox household.
@@ -35,9 +33,11 @@ The talk track is optional narration for a voiceover. It has not been recorded. 
 
 ## Part B: judge demo plan (under 3 minutes, proposed)
 
+> Historical plan for the earlier build. Use the current shot list above; these old rehearsal steps do not authorize another order or provider call.
+
 Record this on the real sandbox app with live AI, so that the badges read **PayPal sandbox** and **AI planner · claude-opus-5-5**. Never record example mode for this part.
 
-The plan assumes a household at $60 of a $300 goal. That is the owner's House of Alder on http://localhost:3010, or a fresh rehearsal copy (see [JUDGE-HANDOFF.md, next actions](JUDGE-HANDOFF.md#5-next-actions)). Every take creates one sandbox order (test money) and makes a few paid Anthropic calls.
+The plan assumes a household at $60 of a $300 goal. That is the owner's House of Alder on http://localhost:3010, or a fresh rehearsal copy (see [preserved-media handoff](JUDGE-HANDOFF.md#5-historical-review-cut-and-preserved-media)). Every take creates one sandbox order (test money) and makes a few paid Anthropic calls.
 
 **Readiness boundary.**
 - Steps marked **Verified** have live evidence.
@@ -58,7 +58,7 @@ The plan assumes a household at $60 of a $300 goal. That is the owner's House of
 **Recording rules.**
 - Use the sandbox app and a sandbox buyer account. Never show `.env`, the client secret or the API key.
 - Use no third-party music, and no trademarks beyond the PayPal sandbox checkout the product integrates.
-- The app's **Sound** toggle produces only synthesized Web Audio, so the soundtrack stays original.
+- That older build used synthesized effects. The current Sound control also plays a [bundled, credited track](../assets/music/README.md). Keep Sound off for the narrated product walkthrough.
 - The original Tiny Castle art appears throughout. Its public-distribution terms are an owner decision ([NOTICE.md](../NOTICE.md)).
 
 **If live credentials are unavailable:** do not present example mode as the PayPal or AI integration. Its badges and receipts say "simulated" and "no AI" on purpose, and the steward says it is off.
