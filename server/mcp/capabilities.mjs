@@ -63,9 +63,9 @@ export function projectMcpFund(fund, view) {
   };
 }
 
-export function createMcpCapabilities({ resolveSessionScope, readFund, now = Date.now, ttlMs = 900_000,
+export function createMcpCapabilities({ resolveSessionScope, readFund, readFundNow = readFund, now = Date.now, ttlMs = 900_000,
   maxGrants = 128, perSession = 4 } = {}) {
-  if (typeof resolveSessionScope !== 'function' || typeof readFund !== 'function') throw new TypeError('Assistant access needs session and fund readers.');
+  if (typeof resolveSessionScope !== 'function' || typeof readFund !== 'function' || typeof readFundNow !== 'function') throw new TypeError('Assistant access needs session and fund readers.');
   if (!Number.isSafeInteger(ttlMs) || ttlMs < 1 || ttlMs > 900_000 || !Number.isSafeInteger(maxGrants) || maxGrants < 1 || maxGrants > 1024
     || !Number.isSafeInteger(perSession) || perSession < 1 || perSession > maxGrants) throw new TypeError('Invalid assistant connection limits.');
   const grants = new Map();
@@ -84,13 +84,26 @@ export function createMcpCapabilities({ resolveSessionScope, readFund, now = Dat
     if (fund?.id !== fundId) throw unavailable();
     return fund;
   }
+  function finalFund(scope, fundId) {
+    let fund;
+    try { fund = readFundNow(scope, fundId); } catch { throw unavailable(); }
+    // The SQLite-backed app reader is synchronous. An async adapter must supply a separate synchronous authoritative
+    // reader: no await may reopen a membership-revocation window between this final check and producing the response.
+    if (fund && typeof fund.then === 'function') {
+      Promise.resolve(fund).catch(() => {});
+      throw unavailable();
+    }
+    if (fund?.id !== fundId) throw unavailable();
+    return fund;
+  }
   return {
     async issue(scope, { fundId } = {}) {
       if (!ID.test(fundId ?? '')) throw new McpAccessError(400, 'mcp_fund_invalid', 'Choose a fund to connect.');
       const fresh = await current(scope);
       projectMcpFund(await fundFor(fresh, fundId), 'status');
       // Revalidate after async work: a slow read may overlap sign-out or a restart/close.
-      await current(fresh);
+      const finalScope = await current(fresh);
+      projectMcpFund(finalFund(finalScope, fundId), 'status');
       sweep();
       if (grants.size >= maxGrants || [...grants.values()].filter((g) => g.scope.sessionId === fresh.sessionId).length >= perSession) {
         throw new McpAccessError(429, 'mcp_grants_full', 'Disconnect an assistant connection before making another.');
@@ -108,11 +121,11 @@ export function createMcpCapabilities({ resolveSessionScope, readFund, now = Dat
       if (!grant) throw denied();
       let fresh;
       try { fresh = await current(grant.scope); } catch { grants.delete(key); throw denied(); }
-      const fund = await fundFor(fresh, grant.fundId);
+      await fundFor(fresh, grant.fundId);
       // Never let an in-flight read return after expiry, revocation, sign-out or service shutdown.
-      await current(grant.scope);
+      const finalScope = await current(grant.scope);
       if (grants.get(key) !== grant || grant.expiresAt <= now()) { grants.delete(key); throw denied(); }
-      return projectMcpFund(fund, view);
+      return projectMcpFund(finalFund(finalScope, grant.fundId), view);
     },
     async revoke(scope, { grantId } = {}) {
       const fresh = await current(scope);

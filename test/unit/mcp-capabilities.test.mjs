@@ -87,6 +87,51 @@ test('a revoked or expired grant cannot return from an already pending read', as
   await assert.rejects(expired, { code: 'mcp_grant_unavailable' });
 });
 
+test('membership revoked during an asynchronous fund read cannot release the earlier authorized snapshot', async () => {
+  let member = true, pending = false, finish;
+  const api = createMcpCapabilities({ resolveSessionScope: () => adult,
+    readFund: () => {
+      if (!member) throw Error('Membership revoked');
+      const snapshot = fund();
+      if (!pending) return snapshot;
+      pending = false;
+      return new Promise(resolve => { finish = () => resolve(snapshot); });
+    } });
+  const grant = await api.issue(adult, { fundId: 'fund_a' });
+  pending = true;
+  const result = api.read(grant.token, 'contributions');
+  while (!finish) await new Promise(resolve => setImmediate(resolve));
+  member = false; finish();
+  await assert.rejects(result, { code: 'mcp_fund_unavailable' });
+});
+
+test('an asynchronous initial read returns the fresh authorized view and cannot issue a grant after membership loss', async () => {
+  let member = true, value = fund(), finish, pending = false;
+  const authoritative = () => { if (!member) throw Error('Membership revoked'); return value; };
+  const api = createMcpCapabilities({ resolveSessionScope: () => adult, readFundNow: authoritative,
+    readFund: () => {
+      const snapshot = structuredClone(authoritative());
+      return pending ? new Promise(resolve => { finish = () => resolve(snapshot); }) : snapshot;
+    } });
+  const grant = await api.issue(adult, { fundId: 'fund_a' }); pending = true;
+  const reading = api.read(grant.token, 'status');
+  while (!finish) await new Promise(resolve => setImmediate(resolve));
+  value.progress.netMinor = 7000; finish();
+  assert.equal((await reading).fund.progress.netMinor, 7000);
+  finish = null;
+  const issuing = api.issue(adult, { fundId: 'fund_a' });
+  while (!finish) await new Promise(resolve => setImmediate(resolve));
+  member = false; finish();
+  await assert.rejects(issuing, { code: 'mcp_fund_unavailable' });
+  assert.equal(api.stats().grants, 1);
+});
+
+test('a final authorization reader that yields asynchronously is refused rather than trusted after a gap', async () => {
+  const api = createMcpCapabilities({ resolveSessionScope: () => adult, readFund: async () => fund() });
+  await assert.rejects(api.issue(adult, { fundId: 'fund_a' }), { code: 'mcp_fund_unavailable' });
+  assert.equal(api.stats().grants, 0);
+});
+
 test('invalid tokens, mismatched fund responses and mixed financial units fail closed', async () => {
   const h = harness(), g = await h.api.issue(adult, { fundId: 'fund_a' });
   for (const token of [null, '', 'x'.repeat(43), g.token + '\r\nAuthorization: secret']) {
