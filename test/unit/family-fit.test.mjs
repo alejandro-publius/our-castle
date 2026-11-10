@@ -486,7 +486,7 @@ test('a schema-9 database gains only the need column (and later kit/exchange tab
     old.close();
     const db = openDatabase(file);
     assert.equal(db.prepare('PRAGMA user_version').get().user_version, MIGRATIONS.length);
-    assert.deepEqual(tables(db), [...beforeTables, 'exchange_circles', 'exchange_invites', 'exchange_members', 'exchange_offers', 'exchange_requests', 'goal_kits', 'kit_candidates', 'kit_lists', 'kit_selections'].sort(), 'only the subsequent kit and exchange tables are new');
+    assert.deepEqual(tables(db), [...beforeTables, 'exchange_circles', 'exchange_invites', 'exchange_members', 'exchange_offers', 'exchange_profiles', 'exchange_requests', 'goal_kits', 'kit_candidates', 'kit_lists', 'kit_selections'].sort(), 'only the subsequent kit and exchange tables are new');
     const after = rows(db, beforeTables);
     assert.deepEqual(after.family_choices, before.family_choices.map((r) => ({ ...r, need_json: null })), 'the old choice gains an empty need');
     for (const t of beforeTables.filter((n) => n !== 'family_choices')) assert.deepEqual(after[t], before[t], t);

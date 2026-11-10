@@ -14,6 +14,11 @@ export const MOUNTAIN_PEAKS = Object.freeze([
   ...[-81,-48,-15,18,51,84].map((z,i)=>({x:-110,z,rx:24,rz:24,height:17+(i*5)%10})),
   ...[-81,-48,-15,18,51,84].map((z,i)=>({x:174,z,rx:24,rz:23,height:8+(i*3)%7})),
   {x:-31,z:-95,rx:34,rz:23,height:26},
+  // Corner shoulders give the ridge depth; each broad foot descends before the board edge.
+  {x:-138,z:-122,rx:22,rz:25,height:25},
+  {x:188,z:-121,rx:23,rz:25,height:24},
+  {x:-138,z:122,rx:22,rz:25,height:14},
+  {x:188,z:122,rx:23,rz:25,height:13},
 ].map(Object.freeze));
 export const PAYPAL_HILLSIDE = Object.freeze({x:-31,z:-82,width:44});
 const smooth=t=>{const v=Math.max(0,Math.min(1,t));return v*v*(3-2*v);};

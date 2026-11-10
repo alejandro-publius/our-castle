@@ -154,6 +154,9 @@ select,input,textarea,button { font:inherit; }
 .game-notice { margin:0; max-width:1100px; }
 .art-credit { color:var(--muted); white-space:nowrap; text-decoration:none; }
 .art-credit:hover { color:var(--ivory); }
+.realm-credits { display:flex; flex-wrap:wrap; justify-content:flex-end; column-gap:14px; row-gap:2px; text-align:right; }
+.music-credit { color:inherit; text-underline-offset:3px; }
+.music-credit:hover { color:var(--ivory); }
 .celebration { position:absolute; z-index:4; left:50%; top:90px; transform:translateX(-50%); width:min(360px,calc(100% - 32px)); padding:16px; text-align:center; background:var(--paper); color:var(--ink); border:1px solid var(--ink-line); }
 .celebration h3 { font-size:21px; }.celebration p { margin:4px 0 0; font-size:14px; }
 
@@ -998,3 +1001,71 @@ body[data-signed-in='false'] .shell { visibility:hidden; }
 .exchange-invite-output textarea { width: 100%; overflow-wrap: anywhere; }
 .exchange-invites li { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .exchange-confirm { border-block: 1px solid var(--ink-line); padding-block: 12px; }
+
+/* An Exchange window sits above the realm; closing it preserves the camera and the list. */
+.exchange-window { width:min(1200px,calc(100vw - 40px)); height:min(820px,calc(100dvh - 48px)); max-width:none; max-height:none; padding:0; border:3px solid #ddba79; border-radius:7px; color:#28382f; background:#f4ecd9; box-shadow:0 0 0 5px #263d32,0 20px 70px rgb(0 0 0 / .4); overflow:hidden; }
+.exchange-window[open] { display:flex; flex-direction:column; }
+.exchange-window::backdrop { background:rgb(8 18 22 / .72); }
+.exchange-window-head { display:flex; align-items:center; gap:14px; padding:18px 24px; background:#263d32; color:#f4ecd9; border-bottom:2px solid #ddba79; flex-shrink:0; }
+.exchange-window-head img { object-fit:contain; image-rendering:pixelated; }
+.exchange-window-head > div { min-width:0; }
+.exchange-window-head h2 { font-size:28px; margin:2px 0 0; overflow-wrap:anywhere; }
+.exchange-eyebrow { font-size:13px; margin:0; letter-spacing:.04em; }
+.exchange-close { margin-left:auto; flex-shrink:0; color:#f4ecd9; border:1px solid #697963; background:transparent; width:44px; height:44px; font-size:28px; line-height:1; }
+.exchange-window-body { padding:22px 28px 28px; overflow:auto; overscroll-behavior:contain; flex:1; min-height:0; }
+.exchange-market-layout { display:grid; grid-template-columns:205px minmax(0,1fr); flex:1; min-height:0; }
+.exchange-market-nav { padding:18px 14px; background:#263d32; border-right:2px solid #ddba79; color:#f4ecd9; overflow:auto; }
+.exchange-market-art { display:block; width:100%; height:112px; object-fit:cover; image-rendering:pixelated; border:1px solid #ddba79; }
+.exchange-market-motto { font-size:20px; line-height:1.3; margin:16px 0 24px; }
+.exchange-market-nav button { width:100%; display:flex; align-items:center; gap:9px; text-align:left; padding:12px 9px; margin:0 0 12px; background:#344f3c; color:#f4ecd9; border:1px solid #ad9362; border-radius:2px; font-size:16px; }
+.exchange-market-nav button span { color:#ddba79; font:12px ui-monospace,monospace; }
+.exchange-market-nav button[aria-pressed=true] { background:#eedcb4; color:#28382f; box-shadow:inset 0 0 0 3px #263d32; border-color:#ddba79; }
+.exchange-market-nav button[aria-pressed=true] span { color:#68552f; }
+.exchange-market-note { font-size:14px; line-height:1.6; color:#cad1ba; margin-top:28px; }
+.exchange-window .fine { color:#596052; }
+.exchange-window .field { min-width:0; }
+.exchange-window .field > span { color:#28382f; }
+.exchange-window input,.exchange-window select,.exchange-window textarea { background:#fffaf0; color:#28382f; border:1px solid #9bA68f; border-radius:3px; min-height:44px; padding:8px 10px; width:100%; }
+.exchange-window input[type=checkbox] { width:20px; min-height:20px; flex-shrink:0; }
+.exchange-window button { min-height:44px; }
+.exchange-toolbar { display:grid; grid-template-columns:minmax(140px,1fr) minmax(160px,.8fr) auto auto; align-items:end; gap:12px; border-bottom:1px solid #bfc4ad; padding-bottom:20px; }
+.exchange-list-head { display:flex; align-items:baseline; justify-content:space-between; gap:16px; }
+.exchange-list-head h3 { font-family:var(--font-body,inherit); font-size:20px; margin:20px 0 12px; }
+.exchange-directory { margin:0; padding:0; list-style:none; }
+.exchange-list-row { width:100%; display:grid; grid-template-columns:minmax(145px,1.1fr) minmax(110px,.8fr) minmax(90px,.6fr) 24px; gap:6px 14px; padding:18px 12px; border:0; border-top:1px solid #bfc4ad; border-radius:0; background:transparent; color:#28382f; text-align:left; }
+.exchange-list-row:hover { background:#fffaf0; }
+.exchange-list-row:focus-visible { outline:3px solid #344f3c; outline-offset:-3px; background:#fffaf0; }
+.exchange-list-row strong,.exchange-list-row small { display:block; }
+.exchange-list-row strong { font-size:19px; }
+.exchange-list-row small { font-size:15px; font-weight:400; color:#596052; }
+.exchange-list-state { align-self:center; font-size:14px; }
+.exchange-reference { font-family:ui-monospace,monospace; font-size:12px; font-weight:400; overflow-wrap:anywhere; letter-spacing:.015em; }
+.exchange-list-row > .exchange-reference { grid-column:1 / 4; color:#596052; }
+.exchange-list-arrow { grid-column:4; grid-row:1 / 3; align-self:center; font-size:24px; }
+.exchange-manage { border-top:1px solid #bfc4ad; margin-top:20px; padding-top:14px; }
+.exchange-manage summary { cursor:pointer; min-height:44px; padding:10px 0; font-weight:700; }
+.exchange-manage #exchange-forms { max-width:680px; }
+.exchange-detail-window { width:min(1020px,calc(100vw - 56px)); }
+.exchange-detail-window .exchange-window-body { padding:24px 40px; }
+.exchange-detail-window .exchange-request { border:0; padding:18px 0; }
+.exchange-detail-window .exchange-request-heading h4 { font-size:25px; }
+.exchange-detail-window .exchange-offer { background:#fffaf0; border-color:#ddba79; padding:18px 22px; }
+.exchange-detail-window .exchange-form { max-width:620px; }
+@media(max-width:900px) {
+  .exchange-market-layout { grid-template-columns:minmax(0,1fr); grid-template-rows:auto minmax(0,1fr); }
+  .exchange-market-nav { display:flex; gap:6px; padding:10px; border-right:0; border-bottom:1px solid #ddba79; }
+  .exchange-market-art,.exchange-market-motto,.exchange-market-note { display:none; }
+  .exchange-market-nav button { flex:1; width:auto; margin:0; justify-content:center; padding:10px 6px; font-size:15px; }
+  .exchange-market-nav button span { display:none; }
+}
+@media(max-width:680px) {
+  .exchange-window,.exchange-detail-window { width:calc(100vw - 16px); height:calc(100dvh - 20px); }
+  .exchange-window-head { padding:14px; gap:10px; }.exchange-window-head h2 { font-size:24px; }
+  .exchange-window-body,.exchange-detail-window .exchange-window-body { padding:16px; }
+  .exchange-toolbar { grid-template-columns:minmax(0,1fr) auto; gap:12px; }.exchange-toolbar .field:first-child { grid-column:1 / -1; }
+  .exchange-toolbar .field:nth-child(2) { grid-column:1; }.exchange-toolbar > .link-button { grid-column:1 / -1; justify-self:start; }
+  .exchange-list-row { grid-template-columns:minmax(0,1fr) 24px; padding:16px 4px; gap:6px; }
+  .exchange-list-family,.exchange-list-state,.exchange-list-row > .exchange-reference { grid-column:1; }
+  .exchange-list-family strong { font-size:16px; display:inline; }.exchange-list-family small { display:inline; margin-left:8px; }
+  .exchange-list-arrow { grid-column:2; grid-row:1 / 5; }.exchange-list-row strong { overflow-wrap:anywhere; }
+}

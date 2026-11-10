@@ -34,6 +34,7 @@ test('each member keeps a distinct saved portrait and matching map character aft
   await save(page).click();
   await expect(page.locator('.avatar-status')).toContainText('Rowan’s avatar saved');
   await expect(member(page,'m_rowan')).toHaveAttribute('data-avatar','wizard');
+  await expect(page.locator('#active-member-portrait')).toHaveAttribute('src','/assets/member-avatars/wizard.png');
   await expect(member(page,'m_wren')).toHaveAttribute('data-avatar','bard');
   await member(page,'m_wren').click();
   await page.getByRole('radio',{name:'Royal',exact:true}).check();await save(page).click();
@@ -42,6 +43,9 @@ test('each member keeps a distinct saved portrait and matching map character aft
   await page.reload();await page.waitForFunction(()=>window.__ourCastle?.scene()?.familyAvatars.length===2);
   await expect(member(page,'m_rowan')).toHaveAttribute('data-avatar','wizard');
   await expect(member(page,'m_wren').locator('img')).toHaveAttribute('src','/assets/member-avatars/royal.png');
+  await expect(page.locator('#active-member-portrait')).toHaveAttribute('src','/assets/member-avatars/wizard.png');
+  await page.locator('#persona').selectOption('m_wren');
+  await expect(page.locator('#active-member-portrait')).toHaveAttribute('src','/assets/member-avatars/royal.png');
   const after=await (await request.get('/api/state')).json();
   expect(after.progress).toEqual(before.progress);expect(after.board).toEqual(before.board);
   expect(after.members.map(({avatarId,...m})=>m)).toEqual(before.members.map(({avatarId,...m})=>m));
@@ -83,6 +87,7 @@ test('all portraits load, touch targets fit and avatars leave child approval loc
   await request.post('/api/setup',{data:{playMode:'family',name:'House of Alder',crest:{field:'cobalt',charge:'stag'}}});
   await ready(page);
   await page.locator('#persona').selectOption('m_wren');
+  await expect(page.locator('#active-member-portrait')).toHaveAttribute('src','/assets/member-avatars/bard.png');
   await member(page,'m_wren').click();await page.getByRole('radio',{name:'Knight',exact:true}).check();
   await expect.poll(()=>page.locator('.avatar-face img').evaluateAll(imgs=>imgs.every(i=>i.complete&&i.naturalWidth===96))).toBe(true);
   const metrics=await page.locator('.avatar-face').evaluateAll(nodes=>nodes.map(n=>({width:n.getBoundingClientRect().width,height:n.getBoundingClientRect().height})));
@@ -90,6 +95,7 @@ test('all portraits load, touch targets fit and avatars leave child approval loc
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
   await page.screenshot({path:testInfo.outputPath('avatar-picker.png'),fullPage:true});
   await save(page).click();await expect(member(page,'m_wren')).toHaveAttribute('data-avatar','knight');
+  await expect(page.locator('#active-member-portrait')).toHaveAttribute('src','/assets/member-avatars/knight.png');
   await page.getByRole('tab',{name:'Contribute',exact:true}).click();
   await expect(page.locator('#give-approve')).toBeDisabled();
   const state=await (await request.get('/api/state')).json();

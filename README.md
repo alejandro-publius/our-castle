@@ -24,15 +24,19 @@ The saved Mac apps at http://localhost:3010 and http://localhost:3021 were upgra
 
 ## Try it locally
 
-Use **Node.js 22.16+**. Start with the playable family-trip example:
+Use **Node.js 22.16+**. For the focused village opening:
 
 ```sh
 git clone https://github.com/alejandro-publius/our-castle.git
 cd our-castle
 npm ci
-npm run demo -- --family-trip
+npm run demo -- --village-story
 # Open the local URL printed in the terminal.
 ```
+
+The parchment journal opens at a half-funded **Village library**: explicitly approve $30, watch the schoolhouse progress, then review that exact simulated receipt. The family and starting $150 are invented; no real shared fund or recipient routing is active. [One-minute route and payment boundaries](docs/VILLAGE-STORY.md).
+
+For the deeper planning journey, start a separate demo with **`npm run demo -- --family-trip`**:
 
 An invented family (Rowan, Ash and Wren), a kit list and six sample listings are ready in **Plan**. Choose **Try a one-off expense**, enter `90`, then compare complete kits. Choose the $180 kit, keep its stove and choose **Preview on map**. Change the expense to `120`: the map shows a temporary $150 smallest-change proposal that switches only the tent. The chosen $180 kit stays unchanged until you explicitly choose the repair. At `200`, no kit fits: the chosen $180 preview is $110 short, while the separate closest $150 kit is $80 short. The family, shops and prices are labelled examples; the kits, dates, shortfalls and repairs are calculated by the existing engine. [Full walkthrough, screenshots and limits](docs/FAMILY-TRIP-EXAMPLE.md).
 
@@ -65,7 +69,7 @@ Run **`npm run demo -- --village-exchange`** to try it in a fresh, keyless sessi
 
 Searching does not buy an item. This is goal progress, not a bank balance. Reported savings, bills, gifts, simulated contributions and PayPal sandbox receipts retain their sources. Verified utility-bill rewards require a provider connection that is not present.
 
-Small **arrow markers** reveal property names when selected or reached by keyboard. The map has another 32-unit square of land on every side, two animated waterfalls feeding the rivers, and a hidden camp with two resting knights. The **compass beside View** lets you drag between homes at your current close-up scale; switch it off to turn the map again. The **Sound button at the top right** enables quiet retro RPG music and board effects. Every page starts muted; the music loads only when enabled. [Music source and CC0 licence](assets/music/README.md). After contributing, **Review the receipt** opens that contribution in Treasury, with its saved-check status and the single steward note. [Receipt walkthrough and desktop/phone captures](docs/RECEIPT-HANDOFF.md).
+Small **arrow markers** reveal property names when selected or reached by keyboard. The map has another 32-unit square of land on every side, two animated waterfalls feeding the rivers, and a hidden camp with two resting knights. The **compass beside View** lets you drag between homes at your current close-up scale; switch it off to turn the map again. The **Sound button at the top right** enables quiet retro RPG music and board effects. Every page starts muted; the music loads only when enabled. [Soundtrack sources and licences](assets/music/README.md). After contributing, **Review the receipt** opens that contribution in Treasury, with its saved-check status and the single steward note. [Receipt walkthrough and desktop/phone captures](docs/RECEIPT-HANDOFF.md).
 
 The walkthrough captures use isolated test households and simulated contributions:
 

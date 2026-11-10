@@ -169,6 +169,7 @@ function applySky() {
   const resolved = resolveAtmosphere({ timeMode: sky.time, weatherMode: sky.weather, now: new Date(),
     local: sky.weather === 'local' ? { place: sky.place, result: sky.result?.place?.id === sky.place?.id ? sky.result : null, error: sky.error, loading: sky.loading } : null });
   sky.resolved = resolved;
+  sound.setEnvironment({ period: resolved.period });
   scene?.setAtmosphere({ period: resolved.period, weather: resolved.weather });
   if ($('#time-mode').value !== sky.time) $('#time-mode').value = sky.time;
   if ($('#weather-mode').value !== sky.weather) $('#weather-mode').value = sky.weather;
@@ -328,9 +329,11 @@ async function boot() {
   try {
     if (family.on && invite) family.dialog.open({ invite, signedIn: true });
     applyState(await api.get('/api/state'), { animate: false });
+    const openingVillageStory = state.example?.id === 'village-story' && !sessionTab.get() && pref.get('journal') !== 'closed';
     selectTab(resumeTab(), { focus: false, remember: false, open: false });
     setJournalOpen(pref.get('journal') !== 'closed', { remember: false });
-    scene?.focusDistrict(homeDistrict(state.board.builtTier).id);
+    if (state.example?.id === 'village-story') scene?.focusLegend(FAMILY_PROJECT_SITE.id);
+    else scene?.focusDistrict(homeDistrict(state.board.builtTier).id);
     if (family.on) startFamilyLive();
     // Moss, the castle keeper: an optional authored tour, offered only while payments are simulated. It may only show
     // a journal tab; it never presses a control, writes a record or saves a preference.
@@ -344,6 +347,15 @@ async function boot() {
         autoStart: new URLSearchParams(location.search).get('tour') === '1',
       });
     } catch (error) { console.warn('[our-castle] the keeper tour is unavailable', error); } // optional; never blocks the house
+    // On a narrow screen the journal follows the map. Put the first story chapter in view without another navigation;
+    // preserve a returning visitor's tab/closed journal and never take focus from a control they already reached.
+    if (openingVillageStory) {
+      await layoutSettled($('#journey'));
+      if (document.activeElement === document.body && $('#give-heading').getBoundingClientRect().bottom > innerHeight) {
+        $('#journey').scrollIntoView({ block: 'start', behavior: 'instant' });
+        $('#give-heading').focus({ preventScroll: true });
+      }
+    }
   } catch (error) {
     $('#honesty').textContent = `Could not load the household: ${error.message}`;
   }
@@ -397,6 +409,7 @@ function sessionLost(error) {
   if (family.lost) return;
   family.lost = true;
   kitPlan?.closePreview(); // nothing of this household's plan stays drawn on the map
+  villageExchange?.close(); // these native windows sit outside the hidden household shell
   family.live?.stop();
   clearInterval(family.timer); clearTimeout(family.statusTimer); clearTimeout(family.retryTimer);
   showLiveStatus(false);
@@ -503,6 +516,7 @@ function acceptFamilyState(next) {
 function resumeTab() {
   const chosen = sessionTab.get();
   if (!state.household.setupComplete) return 'house';
+  if (state.example?.id === 'village-story' && !TABS.includes(chosen)) return 'give';
   return TABS.includes(chosen) ? chosen : TABS.includes(ui.next?.step) ? ui.next.step : 'ledger';
 }
 
@@ -631,8 +645,10 @@ function renderHeader() {
   const { household, modes, members } = state;
   $('#house-crest').innerHTML = crestSvg(household.crest, { title: `${household.name} crest` });
   $('#house-eyebrow').textContent = household.setupComplete
-    ? `${household.name}${state.example ? ' · example family' : ''}`
+    ? household.name
     : 'Your household';
+  $('#house-eyebrow').title = $('#house-eyebrow').textContent;
+  $('#header-example').hidden = !state.example;
   $('#mode-badges').replaceChildren(...[
     h('li', { class: `mode-badge ${modes.payments.mode === 'sandbox' ? 'live' : 'example'}`, title: modes.payments.mode === 'sandbox' ? 'Real PayPal sandbox API calls with test money' : 'No PayPal calls; payments are simulated and labeled' },
       modes.payments.mode === 'sandbox' ? 'PayPal sandbox' : 'Simulated payments'),
@@ -643,13 +659,23 @@ function renderHeader() {
   const select = $('#persona');
   select.closest('.persona').hidden = Boolean(state.access);
   $('#signed-in').hidden = !state.access;
+  renderActiveMember();
   if (state.access) { const me = members.find((m) => m.id === state.access.me.memberId); $('#signed-in').textContent = `${me?.name ?? ''} · ${state.access.me.role === 'adult' ? 'Adult' : 'Child'}`; return; }
   select.replaceChildren(...members.map((m) => h('option', { value: m.id, selected: m.id === ui.personaId }, `${m.name} · ${m.role === 'adult' ? 'Adult' : 'Child'}`)));
+}
+
+function renderActiveMember() {
+  const id = state.access?.me.memberId ?? ui.personaId;
+  const index = state.members.findIndex((member) => member.id === id);
+  const portrait = $('#active-member-portrait');
+  portrait.hidden = index < 0;
+  if (index >= 0) portrait.src = avatarImage(memberAvatar(state.members[index], index).id);
 }
 
 function renderQuest() {
   const { goal, progress, board } = state;
   $('#goal-name').textContent = goal.name;
+  $('#goal-name').title = goal.name;
   $('#progress-amount').textContent = money(progress.progressCents);
   $('#target-amount').textContent = money(goal.targetCents);
   const pct = Math.min(100, progress.percentTenths / 10);
@@ -661,7 +687,7 @@ function renderQuest() {
   $('#meter-ticks').replaceChildren(...board.tiers.slice(1).map((t) => h('span', { style: `left:calc(${t.percent}% - 1px)`, 'data-label': t.name })));
   const next = board.nextMilestone;
   $('#quest-next').textContent = next
-    ? `${next.name} · ${money(next.awayCents)} to go`
+    ? `Next: ${next.name} · ${money(next.awayCents)} to go`
     : 'Goal reached. The castle stands.';
   const parts = [`${money(progress.startingCents)} reported savings`];
   if (progress.contributedCents) parts.push(`${money(progress.contributedCents)} confirmed in PayPal sandbox`);
@@ -748,6 +774,7 @@ function renderRealmNavigation() {
     h('span', { class: 'realm-arrow', 'aria-hidden': 'true', html: '<svg viewBox="0 0 40 40"><path d="M20 5 36 34H4Z" fill="var(--paper-3)" stroke="var(--ink)" stroke-width="4" stroke-linejoin="round"/><path d="M20 10 32 32H8Z" fill="none" stroke="var(--brass)" stroke-width="2"/></svg>' }), h('span', { class: 'realm-marker-caption', id: `realm-name-${d.id}` }, !d.open && h('span', { class: 'realm-lock', 'aria-hidden': 'true', html: lock }), h('strong', {}, d.name)))));
   $('#realm-markers').append(h('button', {type:'button',id:'sword-glint',class:'realm-legend','data-legend':'sword-stone','aria-label':'Investigate the glint in the trees','aria-pressed':'false',hidden:true},h('span',{'aria-hidden':'true'},'✦')));
   $('#realm-markers').append(h('button', {type:'button',id:'camp-glow',class:'realm-legend','data-legend':'knights-rest','aria-label':'Visit the forest camp','aria-pressed':'false',hidden:true},h('span',{'aria-hidden':'true',html:'<svg width="24" height="26" viewBox="0 0 24 26"><path d="M13 2c1 7-6 7-3 13 2-1 3-3 3-5 6 6 7 12-1 14C2 22 3 16 6 12c0 3 1 4 2 4C4 9 11 8 13 2Z" fill="currentColor"/></svg>'})));
+  $('#realm-markers').append(h('button', {type:'button',id:'glade-lantern',class:'realm-legend','data-legend':'lantern-glade','aria-label':'Visit the lantern glade','aria-pressed':'false',hidden:true},h('span',{'aria-hidden':'true',html:'<svg width="24" height="26" viewBox="0 0 24 26" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 7V5a3 3 0 0 1 6 0v2M7 11l5-4 5 4v11H7ZM5 23h14M12 13v6"/></svg>'})));
   // The family project: a small marker in the west meadow drawn as the chosen place (a tent, a sprout or a schoolhouse
   // with its bell). Selecting it only moves the camera and names its stage.
   const kind = projectKind(state.goal.projectKind);
@@ -765,6 +792,7 @@ function renderRealmNavigation() {
 const VIEW_HINT = { turning: 'Drag to turn. Shift-drag to pan. Scroll to zoom.', exploring: 'Drag to pan. Scroll to zoom.' };
 function syncRealmMarkers({focus,points,exploring=false,free=false}){
   lastMarkerView = {focus,points,exploring,free};
+  sound.setEnvironment({ district: focus });
   if (!focus && !free && !document.activeElement?.matches('#realm-markers [data-district]')) namedDistrict = null;
   for (const marker of $$('#realm-markers [data-district]')) {
     const expanded = marker.dataset.district === namedDistrict;
@@ -789,11 +817,12 @@ function syncRealmMarkers({focus,points,exploring=false,free=false}){
   });
   const priority=(p)=>document.activeElement?.dataset?.district===p.id?3:p.id===home?2:0;
   for(const point of [...points].sort((a,b)=>priority(b)-priority(a))){
-    const legend = point.id === 'sword-stone' || point.id === 'knights-rest' || point.id === FAMILY_PROJECT_SITE.id;
+    const legend = point.id === 'sword-stone' || point.id === 'knights-rest' || point.id === 'lantern-glade' || point.id === FAMILY_PROJECT_SITE.id;
     const el=legend ? $(`#realm-markers [data-legend="${point.id}"]`) : $(`#realm-markers [data-district="${point.id}"]`);if(!el)continue;
     // A small marker also shows while a neighbouring district is in view: the grove beside the garden and keep, the campsite beside the village.
     const nearby = point.id === 'sword-stone' ? ['garden','keep'] : point.id === FAMILY_PROJECT_SITE.id ? ['cottage'] : [];
-    const visible = (point.id !== 'knights-rest' || free || focus === 'knights-rest') && (!focus || point.id === focus || legend && nearby.includes(focus)) && (!compactOverview || legend || point.id === home || el === document.activeElement) && point.x > 0 && point.x < point.width && point.y > 0 && point.y < point.height;
+    const tuckedAway = point.id === 'knights-rest' || point.id === 'lantern-glade';
+    const visible = (!tuckedAway || free || focus === point.id) && (!focus || point.id === focus || legend && nearby.includes(focus)) && (!compactOverview || legend || point.id === home || el === document.activeElement) && point.x > 0 && point.x < point.width && point.y > 0 && point.y < point.height;
     el.hidden = !visible;
     if (visible) {
       const px=Math.max(el.offsetWidth/2+8,Math.min(point.width-el.offsetWidth/2-8,point.x));
@@ -821,7 +850,7 @@ function syncRealmMarkers({focus,points,exploring=false,free=false}){
   const d=regions.find(d=>d.id===focus);
   const merchantButton = $('#open-merchant');
   if (merchantButton.hidden !== (focus !== 'market')) merchantButton.hidden = focus !== 'market';
-  $('#open-exchange').hidden = focus !== 'market' || !state.exchange?.available;
+  $('#open-exchange').hidden = !state.exchange?.available;
   const deedButton = $('#view-deed');
   deedButton.hidden = !d?.open;
   if (d?.open) {
@@ -1033,7 +1062,7 @@ function renderPlan() { renderPlanForm(); renderExampleEntry(); familyChoices?.r
 // surface and a link each way between its two parts: the one-off expense in Family choices and Complete kits in the Kit
 // list. They open those sections and move focus; they press no control, fill no field and write nothing.
 function renderExampleEntry() {
-  const example = state.example ?? null;
+  const example = state.example?.id === 'village-story' ? null : state.example ?? null;
   $('#example-entry').hidden = !example;
   for (const id of ['#example-to-kits', '#example-to-trial']) $(id).hidden = !example;
   if (!example) return;
@@ -1543,6 +1572,10 @@ function amountCheck() {
 
 function renderGive() {
   const { household, goal, progress } = state;
+  const villageStory = state.example?.id === 'village-story';
+  $('#village-story-intro').hidden = !villageStory || goal.name !== 'Village library' || goal.projectKind !== 'schoolhouse';
+  $('#give-heading').textContent = villageStory ? goal.name : 'Contribute';
+  if (villageStory) $('#village-story-progress').textContent = `${money(progress.progressCents)} of ${money(goal.targetCents)} recorded · ${money(progress.remainingCents)} to go`;
   const setup = household.setupComplete;
   const done = progress.remainingCents <= 0;
   $('#give-context').textContent = !setup ? 'Create your house to contribute.' : done ? 'Goal complete.' : '';
@@ -2170,6 +2203,7 @@ function renderFooter() {
   const sandbox = modes.payments.mode === 'sandbox';
   // A shared family signs in with passkeys; the example household's members are demo profiles.
   const mode = sandbox ? 'PayPal sandbox · test money only.' : state.access ? 'Simulated payments.'
+    : state.example?.id === 'village-story' ? 'Example village library · invented families and book offers · simulated payments.'
     : state.example ? `${state.example.title} · the family, shops, listings and prices are invented · simulated payments.` : 'Demo mode · simulated payments.';
   const people = state.access ? 'Each member signs in with their own passkey.' : 'Demo profiles, not sign-in.';
   $('#honesty').textContent = `${mode} ${people} Reported savings and bills are unverified; progress is not a bank balance.`;
@@ -2200,14 +2234,15 @@ function bindEvents() {
   familyChoices = createFamilyChoices({ getState: () => state, actor: persona, openMerchant: (from, options) => merchant.open(from, options), onReview: useFamilyChoice, applyState,
     onProposed: () => $('#plan-headline').focus() });
   villageExchange = createVillageExchange({ getState: () => state, actor: persona, applyState,
-    onCompare: () => { $('#kit-list').open = true; $('#kit-plan-compare').scrollIntoView({ block: 'center' }); $('#kit-plan-compare').focus(); } });
+    onCompare: () => { selectTab('plan'); setJournalOpen(true); $('#kit-list').open = true; $('#kit-plan-compare').scrollIntoView({ block: 'center' }); $('#kit-plan-compare').focus(); } });
   kitList = createKitList({ getState: () => state, actor: persona, applyState, onRender: () => kitPlan?.render() });
   kitPlan = createKitPlan({ getState: () => state, actor: persona, applyState, openMerchant: (from, options) => merchant.open(from, options),
     reserve: () => { const src = familyChoices?.fitSource(); return { cents: src?.reserveCents ?? 0, invalid: Boolean(src?.reserveInvalid) }; },
     onReview: useKitReview, listEditing: () => kitList?.editing() ?? false, onPreview: showKitPreview });
-  $('#open-exchange').addEventListener('click', () => { selectTab('plan'); setJournalOpen(true); villageExchange.open(); });
+  $('#open-exchange').addEventListener('click', () => villageExchange.open());
   for (const opener of [$('#open-merchant'), $('#find-goal-item')]) opener.addEventListener('click', (e) => merchant.open(e.currentTarget));
   $('#visit-campsite').addEventListener('click', visitCampsite);
+  $('#village-story-visit').addEventListener('click', visitCampsite);
   for (const id of ['#example-entry-go', '#example-to-kits', '#example-to-trial']) $(id).addEventListener('click', openExample);
   $('#kit-preview-close').addEventListener('click', closeKitPreview);
   $('#kit-preview .kit-preview-about').addEventListener('toggle', () => scene?.reframe());
@@ -2228,11 +2263,11 @@ function bindEvents() {
     e.preventDefault();
     selectTab(TABS[next]);
   });
-  sound.onChange(({ enabled, message }) => {
+  sound.onChange(({ enabled, message, track }) => {
     const toggle = $('#sound-toggle');
     toggle.setAttribute('aria-pressed', String(enabled));
     toggle.setAttribute('aria-label', enabled ? 'Sound on. Turn music and sound off' : 'Sound off. Turn music and sound on');
-    toggle.title = enabled ? 'Turn music and sound off' : 'Turn music and sound on';
+    toggle.title = enabled ? `Turn music and sound off${track ? ` · ${track.title} — ${track.artist}` : ''}` : 'Turn music and sound on';
     $('#sound-label').textContent = enabled ? 'Sound on' : 'Sound off';
     $('#sound-status').textContent = message;
   });
@@ -2263,7 +2298,7 @@ function bindEvents() {
     e.currentTarget.textContent = on ? 'Pixel art' : 'Raw 3D';
     scene?.setPixelMode(on);
   });
-  $('#persona').addEventListener('change', (e) => { ui.personaId = e.target.value; pref.set('persona', ui.personaId); ui.refundArm = null; $('#give-approve').checked = false; ui.approvalBasis = null; renderGive(); renderLedger(); renderNextStep(); renderExampleEntry(); familyChoices?.render(); kitList?.render(); villageExchange?.render(); });
+  $('#persona').addEventListener('change', (e) => { ui.personaId = e.target.value; pref.set('persona', ui.personaId); renderActiveMember(); ui.refundArm = null; $('#give-approve').checked = false; ui.approvalBasis = null; renderGive(); renderLedger(); renderNextStep(); renderExampleEntry(); familyChoices?.render(); kitList?.render(); villageExchange?.render(); });
   $('#next-step-go').addEventListener('click', openNextStep);
   $('#deed-visit').addEventListener('click', visitDeed);
   $('#deed-next').addEventListener('click', () => { ui.deeds.index++; renderDeed(); $('#deed-name').focus(); });

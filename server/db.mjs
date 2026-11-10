@@ -454,6 +454,21 @@ export const MIGRATIONS = Object.freeze([
       CREATE INDEX IF NOT EXISTS exchange_request_offers ON exchange_offers(request_id, status);
     `); },
   }),
+  Object.freeze({
+    id: 'exchange-directory',
+    ensure(db) {
+      db.exec(`CREATE TABLE IF NOT EXISTS exchange_profiles (
+        household_id TEXT PRIMARY KEY REFERENCES households(id) ON DELETE CASCADE,
+        family_ref TEXT NOT NULL UNIQUE, alias TEXT NOT NULL, country TEXT NOT NULL DEFAULT '',
+        visibility TEXT NOT NULL DEFAULT 'neighborhood' CHECK(visibility IN ('neighborhood','worldwide')),
+        updated_at TEXT NOT NULL
+      );
+      INSERT OR IGNORE INTO exchange_profiles(household_id,family_ref,alias,updated_at)
+        SELECT household_id, 'family_' || lower(hex(randomblob(10))), alias, joined_at FROM exchange_members;
+      CREATE INDEX IF NOT EXISTS exchange_profile_visibility ON exchange_profiles(visibility);`);
+      if (!hasColumn(db, 'exchange_offers', 'shared_alias')) db.exec('ALTER TABLE exchange_offers ADD COLUMN shared_alias TEXT');
+    },
+  }),
 ]);
 
 export function openDatabase(file) {

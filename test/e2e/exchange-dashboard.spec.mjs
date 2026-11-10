@@ -1,0 +1,69 @@
+import { test, expect } from '@playwright/test';
+import { mkdirSync } from 'node:fs';
+import { startDemo } from '../../scripts/demo.mjs';
+import { closeDeedsWhenTheyAppear } from './support/deeds.mjs';
+
+test('distinct stove requests open over the map; navigation, sharing, search and closing preserve the directory',{tag:'@release'},async({browser},info)=>{
+  test.setTimeout(150_000);
+  const demo=await startDemo({villageExchange:true});
+  const {viewport,isMobile,hasTouch,deviceScaleFactor}=info.project.use;
+  const context=await browser.newContext({viewport,isMobile,hasTouch,deviceScaleFactor,reducedMotion:'reduce'});
+  const errors=[],outside=[];await context.route('**/*',r=>{if(new URL(r.request().url()).origin===demo.url)return r.continue();outside.push(r.request().url());return r.abort();});
+  const page=await context.newPage();page.on('pageerror',e=>errors.push(e.message));
+  try{
+    await page.goto(demo.url);await expect(page.locator('body')).toHaveAttribute('data-ready','true',{timeout:30000});await closeDeedsWhenTheyAppear(page);
+    const before=await page.evaluate(()=>window.__ourCastle.state.progress);
+    await page.locator('#open-exchange').click();
+    await expect(page.getByRole('dialog',{name:'Village Exchange',exact:true})).toBeVisible();
+    await expect(page.locator('#exchange-list > li')).toHaveCount(8);
+    await page.getByLabel('Find a need or family').fill('Stove');await page.locator('#exchange-search-form').getByRole('button',{name:'Search',exact:true}).click();
+    await expect(page.locator('#exchange-list > li')).toHaveCount(2);
+    const refs=await page.locator('#exchange-list .exchange-reference').allTextContents();expect(new Set(refs).size).toBe(2);
+    await expect(page.locator('#exchange-list')).toContainText('Cedar');await expect(page.locator('#exchange-list')).toContainText('Sol');
+    if(info.project.name==='desktop'){
+      await page.getByRole('button',{name:/View Stove for Cedar/}).focus();
+      await expect(page.locator('#exchange-preview-family')).toContainText('Cedar');
+      await expect(page.locator('#exchange-preview-title')).toHaveText('Stove');
+    }
+    await page.getByRole('button',{name:/View Stove for Cedar/}).click();
+    await expect(page.locator('#exchange-detail-dialog')).toBeVisible();await expect(page.locator('#exchange-board')).toContainText('Canada');
+    await expect(page.locator('#exchange-board')).toContainText('freestanding');
+    await expect(page.locator('#exchange-board')).toContainText('Request · REQ-');await expect(page.locator('#exchange-board')).toContainText('Family · FAM-');
+    const box=await page.locator('#exchange-detail-dialog').boundingBox();expect(box.width).toBeGreaterThan(viewport.width*.65);
+    mkdirSync('test-results/exchange-dashboard',{recursive:true});
+    await page.screenshot({path:`test-results/exchange-dashboard/${info.project.name}-request.png`});
+    await page.keyboard.press('Escape');await expect(page.locator('#exchange-detail-dialog')).not.toBeVisible();
+    await expect(page.getByRole('button',{name:/View Stove for Cedar/})).toBeFocused();
+    await expect(page.getByLabel('Find a need or family')).toHaveValue('Stove');
+    await page.getByRole('button',{name:/View Stove for Sol/}).click();await expect(page.locator('#exchange-board')).toContainText('Portugal');
+    await page.getByRole('button',{name:'Close request details',exact:true}).click();
+    await page.getByLabel('Find a need or family').fill('');await page.locator('#exchange-search-form').getByRole('button',{name:'Search',exact:true}).click();
+    await expect(page.locator('#exchange-list > li')).toHaveCount(8);
+    const scroll=page.locator('#exchange-dialog .exchange-window-body');await scroll.evaluate(el=>{el.scrollTop=250;});
+    const y=await scroll.evaluate(el=>el.scrollTop);
+    await page.locator('#exchange-list > li').last().getByRole('button').click();await page.getByRole('button',{name:'Close request details',exact:true}).click();
+    // The same list remains mounted behind the detail window; closing never resets its search or scroll to the top.
+    if(y>0)expect(await scroll.evaluate(el=>el.scrollTop)).toBeGreaterThan(0);
+    await scroll.evaluate(el=>{el.scrollTop=0;});
+    await page.screenshot({path:`test-results/exchange-dashboard/${info.project.name}-dashboard.png`});
+    await page.locator('[data-exchange-view=offer]').click();
+    await expect(page.locator('#exchange-list > li')).toHaveCount(7);await expect(page.locator('#exchange-list')).not.toContainText('Alder');
+    await page.locator('[data-exchange-view=manage]').click();
+    await expect(page.locator('#exchange-list > li')).toHaveCount(1);await expect(page.locator('#exchange-list')).toContainText('Alder');
+    await page.getByText('Sharing settings',{exact:true}).click();
+    await page.getByLabel('Who can see our requests?',{exact:true}).selectOption('neighborhood');
+    await page.getByRole('button',{name:'Save sharing settings',exact:true}).click();
+    await expect.poll(()=>page.evaluate(()=>window.__ourCastle.state.exchange.settings.visibility)).toBe('neighborhood');
+    await page.locator('[data-exchange-view=browse]').click();await expect(page.locator('#exchange-list > li')).toHaveCount(7);
+    await page.locator('[data-exchange-view=manage]').click();await page.getByText('Sharing settings',{exact:true}).click();
+    await page.getByLabel('Who can see our requests?',{exact:true}).selectOption('worldwide');
+    const consent=page.getByLabel('Share my open requests’ items',{exact:false});await expect(consent).not.toBeChecked();
+    await consent.check();await page.getByRole('button',{name:'Save sharing settings',exact:true}).click();
+    await expect.poll(()=>page.evaluate(()=>window.__ourCastle.state.exchange.settings.visibility)).toBe('worldwide');
+    await page.locator('[data-exchange-view=browse]').click();await expect(page.locator('#exchange-list > li')).toHaveCount(8);
+    await page.getByRole('button',{name:'Close Village Exchange',exact:true}).click();await expect(page.locator('#open-exchange')).toBeFocused();
+    expect(await page.evaluate(()=>window.__ourCastle.state.progress)).toEqual(before);
+    expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+    expect(errors).toEqual([]);expect(outside).toEqual([]);
+  }finally{await context.close();await demo.close();}
+});

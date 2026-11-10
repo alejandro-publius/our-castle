@@ -1,0 +1,16 @@
+{
+  "generatedAtUTC": "2026-11-10",
+  "tool": "OpenAI image generator",
+  "ownerRequest": "Illustrated parchment game interface for the Journal and Village Exchange",
+  "sourceFile": "exec-9b024fd6-adc2-422c-bf57-ab52cd0eb022.png",
+  "sourceSHA256": "7fbbddc7dd4ba389638c5c7547173299a6b524bee4174acfb7d505cdb64976c9",
+  "output": "woodland-panel.webp",
+  "outputSHA256": "938e5e1fdb00433f51fcedc1049c6b6d05ca38c3ce72a8c2a91e86f03649bd9b",
+  "dimensions": [
+    1536,
+    1024
+  ],
+  "conversion": "WebP quality 88 encoding for local UI delivery, with exact transparent-pixel preservation. Original generated PNG retained in ignored evidence. No cropping, painting or compositing.",
+  "role": "Decorative nine-slice frame and paper; all text, controls and data remain real HTML.",
+  "outputBytes": 379440
+}

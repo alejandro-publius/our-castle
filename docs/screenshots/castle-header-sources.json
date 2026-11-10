@@ -1,0 +1,57 @@
+{
+  "capturedAtUTC": "2026-11-10",
+  "baseCommit": "1511f8f21b42d9daec30baf733404febea430648",
+  "branch": "codex/castle-header-20261110",
+  "captureScript": "docs/screenshots/castle-header-capture.mjs",
+  "command": "OUR_CASTLE_ENV_FILE=none node docs/screenshots/castle-header-capture.mjs",
+  "conditions": "Fresh in-memory village example; no keys or saved data; all outside browser transport blocked; Chromium emulated phone, reduced motion. No writes, page errors, overflow or goal/progress changes. Image load awaited before measurement.",
+  "widths": [
+    320,
+    390,
+    768,
+    1100,
+    1440
+  ],
+  "images": [
+    {
+      "file": "docs/screenshots/castle-header-desktop-1440-header.webp",
+      "source": "test-results/castle-header/desktop-1440-header.png",
+      "dimensions": [
+        1400,
+        98
+      ],
+      "sourceSHA256": "172fcd755c9c9b58e9b8973b69411e1b331f1625139e1a26c820d2a958ce9fb6",
+      "sha256": "b4dc7e49cd30413079215a57894cd2ef025afb69d57939b8b46b1b0f8d2f289f"
+    },
+    {
+      "file": "docs/screenshots/castle-header-phone-390-header.webp",
+      "source": "test-results/castle-header/phone-390-header.png",
+      "dimensions": [
+        370,
+        243
+      ],
+      "sourceSHA256": "21e52971c2d48b1a2faf92ca867c911d3f69ea5fef5f5985130c6c73876a0c36",
+      "sha256": "f0c184dac26b67a41a8676d5269a04fdf25f030db4b97a6d5e4efe35939cb267"
+    },
+    {
+      "file": "docs/screenshots/castle-header-desktop-journal.webp",
+      "source": "test-results/castle-header/desktop-journal.png",
+      "dimensions": [
+        1440,
+        1000
+      ],
+      "sourceSHA256": "d0dc1587850e63343d584492a47858547b3fd5a1bbf1c4259688b9a89206acea",
+      "sha256": "5f40489cb75bd05208a16ce87b6cf5aa109e8361cdf47497621308698c57e08e"
+    },
+    {
+      "file": "docs/screenshots/castle-header-phone-journal.webp",
+      "source": "test-results/castle-header/phone-journal.png",
+      "dimensions": [
+        390,
+        844
+      ],
+      "sourceSHA256": "0837143984701463916126d2c2d8cb4a84388500d4d8754d71f3478b9f374022",
+      "sha256": "34d5ae875270f5e5c029810078d199e65703c01a402a9c28b74544b1bdd01b23"
+    }
+  ]
+}

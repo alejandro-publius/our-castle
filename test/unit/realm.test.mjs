@@ -4,7 +4,7 @@ import { REALM_SIZE, REALM_BOUNDS, REALM_DISTRICTS, REALM_LEGENDS, REALM_BRIDGES
 import { courtResidents, courtWorldPose, courtDistrict } from '../../src/core/court.js';
 
 test('nine separate districts remain on the world map while only earned destinations and bridges open',()=>{
-  assert.deepEqual(REALM_SIZE,{width:420,depth:324,centerX:32,centerZ:0});
+  assert.deepEqual(REALM_SIZE,{width:452,depth:356,centerX:32,centerZ:0});
   const start=realmAccess({builtTier:0,estateLevel:1});
   assert.equal(start.length,9);assert.deepEqual(start.filter(d=>d.open).map(d=>d.id),['cottage']);
   assert.ok(bridgeAccess({builtTier:0,estateLevel:1}).every(b=>!b.open));
@@ -112,7 +112,7 @@ test('the folklore towers use existing milestones; the hidden discoveries have n
   assert.equal(keep.find(d=>d.id==='rapunzel').open,false);
   assert.equal(bridgeAccess({builtTier:2,estateLevel:3}).find(b=>b.id==='wizard-bridge').open,true);
   assert.equal(bridgeAccess({builtTier:3,estateLevel:3}).find(b=>b.id==='rapunzel-bridge').open,true);
-  assert.deepEqual(REALM_LEGENDS.map(d=>d.id),['knights-rest','sword-stone']);
+  assert.deepEqual(REALM_LEGENDS.map(d=>d.id),['knights-rest','lantern-glade','sword-stone']);
   assert.equal(districtById('sword-stone'),undefined);
   assert.equal(districtById('knights-rest'),undefined);
   assert.equal(viewLocation('knights-rest').name,'The Knights’ Rest');

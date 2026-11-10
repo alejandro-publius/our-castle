@@ -1,5 +1,21 @@
 # Art direction — preserve this visual family
 
+## Painted parchment and the outer woodland
+
+The owner requested the illustrated game-shop feel first, then granted a bounded creative scenery pass. The Journal and both Village Exchange windows now use an original image-generated paper/wood/brass/ivy frame, with native HTML text and controls. [Design and provenance](JOURNAL-DESIGN.md#painted-parchment-revision).
+
+The board extends from 420×324 to **452×356**, adding 16 world units on every edge. Four corner shoulders give the existing mountain ring more depth; full slopes and broad feet finish before the land edge. The extra river endpoints reach the larger board. No district, bridge, financial route or milestone moves.
+
+Two low, gently drifting mist pockets sit in the outer woodland, clear of the homes. Mist uses reconstructed scene depth and the existing paused/reduced-motion cloud clock, with no new render pass or timer. The original palette pass is unchanged; the local haze is composed alongside the existing cloud surround.
+
+**The Lantern Glade** is a small exploration discovery: a worn stone arch, ivy, hanging lantern, perched owl, eleven mushrooms, fern patch and fallen-log seat. Its compact marker appears while exploring, like the existing forest camp; it is not a reward or financial target. The Knights' Rest gains a cooking kettle, dry wood and a resting shield. The existing knights and two river-connected waterfalls are retained.
+
+References are the owner's woodland/game-art examples, the existing original miniature vocabulary and the current ridge/forest/camp. No third-party sprites, external textures or new provider feature is introduced. [Actual screenshots and capture record](screenshots/parchment-woodland-sources.json); functional checks are recorded in [VALIDATION.md](VALIDATION.md).
+
+![The expanded woodland and complete mountain slopes](screenshots/parchment-woodland-desktop-realm.webp)
+
+![The Lantern Glade at night](screenshots/parchment-woodland-desktop-glade-night.webp)
+
 ## The family campsite (November 5, 2026)
 
 The unbuilt west meadow beside Hearth Village now holds the family's project: survey stakes, then a construction site, a furnished campsite and finally a gathering place with a pavilion in the crest colour. Its stage is read from the server's current progress through the existing 0/25/60/100 % home milestones, with the 10/40/80 % estate milestones adding detail inside a stage; a refund or a larger goal sets it back. Geometry uses the shared batches, cottage, roof, lantern, shield and bunting models and the original palette; only the campfire flame and smoke move, on the ambient clock. One small tent marker on the map focuses it and names the stage, and Journal → Plan carries the stage on one line with a quiet "Visit campsite" link. No panel, card, reward or payment rule. [Reference lock and checks](FAMILY-PROJECT.md) · [Gathering place](screenshots/family-project-gathering.png) · [Night](screenshots/family-project-gathering-night.png).

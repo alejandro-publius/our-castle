@@ -94,9 +94,16 @@ jobs:
           if-no-files-found: ignore
 
   kit-planner:
-    name: Kit planner journey with the Rust solver (desktop and 390 px phone)
+    name: Kit planner journey with the Rust solver (${{ matrix.project }})
     runs-on: ubuntu-24.04
     timeout-minutes: 20
+    # The combined desktop/phone run exhausted its 15-minute suite budget after
+    # 15 passing cases. Give each project its own isolated runner while keeping
+    # every case, assertion, per-test timeout and the existing suite budget.
+    strategy:
+      fail-fast: false
+      matrix:
+        project: [desktop, phone]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -118,12 +125,12 @@ jobs:
       - name: Run the @kit-planner journey (the compiled solver is required)
         env:
           KIT_SOLVER_REQUIRED: '1'
-        run: npx playwright test --grep @kit-planner --project=desktop --project=phone --global-timeout=900000
+        run: npx playwright test --grep @kit-planner --project=${{ matrix.project }} --global-timeout=900000
       - name: Keep failure traces (fake data only)
         if: ${{ failure() }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: kit-planner-traces
+          name: kit-planner-traces-${{ matrix.project }}
           path: test-results/artifacts/
           retention-days: 7
           if-no-files-found: ignore

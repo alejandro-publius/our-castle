@@ -527,7 +527,7 @@ test('a kit’s Cohere description is its public titles and shops only, the same
 
 test('a schema-11 database gains the kit-planner and later exchange tables; every earlier row is unchanged', () => {
   const step = MIGRATIONS.findIndex((m) => m.id === 'kit-planner');
-  assert.deepEqual([step, MIGRATIONS.length], [11, 13], 'the kit planner is step 12');
+  assert.deepEqual([step, MIGRATIONS.length], [11, 14], 'the kit planner is step 12');
   const dir = mkdtempSync(path.join(tmpdir(), 'our-castle-kit-planner-'));
   const file = path.join(dir, 'schema-11.sqlite');
   const old = new DatabaseSync(file);
@@ -539,9 +539,9 @@ test('a schema-11 database gains the kit-planner and later exchange tables; ever
   const beforeTables = tables(old), before = rows(old, beforeTables);
   old.close();
   const db = openDatabase(file);
-  assert.equal(db.prepare('PRAGMA user_version').get().user_version, 13);
-  assert.deepEqual(tables(db).filter((t) => !beforeTables.includes(t)), ['exchange_circles', 'exchange_invites', 'exchange_members', 'exchange_offers', 'exchange_requests', 'goal_kits', 'kit_candidates', 'kit_selections']);
-  assert.equal(tables(db).length, 32);
+  assert.equal(db.prepare('PRAGMA user_version').get().user_version, 14);
+  assert.deepEqual(tables(db).filter((t) => !beforeTables.includes(t)), ['exchange_circles', 'exchange_invites', 'exchange_members', 'exchange_offers', 'exchange_profiles', 'exchange_requests', 'goal_kits', 'kit_candidates', 'kit_selections']);
+  assert.equal(tables(db).length, 33);
   assert.deepEqual(rows(db, beforeTables), before, 'every earlier row is unchanged');
   assert.equal(db.prepare('PRAGMA integrity_check').get().integrity_check, 'ok');
   assert.deepEqual(db.prepare('PRAGMA foreign_key_check').all(), []);

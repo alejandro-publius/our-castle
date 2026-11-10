@@ -28,13 +28,13 @@ import {
   addCandidate, adoptKit, chooseKit, compareKits, goalKitFor, keepLine, kitDescription, kitPlanView, refreshCandidate, removeCandidate, reviewKit, withPreference,
 } from './kit/planner.mjs';
 import { transaction } from './db.mjs';
-import { exchangeView, exchangeAction } from './exchange/index.mjs';
+import { exchangeView, exchangeAction, exchangeDirectory, exchangeRequest } from './exchange/index.mjs';
 
 const MIME = {
   '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8',
   '.mjs': 'text/javascript; charset=utf-8', '.json': 'application/json; charset=utf-8', '.png': 'image/png',
   '.webp': 'image/webp', '.svg': 'image/svg+xml', '.ttf': 'font/ttf', '.glb': 'model/gltf-binary', '.txt': 'text/plain; charset=utf-8',
-  '.md': 'text/plain; charset=utf-8', '.py': 'text/plain; charset=utf-8', '.mp3': 'audio/mpeg',
+  '.md': 'text/plain; charset=utf-8', '.py': 'text/plain; charset=utf-8', '.mp3': 'audio/mpeg', '.ogg': 'audio/ogg',
 };
 const STATIC_FILES = new Set(['index.html', 'app.css', 'art-preview.html', 'art-preview.css']);
 const STATIC_PREFIXES = ['src/', 'assets/', 'vendor/', 'references/'];
@@ -138,6 +138,7 @@ export function createApp({ config, db, clock, paypal = null, aiProvider = null,
   // Example mode is the single local example household. Family mode serves only households whose members enrolled their
   // own passkeys; it never creates, shows or falls back to the example household.
   const family = config.access?.mode === 'family';
+  const exchangeAvailable = family || ['village-exchange', 'village-story'].includes(example?.id);
   // An authored example (the demo runner's --family-trip) starts the example household from its own invented figures and
   // says so in every state. It belongs to the simulated example household only: never a shared family or sandbox records.
   if (example && (family || config.payments.mode !== 'example')) throw new Error('An authored example runs only on the simulated example household.');
@@ -192,7 +193,7 @@ export function createApp({ config, db, clock, paypal = null, aiProvider = null,
     s.kit = kitView(db, s.goal);
     s.kitPlan = kitPlanView(db, { householdId: scope.householdId, goal: s.goal, now: clock.now().getTime(), rankMode: rankMode() });
     s.goalKit = goalKitFor(db, s.goal);
-    s.exchange = { available: family || example?.id === 'village-exchange', ...((family || example?.id === 'village-exchange') ? exchangeView(db, scope) : {}) };
+    s.exchange = { available: exchangeAvailable, ...(exchangeAvailable ? exchangeView(db, scope) : {}) };
     if (example) s.example = exampleInfo;
     if (family) { s.access = access.viewer(scope); s.revision = live.revisionOf(scope.householdId); }
     return s;
@@ -415,8 +416,16 @@ export function createApp({ config, db, clock, paypal = null, aiProvider = null,
     }],
     // ---- Kit list: a family's short checklist of things to bring for its goal. Typing a list needs no server call; only
     // "Save this list" writes, and only the kit list. Reading a photo writes nothing and tells no other page. ----
+    ['GET', '/api/exchange/requests', ({ req, scope }) => {
+      if (!exchangeAvailable) throw new DomainError(409,'exchange_off','Open the family Exchange to browse needs.');
+      return exchangeDirectory(db,scope,new URL(req.url,'http://localhost').searchParams);
+    }],
+    ['GET', /^\/api\/exchange\/requests\/([\w-]+)$/, ({ params, scope }) => {
+      if (!exchangeAvailable) throw new DomainError(409,'exchange_off','Open the family Exchange to browse needs.');
+      return { request:exchangeRequest(db,scope,params[0]) };
+    }],
     ['POST', '/api/exchange', ({ body, scope }) => {
-      if (!family && example?.id !== 'village-exchange') throw new DomainError(409, 'exchange_off', 'Neighborhood sharing is available in the family runner.');
+      if (!exchangeAvailable) throw new DomainError(409, 'exchange_off', 'Neighborhood sharing is available in the family runner.');
       refuseForeign(body, scope);
       const result = exchangeAction(db, { scope, actor: choiceActor(body, scope), action: body.action, input: body }, clock);
       for (const id of result.changedHouseholds) if (id !== scope.householdId) { live?.touch(id); live?.notify(id); }
@@ -739,6 +748,7 @@ export function createApp({ config, db, clock, paypal = null, aiProvider = null,
     if (!info?.isFile()) return sendJson(res, 404, { error: { code: 'not_found', message: 'Not found' } });
     const headers = {
       'Content-Type': MIME[path.extname(file)] ?? 'application/octet-stream',
+      'Content-Length': info.size,
       'X-Content-Type-Options': 'nosniff',
       'Referrer-Policy': 'same-origin',
       'Cache-Control': relative.endsWith('.html') || relative.startsWith('src/') || relative.endsWith('.css') ? 'no-cache' : 'public, max-age=3600',

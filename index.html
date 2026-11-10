@@ -8,6 +8,8 @@
   <meta name="description" content="A cooperative household savings journey through a pixel woodland, from cottage to castle.">
   <link rel="icon" type="image/webp" href="assets/brand/our-castle/crest.webp">
   <link rel="stylesheet" href="app.css">
+  <link rel="stylesheet" href="src/ui/parchment.css">
+  <link rel="stylesheet" href="src/ui/castle-header.css">
   <script type="importmap">{"imports":{"three":"./vendor/three/three.module.js"}}</script>
 </head>
 <body>
@@ -16,13 +18,13 @@
     <header class="topbar">
       <div class="brand">
         <span class="brand-crest" id="brand-crest"><img src="assets/brand/our-castle/crest.webp" width="55" height="60" alt="" decoding="async"></span>
-        <div><h1>Our Castle</h1><div class="brand-house"><span id="house-crest"></span><p id="house-eyebrow"></p></div></div>
+        <div class="brand-copy"><h1>Our Castle</h1><div class="brand-house"><span id="house-crest"></span><p id="house-eyebrow"></p><span id="header-example" class="header-example" hidden>Example</span></div></div>
       </div>
         <section class="quest" aria-labelledby="goal-name">
           <div class="quest-head">
                         <h2 id="goal-name">…</h2>
           </div>
-          <p class="quest-amount"><strong id="progress-amount">…</strong> <span> / <span id="target-amount">…</span></span></p>
+          <p class="quest-amount"><strong id="progress-amount">…</strong> <span> toward <span id="target-amount">…</span></span></p>
           <div class="meter" id="meter" role="meter" aria-label="Goal progress" aria-valuemin="0">
             <div class="meter-fill" id="meter-fill"></div>
             <div class="meter-ticks" id="meter-ticks" aria-hidden="true"></div>
@@ -36,12 +38,15 @@
           </div>
         </section>
       <div class="topbar-tools">
+        <div class="member-control">
+        <img id="active-member-portrait" class="active-member-portrait" width="40" height="40" alt="" hidden>
         <label class="persona"><span class="sr-only">Household member</span><select id="persona" aria-describedby="honesty"></select></label>
         <!-- Family access: the signed-in member, fixed by their passkey (no switching to another person). -->
         <span class="signed-in" id="signed-in" hidden></span>
+        </div>
         <!-- Family access: appears only when live updates from the family have been away for a while. -->
         <p class="live-status" id="live-status" hidden><span class="live-dot" aria-hidden="true"></span><span class="live-text">Updates paused</span><button type="button" class="link-button" id="live-retry" aria-label="Updates paused. Reconnect">Reconnect</button></p>
-        <button type="button" id="journal-toggle" class="journal-toggle" aria-label="Journal" aria-expanded="true" aria-controls="journey"><svg viewBox="0 0 20 20" width="19" height="19" fill="none" aria-hidden="true"><path d="M10 4c-2-2-5-2-8-1v13c3-1 6-1 8 1 2-2 5-2 8-1V3c-3-1-6-1-8 1Zm0 0v13" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg><span>Journal</span></button>
+        <button type="button" id="journal-toggle" class="journal-toggle" aria-label="Journal" aria-expanded="true" aria-controls="journey"><img class="journal-book" src="assets/ui/header/household-journal.webp" width="44" height="48" alt="" decoding="async"><span>Journal</span></button>
         <button type="button" id="sound-toggle" class="sound-toggle" aria-pressed="false" aria-label="Sound off. Turn music and sound on" title="Turn music and sound on"><svg viewBox="0 0 20 20" width="19" height="19" fill="none" aria-hidden="true"><path d="M9 4 5 7H2v6h3l4 3V4Z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><path class="sound-waves" d="M12 7a4 4 0 0 1 0 6m3-9a8 8 0 0 1 0 12" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><path class="sound-mute" d="m13 8 4 4m0-4-4 4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg><span id="sound-label">Sound off</span></button>
         <span id="sound-status" class="sr-only" role="status" aria-live="polite"></span>
       </div>
@@ -277,13 +282,8 @@
           </div>
           <details class="village-exchange" id="village-exchange" hidden>
             <summary>Village Exchange <small id="exchange-summary"></small></summary>
-            <p class="fine">Share a need with invited neighbors. An offer is a promise; only an item you confirm receiving helps cover the kit. No money changes hands here.</p>
-            <div id="exchange-forms"></div>
-            <p class="fine" id="exchange-empty" hidden>No requests yet. Share one item your family still needs.</p>
-            <ul id="exchange-board" class="exchange-board" aria-label="Neighborhood requests"></ul>
-            <ul id="exchange-invites" class="exchange-invites" aria-label="Your open invitations"></ul>
-            <button type="button" id="exchange-compare" class="link-button">Compare what is left to buy</button>
-            <p id="exchange-status" role="status" aria-live="polite"></p>
+            <p class="fine">Find a family’s need, lend an item, or share one of your own.</p>
+            <button type="button" id="exchange-browse">Browse family needs</button>
           </details>
           <!-- A Market Town merchant result waiting for the family's confirmation. Nothing is saved until "Save as our goal". -->
           <section class="goal-draft" id="goal-draft" hidden aria-labelledby="goal-draft-title">
@@ -362,6 +362,11 @@
         <section class="panel parchment" id="panel-give" role="tabpanel" aria-labelledby="tab-give" hidden>
           <p class="chapter-kicker">One step closer</p>
           <h3 id="give-heading" tabindex="-1">Contribute</h3>
+          <div id="village-story-intro" hidden>
+            <p>Alder is gathering books and shelves for a shared village reading room. Help move the project one step closer.</p>
+            <p class="fine">Invented families · simulated contributions. No money is sent or held.</p>
+            <p class="plan-project"><span id="village-story-progress"></span><button type="button" class="link-button" id="village-story-visit">View project on the map</button></p>
+          </div>
           <p class="lede" id="give-context"></p>
           <label class="field">
             <span>Amount (USD)</span>
@@ -450,7 +455,7 @@
 
     <footer class="footer">
       <p id="honesty" class="game-notice"></p>
-      <span class="art-credit">Art · Tiny Castle</span>
+      <span class="realm-credits"><span class="art-credit">Art · Tiny Castle</span><a class="music-credit" href="https://bitbybitsound.com" target="_blank" rel="noopener noreferrer">Music composed by Bert Cole</a><span>Also HydroGene &amp; congusbongus</span></span>
     </footer>
   </div>
   <script type="module" src="src/app/main.js"></script>
@@ -520,6 +525,62 @@
         <p id="merchant-source" class="merchant-source" hidden></p>
       </div>
     </article>
+  </dialog>
+  <dialog id="exchange-dialog" class="exchange-window" aria-labelledby="exchange-title">
+    <header class="exchange-window-head">
+      <img src="assets/brand/our-castle/crest.webp" alt="" width="40" height="44">
+      <div><p class="exchange-eyebrow">Our Castle · family needs</p><h2 id="exchange-title" tabindex="-1">Village Exchange</h2></div>
+      <button type="button" id="exchange-close" class="exchange-close" aria-label="Close Village Exchange">×</button>
+    </header>
+    <nav class="exchange-market-nav" aria-label="Village Exchange sections">
+      <button type="button" data-exchange-view="browse" aria-pressed="true"><span class="exchange-medallion" aria-hidden="true"><svg viewBox="0 0 24 24" width="25" height="25" fill="none"><circle cx="10" cy="10" r="6" stroke="currentColor" stroke-width="1.8"/><path d="m15 15 6 6" stroke="currentColor" stroke-width="2"/></svg></span> Browse needs</button>
+      <button type="button" data-exchange-view="offer" aria-pressed="false"><span class="exchange-medallion" aria-hidden="true"><svg viewBox="0 0 24 24" width="25" height="25" fill="none"><path d="M3 10h18v11H3zM2 6h20v4H2zM12 6v15M12 6C4 6 6-1 10 3Zm0 0c8 0 6-7 2-3Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg></span> Offer an item</button>
+      <button type="button" data-exchange-view="manage" aria-pressed="false"><span class="exchange-medallion" aria-hidden="true"><svg viewBox="0 0 24 24" width="25" height="25" fill="none"><path d="m2 11 10-8 10 8M5 9v12h14V9M9 21v-7h6v7" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg></span> My exchanges</button>
+    </nav>
+    <div class="exchange-market-layout">
+    <aside id="exchange-preview" class="exchange-selection" aria-labelledby="exchange-preview-title">
+      <div class="exchange-selection-art"><img src="assets/brand/our-castle/castle.webp" width="280" height="210" alt=""></div>
+      <p class="exchange-eyebrow">A family request</p>
+      <h3 id="exchange-preview-title">Choose a need</h3>
+      <p id="exchange-preview-family"></p>
+      <p id="exchange-preview-note" class="fine"></p>
+      <dl class="exchange-selection-facts"><div><dt>Still needed</dt><dd id="exchange-preview-quantity">—</dd></div><div><dt>Needed through</dt><dd id="exchange-preview-date">—</dd></div></dl>
+      <p id="exchange-preview-reference" class="exchange-reference"></p>
+      <button type="button" id="exchange-preview-open" disabled>View request</button>
+    </aside>
+    <div class="exchange-window-body">
+      <p id="exchange-demo-note" class="fine" hidden>Example families and requests. These are invented listings in this local demo.</p>
+      <form id="exchange-search-form" class="exchange-toolbar" role="search">
+        <label class="field"><span>Find a need or family</span><input type="search" id="exchange-search" maxlength="80" placeholder="Item, family, country or reference"></label>
+        <label class="field"><span>Browse</span><select id="exchange-scope"><option value="neighborhood">My neighborhood &amp; exchanges</option><option value="worldwide">Worldwide</option></select></label>
+        <button type="submit">Search</button>
+        <button type="button" id="exchange-refresh" class="link-button">Refresh</button>
+      </form>
+      <div class="exchange-list-head"><h3 id="exchange-list-title">Family requests</h3><span id="exchange-count" class="fine" role="status"></span></div>
+      <p class="fine" id="exchange-view-note" hidden></p>
+      <p id="exchange-directory-status" role="status" aria-live="polite"></p>
+      <p class="fine" id="exchange-empty" hidden>No requests here yet. Choose Worldwide or share an item your family needs.</p>
+      <ul id="exchange-list" class="exchange-directory" aria-labelledby="exchange-list-title"></ul>
+      <button type="button" id="exchange-more" hidden>Show more requests</button>
+      <details id="exchange-manage" class="exchange-manage"><summary>Your sharing &amp; requests</summary>
+        <div id="exchange-forms"></div>
+        <ul id="exchange-invites" class="exchange-invites" aria-label="Your open invitations"></ul>
+      </details>
+      <p id="exchange-status" role="status" aria-live="polite"></p>
+    </div>
+    </div>
+  </dialog>
+  <dialog id="exchange-detail-dialog" class="exchange-window exchange-detail-window" aria-labelledby="exchange-detail-title">
+    <header class="exchange-window-head">
+      <div><p class="exchange-eyebrow">Village Exchange · request details</p><h2 id="exchange-detail-title" tabindex="-1">Family request</h2></div>
+      <button type="button" id="exchange-detail-close" class="exchange-close" aria-label="Close request details">×</button>
+    </header>
+    <div class="exchange-window-body">
+      <button type="button" id="exchange-back" class="link-button">← Back to requests</button>
+      <ul id="exchange-board" class="exchange-board" aria-label="Selected family request"></ul>
+      <p id="exchange-detail-status" role="status" aria-live="polite"></p>
+      <button type="button" id="exchange-compare" class="link-button">Compare what is left to buy</button>
+    </div>
   </dialog>
 </body>
 </html>

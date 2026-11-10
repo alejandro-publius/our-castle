@@ -6,6 +6,7 @@ import { createWoodlandLegends } from './woodland-legends.js';
 import { createPrincessPalace } from './princess-palace.js';
 import { createRiverCurrent } from './river-current.js';
 import { createWoodlandDiscoveries } from './woodland-discoveries.js';
+import { createWaysideDetails } from './wayside-details.js';
 import { inDiscoveryClearing } from '../core/woodland-discoveries.js';
 import { FRONTIER_CLEARINGS, MOUNTAIN_PEAKS, terrainElevation } from '../core/realm-terrain.js';
 import { addPayPalHillside } from './paypal-hillside.js';
@@ -36,7 +37,13 @@ function clearingDepth(x, z, d) {
   const corner = (.89 - ax / d.width - az / d.depth) * Math.min(d.width, d.depth) * .7;
   return Math.min(d.width / 2 - ax, d.depth / 2 - az, corner);
 }
-const ALL_CLEARINGS = [...REALM_DISTRICTS, ...REALM_LEGENDS, ...FRONTIER_CLEARINGS];
+// Wider lawns let the castle walls read separately from the forest canopy.
+// These are scenery footprints only: district bounds, camera frames and progression stay independent.
+const CASTLE_GROUNDS_MARGIN = Object.freeze({keep:6,castle:9,palace:9});
+const ALL_CLEARINGS = [...REALM_DISTRICTS.map(d=>{
+  const margin=CASTLE_GROUNDS_MARGIN[d.id]??0;
+  return margin ? {...d,width:d.width+margin*2,depth:d.depth+margin*2} : d;
+}), ...REALM_LEGENDS, ...FRONTIER_CLEARINGS];
 const deepestClearing = (x, z) => ALL_CLEARINGS.reduce((best, d) => Math.max(best, clearingDepth(x, z, d)), -Infinity);
 const nearBridge = (x, z, margin) => REALM_BRIDGES.some(({ a, b }) => {
   const dx = b[0] - a[0], dz = b[1] - a[1], t = Math.max(-.15, Math.min(1.15, ((x - a[0]) * dx + (z - a[1]) * dz) / (dx * dx + dz * dz)));
@@ -239,8 +246,10 @@ export function createRealmModels({ builder, part: addPart, models, colours: C }
 
   // ---------- Districts: meadow clearings with their own copses and flowers ----------
   function terrain(group,d,helpers){
-    // Each clearing has its own copses rather than a single square tree border.
-    for(let i=0;i<24;i++){
+    // Small neighborhoods keep their copses; castle lawns keep the walls and towers clear.
+    // Deliberate garden planting is added separately in decor().
+    const treeCount=CASTLE_GROUNDS_MARGIN[d.id]?0:24;
+    for(let i=0;i<treeCount;i++){
       const x=Math.sin(i*2.37)*(d.width/2-3),z=Math.cos(i*3.73)*(d.depth/2-3);
       if(inTavernPlot(d.id,x,z,.7)||inFarmPlot(d.id,x,z,1.2)||d.id==='palace'&&Math.abs(x)<19&&z>-12&&z<22||Math.abs(x)<12*d.scale&&Math.abs(z)<11*d.scale||nearJourney(d.x+x,d.z+z))continue;
       helpers.tree(group,x,z,1.1+(i%5)*.16,i%3!==0);
@@ -456,7 +465,7 @@ export function createRealmModels({ builder, part: addPart, models, colours: C }
   }
   // The ground, rivers and forest do not depend on progress. They are built once into their own group and kept, so a
   // milestone or preview rebuilds only the districts and bridges, as before.
-  let landscape = null, current = null, discoveries = null;
+  let landscape = null, current = null, discoveries = null, waysides = null;
   function woodland(group) {
     const started = performance.now(), land = ground(group), woods = new THREE.Group(); group.add(woods);
     // The forest covers most of the screen, so it is batched with flat Lambert paint, which is far cheaper to shade than
@@ -478,7 +487,8 @@ export function createRealmModels({ builder, part: addPart, models, colours: C }
     let instances = 0, meshes = 0; woods.traverse((o) => { if (o.isInstancedMesh) { meshes++; instances += o.count; } });
     for(const d of REALM_LEGENDS.filter(d=>d.id==='sword-stone')){const secret=new THREE.Group();secret.position.set(d.x,0,d.z);group.add(secret);legends.sword(secret);builder.flush();finish(secret);}
     const hillsideSign=addPayPalHillside(group,{builder,part:addPart,colours:C});
-    discoveries = createWoodlandDiscoveries({group,builder,part:addPart,colours:C,waterLevel:L.water,groundLevel:L.ground});
+    discoveries = createWoodlandDiscoveries({group,builder,part:addPart,colours:C,lampColour:models.roles.lamp,waterLevel:L.water,groundLevel:L.ground});
+    waysides = createWaysideDetails({group,builder,part:addPart,models,colours:C,groundLevel:L.ground});finish(waysides.root);
     current = createRiverCurrent(L.water, F.ripple); group.add(current.mesh);
     landscape = { ground: land, forest: { ...counts, meshes, instances }, rivers: { count: RIVER_PATHS.length, ...rivers }, frontier:{clearings:FRONTIER_CLEARINGS.length,mountainPeaks:MOUNTAIN_PEAKS.length,highlandTrees,hillsideSign}, buildMs: Math.round(performance.now() - started) };
     return landscape;
@@ -516,7 +526,7 @@ export function createRealmModels({ builder, part: addPart, models, colours: C }
   return {woodland,build,home,finish,lightSpots,
     stepFarm: (seconds) => farm.tick(seconds), farmDebug: () => farm.debug(),
     stepTavern: (seconds) => tavern.tick(seconds), tavernDebug: () => tavern.debug(),
-    stepCurrent: (seconds) => { current?.tick(seconds); discoveries?.tick(seconds); }, discoveriesDebug: () => discoveries?.debug() ?? null, currentDebug: () => current?.debug() ?? null,
+    stepCurrent: (seconds) => { current?.tick(seconds); discoveries?.tick(seconds); waysides?.tick(seconds); }, discoveriesDebug: () => discoveries ? {...discoveries.debug(),waysides:waysides?.debug()??null} : null, currentDebug: () => current?.debug() ?? null,
     stepLegends: (seconds) => legends.tick(seconds), legendsDebug: () => legends.debug(),
     surfaces: () => ({...surfaceMeshes, ripples: current?.mesh}),
   };

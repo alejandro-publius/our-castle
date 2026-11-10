@@ -57,6 +57,8 @@ export const ROUTE_POLICIES = Object.freeze([
   ['POST', '/api/family-choices/preference/remove', 'member'],
   // Kit list: adults read a photo (no record changes) and save the list; every member reads the saved list in the state.
   ['POST', '/api/exchange', 'adult'],
+  ['GET', '/api/exchange/requests', 'member'],
+  ['GET', /^\/api\/exchange\/requests\/([\w-]+)$/, 'member'],
   ['POST', '/api/kit/read', 'adult'],
   ['PUT', '/api/kit', 'adult'],
   ['POST', '/api/kit/listings', 'adult'],

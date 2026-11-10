@@ -1,5 +1,83 @@
 # Validation
 
+## November 10 source integration and CI correction
+
+The combined release retains the eight commits from PRs #70–#77, ending at `47dbf4e`. The review covers the Exchange's private-by-default directory and participant boundaries, schema-14 migration fixtures, illustrated parchment/header, licensed local music, focused library example, and woodland/clearing additions. The production source and assets are byte-identical to that reviewed head; this integration changes only the release workflow, one browser startup assertion and release documentation.
+
+[PR #76's run 42879225242](https://github.com/alejandro-publius/our-castle/actions/runs/42879225242) exposed two concrete check failures. The combined native-kit job reached its 900-second suite limit after **15 passes**, leaving three cases unrun. Desktop and phone now have separate isolated jobs with the same 900-second budget and all original assertions and per-test timeouts. A test-list audit confirms **18 unique cases: nine desktop and nine phone**, with no omissions or duplicates.
+
+The two-family Exchange case also exhausted its standalone 15-second reload-readiness assertion before an exchange action. Its trace contains no page error. The same failure reproduced locally. Reload now uses the existing `settled` family helper, already used for sign-in: it requires both page readiness and the signed-in access state within 30 seconds. This is a bounded test-startup correction, not an application performance claim. All invitation, offer, handover, no-cash-credit and session-loss assertions remain.
+
+The original 47-file art/runtime guard, 90-color palette, renderer wiring and syntax checks pass. The seven newly bundled music/UI assets and 14 source-stamped screenshots match their provenance hashes. Raw before/after browser evidence and the kit-case inventory are ignored under `test-results/main-integration/`. Final local and exact-head hosted results are recorded on the integration PR. No owner runtime, saved database, private configuration, provider call or financial record is part of this source integration.
+
+## Realm soundtrack — November 10, 2026
+
+The owner approved HydroGene and Bit By Bit Sound for more retro music. The realm now rotates six local recordings: the existing shop song plus five original files from those two packs. Village, woods, market and night select the next playlist at a natural ending; camera motion never restarts the current recording. One native audio element fades recording edges, pauses while hidden and remains muted until explicit opt-in. A reload starts silent. No new controls, service or dependency.
+
+Actual focused checks on Node 24.22.1 / Chromium:
+
+- **7/7 player unit cases**: lazy creation, fair rotation, unsupported-codec fallback, quiet fade edges, off/hidden and late-promise races, failed load retry and playback refusal.
+- **11/11 existing HTTP server unit cases** with disposable databases and fake providers. Static responses now include their byte length and the Ogg MIME type. The first original MP3 check reproduced an indeterminate browser duration without the size header.
+- **10 distinct browser cases passed** across desktop 1440×1000 and emulated phone 390×844: eight existing opt-in/rotation/stop/reload, refusal/retry/visibility and late-play checks, followed by two new full six-recording journeys. The latter play every bundled recording and advance by actual native endings at accelerated playback speed, without synthetic ended events. They also check camera/sky changes leave the current song playing, all six files are used, only one media element exists, progress has no writes, credits are visible and the page has no horizontal overflow or errors.
+- The original-art/palette/renderer/syntax guard passed. All five new audio files and both artist notices match their source archive bytes and hashes. Diff whitespace checks pass, with only the two untouched third-party notices explicitly retaining their original CRLF/spaces. Desktop and phone screenshots were inspected; the existing illustrated header and compact footer remain clear.
+
+The full-playlist test initially imposed an arbitrary minimum duration on a still-buffering Ogg; that assertion was corrected to require a finite positive duration, and only those two cases were rerun (2/2 passed in 1.8 minutes). An earlier test attempted a range seek the static server does not support; the final checks decode to real endings at 16× speed. These harness corrections do not claim additional product defects. The eight other browser cases passed in the preceding focused run. No full local suite was repeated.
+
+Source/credit/licence details are in [the music readme](../assets/music/README.md) and [new recording provenance](../assets/music/soundtrack-provenance.json). Bert Cole's recording has its own attribution licence, not CC0 or MIT. Original music files are unchanged; only playback volume is adjusted.
+
+Raw evidence: ignored `test-results/realm-soundtrack/` (`music-player-unit.log`, `server-unit.log`, `music-browser.log`, `music-browser-six-tracks.log`, `source-guard.log`, `asset-integrity.json`, `source-hashes.json` and initial browser captures). App checks use local disposable example data with `.env` disabled, synthetic configuration and fake providers; browser routes deny outside origins. Public artist archives were downloaded separately. No OS-wide network isolation, physical-phone, subjective listening or human-playtest result is claimed. No owner app, saved database, credential, sandbox order, main merge, recording or deployment was changed. This branch depends on unmerged PR #72, exact base `7e0904dc3664a0f701d3085e5323b2f08e295b3b`; one exact-head hosted run is reported on its PR.
+
+## Castle header — November 10, 2026
+
+The approved header now has a shallow parchment goal ribbon, a smaller crest/wordmark group with a separate Example badge, the active member's saved avatar, an original generated Journal book and a brass Sound control. Passkey identity remains fixed; the existing example member selector, money values, next action, Journal state and opt-in music behavior are retained. [Design, screenshots and provenance](JOURNAL-DESIGN.md#castle-header-november-10-2026).
+
+Actual checks on Node 24.22.1 / Chromium:
+
+- **11 affected browser cases passed, 0 failed, 1 intentional desktop skip** (7.9 minutes). The selected scenarios cover the complete example family-trip flow on both viewports, Journal keyboard/draft/focus behavior, saved portrait/reload/persona switching, child approval staying disabled, opt-in/loop/stop/reload-silent music, and the phone passkey identity. The passkey case runs only on the phone by design.
+- The visual pass checked **320, 390, 768, 1100 and 1440 px widths**, including long family/goal labels. No horizontal overflow, page errors, outside browser requests or API writes; goal and progress remained equal. The Sound target is 58×58 px at every width. The capture harness now explicitly waits for images to load before measuring; its first attempt checked that too early.
+- The original-art/palette/renderer/syntax guard passed (47 copied files; original 90-colour palette). Diff whitespace checks and the generated-asset/four-screenshot hashes pass.
+
+The existing tests were extended for the new portrait and separate Example label. No full local suite was rerun for this presentation change. The one exact-head hosted run is reported on the PR. [Reproducible capture and hashes](screenshots/castle-header-sources.json); raw logs, source hashes, reference lock and visual measurements are in ignored `test-results/castle-header/`.
+
+All app checks use disposable example/family data, synthetic configuration and local/fake providers. Browser routes deny outside origins; this is not an OS-wide network-isolation claim. Phone evidence is emulated Chromium, not a real-device or human-playtest result. The header branch depends on reviewed, unmerged PR #71 at `1511f8f21b42d9daec30baf733404febea430648`, whose hosted run 42782530257 completed successfully. No owner app, saved database, credential, existing sandbox order, main branch, provider service, recording or deployment was changed.
+
+## Generated parchment and bounded woodland detail pass
+
+The owner requested the illustrated game-shop feel before further scenery work. The Journal and Village Exchange now use a locally served, original image-generated parchment/wood/brass/ivy panel. The Exchange adds a top icon rail and a live illustrated selection preview, preserving the full request window and its native controls. [Design and provenance](JOURNAL-DESIGN.md#painted-parchment-revision).
+
+The realm grows from 420×324 to 452×356. Four corner mountain shoulders retain complete descending feet, and the river mouths reach the new boundary. Two local mist pockets, a hidden Lantern Glade (arch, owl, lantern and mushroom ring) and small Knights' Rest details extend the existing art vocabulary. The new lantern shares the realm's existing night material. Mist shares the cloud clock; no extra timer or render pass. No payment, access, progression or provider implementation changes.
+
+Actual local checks on Node 24.22.1 / Chromium:
+
+- **8/8 parchment/browser cases passed**: Journal's four chapters, drafts, keyboard navigation and 44px close targets; directory search, same-name request distinction, selection preview, full request, Escape/close/focus/scroll, sharing consent; two-household invite/offer/receive and session loss. Desktop 1440×1000 and emulated phone 390×844. These ran after the parchment implementation and before the scenery extension.
+- **8/8 scenery/browser cases passed**: cloud coverage, live and reduced-motion waterfall/camp/mist clock behavior through reload, discovery navigation, stable geometry counts while changing views, and compass limits on the expanded board, on both viewports. No page errors, outside browser requests or API writes; saved test state remained equal. A later lantern-material-only adjustment is included in the final visual pass.
+- **31/31 affected unit cases passed**: realm access and routes, mountain feet/valleys/bounds, dry flat discovery sites, mist separation from homes, and family-choice/fit migration fixtures. Fixtures use temporary synthetic SQLite data only.
+- The original-art/source guard passes: 47 copied art/runtime files, the original 90-colour palette, preserved renderer and JavaScript syntax. `git diff --check` passes.
+
+**Parent CI diagnosis:** PR #70's run [42777220080](https://github.com/alejandro-publius/our-castle/actions/runs/42777220080) passed its three browser jobs and Rust kit journey. All three Node unit jobs failed because two older schema-8/schema-9 fixture expectations omitted schema 14's `exchange_profiles` table. This branch adds that one expected table in each test; every earlier-row equality assertion stays intact. The affected cases pass locally. This is a test correction, not a saved-database operation. Exact-head hosted CI for this branch is reported on its PR; the parent run is not described as green.
+
+The final day/night visual pass on both viewports found no page/console errors, outside requests, API writes or horizontal overflow; goal and progress stayed equal.
+
+Raw logs, capture script and scene records: ignored `test-results/parchment-design/`. [Published captures and hashes](screenshots/parchment-woodland-sources.json). The browser routes refuse outside-origin requests; this is not an OS-wide isolation claim. No physical-phone, performance, live-provider or human-playtest evidence is claimed. No owner app, saved database, credentials, completed sandbox order or main branch was altered.
+
+## Exchange trading hall and explicit Worldwide sharing — November 10, 2026
+
+The Exchange now opens over the map with Browse needs, Offer an item and My exchanges. Rows are searchable by item, chosen family name, optional country or stable reference. A selected request opens its own larger window; × and Escape restore row focus and preserve the directory. Two authored stove requests demonstrate distinct family and request references. [Design, screenshots and financial scope](VILLAGE-EXCHANGE.md).
+
+An adult chooses Invited neighborhoods or explicitly confirms publishing all open needs Worldwide. The authenticated directory excludes private and closed rows before searching/pagination; direct reads recheck access. Offer details stay between the offering and receiving families. Unpublishing removes discovery access while preserving participants' handovers. Requests and offers remain item-sharing records, not payment receipts. No PYUSD, utility-biller integration or payment-signature claim is introduced.
+
+Actual checks, Node 24.22.1 and Chromium:
+
+- **65 affected unit tests passed**, including four new directory cases and a populated schema-13 migration fixture. Cases cover adult consent, child/anonymous/CSRF refusal, private search/count/detail exclusion, stable distinguishable references, bounded pagination, private cross-neighborhood offers, unpublishing, completion by existing participants, idempotent handover and unchanged financial records. Existing kit/access and migration checks retain their original assertions while including schema 14's private profile table and optional offer alias.
+- The initial six-case browser selection had five passes and one desktop page-readiness timeout during the existing two-family reload, before an Exchange action. The unchanged readiness assertion passed in the next run: **six passed** on desktop 1440×1000 and emulated phone 390×844. No application startup change or timeout increase was made.
+- The extended dashboard case then passed **2/2**, checking all three sections, separate stove records, search, ×/Escape/focus/scroll, and explicit Worldwide → invited → Worldwide controls. Publishing again requires a newly checked consent. Browser outside-origin requests are refused; no page errors or horizontal overflow, and financial progress is unchanged.
+- A new sign-out check reproduced a real integration issue: the new native request window remained open behind sign-in after access ended. The session-loss path now closes both Exchange windows and cancels its pending directory read. The two-family desktop/phone regression passed **2/2** after the real invite/offer/handover journey (`session-close-after.log`).
+- The original-art/source guard passes: 47 copied art/runtime files, original 90-colour palette, renderer wiring and JavaScript syntax. No dependency pins, world artwork or payment code changed.
+
+The dashboard case joins the existing `@release` selection. Hosted results belong to the exact PR head; no full local browser suite was run. Raw checks and the failing sign-out trace are under ignored `test-results/exchange-dashboard/`. [Screenshot hashes and capture steps](screenshots/exchange-directory-sources.json) identify the authored-data captures.
+
+All app evidence uses disposable in-memory or temporary fixtures, synthetic configuration and local/fake transports, with no `.env` or saved household reads. Browser routing is not an OS-wide network isolation claim. There is no real-user, physical-device, global-adoption, verified-delivery or fraud-free claim. Owner 3010, rehearsal 3021, other previews, credentials and the completed sandbox order remain separate and unchanged; the new source appends schema 14 only in disposable fixtures.
+
 ## Village Exchange, quieter markers and the wider woodland — November 10, 2026
 
 The source adds an invite-only neighborhood board, equipment loans/gifts and explicit handovers connected to kit quantities. Accepting an offer reserves the request but leaves shopping needs unchanged. Confirming receipt makes the item available; returning it restores the need. In the authored example, the lowest listed kit changes from $150 to $70 with no financial credit. [Walkthrough and screenshots](VILLAGE-EXCHANGE.md).
