@@ -1,0 +1,102 @@
+{
+  "capturedAtUTC": "2026-11-10T08:18:02.421528+00:00",
+  "base": "922c79ffc393999c92b78ab3bae7b3d93e4a7116",
+  "branch": "codex/parchment-journal-market-20261110",
+  "sourceHashes": {
+    "index.html": "9c7c9fc9421185256799332de7ce0900a7020d9a7b311f7b706655eac63acbf2",
+    "app.css": "aed451a7f6c06da65725c0395ed0933790d253755905dd77834b3ab7978d047c",
+    "src/ui/parchment.css": "547bea8b67dd94c4cd818c468ab1c3a3c084b7673887c8e7c68196ca174874de",
+    "src/app/main.js": "91ac643d3a71af344024d6f4376381c81e6f2fad7f284a329d5fd1aae8cc5391",
+    "src/app/village-exchange.js": "708d69a24376eab7f54611cefb728ceb5da4c1c9896c38e464d9715409d9c152",
+    "src/core/realm.js": "ee5c5aa5713b8d9c98982ddc5ec4614ff4007e5fed0c028b549fe844f03a0a99",
+    "src/core/realm-terrain.js": "a41226776b52859b7cbffa3ad22f1310319deaf3030268e06b2129f8c3bf4446",
+    "src/core/woodland-discoveries.js": "061e4bea18b74423be2b2ba0851b31c7d2784cccdfce2106035ea2f0a03f134c",
+    "src/world/woodland-discoveries.js": "2f5813170de1adda6a2937f5c45d28ad5e3c0707b90cf5d504e9ab56df126f58",
+    "src/world/realm-models.js": "2141c62f0e492b6b81c93dda7f2d9d13e2027b5f7cb3ad174cd147341cc25930",
+    "src/graphics/cloud-compositor.js": "41dea46558c9e6e0826d199a34ce2d924becd1c1e6abe1e8bf3710b37aa66f36",
+    "src/graphics/woodland-mist.js": "0185e79080302e8d61d1d459dae490ba7429526e867b98c61aeb01a4d20ed1ea",
+    "assets/ui/parchment/woodland-panel.webp": "938e5e1fdb00433f51fcedc1049c6b6d05ca38c3ce72a8c2a91e86f03649bd9b"
+  },
+  "runner": "node docs/screenshots/parchment-woodland-capture.mjs",
+  "steps": [
+    "Start a fresh in-memory startDemo({villageExchange:true}), no .env or provider credentials.",
+    "Chromium desktop 1440x1000 and emulated phone 390x844, deviceScaleFactor 1, reduced motion. Refuse browser requests outside the local demo origin.",
+    "Close Journal; select day and Whole realm. Compass \u2192 Lantern Glade; capture day then night. Whole realm \u2192 compass \u2192 forest camp.",
+    "Select day, open Journal \u2192 Plan, then Village Exchange, focus the first request. Capture native controls, not a mockup.",
+    "Assert no page/console errors, API writes, outside requests or horizontal page overflow; compare goal and progress before and after."
+  ],
+  "limitations": [
+    "Invented example families/items and financial state.",
+    "Emulated Chromium, not physical phone or human playtest.",
+    "Earlier Journal screenshots in the same folder are historical."
+  ],
+  "files": [
+    {
+      "file": "parchment-woodland-desktop-journal.webp",
+      "sha256": "54a7736809ab757012f449757ebfa3f529cc6339ef835799fd689f3118c90f60",
+      "sourcePNG": "test-results/parchment-design/desktop-journal.png",
+      "sourceSHA256": "cf1a504e409a40bb21db40a069dd89153412895c3e2eb3c72e97b84bfb8d987a",
+      "dimensions": [
+        1440,
+        1000
+      ],
+      "encoding": "WebP quality 92; no cropping or visual alteration"
+    },
+    {
+      "file": "parchment-woodland-desktop-exchange.webp",
+      "sha256": "168a83537ca11165ed98418996534bcc3b70ccf3f1fc12aaab51587113cf594d",
+      "sourcePNG": "test-results/parchment-design/desktop-exchange.png",
+      "sourceSHA256": "095b7902e357193fe6a3cf984b910ebfc790c3f16045523369183a30b74ed45e",
+      "dimensions": [
+        1440,
+        1000
+      ],
+      "encoding": "WebP quality 92; no cropping or visual alteration"
+    },
+    {
+      "file": "parchment-woodland-phone-exchange.webp",
+      "sha256": "330f4f509211513a4aaf656fb125690a09ba242e7d456890117b936671c63296",
+      "sourcePNG": "test-results/parchment-design/phone-exchange.png",
+      "sourceSHA256": "bf85a059ea8639ffe69ba67fc4b5acd25a3fb3d0718b1cbac4cd5a7fd599fd9c",
+      "dimensions": [
+        390,
+        844
+      ],
+      "encoding": "WebP quality 92; no cropping or visual alteration"
+    },
+    {
+      "file": "parchment-woodland-desktop-realm.webp",
+      "sha256": "ab7fbe9655d604f5a4e5456194df4fa06d5b6629ec0f47914bbc98e2b6be7084",
+      "sourcePNG": "test-results/parchment-design/desktop-realm.png",
+      "sourceSHA256": "7e92f301bb31f84abda8a3d08b23a5815a4476bd0f8f02a3cb4492ad40546534",
+      "dimensions": [
+        1440,
+        1000
+      ],
+      "encoding": "Lossless WebP encoding; pixel content identical to source PNG"
+    },
+    {
+      "file": "parchment-woodland-desktop-glade-night.webp",
+      "sha256": "fe00a4bcb61e06f774779cb01006fc9a2ef341d059e59be7a8335b043027b5f0",
+      "sourcePNG": "test-results/parchment-design/desktop-glade-night.png",
+      "sourceSHA256": "85c14e0bdef4bfded0cdfd467767a971c716c2a89c5625e8ddd7cafc576c98c8",
+      "dimensions": [
+        1440,
+        1000
+      ],
+      "encoding": "Lossless WebP encoding; pixel content identical to source PNG"
+    },
+    {
+      "file": "parchment-woodland-desktop-camp-night.webp",
+      "sha256": "496488417b2b0fdd983626fe381e79227942229dd231e7c01fbee83028f90f9d",
+      "sourcePNG": "test-results/parchment-design/desktop-camp-night.png",
+      "sourceSHA256": "4d505ee840dfa877c506563c9b200c9e5f6f08001ae34d0f86c20a822d7b2b78",
+      "dimensions": [
+        1440,
+        1000
+      ],
+      "encoding": "Lossless WebP encoding; pixel content identical to source PNG"
+    }
+  ],
+  "captureScript": "docs/screenshots/parchment-woodland-capture.mjs"
+}

@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 import { PixelRenderer } from './pixel-renderer.js';
 import { CLOUD_SURROUND_GLSL, cloudColours } from './cloud-surround.js';
+import { WOODLAND_MIST_GLSL } from './woodland-mist.js';
+import { MIST_GROVES } from '../core/woodland-discoveries.js';
 
 // The preserved pixel renderer still owns the world pass. Only this playable-world instance
 // gets a cloud compositor; soft cloud alpha is applied after the world's fixed palette.
@@ -24,6 +26,7 @@ class CloudSurround {
       cloudBase: { value: new THREE.Vector3(.85, .87, .83) },
       cloudRight: { value: new THREE.Vector3(1, 0, 0) },
       cloudUp: { value: new THREE.Vector3(0, 1, 0) },
+      woodlandMistGroves: { value: MIST_GROVES.map(g=>new THREE.Vector4(g.x,g.z,g.rx,g.rz)) },
     });
     let fragment = this.material.fragmentShader;
     const replace = (needle, replacement) => {
@@ -31,14 +34,15 @@ class CloudSurround {
         throw new Error('Cloud compositor hook no longer matches the preserved renderer.');
       fragment = fragment.replace(needle, replacement);
     };
-    replace('uniform float pixelWorld;', 'uniform float pixelWorld;\n' + CLOUD_SURROUND_GLSL);
+    replace('uniform float pixelWorld;', 'uniform float pixelWorld;\n' + CLOUD_SURROUND_GLSL + WOODLAND_MIST_GLSL);
     replace('  vec3 rgb=encode(filmic(texture2D(colourTexture,uv).rgb*exposure));',
       '  float depth=texture2D(depthTexture,uv).r;\n' +
       '  vec4 cloud=cloudSurroundAt(uv,depth);\n' +
+      '  vec4 woodlandMist=woodlandMistAt(uv,depth);\n' +
       '  if(cloudSurroundEnabled && depth>=.99999){gl_FragColor=vec4(cloud.rgb,1.0);return;}\n' +
       '  vec3 rgb=encode(filmic(texture2D(colourTexture,uv).rgb*exposure));');
-    replace('gl_FragColor=vec4(rgb,1.0);return;', 'gl_FragColor=vec4(mix(rgb,cloud.rgb,cloud.a),1.0);return;');
-    replace('gl_FragColor=vec4(chosen,1.0);', 'gl_FragColor=vec4(mix(chosen,cloud.rgb,cloud.a),1.0);');
+    replace('gl_FragColor=vec4(rgb,1.0);return;', 'gl_FragColor=vec4(mix(mix(rgb,woodlandMist.rgb,woodlandMist.a),cloud.rgb,cloud.a),1.0);return;');
+    replace('gl_FragColor=vec4(chosen,1.0);', 'gl_FragColor=vec4(mix(mix(chosen,woodlandMist.rgb,woodlandMist.a),cloud.rgb,cloud.a),1.0);');
     this.material.fragmentShader = fragment;
     this.material.needsUpdate = true;
     // This runs while the base renderer's world camera is still snapped to whole art pixels.
@@ -71,7 +75,7 @@ class CloudSurround {
     this.cloudLastTime = seconds;
   }
   cloudSurroundDebug() {
-    return { enabled: this.material.uniforms.cloudSurroundEnabled.value, seconds: this.material.uniforms.cloudTime.value, ...this.cloudAppearance };
+    return { enabled: this.material.uniforms.cloudSurroundEnabled.value, seconds: this.material.uniforms.cloudTime.value, mistGroves:MIST_GROVES.map(g=>({...g})), ...this.cloudAppearance };
   }
   render(scene, camera) {
     this.worldCamera = camera;

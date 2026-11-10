@@ -19,7 +19,7 @@ const stateText = { offered:'Offered · not in your kit yet', accepted:'Accepted
 export function createVillageExchange({getState,actor,applyState,onCompare}) {
   const root=$('village-exchange'), forms=$('exchange-forms'), board=$('exchange-board'), status=$('exchange-status');
   const dialog=$('exchange-dialog'), detail=$('exchange-detail-dialog'), list=$('exchange-list');
-  let built=null, busy=false, preview=null, lastBoard=null, selected=null, blockedSelection=null, directory=[], nextOffset=null, requestGeneration=0, pendingRead=null, origin=null, opened=false, marketView='browse';
+  let built=null, busy=false, preview=null, lastBoard=null, selected=null, blockedSelection=null, directory=[], nextOffset=null, requestGeneration=0, pendingRead=null, origin=null, opened=false, marketView='browse', previewId=null;
   const scope=()=>JSON.stringify([getState()?.household?.id,getState()?.goal?.id,actor()?.id]);
   const adult=()=>actor()?.role==='adult';
   const say=text=>{status.textContent=text;$('exchange-detail-status').textContent=text;};
@@ -187,11 +187,27 @@ export function createVillageExchange({getState,actor,applyState,onCompare}) {
       h('span',{class:'exchange-list-state'},r.status==='closed'?'Closed':r.openQuantity===0?'Handover arranged':'Needs help'),
       h('span',{class:'exchange-reference'},r.reference),h('span',{'aria-hidden':'true',class:'exchange-list-arrow'},'↗')
     ));
+    for(const row of list.querySelectorAll('[data-open-request]')){
+      const choose=()=>{previewId=row.dataset.openRequest;renderPreview(rows);};
+      row.addEventListener('focus',choose);row.addEventListener('pointerenter',choose);
+    }
+    renderPreview(rows);
     if(focused)list.querySelector(`[data-open-request="${focused}"]`)?.focus({preventScroll:true});
     $('exchange-empty').hidden=rows.length>0;
     $('exchange-count').textContent=`${rows.length} ${rows.length===1?'request':'requests'}${worldwide&&nextOffset!==null?' shown':''}`;
     $('exchange-more').hidden=!worldwide||nextOffset===null;
     scroller.scrollTop=scroll;
+  }
+  function renderPreview(rows){
+    const r=rows.find(r=>r.id===previewId)??rows[0];previewId=r?.id??null;
+    for(const row of list.querySelectorAll('[data-open-request]'))row.setAttribute('data-preview',String(row.dataset.openRequest===previewId));
+    $('exchange-preview-title').textContent=r?.item??'Choose a need';
+    $('exchange-preview-family').textContent=r?`${r.family}${r.country?` · ${r.country}`:''}`:'Every family’s request has its own story.';
+    $('exchange-preview-note').textContent=r?.note??'';
+    $('exchange-preview-quantity').textContent=r?String(r.openQuantity):'—';
+    $('exchange-preview-date').textContent=r?.neededUntil??'—';
+    $('exchange-preview-reference').textContent=r?.reference??'';
+    $('exchange-preview-open').disabled=!r;
   }
   async function loadDirectory(append=false){
     if($('exchange-scope').value!=='worldwide'||marketView==='manage'){pendingRead?.abort();requestGeneration++;$('exchange-directory-status').textContent='';renderList();return;}
@@ -206,7 +222,7 @@ export function createVillageExchange({getState,actor,applyState,onCompare}) {
     }catch(e){if(e.name!=='AbortError'&&generation===requestGeneration){directory=[];nextOffset=null;renderList();$('exchange-directory-status').textContent=e.message;}}
   }
   async function openRequest(id){
-    selected=id;blockedSelection=null;lastBoard=null;render();
+    selected=id;previewId=id;blockedSelection=null;lastBoard=null;render();
     if(!detail.open)detail.showModal();$('exchange-detail-title').focus();
     // Recheck publication and access at the moment a row is opened, including after a stale directory page.
     const before=scope();try{const res=await api.get(`/api/exchange/requests/${encodeURIComponent(id)}`);
@@ -221,6 +237,7 @@ export function createVillageExchange({getState,actor,applyState,onCompare}) {
   $('exchange-close').addEventListener('click',closeAll);
   for(const id of ['exchange-detail-close','exchange-back'])$(id).addEventListener('click',()=>detail.close());
   $('exchange-browse').addEventListener('click',open);
+  $('exchange-preview-open').addEventListener('click',()=>{if(previewId)openRequest(previewId);});
   for(const b of dialog.querySelectorAll('[data-exchange-view]'))b.addEventListener('click',()=>{
     marketView=b.dataset.exchangeView;$('exchange-search').value='';
     $('exchange-manage').open=marketView==='manage';dialog.querySelector('.exchange-window-body').scrollTop=0;

@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { mkdirSync } from 'node:fs';
 import { startDemo } from '../../scripts/demo.mjs';
 import { closeDeedsWhenTheyAppear } from './support/deeds.mjs';
 
@@ -29,6 +30,10 @@ test('the field journal keeps all chapters reachable and preserves a draft throu
       expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
       const close=await page.locator('#close-journal').boundingBox();
       expect(close.width).toBeGreaterThanOrEqual(44);expect(close.height).toBeGreaterThanOrEqual(44);
+      if(!process.env.CI){
+        mkdirSync('test-results/parchment-design',{recursive:true});
+        await page.screenshot({path:`test-results/parchment-design/${info.project.name}-${tab}.png`});
+      }
     }
     // Arrow navigation keeps the original roving-tab pattern and focuses the selected chapter.
     await page.locator('#tab-house').click();await page.keyboard.press('ArrowRight');

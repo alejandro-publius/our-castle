@@ -749,6 +749,7 @@ function renderRealmNavigation() {
     h('span', { class: 'realm-arrow', 'aria-hidden': 'true', html: '<svg viewBox="0 0 40 40"><path d="M20 5 36 34H4Z" fill="var(--paper-3)" stroke="var(--ink)" stroke-width="4" stroke-linejoin="round"/><path d="M20 10 32 32H8Z" fill="none" stroke="var(--brass)" stroke-width="2"/></svg>' }), h('span', { class: 'realm-marker-caption', id: `realm-name-${d.id}` }, !d.open && h('span', { class: 'realm-lock', 'aria-hidden': 'true', html: lock }), h('strong', {}, d.name)))));
   $('#realm-markers').append(h('button', {type:'button',id:'sword-glint',class:'realm-legend','data-legend':'sword-stone','aria-label':'Investigate the glint in the trees','aria-pressed':'false',hidden:true},h('span',{'aria-hidden':'true'},'✦')));
   $('#realm-markers').append(h('button', {type:'button',id:'camp-glow',class:'realm-legend','data-legend':'knights-rest','aria-label':'Visit the forest camp','aria-pressed':'false',hidden:true},h('span',{'aria-hidden':'true',html:'<svg width="24" height="26" viewBox="0 0 24 26"><path d="M13 2c1 7-6 7-3 13 2-1 3-3 3-5 6 6 7 12-1 14C2 22 3 16 6 12c0 3 1 4 2 4C4 9 11 8 13 2Z" fill="currentColor"/></svg>'})));
+  $('#realm-markers').append(h('button', {type:'button',id:'glade-lantern',class:'realm-legend','data-legend':'lantern-glade','aria-label':'Visit the lantern glade','aria-pressed':'false',hidden:true},h('span',{'aria-hidden':'true',html:'<svg width="24" height="26" viewBox="0 0 24 26" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 7V5a3 3 0 0 1 6 0v2M7 11l5-4 5 4v11H7ZM5 23h14M12 13v6"/></svg>'})));
   // The family project: a small marker in the west meadow drawn as the chosen place (a tent, a sprout or a schoolhouse
   // with its bell). Selecting it only moves the camera and names its stage.
   const kind = projectKind(state.goal.projectKind);
@@ -790,11 +791,12 @@ function syncRealmMarkers({focus,points,exploring=false,free=false}){
   });
   const priority=(p)=>document.activeElement?.dataset?.district===p.id?3:p.id===home?2:0;
   for(const point of [...points].sort((a,b)=>priority(b)-priority(a))){
-    const legend = point.id === 'sword-stone' || point.id === 'knights-rest' || point.id === FAMILY_PROJECT_SITE.id;
+    const legend = point.id === 'sword-stone' || point.id === 'knights-rest' || point.id === 'lantern-glade' || point.id === FAMILY_PROJECT_SITE.id;
     const el=legend ? $(`#realm-markers [data-legend="${point.id}"]`) : $(`#realm-markers [data-district="${point.id}"]`);if(!el)continue;
     // A small marker also shows while a neighbouring district is in view: the grove beside the garden and keep, the campsite beside the village.
     const nearby = point.id === 'sword-stone' ? ['garden','keep'] : point.id === FAMILY_PROJECT_SITE.id ? ['cottage'] : [];
-    const visible = (point.id !== 'knights-rest' || free || focus === 'knights-rest') && (!focus || point.id === focus || legend && nearby.includes(focus)) && (!compactOverview || legend || point.id === home || el === document.activeElement) && point.x > 0 && point.x < point.width && point.y > 0 && point.y < point.height;
+    const tuckedAway = point.id === 'knights-rest' || point.id === 'lantern-glade';
+    const visible = (!tuckedAway || free || focus === point.id) && (!focus || point.id === focus || legend && nearby.includes(focus)) && (!compactOverview || legend || point.id === home || el === document.activeElement) && point.x > 0 && point.x < point.width && point.y > 0 && point.y < point.height;
     el.hidden = !visible;
     if (visible) {
       const px=Math.max(el.offsetWidth/2+8,Math.min(point.width-el.offsetWidth/2-8,point.x));

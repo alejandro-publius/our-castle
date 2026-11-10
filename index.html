@@ -8,6 +8,7 @@
   <meta name="description" content="A cooperative household savings journey through a pixel woodland, from cottage to castle.">
   <link rel="icon" type="image/webp" href="assets/brand/our-castle/crest.webp">
   <link rel="stylesheet" href="app.css">
+  <link rel="stylesheet" href="src/ui/parchment.css">
   <script type="importmap">{"imports":{"three":"./vendor/three/three.module.js"}}</script>
 </head>
 <body>
@@ -522,15 +523,22 @@
       <div><p class="exchange-eyebrow">Our Castle · family needs</p><h2 id="exchange-title" tabindex="-1">Village Exchange</h2></div>
       <button type="button" id="exchange-close" class="exchange-close" aria-label="Close Village Exchange">×</button>
     </header>
-    <div class="exchange-market-layout">
     <nav class="exchange-market-nav" aria-label="Village Exchange sections">
-      <img src="assets/area-cards/market.png" alt="" width="200" height="128" class="exchange-market-art">
-      <p class="exchange-market-motto">A little help.<br>A shared adventure.</p>
-      <button type="button" data-exchange-view="browse" aria-pressed="true"><span aria-hidden="true">01</span> Browse needs</button>
-      <button type="button" data-exchange-view="offer" aria-pressed="false"><span aria-hidden="true">02</span> Offer an item</button>
-      <button type="button" data-exchange-view="manage" aria-pressed="false"><span aria-hidden="true">03</span> My exchanges</button>
-      <p class="exchange-market-note">Borrow, lend or give.<br>Every handover is a choice.</p>
+      <button type="button" data-exchange-view="browse" aria-pressed="true"><span class="exchange-medallion" aria-hidden="true"><svg viewBox="0 0 24 24" width="25" height="25" fill="none"><circle cx="10" cy="10" r="6" stroke="currentColor" stroke-width="1.8"/><path d="m15 15 6 6" stroke="currentColor" stroke-width="2"/></svg></span> Browse needs</button>
+      <button type="button" data-exchange-view="offer" aria-pressed="false"><span class="exchange-medallion" aria-hidden="true"><svg viewBox="0 0 24 24" width="25" height="25" fill="none"><path d="M3 10h18v11H3zM2 6h20v4H2zM12 6v15M12 6C4 6 6-1 10 3Zm0 0c8 0 6-7 2-3Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg></span> Offer an item</button>
+      <button type="button" data-exchange-view="manage" aria-pressed="false"><span class="exchange-medallion" aria-hidden="true"><svg viewBox="0 0 24 24" width="25" height="25" fill="none"><path d="m2 11 10-8 10 8M5 9v12h14V9M9 21v-7h6v7" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg></span> My exchanges</button>
     </nav>
+    <div class="exchange-market-layout">
+    <aside id="exchange-preview" class="exchange-selection" aria-labelledby="exchange-preview-title">
+      <div class="exchange-selection-art"><img src="assets/brand/our-castle/castle.webp" width="280" height="210" alt=""></div>
+      <p class="exchange-eyebrow">A family request</p>
+      <h3 id="exchange-preview-title">Choose a need</h3>
+      <p id="exchange-preview-family"></p>
+      <p id="exchange-preview-note" class="fine"></p>
+      <dl class="exchange-selection-facts"><div><dt>Still needed</dt><dd id="exchange-preview-quantity">—</dd></div><div><dt>Needed through</dt><dd id="exchange-preview-date">—</dd></div></dl>
+      <p id="exchange-preview-reference" class="exchange-reference"></p>
+      <button type="button" id="exchange-preview-open" disabled>View request</button>
+    </aside>
     <div class="exchange-window-body">
       <p id="exchange-demo-note" class="fine" hidden>Example families and requests. These are invented listings in this local demo.</p>
       <form id="exchange-search-form" class="exchange-toolbar" role="search">

@@ -478,7 +478,7 @@ export function createRealmModels({ builder, part: addPart, models, colours: C }
     let instances = 0, meshes = 0; woods.traverse((o) => { if (o.isInstancedMesh) { meshes++; instances += o.count; } });
     for(const d of REALM_LEGENDS.filter(d=>d.id==='sword-stone')){const secret=new THREE.Group();secret.position.set(d.x,0,d.z);group.add(secret);legends.sword(secret);builder.flush();finish(secret);}
     const hillsideSign=addPayPalHillside(group,{builder,part:addPart,colours:C});
-    discoveries = createWoodlandDiscoveries({group,builder,part:addPart,colours:C,waterLevel:L.water,groundLevel:L.ground});
+    discoveries = createWoodlandDiscoveries({group,builder,part:addPart,colours:C,lampColour:models.roles.lamp,waterLevel:L.water,groundLevel:L.ground});
     current = createRiverCurrent(L.water, F.ripple); group.add(current.mesh);
     landscape = { ground: land, forest: { ...counts, meshes, instances }, rivers: { count: RIVER_PATHS.length, ...rivers }, frontier:{clearings:FRONTIER_CLEARINGS.length,mountainPeaks:MOUNTAIN_PEAKS.length,highlandTrees,hillsideSign}, buildMs: Math.round(performance.now() - started) };
     return landscape;

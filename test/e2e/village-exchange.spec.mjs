@@ -75,7 +75,7 @@ test('two signed-in households join privately, offer and receive through the jou
     await a.page.getByRole('button',{name:'Share this need'}).click();
     await expect(b.page.locator('#exchange-list')).toContainText('Four-person tent',{timeout:20000});
     await selectNeed(b.page,'Four-person tent');
-    await b.page.getByText('Offer an item',{exact:true}).click();await b.page.getByLabel('Item details for this family').fill('Tent with all pegs');
+    await b.page.locator('#exchange-board summary').filter({hasText:'Offer an item'}).click();await b.page.getByLabel('Item details for this family').fill('Tent with all pegs');
     await b.page.getByRole('button',{name:'Offer item',exact:true}).click();
     await selectNeed(a.page,'Four-person tent');
     await expect(a.page.locator('#exchange-board')).toContainText('Tent with all pegs');

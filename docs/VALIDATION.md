@@ -1,5 +1,24 @@
 # Validation
 
+## Generated parchment and bounded woodland detail pass
+
+The owner requested the illustrated game-shop feel before further scenery work. The Journal and Village Exchange now use a locally served, original image-generated parchment/wood/brass/ivy panel. The Exchange adds a top icon rail and a live illustrated selection preview, preserving the full request window and its native controls. [Design and provenance](JOURNAL-DESIGN.md#painted-parchment-revision).
+
+The realm grows from 420×324 to 452×356. Four corner mountain shoulders retain complete descending feet, and the river mouths reach the new boundary. Two local mist pockets, a hidden Lantern Glade (arch, owl, lantern and mushroom ring) and small Knights' Rest details extend the existing art vocabulary. The new lantern shares the realm's existing night material. Mist shares the cloud clock; no extra timer or render pass. No payment, access, progression or provider implementation changes.
+
+Actual local checks on Node 24.22.1 / Chromium:
+
+- **8/8 parchment/browser cases passed**: Journal's four chapters, drafts, keyboard navigation and 44px close targets; directory search, same-name request distinction, selection preview, full request, Escape/close/focus/scroll, sharing consent; two-household invite/offer/receive and session loss. Desktop 1440×1000 and emulated phone 390×844. These ran after the parchment implementation and before the scenery extension.
+- **8/8 scenery/browser cases passed**: cloud coverage, live and reduced-motion waterfall/camp/mist clock behavior through reload, discovery navigation, stable geometry counts while changing views, and compass limits on the expanded board, on both viewports. No page errors, outside browser requests or API writes; saved test state remained equal. A later lantern-material-only adjustment is included in the final visual pass.
+- **31/31 affected unit cases passed**: realm access and routes, mountain feet/valleys/bounds, dry flat discovery sites, mist separation from homes, and family-choice/fit migration fixtures. Fixtures use temporary synthetic SQLite data only.
+- The original-art/source guard passes: 47 copied art/runtime files, the original 90-colour palette, preserved renderer and JavaScript syntax. `git diff --check` passes.
+
+**Parent CI diagnosis:** PR #70's run [42777220080](https://github.com/alejandro-publius/our-castle/actions/runs/42777220080) passed its three browser jobs and Rust kit journey. All three Node unit jobs failed because two older schema-8/schema-9 fixture expectations omitted schema 14's `exchange_profiles` table. This branch adds that one expected table in each test; every earlier-row equality assertion stays intact. The affected cases pass locally. This is a test correction, not a saved-database operation. Exact-head hosted CI for this branch is reported on its PR; the parent run is not described as green.
+
+The final day/night visual pass on both viewports found no page/console errors, outside requests, API writes or horizontal overflow; goal and progress stayed equal.
+
+Raw logs, capture script and scene records: ignored `test-results/parchment-design/`. [Published captures and hashes](screenshots/parchment-woodland-sources.json). The browser routes refuse outside-origin requests; this is not an OS-wide isolation claim. No physical-phone, performance, live-provider or human-playtest evidence is claimed. No owner app, saved database, credentials, completed sandbox order or main branch was altered.
+
 ## Exchange trading hall and explicit Worldwide sharing — November 10, 2026
 
 The Exchange now opens over the map with Browse needs, Offer an item and My exchanges. Rows are searchable by item, chosen family name, optional country or stable reference. A selected request opens its own larger window; × and Escape restore row focus and preserve the directory. Two authored stove requests demonstrate distinct family and request references. [Design, screenshots and financial scope](VILLAGE-EXCHANGE.md).

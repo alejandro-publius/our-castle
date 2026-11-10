@@ -1,10 +1,10 @@
 import * as THREE from 'three';
-import { WATERFALLS, WOODLAND_CAMP } from '../core/woodland-discoveries.js';
+import { WATERFALLS, WOODLAND_CAMP, WOODLAND_GLADE } from '../core/woodland-discoveries.js';
 import { riverAt } from '../core/realm.js';
 
 // Original miniatures in the existing woodland vocabulary. Static scenery is batched by MiniBuilder;
 // one small droplet batch and one flame group use the scene's existing, pauseable ambient clock.
-export function createWoodlandDiscoveries({group,builder,part,colours:C,waterLevel,groundLevel}) {
+export function createWoodlandDiscoveries({group,builder,part,colours:C,lampColour,waterLevel,groundLevel}) {
   const stone=0x88978d,pale=0xf4e4be,water=0x2f6f9f,ripple=0x9abfc1;
   const box=(g,x,y,z,w,h,d,c,ry=0,rz=0)=>part(g,'box',x,y,z,w,h,d,c,ry,rz);
   const rock=(g,x,y,z,w,h,d,c)=>part(g,'rock',x,y,z,w,h,d,c);
@@ -50,6 +50,38 @@ export function createWoodlandDiscoveries({group,builder,part,colours:C,waterLev
   box(camp,0,.12,-4.1,4.7,.18,3.8,C.wood);
   for(const side of [-1,1])box(camp,side*1.15,1.34,-4.1,.15,3.1,3.7,C.cream,0,side*.83);
   box(camp,0,2.35,-4.1,.18,.18,4,C.wood);rock(camp,2.5,.45,-2.7,.8,.9,.65,C.blue);
+  // A kettle over the fire, dry wood and a shield resting by the shelter.
+  for(const x of [-1.25,1.25])box(camp,x,1.35,0,.13,2.7,.13,C.wood,0,x*.07);
+  box(camp,0,2.55,0,2.8,.13,.13,C.wood);box(camp,0,1.95,0,.07,1.1,.07,C.dark);
+  rock(camp,0,1.48,0,.65,.6,.65,C.dark);
+  for(let k=0;k<4;k++)box(camp,3.7,.24+(k%2)*.32,-3+(k>>1)*.45,1.3,.28,.28,C.wood,.1);
+  part(camp,'round',-2.9,.8,-3.2,1.1,.16,1.1,C.blue,0,1.1);
+  box(camp,-2.9,.82,-3.05,.12,.75,.12,C.gold);
+
+  const glade=new THREE.Group();glade.name='lantern-glade';glade.position.set(WOODLAND_GLADE.x,groundLevel,WOODLAND_GLADE.z);group.add(glade);
+  rock(glade,0,.04,0,12,.13,11,C.grass);
+  // A forgotten stone arch, ivy, a hanging lantern and an owl, ringed by mushrooms.
+  for(const side of [-1,1]){
+    for(let k=0;k<3;k++)rock(glade,side*2.35,.58+k*1.1,-2,1.3,1.2,1.5,k===1?stone:C.stone);
+    rock(glade,side*1.45,3.8,-2,2.3,1.1,1.6,stone);
+    for(let k=0;k<5;k++)rock(glade,side*(2.25+.18*Math.sin(k)),.6+k*.7,-1.18,.62,.6,.35,C.leaf);
+  }
+  rock(glade,0,4.1,-2,1.6,.85,1.6,C.stone);
+  box(glade,0,3.2,-2,.08,1.3,.08,C.wood);
+  box(glade,0,2.55,-2,.65,.75,.65,lampColour??C.gold);
+  for(const x of [-.36,.36])for(const z of [-2.36,-1.64])box(glade,x,2.55,z,.1,.85,.1,C.dark);
+  box(glade,0,2.1,-2,.86,.13,.86,C.dark);part(glade,'cone',0,3.13,-2,1,.45,1,C.dark);
+  rock(glade,2.25,4.85,-2,.9,1.3,.8,C.wood);rock(glade,2.25,5.52,-1.9,1,.8,.75,pale);
+  for(const x of [2.01,2.49])rock(glade,x,5.55,-1.52,.22,.26,.12,C.dark);
+  part(glade,'cone',2.25,5.3,-1.44,.23,.28,.2,C.gold);
+  for(let k=0;k<11;k++){
+    const a=k*Math.PI*2/11,x=Math.cos(a)*4.8,z=1+Math.sin(a)*3.7;
+    box(glade,x,.3,z,.15,.6,.15,pale);part(glade,'cone',x,.67,z,.8,.35,.8,k%3?C.red:C.gold);
+    rock(glade,x+.1,.78,z+.12,.14,.1,.14,pale);
+  }
+  // Fallen log seat and scattered fern fronds use the same batched miniature geometry.
+  box(glade,-3,.42,3,3.7,.7,.8,C.wood,-.22);
+  for(let k=0;k<6;k++)part(glade,'cone',5+Math.sin(k)*.5,.4,-3+Math.cos(k)*.5,.6,.6,.3,C.leaf,k,.6);
   builder.flush();
   // Flame colours remain visible at night; their small, owned materials do not relight the whole forest.
   flame.traverse(mesh=>{if(!mesh.isMesh)return;mesh.material=new THREE.MeshBasicMaterial({color:mesh.material.color});mesh.userData.ownedMaterial=true;});
@@ -65,5 +97,5 @@ export function createWoodlandDiscoveries({group,builder,part,colours:C,waterLev
   }
   place();
   return {tick(seconds){elapsed+=Math.min(.25,Math.max(0,seconds-previous));previous=seconds;place();},
-    debug:()=>({waterfalls:fallDebug,camp:{...WOODLAND_CAMP,knights:2,fire: true,flameHeight:flame.scale.y},drops:drops.length,seconds:elapsed})};
+    debug:()=>({waterfalls:fallDebug,camp:{...WOODLAND_CAMP,knights:2,fire:true,kettle:true,flameHeight:flame.scale.y},glade:{...WOODLAND_GLADE,owl:true,mushrooms:11,lantern:true},drops:drops.length,seconds:elapsed})};
 }

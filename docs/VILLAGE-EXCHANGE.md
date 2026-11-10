@@ -2,6 +2,10 @@
 
 A family's unused equipment can help another family reach a goal. **Village Exchange** opens a trading-hall window over the map, with Browse needs, Offer an item and My exchanges sections. A compact shortcut remains in **Plan**. Received items connect to the existing complete-kit planner.
 
+## Painted trading hall
+
+The owner's illustrated game-shop references now shape the surface: an original generated parchment page with wood, brass and ivy edges; a compact icon rail; an illustrated selected request on the left; and scrollable inventory rows on the right. The Journal and full request window use the same locally served paper asset. Text and controls are native HTML, not text baked into an image. On phones the list occupies the page and a tap opens the full request. [Design/provenance](JOURNAL-DESIGN.md#painted-parchment-revision) and [current captures](screenshots/parchment-woodland-sources.json).
+
 ## Browse and open a request
 
 Search by item, family, country or reference, then select a row to open a larger request window. Two families can both need a **Stove**: their stable `FAM-…` and `REQ-…` references distinguish them even if they choose the same display name. Offers have a separate `OFFER-…` reference. These references identify item-sharing records, not financial transactions.
@@ -12,11 +16,11 @@ The × button or Escape closes the detail and returns focus to its row; the dire
 
 The directory reads 30 rows at a time. It excludes private and closed requests before searching or paginating. Detail reads recheck current visibility; writes recheck household role, consent, request access and ownership on the server.
 
-| Trading hall, desktop | Request window, phone |
+| Trading hall, desktop | Trading hall, phone |
 | --- | --- |
-| ![Searchable family needs beside the three trading-hall actions](screenshots/exchange-directory-desktop-dashboard.png) | ![A stove request with its family and request references, opened over the map](screenshots/exchange-directory-phone-request.png) |
+| ![Searchable family needs beside the three trading-hall actions](screenshots/parchment-woodland-desktop-exchange.webp) | ![Compact parchment directory on an emulated phone](screenshots/parchment-woodland-phone-exchange.webp) |
 
-[Capture steps and hashes](screenshots/exchange-directory-sources.json). Both windows close when the family's session ends.
+[Capture steps and hashes](screenshots/parchment-woodland-sources.json). Both windows close when the family's session ends.
 
 Run `npm run demo -- --village-exchange` for a fresh, keyless local example. Alder has a four-person tent on its kit list; Willow has offered to lend one. Accepting the offer leaves the shopping requirement unchanged. **I received the item** makes the tent available, and **Compare what is left to buy** computes a new kit. In the authored sample, the lowest listed total drops from **$150 to $70**. Recorded progress remains $60; no money moves. Returning the item restores the shopping requirement.
 

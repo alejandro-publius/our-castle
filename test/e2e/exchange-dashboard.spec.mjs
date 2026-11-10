@@ -20,6 +20,11 @@ test('distinct stove requests open over the map; navigation, sharing, search and
     await expect(page.locator('#exchange-list > li')).toHaveCount(2);
     const refs=await page.locator('#exchange-list .exchange-reference').allTextContents();expect(new Set(refs).size).toBe(2);
     await expect(page.locator('#exchange-list')).toContainText('Cedar');await expect(page.locator('#exchange-list')).toContainText('Sol');
+    if(info.project.name==='desktop'){
+      await page.getByRole('button',{name:/View Stove for Cedar/}).focus();
+      await expect(page.locator('#exchange-preview-family')).toContainText('Cedar');
+      await expect(page.locator('#exchange-preview-title')).toHaveText('Stove');
+    }
     await page.getByRole('button',{name:/View Stove for Cedar/}).click();
     await expect(page.locator('#exchange-detail-dialog')).toBeVisible();await expect(page.locator('#exchange-board')).toContainText('Canada');
     await expect(page.locator('#exchange-board')).toContainText('freestanding');
