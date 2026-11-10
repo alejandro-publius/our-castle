@@ -22,8 +22,10 @@ test('a quiet camp is found while exploring, its waterfalls meet rivers and redu
   expect(initial.discoveries.waterfalls).toHaveLength(2);
   expect(initial.discoveries.waterfalls.every(f=>f.insideWater&&f.channel===f.river)).toBe(true);
   expect(initial.discoveries.camp.knights).toBe(2);
+  expect(initial.discoveries.waysides.pennants).toBe(1);
   expect(initial.surround.mistGroves).toHaveLength(2);
   await expect.poll(async()=>(await scene(page)).discoveries.seconds).toBeGreaterThan(initial.discoveries.seconds);
+  await expect.poll(async()=>(await scene(page)).discoveries.waysides.pennantAngle).not.toBe(initial.discoveries.waysides.pennantAngle);
   await page.getByRole('button',{name:'Whole realm',exact:true}).click();
   await page.getByRole('button',{name:'Explore map',exact:true}).click();
   await page.getByRole('button',{name:'Visit the lantern glade'}).click();
@@ -36,6 +38,7 @@ test('a quiet camp is found while exploring, its waterfalls meet rivers and redu
   const reloaded=await scene(page);expect(reloaded.ambient).toBe(false);
   await page.waitForTimeout(650);
   expect((await scene(page)).discoveries.seconds).toBe(reloaded.discoveries.seconds);
+  expect((await scene(page)).discoveries.waysides).toEqual(reloaded.discoveries.waysides);
   expect((await scene(page)).surround.seconds).toBe(reloaded.surround.seconds);
   expect(await(await request.get('/api/state')).json()).toEqual(before);
   expect([...errors,...writes,...outside]).toEqual([]);
@@ -57,6 +60,7 @@ test('waterfalls and camp fire stay still for a visitor requesting reduced motio
   expect(still.discoveries.camp.knights).toBe(2);
   await page.waitForTimeout(650);
   expect((await scene(page)).discoveries.seconds).toBe(still.discoveries.seconds);
+  expect((await scene(page)).discoveries.waysides).toEqual(still.discoveries.waysides);
   expect(await(await request.get('/api/state')).json()).toEqual(before);
   expect([...errors,...writes,...outside]).toEqual([]);
 });
