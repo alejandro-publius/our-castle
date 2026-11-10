@@ -9,6 +9,8 @@ Run `npm run demo -- --village-fund` after `npm ci` on Node 22.16 or later. This
 5. **Join the square** opts this page into temporary presence. Move with its controls. Seeded family names are not invented online visitors. Leaving, signing out or expiry removes presence.
 6. **My realm** restores the private view and its unchanged progress. Refresh keeps one shared contribution while the process runs; closing this demo discards its records.
 
+Starting from nothing instead: [two fresh signed-in families](VILLAGE-FIRST-USE.md) can start a neighborhood, describe a project, invite each other and contribute through the same controls, in the separate family mode.
+
 ## What is implemented
 
 | Track | Source behavior | Evidence boundary |

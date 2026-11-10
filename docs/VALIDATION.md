@@ -1,5 +1,23 @@
 # Validation
 
+## Fresh two-family village journey — November 10, 2026
+
+Stacked on the shared-fund integration (PR #79 at `1f76ba6`). Two fresh, separately signed-in families can now reach one shared project through visible controls. [What was mapped, changed and deliberately left alone](VILLAGE-FIRST-USE.md).
+
+**Mapped before editing**, at `1f76ba6`, desktop and 390 px, on a disposable family-mode server with two browser contexts and nothing seeded. The draft, joining, own-family shares, the simulated contribution, the live update to the other family's open page (about 0.1 s), the square and the unchanged private records already worked and are untouched. Demonstrated gaps: the empty fund offered only Close; Village Exchange offered no way back; Families had no invitation handoff; the draft and a read-only treasurer question both reported "Saved."; the draft's accept button was an unstyled system button; **My realm** left focus on the page body. At 390 px, a new invitation code and the join confirmation also appeared below the fold.
+
+**Changed:** contextual actions from the fund into the existing Exchange forms, which open over the fund and return to it; truthful status lines; existing parchment button treatments on the controls of this path; focus restored after return and after **My realm**. No new form, dialog, payment type, server route or schema. Children and non-founding families are offered none of the new actions.
+
+**Checks on the final source**, Node 26.0.0, under the transport guard with nothing refused but its self-checks:
+- The existing village CI selection plus the new journey: desktop **9 passed**; phone **5 passed** with four designed desktop-only skips.
+- The existing Exchange, Exchange-dashboard and village-library specs that share the changed dialog: **8 passed** across desktop and phone. The first run of these failed two cases for a harness reason this change introduced: three new buttons had the same text as the Exchange headings an existing test finds page-wide. The buttons were reworded and that test passes unedited.
+- Affected unit files (13 results) and the original-art, palette, renderer and syntax guard passed.
+- Nine deliberate breaks of the production code each failed the matching case at its own step.
+
+The whole unit suite and the release-browser and kit-planner selections were not rerun locally; the one hosted run for this branch covers them and is recorded on its pull request. Raw maps, screenshots before and after, logs and mutation runs are ignored under `test-results/village-first-use-20261110/`.
+
+Limits: virtual authenticators and an emulated phone, not people, a physical device or a screen reader. Contributions are simulated; no provider call, sandbox recipient or devnet wallet is involved.
+
 ## Shared village fund — November 10, 2026
 
 The five source tracks are integrated on base `84a35b1`: shared fund accounting, recipient-bound sandbox payments and read-only devnet observation, the original-model village square, reviewed drafts/record answers, and an adult-scoped local MCP adapter. [The runnable route and remaining setup](VILLAGE-DEMO.md) distinguish this source from actual provider acceptance. The schema is 17 with 43 application tables; only in-memory and disposable migration fixtures were opened.

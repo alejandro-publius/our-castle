@@ -29,15 +29,24 @@ The design lock is unchanged: the existing painted parchment, forest ink, gold t
 
 | Change | Why |
 | --- | --- |
-| Empty fund, adults only: **Start a neighborhood** and **Join with an invitation**. Each opens the existing Exchange form for exactly that, already expanded | Owner goal: reach the fund task through visible controls. Ko-fi role in the lock: one clear invitation with plain supporting copy. Existing forms and permissions, no second form |
+| Empty fund, adults only: **Start a new neighborhood** and **Join with an invitation code**. Each opens the existing Exchange form for exactly that, already expanded | Owner goal: reach the fund task through visible controls. Ko-fi role in the lock: one clear invitation with plain supporting copy. Existing forms and permissions, no second form |
 | Village Exchange opens **over** the fund and shows **Back to the village fund** while it was opened from there. Closing it by any route returns to the fund | Owner goal: a clear return to the originating project. A stacked native dialog needs no new navigation mode, and Escape already means "back one step" |
 | On return, focus goes to the next useful control: the sentence draft (opened) when there is a neighborhood and no project yet, otherwise the project | Craft: focus must land somewhere useful and visible; the control that opened the Exchange may no longer exist |
-| Families view, founding family's adults only: **Invite another family** opens the existing invitation form. The adult still presses **Create invitation** and shares the code themselves | Owner goal: an obvious invitation handoff. Nothing is created or sent automatically; the existing one-family, 24-hour code and its permission are untouched |
+| Families view, founding family's adults only: **Invite a family** opens the existing invitation form. The adult still presses **Create invitation** and shares the code themselves | Owner goal: an obvious invitation handoff. Nothing is created or sent automatically; the existing one-family, 24-hour code and its permission are untouched |
 | Status after a draft says it is ready to review and that nothing is created yet. A treasurer answer no longer says "Saved." | A status line must say what happened. Fundraiser-preview role in the lock: one decision, clearly not yet taken |
 | The accept button and **Share our castle's appearance** use the paper's existing green and tan button treatments, at least 44 px tall | The lock: controls are brown ink and green/gold on parchment, never system grey. Craft: touch targets |
 | After a draft is accepted, its sentence and disclosure are cleared | No stale draft left open beside the project it became |
 | The eyebrow reads "No neighborhood yet" before one exists | It said "Private neighborhood" when there was none |
 | **My realm** moves focus to the Village fund button | Craft: never leave focus on a control that has just been hidden |
+
+Added after looking at the first rendered results at 390 px, for the same reasons:
+
+| Change | Why |
+| --- | --- |
+| In Village Exchange, a new invitation code and the join confirmation scroll into view | On the narrow screen both appeared below the fold, so pressing the button seemed to do nothing |
+| Reviewing an invitation says nothing is joined yet, where it said "Saved." | The same misleading status, one step earlier |
+| The Exchange's plain form buttons (**Create invitation**, **Join this neighborhood**, **Cancel**, **Leave neighborhood**) use the Exchange's own tan button | They were system grey, on this path. One selector added to the existing rule; no new style |
+| The fund's three new buttons are worded differently from the Exchange headings they open | An existing release test finds those headings by their text across the whole page. Distinct wording keeps that test untouched |
 
 Deliberately not changed:
 
@@ -46,3 +55,24 @@ Deliberately not changed:
 - **The draft's wording.** The built-in rules title the example sentence "the class trip", in lower case. That is how the existing rules read it; the title is reviewed before it is accepted and manual creation is still there.
 - **Other plain buttons inside closed disclosures** of the fund sheet (review link, local assistant, devnet watch) still use the system style. They are outside this path.
 - **Scope rules.** A signed-in scope change still closes the fund and shows nothing until its own state arrives.
+
+## The path now
+
+1. **Family A** signs in to a fresh household, opens **Village fund**, and chooses **Start a new neighborhood**. Village Exchange opens over the fund at that form. After **Create neighborhood**, **Back to the village fund** (or Escape, or Close) returns to the fund with the sentence draft open.
+2. A describes "We need $400 for the class trip by December 12, 2026." The draft is labelled as built-in rules with no AI and as a simulated contribution type. A accepts it explicitly; only then does the project exist. Creating one by hand is still offered.
+3. In **Families**, A chooses **Invite a family**, presses **Create invitation** in the Exchange and passes the code on. Opening the form creates no invitation.
+4. **Family B**, a separate fresh household, opens **Village fund**, chooses **Join with an invitation code**, reviews the invitation and joins. Back at the fund, B sees the same project. A's open page lists B without a reload.
+5. Each family saves its own voluntary share. The recorded total stays $0.00.
+6. B approves and adds one simulated $100 contribution. Both open pages show $100.00 of $400.00, the same single receipt, and the schoolhouse moves from survey stakes to under construction, including in the square A already had open. Neither family's private savings or private contributions change.
+7. **My realm** restores A's own goal and puts focus on the Village fund button. A reload keeps exactly one receipt.
+
+To try it by hand, run the existing family mode with a new data folder (`npm run family -- --port 3200 --data <a new folder>`) and use two separate browser profiles, one per family, each with its own passkey. That by-hand route was not exercised in this work; the checks below use Chromium's virtual authenticators.
+
+## Evidence and limits
+
+- **The journey:** `test/e2e/village-first-use.spec.mjs`, at 1440 × 1000 and an emulated 390 × 844 phone. A disposable in-memory family-mode server with its real handlers, two browser contexts each with its own virtual authenticator, no seeded neighborhood, fund, share or receipt, and no mocked response. Requests leaving the server's origin are refused and counted (none). It also checks: one payment request, from B only; no invitation or neighborhood made by merely opening a form; 44 px controls; no page or console error; no horizontal overflow.
+- **Who is offered what:** a desktop fixture case in `test/e2e/village-square.spec.mjs`. A child gets none of the new actions; only the founding family's adult gets the invitation; without the Exchange there is no action.
+- **Both were broken on purpose.** Nine single changes to the production code (five to who is offered an action, four to the return, focus, stacking and draft status) each made the matching case fail at its own step.
+- Both run in the existing village CI job. Results and source identifiers are in [validation](VALIDATION.md#fresh-two-family-village-journey--november-10-2026).
+
+Limits: these are automated interaction checks with virtual authenticators and an emulated phone. They are not a playtest with people, a physical device or a screen reader. Contributions are simulated; no provider was called and no sandbox recipient or devnet wallet exists yet. The draft used the built-in rules; the optional AI drafting path was not exercised here.
