@@ -1,30 +1,12 @@
 # Run and review Our Castle
 
-Review [current main](https://github.com/alejandro-publius/our-castle/tree/main) and state the commit you inspected. Nine woodland districts, a chosen campsite/garden/schoolhouse that develops with the goal, one household journal, Merchant, Treasury, APIMatic context, the Studio Agent Framework and saved explicit receipt checks are implemented. Opt-in [shared families](FAMILY-ACCESS.md) add passkeys, invitations, server-enforced adult/child permissions and live page updates. [Family-planning integration](FAMILY-PLAN-REVIEW.md) adds read-only amount/date checks and protection against using stale plans.
+Our Castle helps a family keep a shared trip affordable when an expense changes: compare the whole kit, keep agreed choices, adjust the plan, then approve a contribution and see its progress in a woodland realm.
 
-This source also includes:
-- [family choices](FAMILY-CHOICES.md), with their saved schedules and family-fit shopping;
-- a [kit list](KIT-LIST.md) from typed text or a photo, and [complete-kit planning](KIT-PLANNER.md);
-- Moss's optional [tour](KEEPER-GUIDE.md);
-- opt-in music;
-- payment recovery fixes.
-
-[Release status](RELEASE-READINESS.md) records actual runtime evidence and remaining recording/submission gaps. This is not a submitted entry.
-
-The reviewed scene lifecycle, Treasury stalled-asset recovery and [credential-free CI](VALIDATION.md#release-checks-workflow--november-7-2026) remain in the source. The family-trip integration [PR #62](https://github.com/alejandro-publius/our-castle/pull/62) passed all six jobs in [run 42714353423](https://github.com/alejandro-publius/our-castle/actions/runs/42714353423):
-- 568 unit passes and one existing skip on each of Node 22.16.0, 24 and 26, plus nine Rust tests per build;
-- 25 desktop and 22 phone release-browser passes, with three designed phone skips;
-- four native-solver browser passes.
-
-The checked merge tree equals main `3dd2a9f`. These counts describe that integration, not an untested later head. [Validation](VALIDATION.md) records subsequent changes separately.
-
-These source suites use fake providers. Both saved Mac apps now run the integrated source `b21b2d8` at schema 12; the later local upgrade and one live synthetic OpenAI photo check are recorded separately in [validation](VALIDATION.md#saved-mac-runtime-activation--november-9-2026).
+Start with the runnable example below. The [four-step route](#2-a-short-review-route) follows one family decision; [source and integration evidence](#6-for-source-reviewers) comes later. The [illustrated journal and original castle identity](JOURNAL-DESIGN.md) are in the current source. Review [main](https://github.com/alejandro-publius/our-castle/tree/main) and state the commit you inspected.
 
 ## 1. Run it
 
-Use Node.js **22.16 or later** (verified development environment: Node 26). Start with the **playable family-trip example** to try the complete-kit decision engine without provider accounts. Its family, shops, prices and contributions are explicitly labelled invented/simulated; the existing planner computes the results. OpenAI photo reading and Cohere ordering stay off. This is not a live PayPal/AI demonstration.
-
-The repository is public; cloning needs no GitHub sign-in. Runtime keys and owner data are excluded. See [release readiness](RELEASE-READINESS.md#github-publication-result).
+Use **Node.js 22.16 or later**. No provider account or Rust installation is needed for this example; without a compiled solver, it uses the checked JavaScript reference.
 
 ```sh
 git clone https://github.com/alejandro-publius/our-castle.git
@@ -34,25 +16,35 @@ npm run demo -- --family-trip
 # Open the localhost URL printed in the terminal.
 ```
 
+The family, shops and prices are invented; contributions are simulated. The actual planning engine computes the answers. This route uses the rules planner, with OpenAI photo reading and Cohere off. It does not demonstrate a live PayPal or AI request. [Historical live evidence](#3-evidence-without-mixing-modes) is identified separately.
+
+<details>
+<summary>Other run modes and optional live integrations</summary>
+
 For the plain fresh household without the authored trip or sample catalogue, use `npm run demo`. Its live integrations remain off without their keys. The [family-trip guide](FAMILY-TRIP-EXAMPLE.md) records the scenario, real checks and screenshots. A checkout without a compiled Rust binary uses the independent JavaScript reference; [native build instructions](KIT-PLANNER.md) describe the optional Rust path.
 
 Use the same command from a POSIX shell or PowerShell; the launcher has no shell-specific environment syntax. It uses an OS-assigned localhost port and a fresh in-memory database, ignoring `.env`, inherited provider keys, `HOST`, `PORT` and data-directory settings. It leaves existing servers and households alone. Refresh retains progress; Ctrl+C ends the session. A new run starts fresh. Use ordinary `npm start` for the separately configured, persistent app.
 
 For live integrations on another machine, use your own sandbox developer credentials and runtime API key following [the README](../README.md#real-paypal-sandbox-and-ai). Channel3 needs a server key; Studio's local trial is not bundled. Reading a kit-list photo and ordering complete kits use their own optional keys, `KIT_OPENAI_API_KEY` and `KIT_COHERE_API_KEY` ([settings](RUNBOOK.md#merchant-and-treasury-settings)). Studio may show its evaluation notice without a suitable licence. No runtime secrets or owner databases are distributed.
 
+</details>
+
 ## 2. A short review route
 
 ### Start with the family decision
 
-In the family-trip example, Plan opens with an invented family and packing list already entered. The starting $60 is reported progress, not a bank balance.
+In the family-trip example, **Plan** opens with a family and packing list already entered. Rowan offers $20 a week and Ash $10; the two torches already at home need no purchase. Starting progress is a reported $60, not a bank balance. The deadline is seven weeks after this demo starts.
 
-1. Choose **Try a one-off expense** and enter **90**. Rowan offers $20 a week and Ash $10. The two torches already at home need no purchase.
-2. Choose **See which complete kits fit**, then **Compare complete kits**. Inspect the computed **$150** lower-total kit and **$180** lighter kit. The deadline is seven weeks after this demo starts.
-3. Choose the $180 kit, then **Keep stove as it is** and **Preview on map**. The temporary planning groundsheet shows the kit beside the funded project; it earns nothing.
-4. Choose **Change the one-off expense** and enter **120**. The map shows a $150 **Proposal · smallest change** switching only the tent and keeping the stove. The saved chosen kit is still $180 until you explicitly choose the repair.
-5. Try **200**. The chosen $180 preview no longer fits and is $110 short. The separate closest-kit card is $150 and $80 short; neither is an affordable answer at the $70 limit.
-6. Return to **120**, choose the repair and **Review this kit**. Inspect the unsaved draft, then explicitly **Save goal and propose this schedule** if wanted. **Use this plan** remains a separate confirmation. Comparison and preview have moved no money or changed the goal.
-7. In **Contribute**, approve an exact simulated amount. After the deed, choose **Review the receipt** to see that contribution in Treasury. Its simulated label stays visible; it does not gain a fabricated PayPal Match.
+| Step | Do this | Look for |
+| --- | --- | --- |
+| **1. Compare** | **Try a one-off expense** → enter **90** → **See which complete kits fit** → **Compare complete kits** | Two computed choices: **$150** lower total and **$180** lower listed weight. |
+| **2. Adapt** | Choose the **$180** kit → **Keep stove as it is** → **Preview on map** → change the one-off to **120** | A temporary **$150 Proposal · smallest change** switches only the tent. The stove stays; the saved choice is still $180. |
+| **3. Agree** | Choose the $150 repair → **Review this kit** → inspect the draft → **Save goal and propose this schedule** → **Use this plan** | The goal and schedule change only through those explicit confirmations. Nothing has been paid. |
+| **4. Contribute and review** | In **Contribute**, enter **15**, tick the exact-amount approval and choose **Simulate approved payment**. Finish the deed's Visit/Close action, then **Review the receipt**. | Earned progress, followed by that exact contribution selected in Treasury. It says simulated and shows no invented PayPal Match. |
+
+The receipt route is deliberately one explicit click after the world response; it does not automatically cover an unlock or perform a provider lookup. Which district opens depends on the saved goal. A $15 contribution toward the repaired $150 goal is a different scenario from the historical $15/$300 Manor evidence.
+
+Optional stress case: before choosing the repair, enter **200**. The chosen $180 kit is $110 short; the separate closest $150 kit is $80 short. Neither fits the $70 limit. Return to **120** to continue. [Full steps, arithmetic and screenshots](FAMILY-TRIP-EXAMPLE.md).
 
 The map preview has separate [desktop/phone captures and focused checks](KIT-MAP-PREVIEW.md). [Selected product scope](PRODUCT-COMPLETION.md) distinguishes completed features from presentation and live-evidence limits.
 
@@ -124,7 +116,7 @@ The rehearsal now has **one completed order, one completed capture, two ledger e
 
 ## 5. Historical review cut and preserved media
 
-The preserved [2:42 review cut](demos/current-review/our-castle-current-review-cut.mp4) is exported with narration, captions, an editable timeline and exact provenance. It predates the latest scenery, Plan shortcut and receipt history. Its explicit unfilmed checkout insert is at **1:08–1:36**; [kit and revised insert plan](demos/current-review/README.md). Recording/editing remains paused under the owner's instruction; this handoff refresh produces no media. The cut has not been uploaded to YouTube or submitted. Historical live sources are labelled separately from the recorded example game. Older kit instructions are historical; use the current insert plan before touching the already-occupied rehearsal port.
+The preserved [2:42 review cut](demos/current-review/our-castle-current-review-cut.mp4) is exported with narration, captions, an editable timeline and exact provenance. It predates the complete-kit planning flow, map preview and redesigned journal. Its explicit unfilmed checkout insert is at **1:08–1:36**; [kit and revised insert plan](demos/current-review/README.md). Recording/editing remains paused under the owner's instruction; this handoff refresh produces no media. The cut has not been uploaded to YouTube or submitted. Historical live sources are labelled separately from the recorded example game. Older kit instructions are historical; use the current insert plan before touching the already-occupied rehearsal port.
 
 All older sources and captions remain unchanged:
 
@@ -139,6 +131,28 @@ All older sources and captions remain unchanged:
 All footage shows its recorded version. No missing checkout or tool outcome has been reconstructed.
 
 ## 6. For source reviewers
+
+### Built features and release evidence
+
+Review [current main](https://github.com/alejandro-publius/our-castle/tree/main) and state the commit you inspected. Nine woodland districts, a chosen campsite/garden/schoolhouse that develops with the goal, one household journal, Merchant, Treasury, APIMatic context, the Studio Agent Framework and saved explicit receipt checks are implemented. Opt-in [shared families](FAMILY-ACCESS.md) add passkeys, invitations, server-enforced adult/child permissions and live page updates. [Family-planning integration](FAMILY-PLAN-REVIEW.md) adds read-only amount/date checks and protection against using stale plans.
+
+This source also includes:
+- [family choices](FAMILY-CHOICES.md), with their saved schedules and family-fit shopping;
+- a [kit list](KIT-LIST.md) from typed text or a photo, and [complete-kit planning](KIT-PLANNER.md);
+- Moss's optional [tour](KEEPER-GUIDE.md);
+- opt-in music;
+- payment recovery fixes.
+
+[Release status](RELEASE-READINESS.md) records actual runtime evidence and remaining recording/submission gaps. This is not a submitted entry.
+
+The reviewed scene lifecycle, Treasury stalled-asset recovery and [credential-free CI](VALIDATION.md#release-checks-workflow--november-7-2026) remain in the source. The journal release [PR #66](https://github.com/alejandro-publius/our-castle/pull/66) passed all six jobs in [run 42750968924](https://github.com/alejandro-publius/our-castle/actions/runs/42750968924):
+- 590 unit passes and one existing skip on each of Node 22.16.0, 24 and 26, plus nine Rust tests per build;
+- 27 desktop and 24 phone release-browser passes, with three designed phone skips;
+- 18 native-solver browser passes.
+
+The checked merge and source release `e757071` have the same implementation tree. These counts describe that release; this handoff revision changes documentation only. [Validation](VALIDATION.md) records exact scopes and corrections.
+
+These source suites use fake providers. Both saved Mac apps now run the integrated source `b21b2d8` at schema 12; the later local upgrade and one live synthetic OpenAI photo check are recorded separately in [validation](VALIDATION.md#saved-mac-runtime-activation--november-9-2026).
 
 Identify the commit you actually inspected, read [release readiness](RELEASE-READINESS.md) and [validation](VALIDATION.md), then follow the relevant implementation. Report inaccessible files explicitly. These are source-review entry points, not claims that every execution path has live-provider proof.
 
@@ -156,7 +170,7 @@ Identify the commit you actually inspected, read [release readiness](RELEASE-REA
 | Do family choices keep each adult's own offer? | [Family choices](../server/family-choices.mjs), [comparison](../src/core/family-choices.js) | [HTTP cases](../test/unit/family-choices.test.mjs), [schedule cases](../test/unit/family-schedule.test.mjs), [journey](../test/e2e/family-choices.spec.mjs) |
 | Does a payment survive a restart or a second server? | [Contribution service](../server/payments/contributions.mjs) | [Restart](../test/unit/payment-restart.test.mjs), [two servers](../test/unit/payment-two-servers.test.mjs), [seeded model](../test/unit/payment-model.test.mjs) |
 | What did APIMatic contribute? | [Pinned context and provenance](APIMATIC-CODEX.md), SDK adapter | Documented context use and fake-provider recovery checks; not a runtime money service |
-| What is still a limitation? | [Release status](RELEASE-READINESS.md), [dependency review](TOOLKIT-MAINTENANCE.md), [licences](../NOTICE.md) | Unfilmed insert, unpublished video/unsubmitted entry, human playtest notes pending, local-only personas, no utility provider, remaining dependency advisories |
+| What is still a limitation? | [Release status](RELEASE-READINESS.md), [dependency review](TOOLKIT-MAINTENANCE.md), [licences](../NOTICE.md) | Unfilmed insert, unpublished video/unsubmitted entry, human playtest notes pending, example personas distinct from the opt-in passkey family runner, no utility provider, remaining dependency advisories |
 
 Suggested independent review request:
 
