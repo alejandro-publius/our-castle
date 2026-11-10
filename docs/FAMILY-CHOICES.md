@@ -15,6 +15,8 @@ This feature is integrated into `main` and the saved `b21b2d8` Mac runtimes. The
 7. In the Plan, the proposal is labelled **Family schedule**. Its table shows every week's amount with each adult's share or the expense note. **Use this plan** puts it in use, as for any plan; the next contribution and the Treasury's week then follow its dates.
 8. **Propose this schedule** on the current goal makes a later proposal without changing the goal. Any one-off amount must be entered again; none is carried over.
 
+An offer typed while an earlier save or withdrawal is finishing stays in the field, unsaved. The completed action names what was saved or withdrawn and says when a newer edit still needs its own **Save my offer**. Moving to another field does not discard that edit.
+
 Without Channel3, the current goal can still be compared with the adults' offers. No example catalogue is silently installed. The screenshots below use invented products served by fake transport, not live retailer quotes.
 
 ## Worked example

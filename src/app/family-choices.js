@@ -36,7 +36,7 @@ const AVAILABILITY = { InStock: 'In stock', OutOfStock: 'Out of stock' };
  * @param options.onProposed (plan) => called after a family schedule was proposed for the current goal
  */
 export function createFamilyChoices({ getState, actor, openMerchant, onReview, applyState, onProposed = () => {} }) {
-  const ui = { reserveCents: 0, reserveInvalid: false, offerDirty: false, offerActor: null, busy: false, review: 0, scope: null };
+  const ui = { reserveCents: 0, reserveInvalid: false, offerDirty: false, offerEdit: 0, offerActor: null, busy: false, review: 0, scope: null };
   const currency = () => getState()?.goal?.currency ?? 'USD';
   const money = (cents) => formatCents(cents, currency());
   const date = (iso) => {
@@ -82,14 +82,27 @@ export function createFamilyChoices({ getState, actor, openMerchant, onReview, a
   const propose = () => send(() => api.post('/api/plans/family', asActor({ reserveCents: ui.reserveCents, revision: getState().familyChoices.revision })),
     (res) => { onProposed(res.plan); return `Family schedule proposed for ${getState().goal.name}${ui.reserveCents ? `, with the one-off ${money(ui.reserveCents)} first` : ''}. Check its weeks in the plan below, then choose “Use this plan”. Nothing is paid.`; });
 
+  // A completed save acknowledges only the value sent. Edits typed while its reply was on the way stay here,
+  // unsaved, even if focus has moved to another field. The same rule applies while withdrawing an old offer.
+  function finishOffer(edit, message) {
+    const newer = ui.offerEdit !== edit;
+    if (!newer) ui.offerDirty = false;
+    return `${message}${newer ? ' Your newer edit is not saved.' : ''}`;
+  }
+
   function saveOffer() {
     const input = $('family-offer-input');
     const cents = parseAmountToCents(input.value);
     input.toggleAttribute('aria-invalid', cents === null);
     if (cents === null) { say('error', 'Enter your weekly offer in dollars and cents, like 20.00.'); input.focus(); return; }
-    return send(() => api.put('/api/family-choices/offer', asActor({ weeklyCents: cents })), () => { ui.offerDirty = false; return `Your offer of ${money(cents)} a week is saved. Your family can see it.`; });
+    const edit = ui.offerEdit;
+    return send(() => api.put('/api/family-choices/offer', asActor({ weeklyCents: cents })),
+      () => finishOffer(edit, `Your offer of ${money(cents)} a week is saved. Your family can see it.`));
   }
-  const withdraw = () => send(() => api.post('/api/family-choices/offer/withdraw', asActor({})), () => { ui.offerDirty = false; return 'Your weekly offer is withdrawn.'; });
+  const withdraw = () => {
+    const edit = ui.offerEdit;
+    return send(() => api.post('/api/family-choices/offer/withdraw', asActor({})), () => finishOffer(edit, 'Your weekly offer is withdrawn.'));
+  };
 
   // The server checks the comparison this page shows, then returns a goal draft. A late answer is used only if the family,
   // member, comparison and trial are still the ones it was asked for.
@@ -166,7 +179,7 @@ export function createFamilyChoices({ getState, actor, openMerchant, onReview, a
     const s = getState();
     if (!s?.familyChoices) return;
     const fc = s.familyChoices, me = actor(), adult = me?.role === 'adult', merchantOn = catalogueOf(s).open;
-    if (ui.offerActor !== (me?.id ?? null)) { ui.offerActor = me?.id ?? null; ui.offerDirty = false; }
+    if (ui.offerActor !== (me?.id ?? null)) { ui.offerActor = me?.id ?? null; ui.offerDirty = false; ui.offerEdit++; }
     // A one-off trial belongs to the member, household and goal it was typed for; it never carries over to another.
     if (ui.scope !== scopeKey()) {
       if (ui.scope !== null) { $('family-trial-input').value = ''; $('family-trial-input').removeAttribute('aria-invalid'); ui.reserveCents = 0; ui.reserveInvalid = false; }
@@ -230,7 +243,7 @@ export function createFamilyChoices({ getState, actor, openMerchant, onReview, a
     } catch { return null; }
   }
 
-  $('family-offer-input').addEventListener('input', () => { ui.offerDirty = true; });
+  $('family-offer-input').addEventListener('input', () => { ui.offerDirty = true; ui.offerEdit++; });
   $('family-offer-save').addEventListener('click', saveOffer);
   $('family-offer-withdraw').addEventListener('click', withdraw);
   $('family-trial-input').addEventListener('input', (e) => {
