@@ -45,7 +45,41 @@ export function createVillageSubscriptionsSdk({ clientId, clientSecret, capabili
     } });
   }
   return { environment: 'sandbox', implementation: 'paypal-server-sdk-2.5.0',
-    async createApproval({ prepared, assertAccess = () => {} }) {
+    async readAgreement({ prepared, planId, subscriptionId, assertAccess = () => {} }) {
+      assertAccess();
+      const intent = prepared?.intent;
+      if (!intent || digest(intent) !== prepared.revision || intent.recipientMerchantId !== merchantId || intent.rail !== 'paypal-sandbox' || intent.currency !== 'USD' ||
+          !Number.isSafeInteger(intent.amountMinor) || intent.amountMinor < 1 || intent.amountMinor > 100_000_000 ||
+          !Number.isSafeInteger(intent.cycles) || intent.cycles < 1 || intent.cycles > 52 || intent.intervalUnit !== 'WEEK' || intent.intervalCount !== 1 ||
+          intent.totalMinor !== intent.amountMinor * intent.cycles || !isIsoDate(intent.startDate) || !/^P-[A-Z0-9]{1,48}$/.test(planId ?? '') || !/^I-[A-Z0-9]{1,48}$/.test(subscriptionId ?? ''))
+        throw fail('subscription_not_reviewed', 'This agreement does not identify retained recurring-payment terms.');
+      const api = controller(assertAccess), value = decimal(intent.amountMinor);
+      const agreement = raw(await api.getSubscription({ id: subscriptionId, fields: 'plan' }));
+      assertAccess();
+      const plan = raw(await api.getBillingPlan(planId));
+      assertAccess();
+      const cyclesMatch = cycles => Array.isArray(cycles) && cycles.length === 1 && cycles[0].tenure_type === 'REGULAR' && cycles[0].sequence === 1 &&
+        cycles[0].total_cycles === intent.cycles && cycles[0].frequency?.interval_unit === 'WEEK' && cycles[0].frequency?.interval_count === 1 &&
+        cycles[0].pricing_scheme?.fixed_price?.currency_code === 'USD' && cycles[0].pricing_scheme?.fixed_price?.value === value;
+      const preferencesMatch = preferences => preferences?.auto_bill_outstanding === false && preferences.payment_failure_threshold === 1 &&
+        Number(preferences.setup_fee?.value ?? 0) === 0;
+      const finalStates = ['APPROVAL_PENDING', 'APPROVED', 'ACTIVE', 'SUSPENDED', 'CANCELLED', 'EXPIRED'];
+      const statusTime = agreement.status_update_time;
+      if (agreement.id !== subscriptionId || agreement.plan_id !== planId || agreement.custom_id !== `village-${prepared.revision}` ||
+          agreement.start_time !== `${intent.startDate}T12:00:00Z` || !finalStates.includes(agreement.status) || agreement.plan_overridden === true ||
+          (agreement.quantity !== undefined && agreement.quantity !== '1') || Number(agreement.shipping_amount?.value ?? 0) !== 0 ||
+          !agreement.plan || !cyclesMatch(agreement.plan.billing_cycles) || !preferencesMatch(agreement.plan.payment_preferences) || Number(agreement.plan.taxes?.percentage ?? 0) !== 0 ||
+          plan.id !== planId || plan.product_id !== productId || !['ACTIVE', 'INACTIVE'].includes(plan.status) || !cyclesMatch(plan.billing_cycles) ||
+          !preferencesMatch(plan.payment_preferences) || plan.quantity_supported === true || Number(plan.taxes?.percentage ?? 0) !== 0 ||
+          (['APPROVED', 'ACTIVE', 'SUSPENDED'].includes(agreement.status) && !/^[A-Z0-9]{13}$/.test(agreement.subscriber?.payer_id ?? '')) ||
+          typeof statusTime !== 'string' || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?Z$/.test(statusTime) || !Number.isFinite(Date.parse(statusTime)))
+        throw fail('subscription_agreement_mismatch', 'PayPal’s agreement or effective billing terms do not match the approved intent.', 502);
+      return { subscriptionId, planId, revision: prepared.revision, recipientMerchantId: merchantId,
+        status: agreement.status.toLowerCase(), buyerAgreementVerified: ['APPROVED', 'ACTIVE', 'SUSPENDED'].includes(agreement.status),
+        chargesImported: false, amountMinor: intent.amountMinor, currency: 'USD', cycles: intent.cycles,
+        startTime: agreement.start_time, statusUpdatedAt: new Date(statusTime).toISOString() };
+    },
+    async createApproval({ prepared, assertAccess = () => {}, assertResponseAccess = assertAccess, onApproval = () => {} }) {
       assertAccess();
       const intent = prepared?.intent;
       if (prepared?.status !== 'ready_for_buyer_agreement' || prepared.paymentScheduled !== false || !intent ||
@@ -81,7 +115,6 @@ export function createVillageSubscriptionsSdk({ clientId, clientSecret, capabili
             userAction: ApplicationContextUserAction.Continue, returnUrl: `${appOrigin}/?villageSubscription=${fingerprint}&result=return`,
             cancelUrl: `${appOrigin}/?villageSubscription=${fingerprint}&result=cancel` } },
       }));
-      assertAccess();
       const links = response?.links?.filter(link => link.rel === 'approve') ?? [];
       let approval;
       try { approval = links.length === 1 ? new URL(links[0].href) : null; } catch { approval = null; }
@@ -90,9 +123,13 @@ export function createVillageSubscriptionsSdk({ clientId, clientSecret, capabili
           (response.quantity !== undefined && response.quantity !== '1') || Number(response.shipping_amount?.value ?? 0) !== 0 ||
           !approval || approval.protocol !== 'https:' || approval.hostname !== 'www.sandbox.paypal.com' || approval.port || approval.username || approval.password)
         throw fail('subscription_approval_mismatch', 'PayPal did not return the expected sandbox approval. No subscription is treated as active.', 502);
-      return { status: 'approval_pending', subscriptionId: response.id, planId: plan.id, approvalUrl: approval.href,
+      const result = { status: 'approval_pending', subscriptionId: response.id, planId: plan.id, approvalUrl: approval.href,
         revision: fingerprint, recipientMerchantId: merchantId, buyerAgreementRequired: true, paymentScheduled: false,
         startTime, amountMinor: intent.amountMinor, currency: 'USD', cycles: intent.cycles };
+      // The provider request was already dispatched. Persist its validated identity even if response access was lost.
+      onApproval(result);
+      assertResponseAccess();
+      return result;
     },
   };
 }
