@@ -57,6 +57,8 @@ Validated provider identifiers are persisted before checking whether the request
 
 The service API is:
 
+A family cannot leave the neighborhood while one of its dispatched recurring agreements has no checked terminal result. This includes an unknown create outcome and an agreement that was revoked only locally. Resolve it and check PayPal cancellation/expiry first, preserving access to its status. An undispatched proposal, a checked cancelled/expired agreement, or another family's agreement does not impose this leave guard.
+
 The app now wires these through adult/CSRF routes under `/api/village/subscriptions/`. Configuration defaults to `OUR_CASTLE_SUBSCRIPTIONS=off`. Explicit `sandbox-platform` mode also requires family access, sandbox credentials, `PAYPAL_SUBSCRIPTIONS_SELLER_ONBOARDED=true`, `PAYPAL_SUBSCRIPTIONS_MERCHANT_ID`, `PAYPAL_PARTNER_ATTRIBUTION_ID` and `PAYPAL_SUBSCRIPTIONS_PRODUCT_ID`. These are operator declarations of eligibility, not evidence that PayPal granted it. Invalid or incomplete explicit setup stops startup. No UI claims automatic weekly collection.
 
 - `propose({ scope, fundId, input, assertAccess })`, where input includes `requestId`, `amountMinor`, `cycles` and `startDate`.

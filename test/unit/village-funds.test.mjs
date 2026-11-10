@@ -6,6 +6,7 @@ import path from 'node:path';
 import { openDatabase } from '../../server/db.mjs';
 import { createClock } from '../../server/household.mjs';
 import { exchangeAction } from '../../server/exchange/index.mjs';
+import { createVillageSubscriptions } from '../../server/planner/village-subscriptions.mjs';
 import { assertVillageLeaveAllowed, clearExampleVillage, publicVillageFund, recordVillageReceipt, villageAction, villageFund, villagePaymentContext, villageReview, villageView } from '../../server/village/index.mjs';
 
 const clock = createClock('2026-11-10T12:00:00.000Z');
@@ -247,5 +248,49 @@ test('a pending member contribution must resolve before leaving; another familyâ
     assertVillageLeaveAllowed(f.db, f.c.householdId);
     f.db.prepare("UPDATE village_payment_intents SET status='completed'").run();
     assertVillageLeaveAllowed(f.db, f.b.householdId);
+  } finally { f.db.close(); }
+});
+
+test('a dispatched recurring agreement keeps neighborhood recovery available until PayPal confirms it ended', async () => {
+  const f = fixture(); try {
+    const merchantId = 'TESTSELLER123';
+    const id = f.create({ rail: 'paypal-sandbox', recipient: { kind: 'paypal', merchantId } });
+    let requests = 0;
+    const subscriptions = createVillageSubscriptions({ db: f.db, clock,
+      readAuthorizedFund: (scope, fundId) => villageFund(f.db, scope, fundId),
+      capabilities: { environment: 'sandbox', platformSubscriptions: true, sellerOnboarded: true, merchantId, bnCode: 'TEST_BN' },
+      adapter: { environment: 'sandbox', async readAgreement() { throw new Error('No provider status read is needed in this fixture.'); },
+        async createApproval({ prepared, assertAccess, onApproval, assertResponseAccess }) {
+          assertAccess(); requests++;
+          const approval = { status: 'approval_pending', revision: prepared.revision, recipientMerchantId: merchantId,
+            planId: 'P-TESTPLAN1', subscriptionId: 'I-TESTSUB1', approvalUrl: 'https://www.sandbox.paypal.com/approve?fake=yes', paymentScheduled: false };
+          onApproval(approval); assertResponseAccess(); return approval;
+        } },
+    });
+    const proposal = subscriptions.propose({ scope: f.b, fundId: id,
+      input: { requestId: 'leave-proposal-0001', amountMinor: 2000, cycles: 4, startDate: '2026-11-17' } });
+    assertVillageLeaveAllowed(f.db, f.b.householdId); // An undispatched local proposal creates no outside obligation.
+    await subscriptions.approve({ scope: f.b, proposalId: proposal.id, reviewedRevision: proposal.revision,
+      approvalConfirmed: true, requestId: 'leave-approval-0001' });
+    assert.equal(requests, 1);
+    assertVillageLeaveAllowed(f.db, f.c.householdId); // Another family's agreement does not trap this neighbor.
+
+    for (const providerStatus of [null, 'approval_pending', 'approved', 'active', 'suspended']) {
+      f.db.prepare('UPDATE village_subscriptions SET provider_status=?,status=? WHERE id=?')
+        .run(providerStatus, providerStatus ?? 'dispatch_unknown', proposal.id);
+      rejects(() => f.exchange(f.b, 'leave'), 409, 'village_subscription_pending');
+      assert.equal(subscriptions.get({ scope: f.b, proposalId: proposal.id }).recurringAgreementStatus, providerStatus,
+        'blocked departure preserves the adultâ€™s access to the retained agreement');
+    }
+    subscriptions.revoke({ scope: f.b, proposalId: proposal.id, reviewedRevision: proposal.revision, approvalConfirmed: true });
+    rejects(() => f.exchange(f.b, 'leave'), 409, 'village_subscription_pending');
+    f.db.prepare("UPDATE village_subscriptions SET provider_status=NULL,status='needs_reconciliation' WHERE id=?").run(proposal.id);
+    rejects(() => f.exchange(f.b, 'leave'), 409, 'village_subscription_pending');
+    for (const providerStatus of ['cancelled', 'expired']) {
+      f.db.prepare('UPDATE village_subscriptions SET provider_status=? WHERE id=?').run(providerStatus, proposal.id);
+      assertVillageLeaveAllowed(f.db, f.b.householdId);
+    }
+    f.exchange(f.b, 'leave');
+    assert.equal(f.db.prepare('SELECT 1 FROM exchange_members WHERE household_id=?').get(f.b.householdId), undefined);
   } finally { f.db.close(); }
 });

@@ -292,6 +292,11 @@ export function assertVillageLeaveAllowed(db, householdId) {
     && db.prepare(`SELECT 1 FROM village_payment_intents i JOIN village_funds f ON f.id=i.fund_id
       WHERE i.household_id=? AND f.circle_id=? AND i.status!='completed' LIMIT 1`).get(householdId, m.circle_id))
     throw fail(409, 'village_payment_pending', 'Resolve your pending village contribution before leaving so its confirmation stays with the right family.');
+  if (db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name='village_subscriptions'").get()
+    && db.prepare(`SELECT 1 FROM village_subscriptions s JOIN village_funds f ON f.id=s.fund_id
+      WHERE s.household_id=? AND f.circle_id=? AND s.first_dispatch_ms IS NOT NULL
+        AND COALESCE(s.provider_status,'') NOT IN ('cancelled','expired') LIMIT 1`).get(householdId, m.circle_id))
+    throw fail(409, 'village_subscription_pending', 'Resolve your recurring agreement and check its PayPal status before leaving. Local revocation alone does not stop recurring payments.');
   const circle = db.prepare('SELECT * FROM exchange_circles WHERE id = ?').get(m.circle_id);
   if (circle.owner_household_id === householdId && db.prepare('SELECT 1 FROM village_funds WHERE circle_id = ? LIMIT 1').get(m.circle_id))
     throw fail(409, 'village_history_retained', 'The organizing family keeps this neighborhood while its fund history exists.');
