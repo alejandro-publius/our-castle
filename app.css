@@ -848,3 +848,132 @@ body[data-signed-in='false'] .shell { visibility:hidden; }
   :root[data-keeper='open'] .shell { padding-bottom:calc(var(--keeper-space,0px) + 20px); }
   :root[data-keeper='open'] { scroll-padding-bottom:calc(var(--keeper-space,0px) + 16px); }
 }
+
+/* The field journal. Scoped tokens keep the woodland and its original palette intact. */
+.journey {
+  --paper:#f4ecd9; --paper-2:#e9dfc7; --paper-3:#fffaf0;
+  --ink:#28382f; --ink-muted:#596052; --ink-line:#bdbea6;
+  border:1px solid #66745d; border-left:7px solid #344b3c; border-radius:5px 8px 8px 5px;
+  box-shadow:3px 3px 0 #c7bc9c,6px 6px 0 #25392f; overflow:hidden;
+}
+.journey:focus-visible { outline:3px solid var(--brass); outline-offset:4px; }
+.journal-cover { flex:none; background:#263d32; color:var(--ivory); }
+.journal-heading { min-height:76px; padding:10px 14px 10px 22px; color:var(--ivory); gap:12px; }
+.journal-heading .journal-seal { width:36px; height:40px; object-fit:contain; image-rendering:pixelated; flex:none; }
+.journal-heading .journal-title { flex:1; }
+.journal-heading .journal-title small { display:block; color:#c2c8b1; font-size:10px; letter-spacing:.16em; text-transform:uppercase; }
+.journal-heading .journal-title h2 { display:block; font:400 22px/1.25 Uncial,Georgia,serif; margin-top:3px; }
+.journal-heading button { color:var(--ivory); border-radius:3px; }
+.journal-heading button:hover { background:#3d5344; }
+.steps { padding:0 12px; gap:3px; background:#263d32; border:0; }
+.steps button { position:relative; padding:10px 6px 11px; min-height:58px; color:#d4d7c5; border:0; border-top:3px solid transparent; border-radius:4px 4px 0 0; font-size:15px; line-height:1.2; }
+.steps button .chapter-number { display:block; font-size:10px; letter-spacing:.12em; margin-bottom:4px; opacity:.75; }
+.steps button[aria-selected='true'] { color:var(--ink); background:var(--paper); border-top-color:var(--gold); font-weight:700; }
+.steps button:hover:not([aria-selected='true']) { background:#344b3c; color:var(--ivory); }
+.steps button:focus-visible { outline-offset:-5px; }
+.journey .panel { padding:24px 22px 28px; scrollbar-color:#9fa58e var(--paper); scrollbar-width:thin; }
+.journey .panel h3 { font-size:25px; line-height:1.25; margin:0 0 10px; letter-spacing:-.02em; }
+.chapter-kicker { margin:0 0 6px; color:#66735b; font-size:11px; font-weight:700; letter-spacing:.13em; text-transform:uppercase; }
+.chapter-intro { margin:0 0 22px; color:var(--ink-muted); font-size:15px; line-height:1.45; }
+.journal-frontispiece { margin:-6px 0 18px; display:grid; grid-template-columns:minmax(0,1fr) 132px; align-items:center; gap:8px; border-bottom:1px solid #c9cbb7; padding-bottom:16px; }
+.journal-frontispiece img { width:132px; height:102px; object-fit:contain; image-rendering:pixelated; }
+.journal-frontispiece h3 { font-size:24px; }
+.journal-frontispiece .chapter-intro { margin:0; font-size:14px; }
+.journey .field { margin-bottom:15px; gap:6px; }
+.journey .field > span:first-child,.journey .goal-heading label { font-size:14px; font-weight:700; }
+.journey .field input,.journey .field select,.journey textarea,.journey .inline-form input,.journey .schedule input,.journey .commitment input,.journey .commitment select { border-color:#aeb59e; background:var(--paper-3); border-radius:4px; min-height:44px; }
+.journey input:focus-visible,.journey select:focus-visible,.journey textarea:focus-visible { outline:2px solid #527557; outline-offset:2px; }
+.journey .grid-form { gap:0 14px; }
+.journey .panel button:not(.link-button) { border-color:#9da98d; border-radius:4px; background:var(--paper-3); padding:9px 13px; }
+.journey .panel button.primary { background:#344f3c; color:#fff8e8; border-color:#344f3c; }
+.journey .panel button.primary:hover { background:#243c2c; }
+.journey .panel button:disabled { cursor:not-allowed; }
+.journey .link-button,.journey .panel a { color:#425d3c; text-decoration-thickness:1px; text-underline-offset:4px; }
+.journey .panel button.danger { color:var(--warn); border-color:var(--warn); }
+.journey .plan-project { font-size:14px; line-height:1.35; margin:0 0 15px; gap:5px 10px; }
+.journey .plan-project .link-button { font-size:14px; }
+.journey .example-entry { padding:10px 12px; margin:0 0 20px; background:#e7e5d1; border-left:3px solid #879870; color:#485443; font-size:13px; }
+.journey .example-entry .link-button { min-height:44px; }
+.plan-tools { margin:0 0 24px; }
+.journey .family-choices,.journey .kit-list { margin:0; border:0; border-bottom:1px solid #bfc4ad; }
+.journey .family-choices + .kit-list { margin-top:0; border-top:0; }
+.journey .family-choices > summary,.journey .kit-list > summary { min-height:74px; padding:12px 0; display:grid; grid-template-columns:30px minmax(0,1fr) 18px; column-gap:10px; row-gap:2px; list-style:none; }
+.journey .family-choices > summary::-webkit-details-marker,.journey .kit-list > summary::-webkit-details-marker { display:none; }
+.journey .family-choices > summary > svg,.journey .kit-list > summary > svg { grid-column:1; grid-row:1/3; width:25px; height:25px; color:#586e4f; }
+.journey .family-choices > summary > span,.journey .kit-list > summary > span { grid-column:2; font-size:18px; line-height:1.2; }
+.journey .family-choices > summary small,.journey .kit-list > summary small { grid-column:2; grid-row:2; font-size:13px; line-height:1.35; }
+.journey .family-choices > summary::after,.journey .kit-list > summary::after { content:'+'; grid-column:3; grid-row:1/3; align-self:center; font-size:24px; font-weight:400; color:#586e4f; }
+.journey .family-choices[open] > summary::after,.journey .kit-list[open] > summary::after { content:'−'; }
+.journey .family-choices[open],.journey .kit-list[open] { padding-bottom:18px; }
+.journal-section-title { display:flex; align-items:center; gap:10px; margin:0 0 17px!important; font-size:16px!important; }
+.journal-section-title::after { content:''; flex:1; height:1px; background:#bfc4ad; }
+.journey .project-choice { display:grid; grid-template-columns:1fr; gap:6px; }
+.journey .project-choice select { width:100%; }
+.journey .commitments { border-top:1px solid #c5c8b4; padding-top:14px; margin-top:2px; }
+.journey .commitments legend { float:left; width:100%; margin:0 0 12px; font-size:14px; }
+.journey .commitments > div { clear:both; }
+.journey .fine { line-height:1.4; }
+.journey .choice { border-radius:4px; background:var(--paper-3); border-color:#afb79f; }
+.journey .choice:has(input:checked) { border-color:#527557; background:#e3e8d4; }
+.journey .crest-builder { background:#e7e5d1; padding:16px; border-radius:4px; grid-template-columns:90px minmax(0,1fr); gap:16px; }
+.journey .charges { margin-bottom:0; }
+.journey .panel .segmented button[aria-pressed='true'] { background:#344f3c; color:var(--ivory); }
+.journey .ledger-block { margin-top:24px; }
+.journey .treasury-next { border-color:#bfc4ad; }
+.journey #give-amount { font-size:34px; min-height:70px; }
+.journey .check { border-top-color:#bfc4ad; }
+.journey .form-status:empty { display:none; }
+.brand-crest { width:55px; height:60px; }
+.brand-crest img { display:block; width:100%; height:100%; object-fit:contain; image-rendering:pixelated; }
+.brand h1 { font-size:30px; letter-spacing:-.025em; }
+.brand-house { display:flex; gap:6px; align-items:center; margin-top:4px; }
+#house-crest { display:inline-flex; flex:none; width:14px; height:18px; }
+#house-crest svg { width:100%; height:100%; }
+.brand-house #house-eyebrow { margin:0; font-size:13px; }
+.topbar-tools { gap:8px; }
+.persona select { border:1px solid #51624e; border-radius:4px; padding:8px 10px; }
+.journal-toggle,.sound-toggle { border-radius:4px; border-color:#697963; }
+.layout { grid-template-columns:minmax(0,1fr) 420px; gap:18px; }
+.layout[data-journal='open']:has(#panel-ledger:not([hidden])) { grid-template-columns:minmax(0,1fr) 470px; }
+.layout[data-journal='closed'] { grid-template-columns:minmax(0,1fr); }
+@media(min-width:801px) and (max-width:1100px) {
+  .layout { grid-template-columns:minmax(0,1fr) 360px; }
+  .layout[data-journal='open']:has(#panel-ledger:not([hidden])) { grid-template-columns:minmax(0,1fr) 420px; }
+  .layout[data-journal='closed'] { grid-template-columns:minmax(0,1fr); }
+  .brand h1 { font-size:24px; }.brand-crest { width:42px; height:48px; }.brand { gap:8px; }
+  .journey .panel { padding:22px 18px; }.journey .grid-form { grid-template-columns:1fr; }
+}
+@media(max-width:800px) {
+  .brand h1 { font-size:25px; }.brand-crest { width:43px; height:48px; }
+  .layout,.layout[data-journal='open']:has(#panel-ledger:not([hidden])),.layout[data-journal='closed'] { grid-template-columns:minmax(0,1fr); gap:16px; }
+  .journey { overflow:clip; margin:0 3px 5px 0; }
+  .journey .panel { padding:23px 20px 28px; }
+  .journal-heading { min-height:68px; padding-left:20px; }.journal-heading .journal-title h2 { font-size:20px; }
+  .steps button { min-height:56px; }
+  .journal-frontispiece { grid-template-columns:minmax(0,1fr) 120px; }.journal-frontispiece img { width:120px; height:100px; }
+  .journey .grid-form { grid-template-columns:1fr 1fr; }
+}
+@media(max-width:480px) {
+  .topbar { grid-template-columns:minmax(0,1fr); gap:10px; }
+  .brand { grid-column:1; gap:10px; }.brand h1 { font-size:27px; }
+  .brand-crest { width:46px; height:52px; }
+  .brand-house #house-eyebrow { max-width:270px; font-size:13px; }
+  .topbar-tools { grid-row:2; max-width:none; justify-content:flex-start; flex-wrap:nowrap; gap:8px; }
+  .persona { flex:1; min-width:0; }.persona select { max-width:none; width:100%; font-size:15px; }
+  .journal-toggle,.sound-toggle { width:auto; padding:8px 12px; }.journal-toggle span { display:inline; }
+  .quest { grid-row:3; grid-column:1; margin-top:2px; }
+  .journey .panel { padding:22px 17px 26px; }.steps { padding:0 8px; }
+  .journey .panel h3 { font-size:24px; }.journal-heading { padding-left:17px; }
+  .journey .grid-form { grid-template-columns:1fr; }
+  .journal-frontispiece { grid-template-columns:minmax(0,1fr) 100px; }.journal-frontispiece img { width:100px; height:90px; }
+  .journey .crest-builder { padding:12px; grid-template-columns:76px minmax(0,1fr); gap:12px; }
+}
+@media(forced-colors:active) {
+  .steps button[aria-selected='true'] { border:2px solid Highlight; }
+  .journey { border:1px solid CanvasText; box-shadow:none; }
+}
+
+/* Long household names and keyboard focus retain a clear boundary at narrow widths. */
+.brand > div,.brand-house { min-width:0; }
+.brand-house #house-eyebrow { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.steps button[aria-selected="true"]:focus-visible { outline-color:#344f3c; }
