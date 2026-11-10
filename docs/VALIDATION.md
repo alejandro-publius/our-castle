@@ -1,5 +1,28 @@
 # Validation
 
+## Photo draft fidelity and dependency review — November 9, 2026
+
+Implementation `7d31e6e` fixes three reproduced data-handling problems without making another provider request:
+
+- Photo draft → **Type the list instead** → **Check this list** previously changed adult-reviewed Have values `[2, blank, 0]` into `[0, 0, 0]`. The generated text now carries visible `[have N]` / `[have ?]` annotations, and `? x` preserves an unknown Need. Counts follow their items when the text is reordered; deliberately blank fields still need correction before saving.
+- Literal details such as `rated to 0 °C; warm lining` previously created an extra item, while `fits (wide) pans` moved details into the item name. A local round-trip comparison now runs before clearing anything. If the typed syntax would change a field, the exact editable draft and photo stay open with an explanation and focus on the first item.
+- `-2 x torch` was treated as a bullet followed by positive 2. ASCII bullets now require a space or end of line; negative-looking text keeps Need unknown for the adult to correct.
+
+**Actual focused checks:**
+
+- The corrected before-fix regression run had 23 passes and four failures, all four corresponding to the new count/annotation, negative-sign or draft-retention assertions. After the fixes, 32/32 core, actual-page/minimal-DOM and reader cases passed, with no skips.
+- Actual Chromium desktop 1440×1000 and touch-emulated phone 390×844: **4/4 browser cases passed**, no skips or flaky retries, including the existing three-member shared-family kit-list journey and the new reorder/blank-count/literal-details route on each size.
+- The browser uses the actual reader adapter over an invented fake response. Only explicit reads and one deliberate list save occurred in the new case; payment, goal, plan, offer and choice records remained unchanged. Page errors and outside-origin requests were zero.
+- The original-source/art/palette/renderer/syntax guard passed. Corrected per-process Node TCP/fetch guards recorded only their expected TEST-NET refusal controls: six in the unit run, six in the browser run and 472 in the source-check run. Every loaded process's control passed. This is not an OS firewall, arbitrary-child-process, DNS or UDP isolation claim.
+- An early test-proposal import included explanatory prose, and the first browser test draft named the button incorrectly. Those harness mistakes were corrected before the final runs; neither is presented as a product defect.
+
+All data was invented and in memory, configuration was synthetic with `.env` loading off, and no saved household, credential, paid provider, real payment or owner process was accessed or changed. The reader's model/prompt/schema is unchanged. These results improve **draft fidelity**, not evidence of handwriting, crossed-out-item or real-photo recognition accuracy; the single earlier synthetic live result remains the only live reader evidence.
+
+The same follow-up reviewed the current lockfile and published Toolkit. **12 affected packages (11 high, one moderate) remain**; the inspected read-only OpenAI entry and locked dependency paths provided no demonstrated applicable same-major repair. No package/SDK pin was changed. [Exact advisories, paths and limits](TOOLKIT-MAINTENANCE.md#november-9-dependency-review).
+
+Ignored raw evidence: `test-results/quality-followup-20261109/` (`before-corrected.log`, `unit-final.log`, `browser-final.log`, `browser-final-results.json`, `local-checks.json`, `source-check.log`, `review/` and `dependencies/`). The final PR records its own exact-head hosted results before integration.
+
+
 ## Complete-kit map preview and product completion — November 9, 2026
 
 Source `63f7ce6` completes the worker checkpoint with a temporary map preview driven by the actual kit comparison. It keeps proposed purchases separate from funded progress and saved choices. The product route is now **compare → choose/keep → preview → change an expense → review and explicitly adopt → approve a contribution → review its receipt**. [Selected scope](PRODUCT-COMPLETION.md) and [current walkthrough](FAMILY-TRIP-EXAMPLE.md).
