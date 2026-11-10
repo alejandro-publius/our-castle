@@ -15,6 +15,7 @@ import { FAMILY_PROJECT_SITE, projectSite } from '../core/family-project.js';
 import { PLAN_GROUND } from '../core/kit-preview.js';
 import { REALM_SIZE, REALM_BOUNDS, REALM_DISTRICTS, REALM_LEGENDS, REALM_BRIDGES, REALM_ROUTE, homeDistrict, districtById, legendById, viewLocation, journeyLeg, journeyPosition } from '../core/realm.js';
 import { MOUNTAIN_PEAKS } from '../core/realm-terrain.js';
+import { createVillageSquare, VILLAGE_FRAME } from './village-square.js';
 
 // The playable woodland board. It extends the original art-preview vocabulary (MiniBuilder,
 // layered trees, antlered deer, stone towers) and renders through the original 90-colour
@@ -90,8 +91,9 @@ export function createBoardScene(container, { reducedMotion = false, isOccluded 
   const groups = {};
   let realmModels; let fountains; let project; let sponsors; let realm = { districts: [], bridges: [], landscape: null };
   let kitPreview; let previewScene = null; // a compared kit drawn as a temporary plan beside the project, or nothing
+  let villageSquare, villageActive = false, villageKey = null, realmView = null, realmVisibility = null;
   // What the camera frames for a focused place: the project's closer view while a kit preview is open, else the place.
-  const focusLocation = () => (previewScene && view.focus === FAMILY_PROJECT_SITE.id ? PREVIEW_FRAME : locationOf(view.focus, state.project?.kind));
+  const focusLocation = () => villageActive ? VILLAGE_FRAME : (previewScene && view.focus === FAMILY_PROJECT_SITE.id ? PREVIEW_FRAME : locationOf(view.focus, state.project?.kind));
   const perf = { lastMs: 0, maxMs: 0, totalMs: 0, draws: 0, calls: 0, triangles: 0 };
   let state = { builtTier: 0, position: 0, crest: { field: 'cobalt', charge: 'stag' }, gardens: 0, playMode: 'family', milestoneSpaces: [5, 12, 20], reached: [], estateLevel: 0, previewFeature: null };
   let shownPosition = 0;
@@ -258,7 +260,7 @@ export function createBoardScene(container, { reducedMotion = false, isOccluded 
   function buildCourt() {
     court.setTier(state.builtTier, crestColour(state.crest.field));
     const profile = court.debug();
-    renderer.domElement.setAttribute('aria-label', `Connected woodland realm: ${REALM_DISTRICTS.length} districts in one forest, joined by bridges over winding rivers, with ${profile.capacity} wandering guests. Locked districts keep their colours behind raised bridges and closed gates. ${profile.description}`);
+    renderer.domElement.setAttribute('aria-label', villageActive ? 'Village square: the shared schoolhouse and neighbors’ homes. Read the fund sheet for families, amounts and records.' : `Connected woodland realm: ${REALM_DISTRICTS.length} districts in one forest, joined by bridges over winding rivers, with ${profile.capacity} wandering guests. Locked districts keep their colours behind raised bridges and closed gates. ${profile.description}`);
   }
 
   // ---------- Household travelers ----------
@@ -356,6 +358,7 @@ export function createBoardScene(container, { reducedMotion = false, isOccluded 
   }
 
   function ambientStep(seconds) {
+    if (villageActive) { villageSquare.tick(seconds); return; }
     realmModels.stepCurrent(seconds);
     realmModels.stepFarm(seconds);
     realmModels.stepTavern(seconds);
@@ -445,7 +448,7 @@ export function createBoardScene(container, { reducedMotion = false, isOccluded 
     const look = LOOKS[atmosphere.period] ?? LOOKS.day, wet = atmosphere.weather === 'rain', dull = wet || atmosphere.weather === 'overcast';
     const night = atmosphere.period === 'night';
     court.setNight(night);
-    pipeline.setCloudSurround({ enabled: true, period: atmosphere.period, weather: atmosphere.weather });
+    pipeline.setCloudSurround({ enabled: !villageActive, period: atmosphere.period, weather: atmosphere.weather });
     hemi.color.setHex(look.sky); if (dull) hemi.color.lerp(new THREE.Color(look.overcast), 0.65);
     hemi.groundColor.setHex(look.ground); hemi.intensity = look.hemi * (wet ? (night ? 0.85 : 0.7) : dull ? 0.84 : 1);
     sun.color.setHex(look.sun); sun.intensity = look.sunI * (wet ? 0.3 : dull ? 0.5 : 1); sun.position.set(...look.sunAt);
@@ -613,10 +616,12 @@ export function createBoardScene(container, { reducedMotion = false, isOccluded 
   fountains = createGoldFountains({ builder, colours, reducedMotion }); scene.add(fountains.group);
   project = createFamilyProject({ part, models, colours });
   kitPreview = createKitPreview({ part, colours });
+  villageSquare = createVillageSquare({ part, models, tree, colours, reducedMotion });
   pipeline = addCloudSurround(new PixelRenderer(renderer));
   pipeline.setCloudSurround({ enabled: true, bounds: [REALM_SIZE.width / 2, REALM_SIZE.depth / 2], center: [REALM_SIZE.centerX, REALM_SIZE.centerZ] });
   pipeline.configure({ pixelSize: 2, pixelMode: true, outlines: true, dither: true, exposure: 1.05 });
-  for (const name of ['woodland', 'land', 'project', 'preview', 'route', 'gardens', 'token', 'fx', 'estate', 'court', 'atmosphere']) { groups[name] = new THREE.Group(); scene.add(groups[name]); }
+  for (const name of ['woodland', 'land', 'project', 'preview', 'route', 'gardens', 'token', 'fx', 'estate', 'court', 'atmosphere', 'village']) { groups[name] = new THREE.Group(); scene.add(groups[name]); }
+  groups.village.visible = false;
   court = createEstateCourt(groups.court, builder, colours);
   groups.castle = new THREE.Group(); scene.add(groups.castle);
   const scenery=realmModels.woodland(groups.woodland),hillSign=scenery.frontier.hillsideSign;
@@ -633,6 +638,7 @@ export function createBoardScene(container, { reducedMotion = false, isOccluded 
     update(next, { animate = true } = {}) {
       queue = queue.then(async () => {
         if (disposed) return;
+        animate = animate && !villageActive;
         const updated = { ...state, ...next, crest: { ...state.crest, ...(next.crest ?? {}) } };
         // Plan and ledger refreshes can carry the same board. Check inside the queue, after any earlier movement,
         // so those refreshes reuse the rendered world without rebuilding route meshes or issuing another frame.
@@ -749,6 +755,31 @@ export function createBoardScene(container, { reducedMotion = false, isOccluded 
       if (was !== Boolean(previewScene) && view.focus === FAMILY_PROJECT_SITE.id) { updateCamera(); resize(); } else draw();
       return previewDebug();
     },
+    /** Switch the one renderer to a membership-scoped village projection; null restores the exact realm view. */
+    setVillage(next) {
+      if (disposed) return null;
+      const on = Boolean(next);
+      if (on && !villageActive) { realmView = { ...view }; realmVisibility = Object.fromEntries(Object.entries(groups).map(([name, group]) => [name, group.visible])); viewRevision++; Object.assign(view, framed, { focus: VILLAGE_FRAME.id, crossing: null, zoom: 1, panX: 0, panY: 0 }); }
+      if (!on && villageActive && realmView) { viewRevision++; Object.assign(view, realmView); realmView = null; }
+      const switched = on !== villageActive; villageActive = on;
+      for (const [name, group] of Object.entries(groups)) group.visible = name === 'village' ? on : on ? false : realmVisibility?.[name] ?? group.visible;
+      if (!on) realmVisibility = null;
+      fountains.group.visible = !on;
+      const key = on ? JSON.stringify(next) : null;
+      if (key !== villageKey) {
+        disposeGroup(groups.village); villageSquare.reset(); villageKey = key;
+        if (on) { villageSquare.build(groups.village, next); builder.flush(); realmModels.finish(groups.village); }
+      }
+      applyAtmosphere();
+      renderer.domElement.setAttribute('aria-label', on ? 'Village square: the shared schoolhouse and neighbors’ homes. Read the fund sheet for families, amounts and records.' : 'Connected woodland realm with the household home, rivers and bridges.');
+      if (switched) { updateCamera(); resize(); } else if (key !== null) draw();
+      return villageSquare.debug();
+    },
+    /** Only fresh server-reported people appear. No timers or synthetic visitors are created here. */
+    setVillagePresence(rows) {
+      if (disposed || !villageActive) return;
+      villageSquare.presence(rows); builder.flush(); draw();
+    },
     /** Frame the current view again after something laid over the map changed size (a plaque). The camera does not move. */
     reframe() { if (!disposed) resize(); },
     /** Wheel zoom from anywhere over the map, its names and markers included. */
@@ -772,7 +803,7 @@ export function createBoardScene(container, { reducedMotion = false, isOccluded 
       const t = groups.token.position;
       return { spaces, travelers: toScreen(t.x, t.y + 1.5, t.z), canvas: { left: rect.left, top: rect.top, width: rect.width, height: rect.height } };
     },
-    debug: () => ({ region: REALM_SIZE, estateLevel: state.estateLevel, view: { ...view }, previewFeature: state.previewFeature, tier: state.builtTier, position: state.position, shownPosition, gardens: state.gardens, crest: { ...state.crest }, playMode: state.playMode, familyAvatars: householdParty().map((m, i) => ({ memberId: m.id, avatarId: memberAvatar(m, i).id, role: m.role })), animating, frames, ambient: Boolean(ambientTimer), ambientFrames, grazers: grazers.length, butterflies: flutterers.length, court: court.debug(), legends: REALM_LEGENDS.map(({id,x,z})=>({id,x,z})), districts: realm.districts.map(({id,open,status,greyPaint,drawMeshes,hues})=>({id,open,status,greyPaint,drawMeshes,hues})), bridges: realm.bridges.map(({id,open,panels,gate,river})=>({id,open,gate,river,raised:panels.some(p=>Math.abs(p.group.rotation.z)>.01)})), landscape: realm.landscape, sponsors: sponsors.debug(), tavern: realmModels.tavernDebug(), farm: realmModels.farmDebug(), folklore: realmModels.legendsDebug(), project: { ...project.debug(), ...projectMeshes() }, kitPreview: previewDebug(), riverCurrent: realmModels.currentDebug(), discoveries: realmModels.discoveriesDebug(), fountains: fountains.debug(), surround: pipeline.cloudSurroundDebug(), atmosphere: atmosphereDebug(), render: { ...perf, averageMs: perf.draws ? perf.totalMs / perf.draws : 0, geometries: renderer.info.memory.geometries, materials: builder.materials.size } }),
+    debug: () => ({ region: REALM_SIZE, estateLevel: state.estateLevel, view: { ...view }, village: { active: villageActive, ...villageSquare.debug() }, previewFeature: state.previewFeature, tier: state.builtTier, position: state.position, shownPosition, gardens: state.gardens, crest: { ...state.crest }, playMode: state.playMode, familyAvatars: householdParty().map((m, i) => ({ memberId: m.id, avatarId: memberAvatar(m, i).id, role: m.role })), animating, frames, ambient: Boolean(ambientTimer), ambientFrames, grazers: grazers.length, butterflies: flutterers.length, court: court.debug(), legends: REALM_LEGENDS.map(({id,x,z})=>({id,x,z})), districts: realm.districts.map(({id,open,status,greyPaint,drawMeshes,hues})=>({id,open,status,greyPaint,drawMeshes,hues})), bridges: realm.bridges.map(({id,open,panels,gate,river})=>({id,open,gate,river,raised:panels.some(p=>Math.abs(p.group.rotation.z)>.01)})), landscape: realm.landscape, sponsors: sponsors.debug(), tavern: realmModels.tavernDebug(), farm: realmModels.farmDebug(), folklore: realmModels.legendsDebug(), project: { ...project.debug(), ...projectMeshes() }, kitPreview: previewDebug(), riverCurrent: realmModels.currentDebug(), discoveries: realmModels.discoveriesDebug(), fountains: fountains.debug(), surround: pipeline.cloudSurroundDebug(), atmosphere: atmosphereDebug(), render: { ...perf, averageMs: perf.draws ? perf.totalMs / perf.draws : 0, geometries: renderer.info.memory.geometries, materials: builder.materials.size } }),
     dispose() { disposed = true; for (const [name,fn,options] of interactions) renderer.domElement.removeEventListener(name,fn,options); clearInterval(ambientTimer); ambientTimer = null; observer?.disconnect(); fountains?.dispose(); sponsors?.dispose(); court?.dispose(); for (const g of Object.values(groups)) disposeGroup(g); flutterGeo?.dispose(); builder?.dispose(); pipeline?.dispose(); renderer?.dispose(); },
   };
 
