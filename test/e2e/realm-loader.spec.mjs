@@ -38,7 +38,8 @@ test('the silent pixel chase yields to the actual ready realm without waiting fo
   const release = await gateSession(page);
   try {
     await page.goto(demo.url, { waitUntil: 'domcontentloaded' });
-    await expect(page.getByRole('status', { name: '' }).filter({ hasText: 'Opening the gates' })).toBeVisible();
+    await expect(page.locator('#realm-loader .realm-loader-title')).toHaveText('A little trouble at the gates');
+    await expect(page.locator('#realm-loader [role="status"]')).toHaveText('Loading…');
     await expect(page.locator('.shell')).toHaveAttribute('inert', '');
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     const first = await canvasPixels(page);
