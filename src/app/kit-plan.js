@@ -53,7 +53,7 @@ const RECOMPARE_MS = 350;
 export function createKitPlan({ getState, actor, applyState, openMerchant, reserve, onReview, listEditing, onPreview = () => {} }) {
   // `preview` is the kit the family asked to see on the map: { anchor (its picks), origin (the button that opened it),
   // shown (the picks of the card drawn now) }. `inflight` and `recomparing` say a fresh comparison is on its way.
-  const ui = { answer: null, asked: null, seq: 0, busy: false, scope: null, timer: null, preview: null, inflight: null, recomparing: false };
+  const ui = { answer: null, asked: null, seq: 0, busy: false, scope: null, timer: null, preview: null, inflight: null, reviewing: false, recomparing: false };
   const currency = () => getState()?.goal?.currency ?? 'USD';
   const money = (cents) => formatCents(cents, currency());
   const date = (iso) => {
@@ -73,7 +73,7 @@ export function createKitPlan({ getState, actor, applyState, openMerchant, reser
   // What a comparison is asked for: the kit as the page shows it, the family's figures and the one-off being tried.
   const ask = () => { const s = getState(); return { revision: s.kitPlan.revision, choicesRevision: s.familyChoices.revision, reserveCents: reserve().cents }; };
   const askKey = (a) => JSON.stringify([scopeKey(), a.revision, a.choicesRevision, a.reserveCents]);
-  const stale = () => Boolean(ui.answer) && ui.asked !== askKey(ask());
+  const stale = () => Boolean(ui.answer) && (reserve().invalid || ui.asked !== askKey(ask()));
 
   async function send(call, success, { recompare = false } = {}) {
     if (ui.busy) return false;
@@ -114,7 +114,7 @@ export function createKitPlan({ getState, actor, applyState, openMerchant, reser
     if (!adult()) return;
     if (reserve().invalid) { say('error', `Fix the one-off amount in Family choices first.${closedNote()}`); dropPreview(); return; }
     const mine = ++ui.seq, asked = ask(), key = askKey(asked);
-    ui.inflight = key;
+    ui.inflight = key; ui.reviewing = false;
     say('working', preference ? 'Asking Cohere to order the kits that fit…' : 'Comparing complete kits…');
     try {
       const res = await api.post(preference ? '/api/kit/prefer' : '/api/kit/compare', asActor({ ...asked, ...(preference ? { preference } : {}) }));
@@ -134,10 +134,20 @@ export function createKitPlan({ getState, actor, applyState, openMerchant, reser
   }
   /** The one-off amount in Family choices changed: recompute a shown comparison (no catalog or model call). */
   function reserveChanged() {
-    if (!ui.answer || !adult()) { render(); return; }
-    clearTimeout(ui.timer);
-    ui.seq++; // an answer for the old amount is no longer wanted
-    ui.timer = setTimeout(() => { ui.timer = null; compare(); }, RECOMPARE_MS);
+    const pending = ui.inflight !== null || ui.reviewing;
+    clearTimeout(ui.timer); ui.timer = null;
+    // Every edit ends an older comparison or review, including an invalid edit before this page's first answer.
+    // The last valid cents alone cannot identify what the family is now trying to enter.
+    ui.seq++; ui.inflight = null; ui.reviewing = false;
+    if (!adult()) { render(); return; }
+    if (reserve().invalid) {
+      say('error', `Fix the one-off amount in Family choices first.${closedNote()}`);
+      dropPreview();
+    } else if (ui.answer) {
+      ui.timer = setTimeout(() => { ui.timer = null; compare(); }, RECOMPARE_MS);
+    } else if (pending) {
+      say('info', 'The one-off amount changed. Compare or review again with the latest amount.');
+    } else say('', '');
     render();
   }
 
@@ -207,6 +217,7 @@ export function createKitPlan({ getState, actor, applyState, openMerchant, reser
   async function review() {
     if (!adult() || reserve().invalid) return;
     const mine = ++ui.seq, asked = ask(), key = askKey(asked);
+    ui.inflight = null; ui.reviewing = true;
     say('working', 'Checking the chosen kit with the latest records…');
     try {
       const res = await api.post('/api/kit/review', asActor(asked));
@@ -216,6 +227,8 @@ export function createKitPlan({ getState, actor, applyState, openMerchant, reser
       onReview(res);
     } catch (error) {
       if (mine === ui.seq) say('error', error.message);
+    } finally {
+      if (mine === ui.seq) ui.reviewing = false;
     }
   }
 
@@ -271,7 +284,7 @@ export function createKitPlan({ getState, actor, applyState, openMerchant, reser
     box.hidden = !a;
     if (!a) return;
     const isStale = stale();
-    $('kit-plan-note').textContent = `${resultNote(a)}${isStale ? ' These were compared before the latest change, so they cannot be chosen as they are. Compare again.' : ''}`;
+    $('kit-plan-note').textContent = `${resultNote(a)}${reserve().invalid ? ' These figures use the last valid one-off amount. Fix it before choosing or previewing a kit.' : isStale ? ' These were compared before the latest change, so they cannot be chosen as they are. Compare again.' : ''}`;
     const cards = a.status === 'ok' ? a.kits : a.status === 'none_fits' && a.closest ? [a.closest] : [];
     const list = $('kit-plan-kits');
     const focusKey = list.contains(document.activeElement) ? document.activeElement.dataset.focusKey : null;
@@ -370,7 +383,7 @@ export function createKitPlan({ getState, actor, applyState, openMerchant, reser
     if (!s?.kitPlan || !s.kit) return;
     if (ui.scope !== scopeKey()) { // another person, goal or household: a comparison, its message and its preview belonged to the old one
       if (ui.scope !== null) say('', '');
-      ui.scope = scopeKey(); ui.answer = null; ui.asked = null; ui.seq++; clearTimeout(ui.timer); ui.timer = null; ui.inflight = null; ui.recomparing = false;
+      ui.scope = scopeKey(); ui.answer = null; ui.asked = null; ui.seq++; clearTimeout(ui.timer); ui.timer = null; ui.inflight = null; ui.reviewing = false; ui.recomparing = false;
       dropPreview();
     }
     const plan = s.kitPlan, isAdult = adult(), catalogue = catalogueOf(s), merchantOn = catalogue.open;

@@ -48,6 +48,12 @@ Children read the listings, the chosen kit and what is kept. They cannot add, co
 
 All captures use invented data: six test-fixture listings from two invented shops, a fake catalog, a fake Cohere order written into the test, and an invented family. [Provenance and hashes](screenshots/kit-planner-sources.json).
 
+## Editing during a comparison or review
+
+Every edit to the one-off amount cancels an older comparison or review on this page, even before the first comparison has appeared or after reloading a chosen kit. A late answer cannot fill the goal form using the previous amount.
+
+An invalid amount leaves existing comparison figures visible and labelled as using the last valid amount. Choosing, map previews, preference ordering and review stay unavailable until it is corrected. A corrected amount refreshes an existing comparison; a page without a comparison waits for an explicit **Compare complete kits** or **Review this kit**. These actions do not save a goal or make a contribution.
+
 ## The worked example
 
 This is kit-planning-acceptance-20261109.json, with invented figures:

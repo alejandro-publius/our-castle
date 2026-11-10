@@ -1,5 +1,23 @@
 # Validation
 
+## Planning edits during slow replies — November 10, 2026 (UTC)
+
+Four desktop regressions failed on `03fc881` before changing the app:
+- Saving a $10 weekly offer, then typing $25 before the reply and moving focus, replaced the $25 draft with $10.
+- An invalid one-off amount entered during the first kit comparison still let its older answer appear.
+- An invalid amount after a comparison left **Choose this kit** and **Preview on map** enabled for the old figures.
+- After reloading a chosen kit, an invalid amount entered during review still let its old $90 trial fill the goal form, changing the unsaved goal field from $300 to $150.
+
+The page now tracks which offer edit each save/withdrawal acknowledges, preserving newer typing and naming it as unsaved. Every one-off edit invalidates an older kit comparison or review, including before the first comparison. Existing figures stay readable as the last valid amount; choice, preview, ordering and review require a valid amount. Correcting it restores the existing comparison or permits a fresh explicit review.
+
+Checks on the final implementation:
+- **16/16 browser passes**, zero failures/skips/flakes, across desktop 1440 × 1000 and Chromium's 390 × 844 touch-emulated phone (4.2 minutes): the four new cases on both viewports, plus the existing family-trip and three map-preview cases on both. The offer case also covers typing during withdrawal and an explicit subsequent save.
+- **59/59 focused unit passes**, zero skips/failures: family-choice arithmetic/service, kit planner and kit preview. The original-art, palette, renderer and syntax guard passed.
+- The new cases drive real browser controls and the actual disposable example server. Tests delay a real loopback response, not a substituted page controller. Explicit offer and kit-choice writes are checked separately from unchanged progress, ledger, contributions, goal and plan.
+- Minimal synthetic process configuration, `.env` loading off, invented catalogue, no live app providers. Corrected Node TCP/fetch controls passed in every loaded process; browser requests outside the test origin were refused. This is not an OS-wide network guarantee or a physical-device/playtest result.
+
+Source: `src/app/family-choices.js`, `src/app/kit-plan.js`; permanent regressions: `test/e2e/planning-edits.spec.mjs` (included in the required kit-planner job). The raw before log, after JSON report and control logs remain ignored under `test-results/planning-edits-20261109/`. Hosted results are recorded on the corresponding pull request. No server, schema, financial rules or dependency pins changed.
+
 ## Photo draft fidelity and dependency review — November 9, 2026
 
 Implementation `7d31e6e` fixes three reproduced data-handling problems without making another provider request:
