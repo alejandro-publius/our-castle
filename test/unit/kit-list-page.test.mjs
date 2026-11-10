@@ -228,3 +228,60 @@ test("typing or a photo begun in the empty list stays open and usable when anoth
     assert.deepEqual(page.requests, []);
   });
 });
+
+test('Type instead preserves reviewed Have counts, including a deliberately blank count', async () => {
+  const page = kitPage();
+  allowPhotos(page);
+  page.show({ ...familyState(), modes: { kit: { mode: 'live' } } }, 'mem_rowan');
+  page.$('kit-photo-input').files = [{ type: 'image/png', size: 2048 }];
+  page.$('kit-photo-input').dispatchEvent({ type: 'change' });
+  await settle();
+  page.answerWith({ readId: 'read_roundtrip', reading: { readable: true, moreLines: false, lines: [
+    { name: 'torch', quantity: 2, needs: null },
+    { name: 'stove', quantity: 1, needs: null },
+    { name: 'bag', quantity: null, needs: null },
+  ] } });
+  page.$('kit-read').click();
+  await settle();
+  assert.equal(page.$('kit-draft').hidden, false);
+  const ownedFields = () => [...page.$('kit-rows').querySelectorAll('input[data-key="ownedQuantity"]')];
+  assert.deepEqual(ownedFields().map((input) => input.value), ['0', '0', '0']);
+  page.type(ownedFields()[0], '2');
+  page.type(ownedFields()[1], '');
+  page.$('kit-to-text').click();
+  assert.equal(page.$('kit-source').hidden, false);
+  page.$('kit-check').click();
+  assert.deepEqual(ownedFields().map((input) => input.value), ['2', '', '0']);
+  assert.deepEqual([...page.$('kit-rows').querySelectorAll('input[data-key="quantity"]')].map((input) => input.value), ['2', '1', '']);
+  assert.deepEqual([...page.$('kit-rows').querySelectorAll('[data-to-get]')].map((line) => line.textContent),
+    ['To get: 0', 'To get: —', 'To get: —']);
+  assert.equal(ownedFields()[1].getAttribute('aria-invalid'), 'true');
+  assert.deepEqual(page.requests.map(({ method, url }) => [method, url]), [['POST', '/api/kit/read']]);
+});
+
+test('Type instead retains a photo draft whose literal details cannot round-trip through typed text', async () => {
+  const page = kitPage();
+  allowPhotos(page);
+  page.show({ ...familyState(), modes: { kit: { mode: 'live' } } }, 'mem_rowan');
+  page.$('kit-photo-input').files = [{ type: 'image/png', size: 2048 }];
+  page.$('kit-photo-input').dispatchEvent({ type: 'change' });
+  await settle();
+  page.answerWith({ readId: 'read_literal', reading: { readable: true, moreLines: false, lines: [
+    { name: 'torch', quantity: 2, needs: 'rated to 0 °C; warm lining' },
+    { name: 'stove', quantity: 1, needs: 'fits (wide) pans' },
+  ] } });
+  page.$('kit-read').click();
+  await settle();
+  const photo = page.$('kit-draft-photo').src;
+  const fields = [...page.$('kit-rows').querySelectorAll('input')];
+  const values = fields.map((input) => input.value);
+  page.$('kit-to-text').click();
+  assert.equal(page.$('kit-draft').hidden, false, 'the editable draft stays open');
+  assert.equal(page.$('kit-source').hidden, true, 'no corrupted text replaces it');
+  assert.equal(page.$('kit-draft-photo').src, photo, 'the chosen photo is retained');
+  assert.deepEqual([...page.$('kit-rows').querySelectorAll('input')], fields, 'fields are not rebuilt');
+  assert.deepEqual(fields.map((input) => input.value), values);
+  assert.match(page.$('kit-status').textContent, /Keep editing the lines here/);
+  assert.equal(page.document.activeElement, fields[0]);
+  assert.deepEqual(page.requests.map(({ method, url }) => [method, url]), [['POST', '/api/kit/read']]);
+});

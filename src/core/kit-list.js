@@ -35,16 +35,21 @@ function splitNeeds(text) {
  * One typed line: an explicit count where one is written, otherwise none (the family fills it in).
  * - "2 x torch", "2x torch", "2×torch" and "torch x 2" give 2;
  * - "2 torches" gives 2, but "2 person tent" and "4-person tent" give no count: the number describes the tent;
- * - "1. tent" or "1) tent" is list numbering, not a count.
+ * - "1. tent" or "1) tent" is list numbering, not a count;
+ * - a trailing "[have 2]" reports an owned count; "[have ?]" or "? x tent" keeps an explicitly unknown count.
  */
 export function parseKitLine(raw) {
-  let text = cleanKitText(raw).replace(/^(?:[-*•·]\s*)+/, '').replace(/^\d{1,2}[.)]\s+/, '');
+  // ASCII list bullets need a space: "-2" is a negative-looking value, never a positive count.
+  let text = cleanKitText(raw).replace(/^(?:(?:[-*](?:\s+|$)|[•·]\s*))+/u, '').replace(/^\d{1,2}[.)]\s+/, '');
+  const have = /\s+\[have\s+(\d{1,3}|\?)\]$/i.exec(text);
+  const owned = have ? { ownedQuantity: have[1] === '?' ? null : Number(have[1]) } : {};
+  if (have) text = text.slice(0, have.index);
   let quantity = null;
   let m;
-  if ((m = /^(\d{1,3})\s*(?:[x×]\s+|×)(.+)$/i.exec(text))) { quantity = Number(m[1]); text = m[2]; }
+  if ((m = /^(\d{1,3}|\?)\s*(?:[x×]\s+|×)(.+)$/i.exec(text))) { quantity = m[1] === '?' ? null : Number(m[1]); text = m[2]; }
   else if ((m = /^(.+?)\s+[x×]\s*(\d{1,3})$/i.exec(text))) { quantity = Number(m[2]); text = m[1]; }
   else if ((m = /^(\d{1,3})\s+(.+)$/.exec(text)) && !SIZE_WORD.test(m[2])) { quantity = Number(m[1]); text = m[2]; }
-  return { ...splitNeeds(text), quantity };
+  return { ...splitNeeds(text), quantity, ...owned };
 }
 
 /**

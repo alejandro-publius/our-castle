@@ -10,7 +10,7 @@
    - the item and its optional details (a size or rating);
    - **Need**: how many to bring;
    - **Have**: how many the family already has.
-   A count that was not written, or could not be read, stays blank and must be filled in. The adult can edit, add or remove a line, cancel, or go back to typing.
+   A Need count that was not written, or could not be read, stays blank and must be filled in. Have starts at 0 unless an explicit typed `[have N]` annotation supplies it; the adult checks this family report too. The adult can edit, add or remove a line, cancel, or go back to typing.
 4. **Save this list** is the only action that writes. Every member, children included, then sees the saved list, with what is still to get. A child can read it but not change it. Another adult's open page updates live.
 
 ![Draft read from an invented test photo, shown beside its lines; the misread count of 3 sleeping bags is waiting to be corrected](screenshots/kit-list-desktop-photo-draft.png)
@@ -32,9 +32,12 @@ All captures use invented test data: the camping list `1 x 4-person tent; 2 x sl
 - **Literal parsing, never evaluation.**
   - A count is read only where it is written: `2 x torch`, `2x torch`, `2×torch`, `torch x 2` and `2 torches` all mean 2.
   - Capacity or size wording is not a count. `4-person tent`, `2 person tent`, `3 season bag` and `1 l bottle` keep the number in the name and leave Need blank.
-  - `1.` or `1)` at the start of a line is list numbering. Text in a trailing bracket becomes the details.
+  - `1.` or `1)` at the start of a line is list numbering. Text in trailing parentheses becomes the details.
+  - A trailing `[have 2]` preserves a reported owned count; `[have ?]` preserves an explicitly unknown Have. `? x tent` leaves Need unknown. These annotations also appear when a photo draft is switched to typing, so reordering the text keeps the counts attached to their items. Ordinary typed lines still start Have at 0.
+  - A hyphen bullet needs a following space (or the end of the line). `-2 x torch` is not silently changed to positive 2; its Need remains blank for correction.
 - **Nothing is filled in.** An unknown count stays blank until the adult enters one. The same item listed twice is flagged on both lines, never merged. Every problem says what to do, and Save refuses the whole list until it is fixed.
 - **"Have" is the family's own report.** It is not a purchase, an inventory check, money or a contribution.
+- **Switching a photo draft to typing preserves reviewed counts.** Need, Have and deliberately blank fields survive **Type instead → Check this list**, including reordered lines. The conversion is checked before the draft or photo is cleared. If literal details cannot be represented by the typed syntax (such as semicolons or nested parentheses), the exact editable draft and photo stay open with an explanation; no item is split, discarded or saved.
 
 ## Photo reading (optional)
 
@@ -83,6 +86,8 @@ All captures use invented test data: the camping list `1 x 4-person tent; 2 x sl
 The feature suites use fake OpenAI transport, invented data and disposable databases/family-mode servers with `.env` loading off. Their historical network preload had a documented argument-handling gap; it is not proof of complete outbound isolation. [Original validation](VALIDATION.md#kit-list-from-text-or-a-photo--november-9-2026) and [transport correction](VALIDATION.md#transport-isolation-correction--november-9-2026).
 
 Separately, one owner-authorized live OpenAI adapter call on `b21b2d8` correctly read all four names/counts from an invented packing-list image. [Input, result and limits](VALIDATION.md#one-live-openai-synthetic-photo--november-9-2026). It used no saved family record and made no app write.
+
+The November 9 quality follow-up reproduces and fixes count loss and literal-detail corruption during **Type instead**, plus the negative-number/bullet ambiguity. The focused checks and fake-provider browser results are recorded at the top of [validation](VALIDATION.md). These are draft-fidelity checks, not additional live vision evidence.
 
 ## Limits
 

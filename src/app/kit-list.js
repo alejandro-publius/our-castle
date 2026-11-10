@@ -7,7 +7,7 @@
 // The chosen photo lives only in this page's memory while it is shown: it is resized and re-encoded here (which drops
 // camera metadata), never stored, and cleared on Remove, Cancel, Save or when the goal or person changes.
 import { api } from './api.js';
-import { KIT_LIMITS, checkKit, kitProblemText, kitRemaining, parseKitText } from '../core/kit-list.js';
+import { KIT_LIMITS, checkKit, cleanKitText, kitProblemText, kitRemaining, parseKitText } from '../core/kit-list.js';
 
 const $ = (id) => document.getElementById(id);
 function h(tag, attrs = {}, ...children) {
@@ -53,8 +53,10 @@ async function preparePhoto(file) {
 
 const readCount = (input) => { const v = input.value.trim(); return v === '' ? null : /^\d{1,3}$/.test(v) ? Number(v) : NaN; };
 let nextKey = 1;
-const rowOf = (line, from) => ({ key: nextKey++, id: line.id ?? null, source: line.source ?? from, from, name: line.name ?? '', needs: line.needs ?? '', quantity: line.quantity ?? null, ownedQuantity: line.ownedQuantity ?? 0 });
-const asText = (rows) => rows.map((r) => `${Number.isSafeInteger(r.quantity) && r.quantity > 0 ? `${r.quantity} x ` : ''}${r.name}${r.needs ? ` (${r.needs})` : ''}`).join('\n');
+const rowOf = (line, from) => ({ key: nextKey++, id: line.id ?? null, source: line.source ?? from, from, name: line.name ?? '', needs: line.needs ?? '', quantity: line.quantity ?? null, ownedQuantity: line.ownedQuantity === undefined ? 0 : line.ownedQuantity });
+const textCount = (n) => Number.isSafeInteger(n) ? String(n) : '?';
+// Visible annotations keep reviewed counts attached to their item, even when typed lines are reordered.
+const asText = (rows) => rows.map((r) => `${textCount(r.quantity)} x ${r.name}${r.needs ? ` (${r.needs})` : ''} [have ${textCount(r.ownedQuantity)}]`).join('\n');
 
 /**
  * @param options.getState () => the app state
@@ -262,6 +264,22 @@ export function createKitList({ getState, actor, applyState, onRender = () => {}
   }
   function toText() {
     const text = ui.draft ? asText(ui.draft.rows) : $('kit-text').value;
+    if (ui.draft) {
+      const parsed = parseKitText(text);
+      const count = (n) => Number.isSafeInteger(n) ? n : null;
+      // Literal typed syntax cannot represent every editable name/detail (for example a semicolon in details).
+      // Check the result before discarding the photo or draft; never turn punctuation into extra shopping items.
+      const same = !parsed.problem && parsed.lines.length === ui.draft.rows.length && parsed.lines.every((line, i) => {
+        const row = ui.draft.rows[i];
+        return line.name === cleanKitText(row.name) && (line.needs ?? '') === cleanKitText(row.needs)
+          && line.quantity === count(row.quantity) && line.ownedQuantity === count(row.ownedQuantity);
+      });
+      if (!same) {
+        say('info', 'This draft cannot be converted to typed text without changing its details. Keep editing the lines here.');
+        ($('kit-rows').querySelector('input[data-key="name"]') ?? $('kit-draft-title')).focus();
+        return;
+      }
+    }
     finish();
     ui.mode = 'source';
     $('kit-text').value = text;
