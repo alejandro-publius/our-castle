@@ -492,7 +492,7 @@ export function createBoardScene(container, { reducedMotion = false, isOccluded 
     camera.updateMatrixWorld();
     // Fractions of the canvas covered by overlays (heading and controls at the top, caption at the bottom).
     const measured = insets?.() ?? null;
-    const topInset = Math.min(0.45, measured?.top ?? (narrow ? 0.27 : 0.15));
+    const topInset = Math.min(previewScene ? 0.58 : 0.45, measured?.top ?? (narrow ? 0.27 : 0.15));
     const bottomInset = Math.min(0.3, measured?.bottom ?? (narrow ? 0.03 : 0.11));
     const usable = 1 - topInset - bottomInset;
     let viewHeight, cx, cy;

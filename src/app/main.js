@@ -1835,13 +1835,20 @@ function showKitPreview(view, { reveal = false } = {}) {
   const plaque = $('#kit-preview');
   if (!view) {
     if (kitPreview.sceneKey === null && plaque.hidden) return;
+    const hadFocus = plaque.contains(document.activeElement);
     Object.assign(kitPreview, { sceneKey: null, captionKey: null });
     plaque.hidden = true; plaque.removeAttribute('aria-busy');
     scene?.setKitPreview(null); scene?.reframe(); // the view is framed without the plaque again
+    // An asynchronous invalidation can remove the focused title/control. Let the current render (or session dialog)
+    // finish first. Explicit Close already restores its origin; typing elsewhere must keep its own focus.
+    if (hadFocus) queueMicrotask(() => {
+      if (!document.querySelector('dialog[open]') && (document.activeElement === document.body || plaque.contains(document.activeElement))) returnToKits(null);
+    });
     return;
   }
   plaque.setAttribute('aria-busy', String(Boolean(view.pending)));
   if (view.pending) return; // the last picture stays while a fresh comparison is on its way
+  const height = plaque.hidden ? 0 : plaque.offsetHeight; // measure before replacing a caption that may grow
   const sceneKey = JSON.stringify(view.scene), captionKey = JSON.stringify(view.caption);
   if (captionKey !== kitPreview.captionKey) {
     kitPreview.captionKey = captionKey;
@@ -1853,7 +1860,6 @@ function showKitPreview(view, { reveal = false } = {}) {
     $('#kit-preview-changes').textContent = c.changes; $('#kit-preview-changes').hidden = !c.changes;
     $('#kit-preview-about').textContent = c.about;
   }
-  const height = plaque.hidden ? 0 : plaque.offsetHeight;
   plaque.hidden = false;
   if (sceneKey !== kitPreview.sceneKey) { kitPreview.sceneKey = sceneKey; scene?.setKitPreview(view.scene); }
   if (reveal) {
@@ -1868,8 +1874,8 @@ function returnToKits(origin) {
   setJournalOpen(true);
   if (ui.tab !== 'plan') selectTab('plan', { focus: false });
   $('#kit-list').open = true;
-  const target = (origin && $(`#kit-plan-kits [data-focus-key="${CSS.escape(origin)}"]`)) || $('#kit-plan-compare');
-  const usable = target && !target.closest('[hidden]') ? target : $('#kit-list summary');
+  const candidates = [origin && $(`#kit-plan-kits [data-focus-key="${CSS.escape(origin)}"]`), $('#kit-plan-compare'), $('#kit-list summary')];
+  const usable = candidates.find((el) => el && !el.disabled && !el.closest('[hidden]') && el.getClientRects().length);
   usable.focus({ preventScroll: true }); usable.scrollIntoView({ block: 'center', behavior: 'instant' });
 }
 function closeKitPreview() {
@@ -2191,6 +2197,7 @@ function bindEvents() {
   $('#visit-campsite').addEventListener('click', visitCampsite);
   for (const id of ['#example-entry-go', '#example-to-kits', '#example-to-trial']) $(id).addEventListener('click', openExample);
   $('#kit-preview-close').addEventListener('click', closeKitPreview);
+  $('#kit-preview .kit-preview-about').addEventListener('toggle', () => scene?.reframe());
   $('#kit-preview-back').addEventListener('click', () => returnToKits(kitPlan?.previewOrigin() ?? null));
   $('#kit-preview').addEventListener('keydown', (e) => { if (e.key === 'Escape' && !e.isComposing) { e.preventDefault(); closeKitPreview(); } });
   $('#goal-draft-save').addEventListener('click', saveGoalDraft);

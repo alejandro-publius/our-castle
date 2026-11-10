@@ -31,12 +31,12 @@ export const SAMPLE_LOOKS = Object.freeze({
  * Where the plan ground lies, relative to the family project's site: a strip behind the plot, on its right.
  * - Every stage of every project (campsite, garden, schoolhouse) leaves that strip empty, so the plan is never on the
  *   funded plot.
- * - The meadow's edge trees stand behind it and nothing built stands in front of it from the realm's usual view, so the
- *   plan is not hidden by what is funded. (The meadow's front and sides are hidden by its own edge trees.)
+ * - It sits inward from the edge trees for the initial view. The compass can still turn or pan the real 3D scene;
+ *   nearby scenery can occlude it from other angles, just as it does the funded project.
  * `frame` is what the camera shows while a preview is open on the project: the strip and the back of the plot.
  */
-export const PLAN_GROUND = Object.freeze({ x: 5.0, z: -8.28, w: 5.6, d: 2.15, margin: .16,
-  frame: Object.freeze({ x: 2.6, z: -5.4, width: 10, depth: 8, height: 4 }) });
+export const PLAN_GROUND = Object.freeze({ x: 5.0, z: -7.35, w: 5.6, d: 2.15, margin: .16,
+  frame: Object.freeze({ x: 5.0, z: -7.35, width: 6, depth: 2.4, height: 1.6 }) });
 export const PREVIEW_LIMITS = Object.freeze({ perLine: 6 });
 
 /** A kit's identity: which listing it takes for each line. Two cards with the same picks are the same arrangement. */
@@ -98,7 +98,12 @@ export function previewScene(card, { sample = false } = {}) {
  */
 export function layoutPreview(scene, ground = PLAN_GROUND) {
   const gap = .3, blockGap = .46, length = ground.w - 2 * ground.margin, depth = ground.d - 2 * ground.margin;
-  const ordered = scene.items.map((item, index) => ({ item, index, look: PREVIEW_LOOKS[item.look] ?? PREVIEW_LOOKS.crate }))
+  const ordered = scene.items.map((item, index) => {
+    const shape = PREVIEW_LOOKS[item.look] ?? PREVIEW_LOOKS.crate;
+    // Reserve the pegs/gold tile too, so a kept or switched line stays inside the ground.
+    const rim = item.kept || item.switched ? .4 : 0;
+    return { item, index, look: { ...shape, w: shape.w + rim, d: shape.d + rim } };
+  })
     .sort((a, b) => b.look.h - a.look.h || a.index - b.index);
   const blocksAt = (scale) => ordered.map(({ item, look }) => {
     const perColumn = Math.max(1, Math.min(item.shown, Math.floor((depth / scale + gap) / (look.d + gap))));
@@ -108,7 +113,16 @@ export function layoutPreview(scene, ground = PLAN_GROUND) {
   const totalOf = (blocks) => blocks.reduce((sum, b) => sum + b.width, 0) + Math.max(0, blocks.length - 1) * blockGap;
   const fits = (scale) => ordered.every(({ look }) => look.d * scale <= depth) && totalOf(blocksAt(scale)) * scale <= length;
   let scale = 1;
-  while (scale > .1 && !fits(scale)) scale = Math.round((scale - .01) * 100) / 100;
+  if (!fits(scale)) {
+    // Fitting is monotone: smaller shapes fit more items per column and need no more width.
+    // Keep the fitting side of a bounded search; a minimum scale could overflow a large kit.
+    let low = 0, high = 1;
+    for (let i = 0; i < 32; i++) {
+      const mid = (low + high) / 2;
+      if (fits(mid)) low = mid; else high = mid;
+    }
+    scale = low;
+  }
   const blocks = blocksAt(scale);
   let x = -totalOf(blocks) / 2;
   const rows = blocks.map((b) => {

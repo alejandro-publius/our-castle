@@ -53,7 +53,7 @@ export function createKitPreview({ part, colours: C }) {
       part(g, 'round', 0, .2, 0, .5, .4, .5, tone(C.red)); part(g, 'round', 0, .46, 0, .22, .14, .22, tone(C.dark));
       part(g, 'round', 0, .58, 0, .62, .07, .62, tone(C.stone));
     },
-    // A plain banded crate: a listing whose shape is not known.
+    // A plain banded crate: one item whose shape is not known (including items supplied in a pack).
     crate: (g, tone) => {
       part(g, 'box', 0, .45, 0, .9, .9, .9, tone(C.soil));
       for (const y of [.15, .45, .75]) part(g, 'box', 0, y, 0, .96, .1, .96, tone(C.cream));

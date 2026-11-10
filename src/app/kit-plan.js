@@ -16,7 +16,7 @@ import { compareChoices } from '../core/family-choices.js';
 import { ceilingText, fitCeiling } from '../core/family-fit.js';
 import { lineCost, weightText } from '../core/kit-plan.js';
 import { catalogueOf } from '../core/catalogue.js';
-import { matchPreview, picksOf, previewScene } from '../core/kit-preview.js';
+import { matchPreview, picksOf, previewScene, PREVIEW_LIMITS } from '../core/kit-preview.js';
 
 const $ = (id) => document.getElementById(id);
 function h(tag, attrs = {}, ...children) {
@@ -171,7 +171,8 @@ export function createKitPlan({ getState, actor, applyState, openMerchant, reser
     const about = [
       match.role === 'proposal' ? `Your chosen kit (${money(match.from.totalCents)}) no longer fits${a.reserveCents ? ` after the one-off ${money(a.reserveCents)}` : ''}. This is the planner’s smallest change from it. Your chosen kit stays as it is unless you choose this one.` : null,
       !k.fits ? `No complete kit fits ${money(a.ceiling.ceilingCents)} by ${date(a.ceiling.targetDate)}${a.reserveCents ? ` after the one-off ${money(a.reserveCents)}` : ''}, so it is drawn pale with red pennants.` : null,
-      sample ? 'The shapes illustrate the example’s invented listings. They are not real products.' : 'Each crate stands for a listing. No product is pictured: the catalog gives no shape, size or colour.',
+      sample ? 'The shapes illustrate the example’s invented listings. They are not real products.' : 'Each crate stands for one item to get, including items in a pack. No product is pictured: the catalog gives no shape, size or colour.',
+      k.lines.some((l) => l.bought > PREVIEW_LIMITS.perLine) ? `The picture shows up to ${PREVIEW_LIMITS.perLine} items of each kind; the quantities above are the full kit.` : null,
       'Tags mark the shop. A kept line is pegged down; a switched line stands on a gold tile. Previewing saves nothing and buys nothing.',
     ].filter(Boolean).join(' ');
     return {
