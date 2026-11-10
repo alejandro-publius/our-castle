@@ -42,11 +42,13 @@ test('header music is opt-in, loops locally, stops, and opens silent again after
   expect(await page.evaluate(() => window.__musicElements.length)).toBe(0);
   const layout = await toggle.evaluate((button) => {
     const box = button.getBoundingClientRect(), brand = document.querySelector('.brand').getBoundingClientRect();
-    return { x: box.x, y: box.y, right: box.right, width: box.width, height: box.height, brandRight: brand.right,
+    return { x: box.x, y: box.y, right: box.right, width: box.width, height: box.height, brandRight: brand.right, brandBottom: brand.bottom,
       viewport: innerWidth, overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth };
   });
   expect(layout.overflow).toBeLessThanOrEqual(0);
-  expect(layout.x).toBeGreaterThanOrEqual(layout.brandRight);
+  // Narrow phones place the controls on their own row below the brand; desktop keeps them to its right.
+  if (layout.viewport <= 480) expect(layout.y).toBeGreaterThanOrEqual(layout.brandBottom);
+  else expect(layout.x).toBeGreaterThanOrEqual(layout.brandRight);
   expect(layout.right).toBeLessThanOrEqual(layout.viewport);
   expect(layout.width).toBeGreaterThanOrEqual(44);
   expect(layout.height).toBeGreaterThanOrEqual(44);
