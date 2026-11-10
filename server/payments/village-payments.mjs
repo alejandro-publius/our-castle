@@ -8,7 +8,7 @@ import { paypalRecipient, samePayPalRecipient } from './recipient.mjs';
 export function ensureVillagePaymentsSchema(db) {
   db.exec(`CREATE TABLE IF NOT EXISTS village_payment_intents (
     id TEXT PRIMARY KEY, request_id TEXT NOT NULL UNIQUE, fund_id TEXT NOT NULL REFERENCES village_funds(id) ON DELETE CASCADE,
-    household_id TEXT NOT NULL, member_id TEXT NOT NULL, source TEXT NOT NULL,
+    household_id TEXT NOT NULL, member_id TEXT NOT NULL, attribution_household_id TEXT, source TEXT NOT NULL,
     amount_minor INTEGER NOT NULL CHECK(amount_minor > 0), currency TEXT NOT NULL,
     recipient_json TEXT NOT NULL, fund_revision INTEGER NOT NULL, target_minor INTEGER NOT NULL,
     provider_order_id TEXT UNIQUE, approve_url TEXT, capture_id TEXT,
@@ -19,6 +19,8 @@ export function ensureVillagePaymentsSchema(db) {
 
 const fail = (status, code, message) => new DomainError(status, code, message);
 const requestPattern = /^[A-Za-z0-9_-]{8,128}$/;
+// PayPal's documented default retention for Orders request IDs is six hours. Never blindly replay beyond it.
+const createReplayWindowMs = 6 * 60 * 60 * 1000;
 const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 const recipientOf = context => context.rail === 'paypal-sandbox' ? paypalRecipient(context.recipient) : null;
 const externalId = value => typeof value === 'string' && /^[A-Za-z0-9_-]{1,128}$/.test(value);
@@ -66,6 +68,20 @@ export function createVillagePayments({ db, clock, paypal = null, contextFor, re
   }
   function setStatus(row, status) {
     db.prepare("UPDATE village_payment_intents SET status=?,updated_at=? WHERE id=? AND status!='completed'").run(status, clock.iso(), row.id);
+  }
+  function dispatchGuard(input, row, assertAccess, { creating = false } = {}) {
+    return () => {
+      assertAccess();
+      const c = owned({ ...input, orderId: row.id }).context;
+      if (c.status === 'closed') throw fail(409, 'fund_closed', 'This fund is closed. Check an existing payment instead.');
+      if (c.viewerMember === false && c.published !== true) throw fail(409, 'fund_unpublished', 'This fund is no longer shared publicly. You can still check your existing payment.');
+      if (creating && row.source === 'paypal-sandbox') {
+        const age = Date.parse(clock.iso()) - Date.parse(row.created_at);
+        if (!Number.isFinite(age) || age < 0 || age >= createReplayWindowMs) {
+          throw fail(409, 'village_reconcile_required', 'This payment’s creation outcome needs manual reconciliation. It cannot safely be retried after six hours.');
+        }
+      }
+    };
   }
   async function flight(key, assertAccess, work) {
     const caller = { assertAccess }, existing = flights.get(key);
@@ -118,7 +134,7 @@ export function createVillagePayments({ db, clock, paypal = null, contextFor, re
       throw fail(502, 'village_refund_incomplete', 'Check the organizer’s complete refund record before counting this contribution.');
     }
     return transaction(db, () => {
-      const base = { fundId: row.fund_id, source: row.source, recipient: JSON.parse(row.recipient_json), familyHouseholdId: row.household_id, at: clock.iso() };
+      const base = { fundId: row.fund_id, source: row.source, recipient: JSON.parse(row.recipient_json), familyHouseholdId: row.attribution_household_id, at: clock.iso() };
       const changed = new Set();
       // Refund-first recording prevents a delayed completion briefly constructing a refunded project.
       for (const r of refunds) for (const id of recordReceipt({ ...base, eventRef: r.id, kind: 'refund', parentRef: cap.id, amountMinor: r.amount }).changedHouseholds ?? []) changed.add(id);
@@ -128,7 +144,7 @@ export function createVillagePayments({ db, clock, paypal = null, contextFor, re
       return { contribution: view(rowFor(row.id)), receipt: receipt.receipt, changedHouseholds: [...changed] };
     });
   }
-  return {
+  const service = {
     async create(input) {
       const scope = scopeOf(input), guard = input.assertAccess ?? (() => {});
       guard();
@@ -145,27 +161,31 @@ export function createVillagePayments({ db, clock, paypal = null, contextFor, re
           return prior;
         }
         if (input.expectedRevision !== c.revision) throw fail(409, 'fund_changed', 'Review the current fund before contributing.');
+        const attribution = Object.hasOwn(c, 'attributionHouseholdId') ? c.attributionHouseholdId : scope.householdId;
+        if (attribution !== null && attribution !== scope.householdId) throw fail(409, 'village_attribution', 'The contribution’s family attribution does not match this adult.');
         if (c.rail === 'paypal-sandbox' && (!paypal || paypal.environment !== 'sandbox')) throw fail(409, 'sandbox_unavailable', 'Sandbox recipient checkout is not configured.');
         const held = db.prepare("SELECT COALESCE(SUM(amount_minor),0) AS n FROM village_payment_intents WHERE fund_id=? AND status!='completed'").get(input.fundId).n;
         if (input.amountMinor > c.remainingMinor - held) throw fail(409, 'fund_remaining', 'That amount exceeds what is still available after pending contributions.');
         const id = `vpay_${randomUUID()}`, at = clock.iso();
-        db.prepare(`INSERT INTO village_payment_intents(id,request_id,fund_id,household_id,member_id,source,amount_minor,currency,recipient_json,fund_revision,target_minor,status,created_at,updated_at)
-          VALUES(?,?,?,?,?,?,?,?,?,?,?,'creating',?,?)`).run(id,input.requestId,input.fundId,scope.householdId,scope.memberId,c.rail,input.amountMinor,c.currency,JSON.stringify(recipient),c.revision,c.targetMinor,at,at);
+        db.prepare(`INSERT INTO village_payment_intents(id,request_id,fund_id,household_id,member_id,attribution_household_id,source,amount_minor,currency,recipient_json,fund_revision,target_minor,status,created_at,updated_at)
+          VALUES(?,?,?,?,?,?,?,?,?,?,?,?,'creating',?,?)`).run(id,input.requestId,input.fundId,scope.householdId,scope.memberId,attribution,c.rail,input.amountMinor,c.currency,JSON.stringify(recipient),c.revision,c.targetMinor,at,at);
         return rowFor(id);
       });
       if (row.status === 'completed' || row.provider_order_id) return { contribution: view(row), changedHouseholds: [] };
       return flight(`create:${row.id}`, guard, async assertAccess => {
         const latest = rowFor(row.id);
         if (latest.status === 'completed' || latest.provider_order_id) return { contribution: view(latest), changedHouseholds: [] };
+        const canDispatch = dispatchGuard(input, row, assertAccess, { creating: true });
+        canDispatch();
         if (row.source === 'simulated') return transaction(db, () => {
-          assertAccess();
-          const receipt = recordReceipt({ fundId: row.fund_id, source: 'simulated', eventRef: row.id, kind: 'capture', amountMinor: row.amount_minor, familyHouseholdId: row.household_id, recipient: null, at: clock.iso() });
+          canDispatch();
+          const receipt = recordReceipt({ fundId: row.fund_id, source: 'simulated', eventRef: row.id, kind: 'capture', amountMinor: row.amount_minor, familyHouseholdId: row.attribution_household_id, recipient: null, at: clock.iso() });
           db.prepare("UPDATE village_payment_intents SET status='completed',capture_id=?,updated_at=? WHERE id=?").run(row.id,clock.iso(),row.id);
           return { contribution: view(rowFor(row.id)), ...receipt };
         });
         let data;
         try { ({ data } = await paypal.createOrder({ localId: row.id, amountCents: row.amount_minor, currency: row.currency,
-          description: 'Our Castle village fund — PayPal sandbox', requestId: `create-${row.id}`, recipient: JSON.parse(row.recipient_json), assertAccess })); }
+          description: 'Our Castle village fund — PayPal sandbox', requestId: `create-${row.id}`, recipient: JSON.parse(row.recipient_json), assertAccess: canDispatch })); }
         catch (e) { if (!(e instanceof PayPalError)) throw e; setStatus(row,'pending'); return { contribution: view(rowFor(row.id)), changedHouseholds: [], outcome: 'unknown' }; }
         validateOrder(row, data);
         if (!['CREATED','PAYER_ACTION_REQUIRED','APPROVED'].includes(data.status)) throw fail(502,'village_order_status','PayPal did not create a reviewable order.');
@@ -173,6 +193,12 @@ export function createVillagePayments({ db, clock, paypal = null, contextFor, re
         db.prepare("UPDATE village_payment_intents SET provider_order_id=?,approve_url=?,status='created',updated_at=? WHERE id=?").run(data.id,url,clock.iso(),row.id);
         return { contribution: view(rowFor(row.id)), changedHouseholds: [] };
       });
+    },
+    async resume(input) {
+      const { row, scope } = owned(input);
+      // The stored adult approval is the only source of the retry payload; the caller cannot substitute any term.
+      return service.create({ scope, fundId: row.fund_id, amountMinor: row.amount_minor, approvalConfirmed: true,
+        expectedRevision: row.fund_revision, requestId: row.request_id, assertAccess: input.assertAccess });
     },
     async capture(input) {
       const { row } = owned(input), guard = input.assertAccess ?? (() => {}); guard();
@@ -186,8 +212,8 @@ export function createVillagePayments({ db, clock, paypal = null, contextFor, re
           const before = (await paypal.getOrder(row.provider_order_id, options)).data;
           validateOrder(row, before);
           if (before.status === 'COMPLETED') return reconcile(row, before);
-          if (owned(input).context.status === 'closed') throw fail(409,'fund_closed','This fund is closed. Check an existing payment instead.');
-          await paypal.captureOrder(row.provider_order_id, { ...options, requestId: `capture-${row.id}` });
+          const canDispatch = dispatchGuard(input, row, assertAccess); canDispatch();
+          await paypal.captureOrder(row.provider_order_id, { ...options, assertAccess: canDispatch, requestId: `capture-${row.id}` });
           return reconcile(row, (await paypal.getOrder(row.provider_order_id, options)).data);
         } catch (e) {
           if (!(e instanceof PayPalError)) throw e;
@@ -209,4 +235,5 @@ export function createVillagePayments({ db, clock, paypal = null, contextFor, re
       return db.prepare('SELECT * FROM village_payment_intents WHERE fund_id=? AND household_id=? AND member_id=? ORDER BY created_at DESC LIMIT 50').all(input.fundId,scope.householdId,scope.memberId).map(view);
     },
   };
+  return service;
 }

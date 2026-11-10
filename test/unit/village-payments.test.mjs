@@ -8,25 +8,34 @@ import { createPayPalSdkClient } from '../../server/payments/paypal-sdk-client.m
 import { paypalAuthAssertion } from '../../server/payments/recipient.mjs';
 
 const scope={householdId:DEMO_HOUSEHOLD_ID,memberId:'m_rowan'}, recipient={kind:'paypal',merchantId:'TESTMERCHANT01',revision:1};
+const outsider={householdId:'hh_outside',memberId:'m_grandma'};
 function fixture({rail='paypal-sandbox'}={}) {
   const db=new DatabaseSync(':memory:'),clock=createClock('2026-11-10T12:00:00Z');
   db.exec(`PRAGMA foreign_keys=ON; CREATE TABLE members(id TEXT,household_id TEXT,display_name TEXT,role TEXT,is_example INTEGER,avatar_id TEXT,sort INTEGER);
-    INSERT INTO members VALUES('m_rowan','${DEMO_HOUSEHOLD_ID}','Rowan','adult',1,'',0),('m_wren','${DEMO_HOUSEHOLD_ID}','Wren','child',1,'',1);
+    INSERT INTO members VALUES('m_rowan','${DEMO_HOUSEHOLD_ID}','Rowan','adult',1,'',0),('m_wren','${DEMO_HOUSEHOLD_ID}','Wren','child',1,'',1),
+      ('m_grandma','hh_outside','Grandma','adult',1,'',0),('m_other','hh_outside','Other adult','adult',1,'',1);
     CREATE TABLE ledger_entries(id TEXT);`);
   // B owns fund storage; these tests exercise A against the callback contract with durable receipt facts.
-  db.exec("CREATE TABLE IF NOT EXISTS village_funds(id TEXT PRIMARY KEY); INSERT INTO village_funds(id) VALUES('fund_test'); CREATE TABLE test_receipts(event_ref TEXT PRIMARY KEY,kind TEXT,amount INTEGER);");
+  db.exec("CREATE TABLE IF NOT EXISTS village_funds(id TEXT PRIMARY KEY); INSERT INTO village_funds(id) VALUES('fund_test'); CREATE TABLE test_receipts(event_ref TEXT PRIMARY KEY,kind TEXT,amount INTEGER,family_household_id TEXT);");
   ensureVillagePaymentsSchema(db);
-  const c={fundId:'fund_test',rail,targetMinor:3000,currency:'USD',decimals:2,remainingMinor:3000,recipient:rail==='simulated'?null:{...recipient},revision:1,status:'open'};
+  const c={fundId:'fund_test',rail,targetMinor:3000,currency:'USD',decimals:2,remainingMinor:3000,recipient:rail==='simulated'?null:{...recipient},revision:1,status:'open',published:true};
+  const members=new Set([scope.householdId]);
   const calls=[],orders=new Map(); let sequence=0;
-  const paypal={environment:'sandbox',async createOrder(input){calls.push(['create',input]);let data=orders.get(input.requestId);
+  const paypal={environment:'sandbox',async createOrder(input){input.assertAccess?.();calls.push(['create',input]);let data=orders.get(input.requestId);
     if(!data){data={id:`ORDER${++sequence}`,status:'CREATED',purchase_units:[{reference_id:input.localId,custom_id:input.localId,payee:{merchant_id:input.recipient.merchantId},amount:{currency_code:'USD',value:(input.amountCents/100).toFixed(2)}}],links:[{rel:'approve',href:`https://www.sandbox.paypal.com/checkoutnow?token=ORDER${sequence}`}]};orders.set(input.requestId,data);orders.set(data.id,data);}return {data:structuredClone(data)};},
-    async getOrder(id){calls.push(['read',id]);return{data:structuredClone(orders.get(id))};},
-    async captureOrder(id,input){calls.push(['capture',input]);const d=orders.get(id);d.status='COMPLETED';d.purchase_units[0].payments={captures:[{id:`CAPTURE${id}`,status:'COMPLETED',amount:d.purchase_units[0].amount}]};return{data:structuredClone(d)};}};
-  const recordReceipt=e=>{db.prepare('INSERT OR IGNORE INTO test_receipts VALUES(?,?,?)').run(e.eventRef,e.kind,e.amountMinor);c.remainingMinor=3000-db.prepare("SELECT COALESCE(SUM(CASE WHEN kind='refund' THEN -amount ELSE amount END),0) AS n FROM test_receipts").get().n;c.revision++;return{receipt:{eventRef:e.eventRef,amountMinor:e.amountMinor},changedHouseholds:[scope.householdId]};};
-  const contextFor=(s,id,{allowSettled=false}={})=>{assert.equal(s.householdId,scope.householdId);assert.equal(id,c.fundId);if(!allowSettled&&c.remainingMinor<=0)throw Error('full');return{...c,recipient:c.recipient&&{...c.recipient}};};
+    async getOrder(id,input={}){input.assertAccess?.();calls.push(['read',id]);return{data:structuredClone(orders.get(id))};},
+    async captureOrder(id,input){input.assertAccess?.();calls.push(['capture',input]);const d=orders.get(id);d.status='COMPLETED';d.purchase_units[0].payments={captures:[{id:`CAPTURE${id}`,status:'COMPLETED',amount:d.purchase_units[0].amount}]};return{data:structuredClone(d)};}};
+  const recordReceipt=e=>{db.prepare('INSERT OR IGNORE INTO test_receipts VALUES(?,?,?,?)').run(e.eventRef,e.kind,e.amountMinor,e.familyHouseholdId);c.remainingMinor=3000-db.prepare("SELECT COALESCE(SUM(CASE WHEN kind='refund' THEN -amount ELSE amount END),0) AS n FROM test_receipts").get().n;c.revision++;return{receipt:{eventRef:e.eventRef,amountMinor:e.amountMinor,familyHouseholdId:e.familyHouseholdId},changedHouseholds:[scope.householdId]};};
+  const contextFor=(s,id,{allowSettled=false}={})=>{
+    assert.equal(id,c.fundId);const viewerMember=members.has(s.householdId);
+    const held=allowSettled&&db.prepare('SELECT 1 FROM village_payment_intents WHERE fund_id=? AND household_id=? AND member_id=?').get(id,s.householdId,s.memberId);
+    if(!viewerMember&&!c.published&&!held)throw Object.assign(Error('not published'),{code:'village_fund'});
+    if(!allowSettled&&c.remainingMinor<=0)throw Error('full');
+    return{...c,viewerMember,attributionHouseholdId:viewerMember?s.householdId:null,recipient:c.recipient&&{...c.recipient}};
+  };
   const service=()=>createVillagePayments({db,clock,paypal,contextFor,recordReceipt});
   const input=(extra={})=>({scope,fundId:c.fundId,amountMinor:1500,approvalConfirmed:true,expectedRevision:1,requestId:'request_test_001',...extra});
-  return{db,clock,c,calls,orders,paypal,service:service(),restart:service,input};
+  return{db,clock,c,members,calls,orders,paypal,service:service(),restart:service,input};
 }
 
 test('village sandbox intent freezes recipient and adult-approved amount; capture is checked and credited once across restarts',async()=>{
@@ -85,12 +94,91 @@ test('provider timeout after capture reconciles the same order without a second 
   }finally{e.db.close();}
 });
 
-test('a lost create response retries the durable provider key after restart rather than making a second order',async()=>{
+test('resume uses only the stored approval and durable provider key after a lost response and restart',async()=>{
   const e=fixture();try{
     const create=e.paypal.createOrder;let first=true;e.paypal.createOrder=async input=>{const result=await create(input);if(first){first=false;throw new PayPalError('fixture',{name:'TIMEOUT'});}return result;};
     const a=await e.service.create(e.input());assert.equal(a.outcome,'unknown');assert.equal(a.contribution.providerOrderId,null);
-    const b=await e.restart().create(e.input());assert.equal(b.contribution.id,a.contribution.id);assert.equal(b.contribution.providerOrderId,'ORDER1');
+    const b=await e.restart().resume({scope,orderId:a.contribution.id,amountMinor:9999,requestId:'different_request',fundId:'wrong_fund'});assert.equal(b.contribution.id,a.contribution.id);assert.equal(b.contribution.providerOrderId,'ORDER1');
     assert.equal(new Set(e.calls.filter(c=>c[0]==='create').map(c=>c[1].requestId)).size,1);
+    assert.equal(b.contribution.amountMinor,1500);assert.equal(Object.hasOwn(b.contribution,'requestId'),false);
+  }finally{e.db.close();}
+});
+
+test('an unknown create outcome cannot replay after six hours and its reservation stays held',async()=>{
+  const e=fixture();try{
+    const create=e.paypal.createOrder;e.paypal.createOrder=async input=>{await create(input);throw new PayPalError('fixture',{name:'TIMEOUT'});};
+    const a=await e.service.create(e.input());assert.equal(a.outcome,'unknown');
+    e.clock.now=()=>new Date('2026-11-10T18:00:00Z');
+    await assert.rejects(e.restart().resume({scope,orderId:a.contribution.id}),x=>x.code==='village_reconcile_required');
+    await assert.rejects(e.restart().create(e.input()),x=>x.code==='village_reconcile_required');
+    await assert.rejects(e.service.create(e.input({requestId:'another_request',amountMinor:2000})),x=>x.code==='fund_remaining');
+    assert.equal(e.calls.filter(c=>c[0]==='create').length,1);assert.equal(e.service.list({scope,fundId:'fund_test'})[0].status,'pending');
+    assert.equal(e.db.prepare('SELECT COUNT(*) AS n FROM test_receipts').get().n,0);
+  }finally{e.db.close();}
+});
+
+test('an existing provider order remains checkable and capturable after the create replay window',async()=>{
+  const e=fixture();try{
+    const a=await e.service.create(e.input());e.clock.now=()=>new Date('2026-11-11T12:00:00Z');
+    await e.restart().resume({scope,orderId:a.contribution.id});
+    const out=await e.restart().capture({scope,orderId:a.contribution.id});assert.equal(out.contribution.status,'completed');
+    assert.equal(e.calls.filter(c=>c[0]==='create').length,1);assert.equal(e.calls.filter(c=>c[0]==='capture').length,1);
+  }finally{e.db.close();}
+});
+
+test('an outside adult can contribute without exposing payer identity or attributing it to an unrelated family',async()=>{
+  const e=fixture();try{
+    const a=await e.service.create(e.input({scope:outsider}));
+    const row=e.db.prepare('SELECT household_id,member_id,attribution_household_id FROM village_payment_intents WHERE id=?').get(a.contribution.id);
+    assert.equal(row.household_id,outsider.householdId);assert.equal(row.member_id,outsider.memberId);assert.equal(row.attribution_household_id,null);
+    // Joining later cannot change the meaning of a previously approved outside contribution.
+    e.members.add(outsider.householdId);
+    const out=await e.restart().capture({scope:outsider,orderId:a.contribution.id});assert.equal(out.receipt.familyHouseholdId,null);
+    const unit=e.orders.get(a.contribution.providerOrderId).purchase_units[0];unit.payments.captures[0].status='REFUNDED';unit.payments.refunds=[{id:'OUTSIDE_REFUND',status:'COMPLETED',amount:unit.amount}];
+    await e.restart().check({scope:outsider,orderId:a.contribution.id});
+    assert.deepEqual(e.db.prepare('SELECT family_household_id FROM test_receipts').all().map(r=>r.family_household_id),[null,null]);
+    assert.equal(JSON.stringify(out).includes(outsider.householdId),false);assert.equal(JSON.stringify(out).includes(outsider.memberId),false);
+    const before=e.calls.length;
+    for(const otherScope of [scope,{...outsider,memberId:'m_other'}]){
+      await assert.rejects(e.service.check({scope:otherScope,orderId:a.contribution.id}),x=>x.code==='village_order');
+      await assert.rejects(e.service.resume({scope:otherScope,orderId:a.contribution.id}),x=>x.code==='village_order');
+      assert.deepEqual(e.service.list({scope:otherScope,fundId:'fund_test'}),[]);
+    }
+    assert.equal(e.calls.length,before);
+  }finally{e.db.close();}
+});
+
+test('unpublishing blocks new outside approvals and capture dispatch but preserves existing provider truth',async()=>{
+  const e=fixture();try{
+    const a=await e.service.create(e.input({scope:outsider}));e.c.published=false;
+    await assert.rejects(e.service.create(e.input({scope:outsider,requestId:'outside_new_request'})),x=>x.code==='village_fund');
+    await assert.rejects(e.service.capture({scope:outsider,orderId:a.contribution.id}),x=>x.code==='fund_unpublished');
+    assert.equal(e.calls.filter(c=>c[0]==='capture').length,0);
+    // The organizer can stop new dispatch; already-completed provider facts must still be reconciled.
+    await e.paypal.captureOrder(a.contribution.providerOrderId,{});
+    const out=await e.restart().check({scope:outsider,orderId:a.contribution.id});assert.equal(out.contribution.status,'completed');assert.equal(out.receipt.familyHouseholdId,null);
+    assert.equal(e.service.list({scope:outsider,fundId:'fund_test'}).length,1);
+  }finally{e.db.close();}
+});
+
+test('outside create and capture guards recheck publication after asynchronous provider authentication',async()=>{
+  const e=fixture();try{
+    const create=e.paypal.createOrder;e.paypal.createOrder=async input=>{e.c.published=false;return create(input);};
+    await assert.rejects(e.service.create(e.input({scope:outsider})),x=>x.code==='fund_unpublished');assert.equal(e.calls.length,0);
+    const pending=e.service.list({scope:outsider,fundId:'fund_test'})[0];
+    await assert.rejects(e.restart().resume({scope:outsider,orderId:pending.id}),x=>x.code==='fund_unpublished');
+    e.c.published=true;e.paypal.createOrder=create;
+    const a=await e.restart().resume({scope:outsider,orderId:pending.id});
+    const capture=e.paypal.captureOrder;e.paypal.captureOrder=async(id,input)=>{e.c.published=false;return capture(id,input);};
+    await assert.rejects(e.service.capture({scope:outsider,orderId:a.contribution.id}),x=>x.code==='fund_unpublished');
+    assert.equal(e.calls.filter(c=>c[0]==='capture').length,0);assert.equal(e.db.prepare('SELECT COUNT(*) AS n FROM test_receipts').get().n,0);
+  }finally{e.db.close();}
+});
+
+test('simulated outside contributions preserve null attribution with no provider request',async()=>{
+  const e=fixture({rail:'simulated'});try{
+    const a=await e.service.create(e.input({scope:outsider}));assert.equal(a.contribution.status,'completed');assert.equal(a.receipt.familyHouseholdId,null);
+    assert.equal(e.db.prepare('SELECT attribution_household_id FROM village_payment_intents').get().attribution_household_id,null);assert.equal(e.calls.length,0);
   }finally{e.db.close();}
 });
 
