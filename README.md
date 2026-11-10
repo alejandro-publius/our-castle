@@ -8,6 +8,8 @@ Decide what the family can afford together, compare complete kits and adjust the
 
 The illustrated journal has four chapters—House, Plan, Contribute and Ledger—with an original pixel crest and castle illustration. Family heraldry stays personal. [See the journal and brand design](docs/JOURNAL-DESIGN.md).
 
+[Architecture diagram](#architecture-at-a-glance) · [Payment sequence](docs/ARCHITECTURE.md#payment-states)
+
 The source is **public on GitHub**. This source release includes the reviewed work of PRs #40–#58:
 - payment recovery and safety fixes;
 - opt-in music;
@@ -101,6 +103,23 @@ These are test captures. The family (Rowan, Ash and Wren) is invented, and the "
 | **APIMatic** | Behind the scenes | Official generated PayPal Server SDK 2.5.0 and eight installed, discovery-verified Codex context skills; real SDK serialization/auth/retry tests with fake transport, plus documented capture-recovery/read fixes. [Details](docs/APIMATIC-CODEX.md) |
 
 PayPal JavaScript SDK v6 handles the browser session; Server SDK Orders v2/Payments v2 handle sandbox operations. PayPal Agent Toolkit enables only scoped read tools. Anthropic Claude (`claude-opus-5-5`) supplies runtime planning/steward answers; it cannot authorize, capture or refund a payment. Postman provides guarded walkthroughs.
+
+## Architecture at a glance
+
+```mermaid
+flowchart TB
+    accTitle: Our Castle architecture at a glance
+    accDescr: The family journal sends explicit actions to a local Node server. The server uses planning services and SQLite, calls configured providers, and returns world progress and Treasury records.
+    Family["Family journal<br/>goals, offers and kit list"] --> Server["Local Node.js server<br/>access, approvals and validation"]
+    Server <--> Planning["Planning engine<br/>compare complete kits and repair plans<br/>Rust solver or JavaScript reference"]
+    Server <--> Records[("SQLite<br/>household and contribution records")]
+    Server -. "configured integrations" .-> Providers["PayPal sandbox · Channel3<br/>Claude · OpenAI · Cohere"]
+    Server --> View["World progress and Treasury<br/>pixel woodland · AG Grid / AG Studio"]
+```
+
+The family reviews a plan before saving it and approves each contribution explicitly. The default example uses simulated payments and built-in planning rules; the dotted edge represents integrations that need configuration. The kit solver uses the JavaScript reference when no Rust build is present.
+
+[Detailed architecture and sandbox payment sequence](docs/ARCHITECTURE.md) · [Receipt handoff](docs/RECEIPT-HANDOFF.md) · [Kit planning](docs/KIT-PLANNER.md)
 
 ## What is verified
 

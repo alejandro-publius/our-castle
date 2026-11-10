@@ -1,21 +1,35 @@
 # Architecture
 
-A small Node server (built-in `node:http` and `node:sqlite`) serves a framework-free browser app. Runtime dependencies are the official Anthropic SDK, PayPal's Server SDK and Agent Toolkit, and AG Grid Community for the ledger. The board renders through the original pixel pipeline; the server owns every financial fact.
+A small Node server (built-in `node:http` and `node:sqlite`) serves a framework-free browser app. The server uses the official Anthropic SDK and PayPal Server SDK/Agent Toolkit; the browser loads AG Grid Community and AG Studio for the Treasury. Optional family access uses passkeys. The board renders through the original pixel pipeline; the server owns every financial fact.
 
+```mermaid
+flowchart LR
+    accTitle: Our Castle components and provider boundaries
+    accDescr: The journal, Treasury and pixel world use a local Node server. Its family planning, contribution and steward services share household records. Configured provider calls stay behind the server.
+    Journal["Journal, Treasury<br/>and pixel woodland"] <-->|"actions and authorized state"| Routes["Local Node.js routes<br/>household access and adult approvals"]
+    Routes <--> Records[("SQLite<br/>household records")]
+    Routes --> Planning["Family choices and Merchant<br/>kit list and weekly planning"]
+    Routes --> Payments["Contribution service<br/>capture and refund reconciliation"]
+    Routes --> Steward["Read-only steward<br/>scoped ledger and PayPal tools"]
+    Planning <--> Solver["Rust kit solver<br/>JS reference when unbuilt"]
+    Planning -. "search and refresh" .-> Catalogue["Channel3"]
+    Planning -. "explicit proposals, photo drafts or ranking" .-> AI["Configured AI services<br/>Claude · OpenAI · Cohere"]
+    Steward -. "Claude answers" .-> AI
+    Steward -. "Agent Toolkit reads" .-> PayPal["PayPal sandbox"]
+    Payments -. "Server SDK and REST adapter" .-> PayPal
 ```
-browser                                   server (127.0.0.1)                        providers
-───────                                   ──────────────────                        ─────────
-index.html + app.css                      server/app.mjs  routes, Host/Origin
-src/app/main.js   panels, approval  ──►   checks, CSP, static allowlist
-src/app/bus.js    event bus               server/view.mjs  state view model
-src/app/ledger-grid.js  AG Grid ledger    server/household.mjs  ledger, tiers
-src/world/board-scene.js  3D board        server/planner/*  basis, validation  ──► Anthropic Messages API
-  └ src/graphics/pixel-renderer.js        server/steward/*  read-only Q&A    ──► Anthropic Messages API (tools)
-src/app/paypal-checkout.js  SDK v6  ──►   server/payments/*                         └► PayPal Agent Toolkit (get_order,
-src/core/rules.js  shared pure rules        paypal-sdk-client  Server SDK   ──► PayPal sandbox      list_transactions)
-                                            contributions  verify, credit       (Orders v2, Payments v2,
-                                          SQLite file per payment mode             Webhooks v1)
-```
+
+Solid arrows show the main local control/data paths; dotted arrows show configured provider calls. Household writes stay behind the server's route and service checks. In family mode, the live stream carries household-change notices and each page fetches its authorized state; it does not broadcast other families' records. The separate example runner uses simulated payments, built-in planning rules and, with `--family-trip`, an invented catalogue.
+
+The complete-kit planner derives a budget from the family's offers and deadline, then asks the solver to compare a bounded pool of listings and quantities still needed. It checks the returned kits against the family's schedule again. Rust is used when built; the JavaScript reference is selected when the native build is absent. A native failure is reported rather than silently switched to the reference. OpenAI returns an editable photo draft; Cohere can reorder only already-eligible kits. Neither service can save a goal or authorize a payment.
+
+| Diagram area | Source |
+| --- | --- |
+| Routes, access, state and updates | [app.mjs](../server/app.mjs), [access](../server/access/index.mjs), [view.mjs](../server/view.mjs), [live.mjs](../server/live.mjs) |
+| Family decisions and kits | [family-choices.mjs](../server/family-choices.mjs), [kit planner](../server/kit/planner.mjs), [solver bridge](../server/kit/solver.mjs), [Rust solver](../solver/) |
+| Optional AI | [weekly planner](../server/planner/index.mjs), [photo reader](../server/kit/reader.mjs), [kit ordering](../server/kit/rerank.mjs), [steward](../server/steward/index.mjs) |
+| Contributions and storage | [contributions.mjs](../server/payments/contributions.mjs), [db.mjs](../server/db.mjs) |
+| Treasury and world | [treasury.js](../src/app/treasury.js), [ledger-grid.js](../src/app/ledger-grid.js), [board-scene.js](../src/world/board-scene.js) |
 
 `src/core/rules.js` is shared by both sides and has no DOM, Three.js or Node dependency, so tiers, board position, milestone cents and money parsing are tested directly in Node.
 
@@ -23,7 +37,7 @@ src/core/rules.js  shared pure rules        paypal-sdk-client  Server SDK   ─�
 
 | Table | Purpose |
 | --- | --- |
-| `households`, `members` | One local example household; solo or family example personas (adult/child). Not authentication. |
+| `households`, `members` | Household and adult/child member records. Example personas are not authentication; the opt-in family runner resolves members from passkey sessions. |
 | `goals` | One active goal: target cents, currency, target date, chosen weekly amount. |
 | `ledger_entries` | Goal-progress ledger. `kind` + `effect` are enforced by a CHECK constraint: starting progress and contributions +1, refunds −1, bills and gifts 0. `source_ref` is unique (one row per capture or refund). |
 | `payment_orders` | Server-created orders with the expected household, goal, approver, amount and currency, plus a unique client request id. |
@@ -38,26 +52,63 @@ Current tracked progress = Σ effect × amount over the goal's ledger rows. Boar
 
 ## Payment states
 
-```
-            create (adult + explicit approval, amount ≤ remaining)
-  ┌────────► created ──── buyer closes PayPal ───► approval_canceled  (no credit)
-  │            │
-  │            │ onApprove → server capture (PayPal-Request-Id = capture-<id>)
-  │            ▼
-  │   capture status COMPLETED + amount/currency/custom_id match ──► completed  (credit once, award tiers)
-  │   capture status PENDING ─────────────────────────────────────► pending    (no credit until verified
-  │                                                                  webhook or "Check with PayPal")
-  │   DECLINED / INSTRUMENT_DECLINED ─────────────────────────────► declined   (no credit)
-  │   mismatch (amount, currency, custom_id, order id) ───────────► rejected   (no credit)
-  │   provider error ─────────────────────────────────────────────► failed     (no credit)
-  │
-  └ refund (adult approval → PayPal refund, or verified PAYMENT.CAPTURE.REFUNDED) ─► refunded /
-    partially_refunded (subtract exactly the refunded cents once)
+This sequence shows a new sandbox contribution and its receipt handoff. Example contributions use the same local accounting boundaries with explicitly simulated outcomes and no PayPal call.
+
+```mermaid
+sequenceDiagram
+    accTitle: Sandbox contribution and receipt sequence
+    accDescr: An adult approves an amount and PayPal checkout. The server verifies the owned capture, credits once with known refunds applied before milestones, and lets the family open the saved receipt without a new provider check.
+    autonumber
+    actor Adult
+    participant Page as Household journal
+    participant App as Node contribution service
+    participant PayPal as PayPal sandbox
+    participant DB as SQLite
+    Adult->>Page: Approve the exact contribution amount
+    Page->>App: Request an order with a client request ID
+    App->>App: Check access, adult approval, goal and amount
+    App->>DB: Store expected contribution and request ID
+    App->>PayPal: Create order with an idempotency key
+    PayPal-->>App: Provider order ID
+    App->>DB: Bind provider order to local contribution
+    App-->>Page: Order ID for checkout
+    Adult->>PayPal: Approve through the PayPal JS SDK
+    Page->>App: Request capture of this owned order
+    App->>App: Recheck caller access
+    alt Already completed or refunded locally
+        App-->>Page: Existing result without a new capture
+    else Capture needed
+        App->>PayPal: Capture with stable request ID and dispatch access check
+        PayPal-->>App: Capture response or uncertain outcome
+        opt Outcome unknown or order already captured remotely
+            App->>PayPal: Read the same order
+            PayPal-->>App: Current evidence or unavailable
+        end
+        App->>App: Reconcile order identity, amount, currency and status
+        alt Evidence permits credit
+            App->>DB: Transaction: credit once, apply known refunds, then award milestones
+            DB-->>App: Canonical contribution and net progress
+        else Pending, unknown, declined or mismatched
+            App->>DB: Keep the unresolved or refused result without guessed credit
+        end
+        App->>App: Recheck each caller before returning their result
+        App-->>Page: Authorized contribution result
+    end
+    Page->>App: Refresh authorized household state
+    App-->>Page: Progress and receipt data
+    opt A contribution was confirmed
+        Page-->>Adult: Show the deed and world progress
+        Adult->>Page: Choose Review the receipt
+        Page-->>Adult: Select that record and its existing status
+    end
+    Note over Page,PayPal: Viewing a receipt makes no new PayPal verification call.
 ```
 
-Crediting happens in one SQLite transaction: insert/upgrade the capture row, insert the unique ledger row, mark the order completed, award tiers. A second capture call for the same order returns `already_completed` without calling PayPal; concurrent calls share one in-flight promise; `ORDER_ALREADY_CAPTURED` reconciles through `GET /v2/checkout/orders/{id}`.
+Crediting happens in one SQLite transaction: insert/upgrade the capture row, insert the unique ledger row, apply already-known verified refunds, then award tiers from the net progress. A late completion cannot erase an earlier refund. A first-seen partial refund needs validated refund details before the remaining contribution is credited. A second capture call for the same order returns `already_completed` without calling PayPal; concurrent calls share one in-flight capture, with access checked separately for each caller; `ORDER_ALREADY_CAPTURED` reconciles through `GET /v2/checkout/orders/{id}`.
 
 Webhooks are processed only when `PAYPAL_WEBHOOK_ID` is set and PayPal's `verify-webhook-signature` returns `SUCCESS`. Capture events are matched through the server's own order id mapping; refund events through the refund's `up` link to the capture.
+
+Ordinary receipt selection reads existing records. An explicit **Check with PayPal** fetches the same order and may reconcile its capture/refunds; a steward lookup reports what it found but cannot capture, refund or alter contribution credit. A closed checkout window alone establishes no payment outcome. See [the receipt handoff](RECEIPT-HANDOFF.md).
 
 ## PayPal adapters
 
