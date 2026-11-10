@@ -1,5 +1,6 @@
 import { PAYPAL_SANDBOX_API } from '../config.mjs';
 import { centsToDecimalString } from '../../src/core/rules.js';
+import { paypalRecipient, paypalAuthAssertion } from './recipient.mjs';
 
 export class PayPalError extends Error {
   constructor(message, { status = null, name = null, issues = [], debugId = null, details = null } = {}) {
@@ -68,7 +69,7 @@ export function createPayPalClient({ clientId, clientSecret, fetch: rawFetch = g
     return cached.value;
   }
 
-  async function request(method, path, { body, json, requestId, prefer = 'return=representation', assertAccess } = {}) {
+  async function request(method, path, { body, json, requestId, prefer = 'return=representation', assertAccess, recipient } = {}) {
     assertAccess?.();
     const headers = { Authorization: `Bearer ${await accessToken()}`, Accept: 'application/json' };
     // OAuth is a separate asynchronous operation. Losing access during it must stop a still-unsent payment.
@@ -76,6 +77,7 @@ export function createPayPalClient({ clientId, clientSecret, fetch: rawFetch = g
     if (json === undefined && body !== undefined) json = JSON.stringify(body);
     if (json !== undefined) headers['Content-Type'] = 'application/json';
     if (requestId) headers['PayPal-Request-Id'] = requestId;
+    if (recipient) headers['PayPal-Auth-Assertion'] = paypalAuthAssertion(clientId, recipient);
     if (prefer) headers.Prefer = prefer;
     const response = await fetch(`${base}${path}`, { method, headers, body: json });
     const data = await readJson(response);
@@ -93,9 +95,10 @@ export function createPayPalClient({ clientId, clientSecret, fetch: rawFetch = g
     environment: 'sandbox',
 
     /** Create a CAPTURE order whose purchase unit carries our local contribution id. */
-    createOrder({ localId, amountCents, currency, description, requestId }) {
+    createOrder({ localId, amountCents, currency, description, requestId, recipient, assertAccess }) {
+      const payee = paypalRecipient(recipient);
       return request('POST', '/v2/checkout/orders', {
-        requestId,
+        requestId, recipient: payee, assertAccess,
         body: {
           intent: 'CAPTURE',
           purchase_units: [{
@@ -103,6 +106,7 @@ export function createPayPalClient({ clientId, clientSecret, fetch: rawFetch = g
             custom_id: localId,
             invoice_id: localId,
             description: description.slice(0, 127),
+            ...(payee ? { payee: { merchant_id: payee.merchantId } } : {}),
             amount: { currency_code: currency, value: centsToDecimalString(amountCents) },
           }],
           payment_source: {
@@ -118,12 +122,12 @@ export function createPayPalClient({ clientId, clientSecret, fetch: rawFetch = g
       });
     },
 
-    captureOrder(orderId, { requestId, assertAccess }) {
-      return request('POST', `/v2/checkout/orders/${encodeURIComponent(orderId)}/capture`, { requestId, body: {}, assertAccess });
+    captureOrder(orderId, { requestId, assertAccess, recipient }) {
+      return request('POST', `/v2/checkout/orders/${encodeURIComponent(orderId)}/capture`, { requestId, body: {}, assertAccess, recipient });
     },
 
-    getOrder(orderId) {
-      return request('GET', `/v2/checkout/orders/${encodeURIComponent(orderId)}`, { prefer: null });
+    getOrder(orderId, { recipient, assertAccess } = {}) {
+      return request('GET', `/v2/checkout/orders/${encodeURIComponent(orderId)}`, { prefer: null, recipient, assertAccess });
     },
 
     getCapture(captureId) {
