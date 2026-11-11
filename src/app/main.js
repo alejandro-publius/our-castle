@@ -119,6 +119,7 @@ const ui = {
   amountTouched: false,
   receipt: null,
   refundArm: null,
+  holdArm: null, // { id, kind: 'release' | 'return', requestId, amount }: one armed decision on a held contribution
   celebrationTimer: null,
   ledgerFilter: 'all',
   ledgerSearch: '',
@@ -639,7 +640,7 @@ function openNextStep(e) {
   if (next.key === 'receipt-ready') {
     const record = ledgerRows().find((r) => r.contribution?.id === ui.receipt?.contribution.id);
     if (record) ui.ledgerRecord = record.id;
-    ui.refundArm = null;
+    ui.refundArm = null; ui.holdArm = null;
   }
   selectTab(next.step, { focus: false });
   let target = $(next.target);
@@ -1614,6 +1615,9 @@ function renderGive() {
   const who = persona();
   const approve = $('#give-approve');
   const row = $('#give-approve-row');
+  const hold = $('#give-hold');
+  hold.disabled = !setup || done || who?.role !== 'adult';
+  if (hold.disabled) hold.checked = false;
   const amountText = check.cents !== null && !check.error ? money(check.cents) : 'this';
   // An approval covers one amount, for one goal, by one adult, in one session. If any of them changed since the box was
   // ticked (another member saved a new goal, say), the tick is cleared and asked for again.
@@ -1630,7 +1634,7 @@ function renderGive() {
   } else {
     approve.disabled = !setup || done || Boolean(check.error);
     row.classList.remove('blocked');
-    $('#give-approve-text').textContent = check.error ? 'Approve this payment.' : `I approve ${amountText} ${goal.currency} (${isSandbox() ? 'test money' : 'simulated'}).`;
+    $('#give-approve-text').textContent = check.error ? 'Approve this payment.' : `I approve ${hold.checked ? 'holding ' : ''}${amountText} ${goal.currency} (${isSandbox() ? 'test money' : 'simulated'}).`;
   }
   const ready = setup && !done && approve.checked && !check.error && who?.role === 'adult';
   renderGiveAction(ready);
@@ -1677,11 +1681,15 @@ function renderGiveAction(ready) {
     );
   }
   for (const b of $$('button', box)) b.disabled = !ready;
+  // A hold has one outcome to try here: it is placed. The other example outcomes belong to an ordinary payment.
+  const holding = $('#give-hold').checked;
+  $('#simulate-pay').textContent = holding ? 'Simulate approved hold' : 'Simulate approved payment';
+  box.querySelector('details').hidden = holding;
 }
 
 function approvalBasis() {
   const { household, goal, modes } = state;
-  return JSON.stringify([household.id, goal.id, goal.name, goal.targetCents, goal.currency, modes.payments.mode, persona()?.id ?? null, amountCheck().cents, family.epoch]);
+  return JSON.stringify([household.id, goal.id, goal.name, goal.targetCents, goal.currency, modes.payments.mode, persona()?.id ?? null, amountCheck().cents, family.epoch, $('#give-hold').checked]);
 }
 
 function readyToPay() {
@@ -1693,7 +1701,7 @@ function orderInput() {
   if (persona()?.role !== 'adult') { setStatus('#give-status', 'error', 'An adult must approve payments.'); return null; }
   if (check.error) { setStatus('#give-status', 'error', check.error); $('#give-amount').focus(); return null; }
   if (!$('#give-approve').checked) { setStatus('#give-status', 'error', 'Tick the approval box first.'); $('#give-approve').focus(); return null; }
-  return { ...ownership(), amountCents: check.cents, approverId: persona().id, approvalConfirmed: true, requestId: newRequestId() };
+  return { ...ownership(), amountCents: check.cents, approverId: persona().id, approvalConfirmed: true, requestId: newRequestId(), ...($('#give-hold').checked ? { hold: true } : {}) };
 }
 
 async function simulate(outcome) {
@@ -1722,15 +1730,20 @@ const OUTCOME_TEXT = {
   rejected_mismatch: ['error', 'The payment did not match what this server expected, so it was not counted.'],
   not_credited: ['error', 'PayPal reported an unexpected status. No progress was recorded.'],
   unknown: ['info', 'PayPal did not confirm this payment in time, so its outcome is not known yet. Nothing was credited; check it from its Ledger receipt.'],
+  held: ['ok', 'Held. Nothing is counted until an adult releases or returns it from its Ledger record.'],
+  returned: ['info', 'Returned. Nothing was charged or counted.'],
+  lapsed: ['info', 'This hold expired. Nothing was charged or counted.'],
+  not_held: ['info', 'Approved but not held yet. No progress was recorded.'],
 };
 
 function handleContributionResult(res) {
   const before = state.progress.progressCents;
   const [kind, text] = OUTCOME_TEXT[res.outcome] ?? ['info', `Result: ${res.outcome}`];
-  if (['completed', 'pending', 'already_completed'].includes(res.outcome) && res.contribution) {
+  if (['completed', 'pending', 'already_completed', 'held', 'returned', 'lapsed'].includes(res.outcome) && res.contribution) {
     ui.receipt = { contribution: res.contribution, outcome: res.outcome, before: res.outcome === 'completed' ? before : res.progress.progressCents, after: res.progress.progressCents, awarded: res.awarded ?? [] };
   }
-  if (res.outcome === 'completed') { $('#give-approve').checked = false; ui.amountTouched = false; }
+  if (['completed', 'held'].includes(res.outcome)) { $('#give-approve').checked = false; $('#give-hold').checked = false; ui.amountTouched = false; }
+  ui.holdArm = null;
   setStatus('#give-status', kind, text);
   if (res.outcome === 'completed') sound.cue('chime');
   else if (['declined', 'rejected_mismatch', 'not_credited'].includes(res.outcome)) sound.cue('soft');
@@ -1740,7 +1753,7 @@ function handleContributionResult(res) {
     ui.ledgerRecord = ledgerRows().find((r) => r.contribution?.id === res.contribution.id)?.id ?? ui.ledgerRecord;
     renderLedgerRecord(); ledgerGrid?.selectRecord(ui.ledgerRecord);
   }
-  if (ui.receipt && ['completed', 'pending'].includes(res.outcome)) $('#receipt').focus({ preventScroll: false });
+  if (ui.receipt && ['completed', 'pending', 'held'].includes(res.outcome) && ui.tab === 'give') $('#receipt').focus({ preventScroll: false });
   renderNextStep();
 }
 
@@ -1756,7 +1769,7 @@ function renderReceipt() {
   box.hidden = false;
   box.replaceChildren(
     h('span', { class: `stamp ${c.simulated ? 'simulated' : 'sandbox'}` }, c.simulated ? 'Simulated · example mode · no PayPal transaction' : 'PayPal sandbox · test money'),
-    h('h4', { id: 'receipt-title' }, completed ? 'Contribution receipt' : 'Contribution pending'),
+    h('h4', { id: 'receipt-title' }, completed ? 'Contribution receipt' : c.status === 'held' ? 'Contribution held' : ['returned', 'lapsed'].includes(c.status) ? 'Hold ended' : 'Contribution pending'),
     h('p', { class: 'big' }, `${money(c.amountCents)} ${c.currency}`),
     // The same sentence, from the same records, as the Ledger receipt for this contribution.
     h('p', { class: 'counts', 'data-counts': storyKey(story) }, countsSentence(story, money)),
@@ -1767,6 +1780,7 @@ function renderReceipt() {
       h('dt', {}, c.simulated ? 'Simulated order' : 'PayPal order'), h('dd', {}, c.providerOrderId ?? '—'),
       h('dt', {}, c.simulated ? 'Simulated capture' : 'PayPal capture'), h('dd', {}, capture?.captureId ?? 'none yet'),
       h('dt', {}, 'Recorded'), h('dd', {}, timeLabel(c.updatedAt)),
+      ...(c.hold ? [h('dt', {}, 'Held'), h('dd', {}, money(c.hold.heldCents)), h('dt', {}, 'Released'), h('dd', {}, c.hold.status === 'released' ? money(c.hold.releaseCents) : 'Nothing')] : []),
       ...(completed && r.outcome === 'completed' ? [h('dt', {}, 'Goal progress'), h('dd', {}, `${money(r.before)} → ${money(r.after)} (${formatPercent(r.after, state.goal.targetCents)})`)] : []),
       ...(r.awarded.filter((a) => typeof a === 'number').length ? [h('dt', {}, 'Milestone'), h('dd', {}, r.awarded.filter((a) => typeof a === 'number').map((t) => `${TIERS[t].name} raised`).join(', '))] : []),
     ),
@@ -1814,6 +1828,7 @@ const STATUS_LABEL = {
   creating: 'Creating', created: 'Awaiting approval', approval_canceled: 'Checkout closed', pending: 'Pending — not counted yet',
   completed: 'Completed — counted', declined: 'Declined — not counted', failed: 'Failed — not counted', rejected: 'Rejected (mismatch) — not counted',
   refunded: 'Refunded — progress reversed', partially_refunded: 'Partly refunded',
+  held: 'Held — not counted', returned: 'Hold returned — not counted', lapsed: 'Hold expired — not counted',
 };
 const KIND_LABEL = {
   starting_progress: 'Starting progress', contribution: 'Contribution', refund: 'Refund', simulated_contribution: 'Contribution', simulated_refund: 'Refund',
@@ -1852,7 +1867,7 @@ function renderLedgerGrid() {
     // Programmatic selection already rendered the receipt. AG Grid may report it asynchronously; rebuilding the
     // same receipt then would remove its focused element after an "Open receipt" link moved keyboard focus there.
     if (ui.ledgerRecord === row.id) return;
-    ui.ledgerRecord = row.id; ui.refundArm = null; renderLedgerRecord();
+    ui.ledgerRecord = row.id; ui.refundArm = null; ui.holdArm = null; renderLedgerRecord();
     if (ui.stewardFocus && row.contribution?.providerOrderId !== ui.stewardFocus) $('#steward-answer').hidden = true;
   } });
   ui.ledgerLayout = ledgerGrid.update(rows, state.progress.progressCents).then(() => {
@@ -1959,7 +1974,7 @@ function renderTreasury() {
   if (ui.tab !== 'ledger') return;
   treasury ??= createTreasury($('#treasury-next'), { formatMoney: money, onVisit: visitDistrict,
     onRecord: (id) => {
-      ui.ledgerRecord = id; ui.refundArm = null;
+      ui.ledgerRecord = id; ui.refundArm = null; ui.holdArm = null;
       ledgerGrid?.selectRecord(id); renderLedgerRecord();
       revealInLedger(() => $('#ledger-contributions li'), true);
     },
@@ -1993,12 +2008,13 @@ function renderLedgerRecord() {
     if (c.status === 'pending' && c.simulated) actions.push(h('button', { type: 'button', onclick: () => completePending(c.id) }, 'Simulate PayPal completing it'));
     // The existing explicit check. It runs only from this button: never on open, search, reload or a local question.
     const check = checkStatus(c);
-    const checkButton = !c.simulated && c.providerOrderId && (check.needsCheck || ['pending', 'completed', 'partially_refunded'].includes(c.status))
+    const checkButton = !c.simulated && c.providerOrderId && (check.needsCheck || ['pending', 'completed', 'partially_refunded', 'held'].includes(c.status))
       ? h('button', { type: 'button', onclick: () => refreshOrder(c.providerOrderId) }, 'Check with PayPal') : null;
     if (checkButton && !check.needsCheck) actions.push(checkButton);
     if (!c.simulated && c.providerOrderId && state.steward.paypalTools && mayAskSteward()) {
       actions.push(h('button', { type: 'button', onclick: () => askSteward(`Did PayPal confirm the ${money(c.amountCents)} contribution?`, c.providerOrderId) }, 'Ask the steward to verify'));
     }
+    if (c.hold?.status === 'held' && adult) actions.push(...holdActions(c));
     if (refundable && adult) {
       const left = capture.amountCents - capture.refundedCents;
       actions.push(ui.refundArm === capture.captureId
@@ -2130,7 +2146,7 @@ function openReceipt(contributionId) {
   const rows = ledgerRows();
   const row = rows.find((r) => r.contribution?.id === contributionId && !(r.recordEntry?.effect < 0)) ?? rows.find((r) => r.contribution?.id === contributionId);
   if (!row) return;
-  ui.ledgerRecord = row.id; ui.refundArm = null;
+  ui.ledgerRecord = row.id; ui.refundArm = null; ui.holdArm = null;
   ledgerGrid?.selectRecord(row.id);
   renderLedgerRecord();
   $('#ledger-contributions li')?.focus();
@@ -2150,8 +2166,59 @@ async function refreshOrder(orderId) {
     setStatus('#ledger-status', 'error', error.message, { debugId: error.debugId });
   }
 }
+// A held contribution's two adult decisions, on its Ledger record. Like a refund, each is armed first and then confirmed
+// by its own button, which names the exact amount; that second press is the adult's explicit approval.
+function holdActions(c) {
+  const arm = ui.holdArm?.id === c.id ? ui.holdArm : null;
+  const armWith = (kind) => () => {
+    const most = Math.min(c.hold.heldCents, Math.max(0, state.progress.remainingCents));
+    ui.holdArm = { id: c.id, kind, requestId: newRequestId(), amount: centsToInput(most) };
+    renderLedger();
+  };
+  const keep = h('button', { type: 'button', class: 'link-button', onclick: () => { ui.holdArm = null; renderLedger(); } }, 'Keep holding');
+  if (!arm) {
+    return [h('button', { type: 'button', 'data-hold': 'release', onclick: armWith('release') }, c.simulated ? 'Simulate release…' : 'Release to the goal…'),
+      h('button', { type: 'button', 'data-hold': 'return', onclick: armWith('return') }, c.simulated ? 'Simulate return…' : 'Return the hold…')];
+  }
+  if (arm.kind === 'return') {
+    return [h('button', { type: 'button', class: 'danger', 'data-hold': 'confirm-return', onclick: () => decideHold(c) }, `Confirm return of ${money(c.hold.heldCents)}`), keep];
+  }
+  const confirm = h('button', { type: 'button', class: 'primary', 'data-hold': 'confirm-release', onclick: () => decideHold(c) });
+  const label = () => { const cents = parseAmountToCents(arm.amount); confirm.textContent = cents === null ? 'Confirm release' : `Confirm release of ${money(cents)}`; };
+  const amount = h('input', { class: 'hold-amount', inputmode: 'decimal', autocomplete: 'off', value: arm.amount, 'aria-label': `Amount to release, up to ${money(c.hold.heldCents)}`,
+    oninput: (e) => { arm.amount = e.target.value; label(); } });
+  label();
+  return [h('label', { class: 'field hold-release' }, h('span', {}, `Release (of ${money(c.hold.heldCents)} held)`), h('span', { class: 'money' }, amount)), confirm, keep];
+}
+
+async function decideHold(c) {
+  const arm = ui.holdArm;
+  if (!arm || arm.id !== c.id || persona()?.role !== 'adult') return;
+  const body = { ...ownership(), approverId: persona().id, approvalConfirmed: true, requestId: arm.requestId };
+  if (arm.kind === 'release') {
+    const cents = parseAmountToCents(arm.amount);
+    if (cents === null || cents < state.contributionLimits.minCents || cents > c.hold.heldCents) {
+      setStatus('#ledger-status', 'error', `Release between ${money(state.contributionLimits.minCents)} and the ${money(c.hold.heldCents)} that is held.`);
+      return;
+    }
+    body.amountCents = cents;
+  }
+  const releasing = arm.kind === 'release';
+  setStatus('#ledger-status', 'working', c.simulated ? `Recording a simulated ${releasing ? 'release' : 'return'}…` : `Asking PayPal sandbox to ${releasing ? 'release this amount' : 'return this hold'}…`);
+  try {
+    const res = await api.post(`/api/contributions/${encodeURIComponent(c.id)}/${arm.kind}`, body);
+    handleContributionResult(res);
+    const [kind, text] = OUTCOME_TEXT[res.outcome] ?? ['info', `Result: ${res.outcome}`];
+    setStatus('#ledger-status', kind, res.outcome === 'completed' ? `Released ${money(body.amountCents)}. It now counts toward the goal.` : text);
+  } catch (error) {
+    // The armed decision keeps its request id, so pressing Confirm again repeats this same request.
+    setStatus('#ledger-status', 'error', error.message, { debugId: error.debugId });
+    renderLedger();
+  }
+}
+
 async function refund(captureId, simulated) {
-  ui.refundArm = null;
+  ui.refundArm = null; ui.holdArm = null;
   const url = simulated ? `/api/example/captures/${encodeURIComponent(captureId)}/refund` : `/api/paypal/captures/${encodeURIComponent(captureId)}/refund`;
   setStatus('#ledger-status', 'working', simulated ? 'Recording a simulated refund…' : 'Asking PayPal sandbox to refund…');
   try {
@@ -2324,7 +2391,7 @@ function bindEvents() {
     e.currentTarget.textContent = on ? 'Pixel art' : 'Raw 3D';
     scene?.setPixelMode(on);
   });
-  $('#persona').addEventListener('change', (e) => { ui.personaId = e.target.value; pref.set('persona', ui.personaId); renderActiveMember(); ui.refundArm = null; $('#give-approve').checked = false; ui.approvalBasis = null; renderGive(); renderLedger(); renderNextStep(); renderExampleEntry(); familyChoices?.render(); kitList?.render(); villageExchange?.render(); villageFund?.render(); });
+  $('#persona').addEventListener('change', (e) => { ui.personaId = e.target.value; pref.set('persona', ui.personaId); renderActiveMember(); ui.refundArm = null; ui.holdArm = null; $('#give-approve').checked = false; ui.approvalBasis = null; renderGive(); renderLedger(); renderNextStep(); renderExampleEntry(); familyChoices?.render(); kitList?.render(); villageExchange?.render(); villageFund?.render(); });
   $('#next-step-go').addEventListener('click', openNextStep);
   $('#deed-visit').addEventListener('click', visitDeed);
   $('#deed-next').addEventListener('click', () => { ui.deeds.index++; renderDeed(); $('#deed-name').focus(); });
@@ -2385,6 +2452,8 @@ function bindEvents() {
 
   // Contribute
   $('#give-amount').addEventListener('input', () => { ui.amountTouched = true; $('#give-approve').checked = false; ui.approvalBasis = null; renderGive(); });
+  // Holding and paying are different approvals: changing the choice asks for the tick again.
+  $('#give-hold').addEventListener('change', () => { $('#give-approve').checked = false; ui.approvalBasis = null; renderGive(); });
   $('#give-approve').addEventListener('change', (e) => {
     // Ticking approves the amount shown now: a later suggestion never replaces it.
     ui.approvalBasis = e.target.checked ? approvalBasis() : null;

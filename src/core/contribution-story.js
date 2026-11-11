@@ -12,7 +12,8 @@ const BOOKS = Object.freeze({
 // Order states that the server sets only together with a credited capture.
 const SETTLED = new Set(['completed', 'refunded', 'partially_refunded']);
 // Order states in which nothing has been counted yet but still could be.
-const OPEN = new Set(['creating', 'created', 'approval_canceled', 'pending']);
+// A held contribution is one of them: an adult may still release it. A returned or expired hold is not.
+const OPEN = new Set(['creating', 'created', 'approval_canceled', 'pending', 'held']);
 // Within one instant: the order before its credit, a credit before its refunds, and saved records before a check.
 const SEQUENCE = { order: 0, credit: 1, refund: 2, refund_pending: 2, refund_not_counted: 2, check: 3 };
 
