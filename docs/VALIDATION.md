@@ -1,5 +1,14 @@
 # Validation
 
+## Snow sleigh colours — November 10, 2026
+
+Branch `claude/sleigh-colours-20261110`, on `main` at `97c084a`. Looking at Snow in a running example at night, the owner found the sleigh team too dark, the driver not clearly red and hard to tell from the sleigh, and the reindeer not brown.
+
+- **Cause, seen in captures before the change:** under night moonlight the team's shared materials rendered near-black. By day the red coat sat in a red sleigh the colour of the palace roofs, and each reindeer wore a wide red band.
+- **Change** (scenery only: `src/world/winter-sleigh.js` and one line in `src/world/board-scene.js`): a red driver in a green and gold sleigh, brown reindeer with a slim gold collar, and a larger red nose on the lead. The team's meshes use their own copies of the materials and glow a little in their own colours: 0.1 by day, 0.22 in the afternoon, 0.55 at night. The shared scenery materials are untouched, and every colour still passes through the original 90-colour palette.
+- **Checks:** the Snow browser test now also requires the night glow to exceed the day glow. It passed on desktop locally, and failed when the night glow was set equal to the day's (then restored). `npm run check` passed; the unit run reported 777 results, 775 passed, two existing skips. Day, afternoon and night captures were inspected before and after. The [day](screenshots/winter-sleigh.png) and [night](screenshots/winter-sleigh-night.png) renders come from [the capture script](screenshots/winter-sleigh-capture.mjs): a disposable example, no page error, no request left the page's origin.
+- Not checked: the phone layout, and the tree and snowman at night, which are unchanged.
+
 ## README refresh, meadow scenery and Snow weather — November 10, 2026
 
 Branch `claude/readme-scenery-snow-20261110`, built on `main` at `fb65357` (after #85). At the owner's request it brings in Rachel's two scenery branches unchanged, with ordinary merge commits: four outer-meadow miniatures ([#86](https://github.com/alejandro-publius/our-castle/pull/86), `7aeb38e`) and Snow weather with a sleigh, tree and snowman ([#87](https://github.com/alejandro-publius/our-castle/pull/87), `6aaf8cd`). It also refreshes the README, its diagrams and the current-state notes. No server, payment, dependency or workflow change.

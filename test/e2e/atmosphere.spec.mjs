@@ -51,6 +51,10 @@ test('Snow shows the winter scene and the sleigh, Clear puts them away, and neit
   const a = await sky(page);
   expect(a).toMatchObject({ weather: 'snow', snow: { visible: true, reindeer: 5 }, rain: { visible: false } });
   await expect.poll(async () => (await sky(page)).snow.x).not.toBe(a.snow.x); // the sleigh is flying
+  // The sleigh team carries its own light, so moonlight does not turn it near-black.
+  await page.selectOption('#time-mode', 'day'); const byDay = (await sky(page)).snow.glow;
+  await page.selectOption('#time-mode', 'night');
+  expect((await sky(page)).snow.glow).toBeGreaterThan(byDay);
   await page.selectOption('#weather-mode', 'clear');
   expect(await sky(page)).toMatchObject({ weather: 'clear', snow: { visible: false } });
   expect([...seen.writes, ...seen.weather]).toEqual([]);
