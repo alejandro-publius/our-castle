@@ -1731,7 +1731,7 @@ const OUTCOME_TEXT = {
   not_credited: ['error', 'PayPal reported an unexpected status. No progress was recorded.'],
   unknown: ['info', 'PayPal did not confirm this payment in time, so its outcome is not known yet. Nothing was credited; check it from its Ledger receipt.'],
   held: ['ok', 'Held. Nothing is counted until an adult releases or returns it from its Ledger record.'],
-  extended: ['ok', 'Extended. PayPal holds it again under a new authorization, with a new three-day guarantee.'],
+  extended: ['ok', 'Extended. It is held again under a new authorization, with a new three-day guarantee.'],
   returned: ['info', 'Returned. Nothing was charged or counted.'],
   lapsed: ['info', 'This hold expired. Nothing was charged or counted.'],
   not_held: ['info', 'Approved but not held yet. No progress was recorded.'],
