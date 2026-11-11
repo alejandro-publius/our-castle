@@ -97,3 +97,16 @@ The guarantee is counted from PayPal's own authorization time. When PayPal leave
 - **Hold webhooks** need a public webhook endpoint, which this project does not run.
 
 Not built: more than one extension, payouts and invoicing.
+
+## Random histories
+
+`test/unit/payment-holds-random.test.mjs` runs 100 seeded random histories against the fake PayPal, twice: once with truthful order reads, and once with reads that may hide PayPal's newest capture. A history mixes holds, valid and invalid releases, returns, extensions, repeated requests, lost answers, declined captures, checks, webhook deliveries and passing days.
+
+- **After every step:** progress equals the counted captures, each counted capture is one the fake really took for that amount, the released total never exceeds the hold, and at most one decision waits for PayPal.
+- **After a final check with truthful reads:** everything the fake took is counted once, and the hold ends where the fake says it did.
+- **Does it bite?** Five deliberate breaks of the hold rules, one at a time, each failed it. An unchanged run passed.
+
+It is evidence about this server's logic only, and it found two limits. Neither counts money that PayPal did not take.
+
+- **A declined capture stays on PayPal's order.** A later check or webhook about it is read as a capture nobody released. The check then reports a difference although PayPal took nothing and the ledger counted nothing, and while another release is under way the contribution can read as rejected until it is checked again.
+- **A lost answer followed by a stale read can leave money uncounted.** If a release's answer is lost and the next read of the order does not show that capture yet, the hold reopens. Deciding the same release again is safe, because it is the same PayPal request. Deciding something else (a return, or another amount) leaves the first capture taken but uncounted. A later check reports it every time and never says the two agree, but it does not count it. Example: seed 135 with stale reads, where PayPal took $15.00 and the ledger counted $5.00.
