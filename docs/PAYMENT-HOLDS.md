@@ -2,7 +2,7 @@
 
 A contribution can be **held** before anything is taken. PayPal authorizes the adult-approved amount, nothing is credited and the world does not move. Later an adult **releases** an exact amount to the goal, in one step or up to three, or **returns** what is still held. If the decision takes longer than PayPal's three-day guarantee, an adult can **extend** the hold once. This sits beside the existing checkout, which is unchanged and is still the default.
 
-Status: hold, release and return were merged to `main` by [#83](https://github.com/alejandro-publius/our-castle/pull/83). The extension, stepped releases and the money trail come from branch `claude/hold-lifecycle-20261110`. Every check so far uses the fake PayPal sandbox or example mode. **No real sandbox hold, capture, reauthorization or void has been made with any of it.**
+Status: hold, release and return were merged to `main` by [#83](https://github.com/alejandro-publius/our-castle/pull/83). The extension, stepped releases and the money trail come from [#85](https://github.com/alejandro-publius/our-castle/pull/85) and are not in the saved Mac apps, which stay on schema 18 until the owner asks for another upgrade. Every check so far uses the fake PayPal sandbox or example mode. **No real sandbox hold, capture, reauthorization or void has been made with any of it.**
 
 ## What happens
 

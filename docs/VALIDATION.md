@@ -2,7 +2,7 @@
 
 ## Hold extension and stepped releases — November 10, 2026
 
-Branch `claude/hold-lifecycle-20261110`, built on `main` at `9c95254`. A hold can now be extended once after PayPal's three-day honor period (a reauthorization), released in up to three steps with the last one final, and read as a money trail on its Ledger record. [What it does and the rules it keeps](PAYMENT-HOLDS.md).
+Branch `claude/hold-lifecycle-20261110` ([#85](https://github.com/alejandro-publius/our-castle/pull/85)), built on `main` at `9c95254`. A hold can now be extended once after PayPal's three-day honor period (a reauthorization), released in up to three steps with the last one final, and read as a money trail on its Ledger record. [What it does and the rules it keeps](PAYMENT-HOLDS.md).
 
 **Every check here uses the fake PayPal sandbox or example mode.** No real sandbox order was held, reauthorized, captured or voided, and none of this is live PayPal evidence. The saved Mac apps were not changed: they stay on schema 18.
 
