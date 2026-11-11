@@ -98,6 +98,34 @@ test('the loading cover cannot obstruct the real family sign-in dialog', { tag: 
   } finally { release(); await v.context.close(); await family.close(); }
 });
 
+// While the cover is up the page behind it is inert, and a focus call made there is silently dropped. Moss's tour
+// opens during startup, before the page is marked ready, so its opening focus has to survive that.
+test('a tour that opens during startup keeps its opening focus once the loading cover leaves', { tag: '@release' }, async ({ browser }, info) => {
+  const demo = await startDemo(), v = await visitor(browser, info, demo.url);
+  const release = await gateSession(v.page);
+  try {
+    await v.page.goto(demo.url + '/?tour=1', { waitUntil: 'domcontentloaded' });
+    await expect(v.page.locator('#realm-loader')).toBeVisible();
+    await expect(v.page.locator('.shell')).toHaveAttribute('inert', '');
+    release();
+    await expect(v.page.locator('body')).toHaveAttribute('data-ready', 'true', { timeout: 30_000 });
+    await expect(v.page.locator('#realm-loader')).toHaveCount(0);
+    await expect(v.page.locator('.keeper')).toBeVisible();
+    await expect(v.page.locator('#keeper-step')).toHaveText('1 of 8');
+    await expect(v.page.locator('#keeper-next')).toBeFocused();
+    // Whether the cover is still up when the tour opens depends on how fast the realm starts, so the same hand-off is
+    // made exact here: the page is inert as the cover leaves it, the tour opens, and then the page accepts focus again.
+    await v.page.getByRole('button', { name: 'Skip' }).click();
+    await expect(v.page.locator('.keeper')).toHaveCount(0);
+    await v.page.evaluate(() => { document.querySelector('.shell').inert = true; document.getElementById('keeper-open').click(); });
+    await expect(v.page.locator('.keeper')).toBeVisible();
+    expect(await v.page.evaluate(() => document.activeElement?.id || null)).not.toBe('keeper-next'); // an inert page drops the call
+    await v.page.evaluate(() => { document.querySelector('.shell').inert = false; });
+    await expect(v.page.locator('#keeper-next')).toBeFocused();
+    clean(v);
+  } finally { release(); await v.context.close(); await demo.close(); }
+});
+
 test('a stalled app module loses its loading cover after the limit without claiming readiness', { tag: '@release' }, async ({ browser }, info) => {
   const demo = await startDemo(), v = await visitor(browser, info, demo.url, { reducedMotion: 'reduce' });
   const { page } = v;
