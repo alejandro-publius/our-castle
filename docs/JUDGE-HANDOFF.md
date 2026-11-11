@@ -112,7 +112,7 @@ Passkey setup needs a compatible browser/device. Existing multi-context tests us
 
 ## 4. What remains, by who has to act
 
-**Current Mac apps:** **http://localhost:3010** (PID 440) and the isolated rehearsal **http://localhost:3021** (PID 985) now run reviewed source `b21b2d8` from `~/projects/our-castle-runtime-release-20261109`, schema 12. The verified private-copy rehearsals and stopped-app backups preceded activation. All 19 original application tables/values and core state are preserved; eight new tables are empty. Progress remains $60/$300 and $75/$300, and the existing completed $15 capture/credit is preserved. Prior payment, planner, Merchant and access modes remain; the compiled Rust solver and separately authorized OpenAI photo configuration are active, while Cohere stays off. Shared-family mode remains opt-in. [Release readiness](RELEASE-READINESS.md#current-mac-app) records the exact local upgrade, operator correction and limits. Refresh an idle page to load these assets; no further payment or provider check is needed.
+**Current Mac apps:** **http://localhost:3010** (PID 83876) and the isolated rehearsal **http://localhost:3021** (PID 83914) run reviewed source `a56170a` from `~/projects/our-castle-runtime-release-20261110`, schema 18, since the owner-requested upgrade on November 10. Private-copy rehearsals, a rehearsed rollback and stopped-app backups preceded it. Every original row is unchanged and the seventeen new tables are empty. Progress remains $60/$300 and $75/$300, and the existing completed $15 capture/credit is preserved. Prior payment, planner, Merchant and access modes remain; the compiled Rust solver and OpenAI photo configuration are active, and Cohere ordering is now selected. Later merges to `main` (the hold extension and stepped releases, meadow scenery and Snow) are not in these apps. Shared-family mode remains opt-in. [Release readiness](RELEASE-READINESS.md#current-mac-app) records the exact local upgrade, operator correction and limits. Refresh an idle page to load these assets; no further payment or provider check is needed.
 
 **Completed manual checkout:** the owner was the sole browser operator and completed the approved $15 contribution. This worker inspected the saved capture/credit, fixed the provider's forced-tool incompatibility, and made one necessary same-order steward retry through the local API. It genuinely called `get_order`; the server returned `match`, selected-order `verified`, and no warnings. Do not create another payment or repeat paid suites.
 
@@ -149,6 +149,9 @@ Review [current main](https://github.com/alejandro-publius/our-castle/tree/main)
 This source also includes:
 - [family choices](FAMILY-CHOICES.md), with their saved schedules and family-fit shopping;
 - a [kit list](KIT-LIST.md) from typed text or a photo, and [complete-kit planning](KIT-PLANNER.md);
+- a [shared village fund](VILLAGE-DEMO.md) with its square, recipient-bound sandbox orders, devnet watcher and read-only MCP bridge;
+- [hold-first contributions](PAYMENT-HOLDS.md): hold, extend once, release in up to three steps, or return;
+- the knight-and-dragon [loading scene](DRAGON-LOADING.md), Snow weather and outer-meadow miniatures;
 - Moss's optional [tour](KEEPER-GUIDE.md);
 - opt-in music;
 - payment recovery fixes.
@@ -162,7 +165,7 @@ The reviewed scene lifecycle, Treasury stalled-asset recovery and [credential-fr
 
 The checked merge and source release `e757071` have the same implementation tree. These counts describe that release; this handoff revision changes documentation only. [Validation](VALIDATION.md) records exact scopes and corrections.
 
-These source suites use fake providers. Both saved Mac apps now run the integrated source `b21b2d8` at schema 12; the later local upgrade and one live synthetic OpenAI photo check are recorded separately in [validation](VALIDATION.md#saved-mac-runtime-activation--november-9-2026).
+These source suites use fake providers. Both saved Mac apps now run `a56170a` at schema 18; that local upgrade and one live synthetic OpenAI photo check are recorded separately in [validation](VALIDATION.md#saved-mac-runtime-upgrade--november-10-2026).
 
 Identify the commit you actually inspected, read [release readiness](RELEASE-READINESS.md) and [validation](VALIDATION.md), then follow the relevant implementation. Report inaccessible files explicitly. These are source-review entry points, not claims that every execution path has live-provider proof.
 

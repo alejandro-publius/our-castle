@@ -17,6 +17,11 @@ export const WAYSIDE_SITES = Object.freeze([
   Object.freeze({id:'alder-outrider',kind:'rider',x:-47,z:-55,radius:3.5}),
   Object.freeze({id:'village-fallen-oak',kind:'timber',x:-51,z:12,radius:3,angle:.24}),
   Object.freeze({id:'keep-fallen-birch',kind:'timber',x:-30,z:-20,radius:3,angle:-.35}),
+  // Outer meadows: each sits in the centre of an existing frontier clearing.
+  Object.freeze({id:'tourney-field',kind:'tourney',x:47,z:80,radius:11}),
+  Object.freeze({id:'hay-meadow',kind:'hay',x:-10,z:80,radius:10}),
+  Object.freeze({id:'standing-stones',kind:'stones',x:131,z:80,radius:8.5}),
+  Object.freeze({id:'border-watchtower',kind:'watchtower',x:162,z:-28,radius:6}),
 ]);
 export const inDiscoveryClearing = (x,z) => Math.hypot(x-WOODLAND_CAMP.x,z-WOODLAND_CAMP.z)<9
   || Math.hypot(x-WOODLAND_GLADE.x,z-WOODLAND_GLADE.z)<10

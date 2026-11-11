@@ -7,6 +7,19 @@ Five restrained additions extend the existing woodland miniature style:
 - **Wayfarer’s well**, southwest of Hearth Village: a roofed stone well, bucket, drinking trough and a wooden signpost.
 - **Fallen oak**, beside the village’s northern walking route, and **fallen birch**, west of the Keep’s approach: short trunks, cut ends, stumps and fern fronds, with the traveled path left open.
 
+## Outer meadows
+
+Four of the twelve empty frontier meadows now hold one miniature each, built the same way and from the same palette:
+
+- **Tourney field**, front meadow south of Market Town: a tilt rail, red and blue striped pavilions with small pennants, a quintain, a shield rack and two benches.
+- **Hay meadow**, front meadow south of Hearth Village: three haystacks, rows of sheaves, a scarecrow and a split-rail fence.
+- **Standing stones**, front-right meadow: nine weathered uprights, one pair still carrying its lintel, around a low altar.
+- **Border watchtower**, east meadow: the estates' existing round tower with a blue banner inside a ring of stakes.
+
+The other eight meadows, including the Family Campsite's, stay as they were.
+
+Actual daytime renders from the example game: [tourney field](screenshots/meadow-tourney.png), [hay meadow](screenshots/meadow-hay.png), [standing stones](screenshots/meadow-stones.png), [watchtower](screenshots/meadow-watchtower.png).
+
 Use the compass to explore near these places. They add no marker, task, district, unlock or financial state. Their locations are deterministic; trees leave a small opening around each miniature. The existing estate roof, well and shield builders and farm-horse proportions anchor the art direction. No imported artwork, texture or palette replacement is involved.
 
 Static geometry shares the existing instance batches. The single pennant uses the existing ambient clock and remains still when motion is reduced, the page is hidden, or the scene is covered; it creates no timer of its own. The scenery is built once with the woodland, independently of household progress.

@@ -1,5 +1,18 @@
 # Validation
 
+## README refresh, meadow scenery and Snow weather — November 10, 2026
+
+Branch `claude/readme-scenery-snow-20261110`, built on `main` at `fb65357` (after #85). At the owner's request it brings in Rachel's two scenery branches unchanged, with ordinary merge commits: four outer-meadow miniatures ([#86](https://github.com/alejandro-publius/our-castle/pull/86), `7aeb38e`) and Snow weather with a sleigh, tree and snowman ([#87](https://github.com/alejandro-publius/our-castle/pull/87), `6aaf8cd`). It also refreshes the README, its diagrams and the current-state notes. No server, payment, dependency or workflow change.
+
+- **Both scenery changes were read line by line.** #86 adds four entries to the wayside list and their builders. #87 adds a `snow` weather mode, snowflakes and a winter scenery group that is visible only while Snow is chosen. Neither touches the server, a payment, a ledger record, a saved preference beyond the existing weather choice, or the network.
+- **Their own hosted runs.** #86 passed all ten jobs on `7aeb38e` ([run 42961673725](https://github.com/alejandro-publius/our-castle/actions/runs/42961673725)) on the second attempt of one job: the first attempt of the desktop release selection failed when the keeper tour test reached its 90 s limit. Her phone job in that run was faster than the concurrent #85 run's, so this reads as a slow runner rather than the scenery; the rerun passed. #87's run on `6aaf8cd` had passed eight of ten jobs, with two still running, when this was written. This pull request's own run decides the browser journeys for all of it together.
+- **The combination** (`main` + #86 + #87) locally: `npm run check` passed, and the full unit run reported 777 results, 775 passed, two existing skips, no failure.
+- **Five new captures** for the README and the hold explainer come from two disposable example sessions, taken by [`docs/screenshots/readme-demos-capture.mjs`](screenshots/readme-demos-capture.mjs): the village fund after one simulated $40 contribution, and a simulated $40 hold released in two steps. No page error occurred and no request left the page's origin. They are example-mode pictures, not PayPal evidence. [What they show and do not show](screenshots/readme-demos-sources.json).
+- **Diagrams and links.** All twelve Mermaid diagrams in the README, the architecture page and the hold explainer were parsed and rendered with the published Mermaid 11 library. The relative links and anchors in the eleven changed pages resolve; one old entry on this page pointed at a heading that no longer exists and now points at the page.
+- **Corrected along the way:** the README and the judge handoff still described the saved Mac apps as `b21b2d8` at schema 12; they have run `a56170a` at schema 18 since the November 10 upgrade. The README also said Cohere had no live check; one live request on November 10 returned an ordering (connection only, quality not evaluated).
+
+Not checked here: Snow at night or in the afternoon, the phone layout of either scenery change, and anything about the saved apps, which do not run these changes.
+
 ## Hold extension and stepped releases — November 10, 2026
 
 Branch `claude/hold-lifecycle-20261110` ([#85](https://github.com/alejandro-publius/our-castle/pull/85)), built on `main` at `9c95254`. A hold can now be extended once after PayPal's three-day honor period (a reauthorization), released in up to three steps with the last one final, and read as a money trail on its Ledger record. [What it does and the rules it keeps](PAYMENT-HOLDS.md).
@@ -2339,7 +2352,7 @@ An initial record-link check found a receipt focus selector that omitted contrib
 
 **Actual captures, copied unchanged:** [Merchant desktop](screenshots/sponsor-merchant-desktop.png), [Merchant phone](screenshots/sponsor-merchant-phone.png), [Treasury desktop](screenshots/sponsor-treasury-desktop.png), [Treasury phone](screenshots/sponsor-treasury-phone.png). [Source hashes and fixture provenance](screenshots/sponsor-depth-sources.json). Images show invented products and a simulated contribution, not the owner's payment. UI tests checked page errors and overflow; unlicensed Studio trial console notices are expected.
 
-**Limits:** no live Channel3 detail/similar request, owner-key trial validation, new PayPal order/refund, paid model call, physical-phone test, video, deployment or submission. Historical November 5 search and in-app payment evidence are unchanged. Owner 3010/3021, their `.env` and records were not touched. Migration 5 adds item variant/condition provenance on temporary databases only; coordinate its numbering with the separate garden/schoolhouse and family-access branches before activation. See [release integration note](RELEASE-READINESS.md#sponsor-extension-awaiting-integration--november-6).
+**Limits:** no live Channel3 detail/similar request, owner-key trial validation, new PayPal order/refund, paid model call, physical-phone test, video, deployment or submission. Historical November 5 search and in-app payment evidence are unchanged. Owner 3010/3021, their `.env` and records were not touched. Migration 5 adds item variant/condition provenance on temporary databases only; coordinate its numbering with the separate garden/schoolhouse and family-access branches before activation. See [release readiness](RELEASE-READINESS.md); the integration note this once pointed to has since been folded into that page.
 
 ## Winner research and checkout readiness — November 6 PST, 2026
 
