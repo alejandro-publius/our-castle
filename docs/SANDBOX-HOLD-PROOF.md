@@ -4,6 +4,8 @@ Written November 10, 2026 (Pacific) against `main` at `97c084a`. **Not run.** No
 
 It places one $25.00 hold, releases $15.00 while keeping the rest held, then returns the remaining $10.00. That is one authorization, one capture that is not final, and one void: the three PayPal answers the [hold path](PAYMENT-HOLDS.md) has only ever seen from a fake.
 
+**The clicks were rehearsed on November 11, against a fake.** A browser test ([#95](https://github.com/alejandro-publius/our-castle/pull/95), `test/e2e/submission-walkthrough.spec.mjs`) presses steps 2 to 8 on the real page in sandbox mode, with a fake PayPal and a scripted buyer, for both endings of step 6. Every label, sentence and amount below matched. That checks the page and this server. It says nothing about the PayPal sandbox itself, the real PayPal button or this port, which only this run can show.
+
 It uses a new process, a new port and a new, empty data folder. The saved apps on 3010 and 3021 are not touched, restarted or upgraded, and their records are not read.
 
 ## Before you start
@@ -113,7 +115,7 @@ Sign in to the PayPal sandbox as the **business** account and find this order. C
 
 The developer dashboard's API call log shows the same three requests with their debug IDs; capture that as well if it is to hand.
 
-Back in the app, **Check with PayPal** on the record compares each step with PayPal's order. Press it once and capture its answer (screenshot 5).
+Back in the app, **Check with PayPal** on the record compares each step with PayPal's order. Press it once and capture its answer (screenshot 5). Against the fake it answers **Checked · matches PayPal**; anything else is a finding.
 
 Keep the screenshots outside Git until you have checked that none shows a sign-in, an account email or a full account identifier.
 

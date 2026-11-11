@@ -19,7 +19,7 @@ Decide what your family can afford, then build toward it together.
 Our Castle helps a family plan a shared goal, such as the gear for a camping trip, and keep it when an expense changes.
 
 - **Plan a complete kit.** The family lists what it needs and what it already has. Adults add listings, and the planner compares whole kits against each adult's weekly offer, the date and a one-off expense. If the expense grows, it proposes the smallest change that still fits and keeps every line the family chose to keep.
-- **Contribute under an adult's control.** An adult approves one exact amount. It can be paid straight away, or held first: nothing counts until an adult releases an exact part of it, in up to three steps, or returns it. The record shows its trail, for example Held $40 → Released $15 → $25 still held.
+- **Contribute under an adult's control.** An adult approves one exact amount. It can be paid straight away, or held first: nothing counts until an adult releases an exact part of it, in up to three steps, or returns it. The record shows its trail, for example Held $40 → Released $30 → $10 still held.
 - **See progress.** Confirmed contributions open districts of a pixel woodland and develop the family's project.
 - **Share a goal with the neighbors.** Families can fund one project together. Each chooses only its own share, the shared total is never mixed with a family's own, and private amounts are never shown to other families.
 

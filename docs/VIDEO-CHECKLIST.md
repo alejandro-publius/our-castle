@@ -24,11 +24,11 @@ Before pressing record in the family-trip session: **Try a one-off expense**, `9
 
 ## What must be on screen
 
-- [ ] **Beat 1, 0:00–0:25.** The example label. **$150** and **$180**. **Your chosen kit** on the $180 kit. The stove kept.
-- [ ] **Beat 2, 0:25–1:10.** `120` in **One-off amount**. The $30 shortfall. **Proposal · smallest change**, **$150**, only the tent switched. **Choose this kit**, **Review this kit**, **Save goal and propose this schedule** and **Use this plan** each pressed in view.
-- [ ] **Beat 3, 1:10–1:50.** The amount. **Hold it first** ticked. The approval sentence with the same amount, ending **(simulated)** or **(test money)**. **Held — not counted**. The header amount **before** the release. The confirm button naming the release and what stays held. The header amount **after**. What is still held.
+- [ ] **Beat 1, 0:00–0:25.** The example label. **$150** and **$180**. **Preview on map** pressed on the $180 kit, so the map caption reads **Your chosen kit · $180.00**. The stove kept.
+- [ ] **Beat 2, 0:25–1:10.** `120` in **One-off amount**. **$30.00 short by then** under the chosen kit. The map caption **Proposal · smallest change · $150.00**, only the tent switched. **Choose this kit**, **Review this kit**, **Save goal and propose this schedule** and **Use this plan** each pressed in view.
+- [ ] **Beat 3, 1:10–1:50.** The amount. **Hold it first** ticked. The approval sentence with the same amount, ending **(simulated)** or **(test money)**. **Held — not counted**. The header amount **before** the release. The confirm button naming the release and what stays held. The header amount **after**. What is still held. In the simulated take that is: hold `40.00`, release `30.00`, the header at **$60.00** and then **$90.00**, and **$10.00** still held.
 - [ ] **Beat 4, 1:50–2:30.** A visible cut and a label saying this is a second example. **$200** of **$400**, then **$240**. The schoolhouse before and after. **My realm** with the private goal still **$60.00 toward $300.00**.
-- [ ] **Beat 5, 2:30–2:50.** The hold's money trail, complete and readable for two full seconds. The village's one receipt. The end card.
+- [ ] **Beat 5, 2:30–2:50.** The hold's money trail, complete and readable for two full seconds. The village's **Records**, with the new **+$40.00** receipt last of five. The end card.
 
 ## Mistakes to avoid
 
