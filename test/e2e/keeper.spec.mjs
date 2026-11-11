@@ -38,6 +38,9 @@ test.beforeEach(async ({ page, request, baseURL }) => {
 });
 
 test('the keeper walks the whole demo from the House journal and writes nothing', { tag: '@release' }, async ({ page, baseURL }) => {
+  // Eight steps across the whole journal. On hosted desktop runs this took 45 to 78 seconds when it passed and once ran
+  // out of the usual 90, so it gets twice that. Each step still has its own 15-second wait.
+  test.setTimeout(180_000);
   await ready(page);
   await foundHouse(page);
   // Unsaved work the tour must leave alone: a house-name draft and a contribution an adult has already approved.
