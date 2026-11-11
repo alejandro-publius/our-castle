@@ -48,6 +48,7 @@ test('Snow shows the winter scene and the sleigh, Clear puts them away, and neit
   // A browser with no saved choice starts in Snow.
   await expect(page.locator('#weather-mode')).toHaveValue('snow');
   await expect.poll(async () => (await sky(page)).snow.visible).toBe(true);
+  await expect(status(page)).toContainText('Snow (starting weather)'); // nobody chose it yet, and the status says so
   await openMenu(page, 'world-settings'); await page.selectOption('#weather-mode', 'snow');
   await expect(status(page)).toContainText('Snow (chosen by you)');
   const a = await sky(page);
@@ -126,11 +127,11 @@ test.describe('Auto in Los Angeles', () => {
     await page.clock.setFixedTime(new Date('2026-11-05T02:59:00Z')); // 18:59 in Los Angeles
     await ready(page);
     await expect(page.locator('#time-mode')).toHaveValue('auto');
-    await expect(status(page)).toHaveText('Afternoon (device clock 18:59, America/Los_Angeles) · Snow (chosen by you)');
+    await expect(status(page)).toHaveText('Afternoon (device clock 18:59, America/Los_Angeles) · Snow (starting weather)');
     expect((await sky(page)).period).toBe('afternoon');
     await page.clock.setFixedTime(new Date('2026-11-05T03:00:00Z')); // 19:00
     await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
-    await expect(status(page)).toHaveText('Night (device clock 19:00, America/Los_Angeles) · Snow (chosen by you)');
+    await expect(status(page)).toHaveText('Night (device clock 19:00, America/Los_Angeles) · Snow (starting weather)');
     expect((await sky(page)).period).toBe('night');
   });
 });

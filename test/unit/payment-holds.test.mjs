@@ -625,6 +625,42 @@ for (const adapter of ['rest', 'sdk']) {
     assert.equal((await service.returnHold(decision(id))).outcome, 'returned');
   });
 
+  test(`[${adapter}] a capture PayPal declined stays on its order without reading as a difference, or as news about a later release`, async () => {
+    const env = setupDomain({ adapter, mode: 'sandbox' });
+    const { orderId, id } = await held(env, { amountCents: 4000 });
+    env.fake.behavior.captureStatus = 'DECLINED';
+    assert.equal((await env.service.releaseHold(decision(id, { amountCents: 1500, keepRest: true }))).outcome, 'declined');
+    env.fake.behavior.captureStatus = 'COMPLETED';
+    // PayPal took nothing and the ledger counted nothing: a check says the two agree, and the hold is simply held.
+    const checked = await env.service.refreshPayPalOrder({ providerOrderId: orderId, ...OWNER });
+    assert.equal(checked.outcome, 'held');
+    assert.deepEqual([checked.check.verdict, checked.check.note], ['match', 'Held in PayPal, and not counted in the ledger. A capture that PayPal declined took nothing.']);
+    assert.equal(checked.contribution.status, 'held');
+    // Another release waits for PayPal when a late delivery about the declined capture arrives: it changes nothing.
+    env.fake.behavior.releaseError = { status: 503, issue: 'INTERNAL_SERVER_ERROR' };
+    assert.equal((await env.service.releaseHold(decision(id, { amountCents: 1000, keepRest: true }))).outcome, 'unknown');
+    env.fake.behavior.releaseError = null;
+    const before = view(env, id);
+    const declined = env.fake.orders.get(orderId).purchase_units[0].payments.captures[0];
+    const event = { id: `WH-DECLINED-AGAIN-${adapter}`, event_type: 'PAYMENT.CAPTURE.DECLINED', resource: { ...declined, supplementary_data: { related_ids: { order_id: orderId } } } };
+    assert.equal((await env.service.handleWebhook({ headers: webhookHeaders, rawBody: JSON.stringify(event) })).outcome, 'declined');
+    assert.deepEqual(pick(view(env, id), ['status', 'statusDetail']), pick(before, ['status', 'statusDetail']), 'not marked as rejected');
+    assert.equal(progressFor(env.db, DEMO_GOAL_ID).progressCents, 6000);
+  });
+
+  test(`[${adapter}] a capture nobody released here is saved by a check as a difference, not as a reason to check again`, async () => {
+    const env = setupDomain({ adapter, mode: 'sandbox' });
+    const { orderId, id } = await held(env, { amountCents: 4000 });
+    await env.service.releaseHold(decision(id, { amountCents: 1000, keepRest: true }));
+    env.fake.orders.get(orderId).purchase_units[0].payments.captures.push({ id: 'STRAYCAPTURE0003', status: 'COMPLETED', amount: { currency_code: 'USD', value: '7.00' }, custom_id: id });
+    const checked = await env.service.refreshPayPalOrder({ providerOrderId: orderId, ...OWNER });
+    assert.equal(checked.outcome, 'rejected_mismatch');
+    assert.equal(checked.check.verdict, 'differs');
+    assert.match(checked.check.note, /this check could not count/);
+    assert.doesNotMatch(checked.check.note, /Use “Check with PayPal”/);
+    assert.equal(progressFor(env.db, DEMO_GOAL_ID).progressCents, 7000);
+  });
+
   test(`[${adapter}] while an extension is unanswered, news that the old authorization ended is not acted on; the extension's own answer settles it`, async () => {
     const env = setupDomain({ adapter, mode: 'sandbox', paypalOptions: { orderListsReauthorizations: false } });
     const { orderId, id, placed } = await held(env);
