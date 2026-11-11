@@ -120,7 +120,9 @@ test('a tour that opens during startup keeps its opening focus once the loading 
     await expect(v.page.locator('.keeper')).toHaveCount(0);
     await v.page.evaluate(() => { document.querySelector('.shell').inert = true; document.getElementById('keeper-open').click(); });
     await expect(v.page.locator('.keeper')).toBeVisible();
-    expect(await v.page.evaluate(() => document.activeElement?.id || null)).not.toBe('keeper-next'); // an inert page drops the call
+    // An inert page drops the call, and the browser takes focus off the now-inert button on its next frame. Wait for that
+    // frame: until it runs, focus still sits on the button, and the tour rightly leaves a focused control alone.
+    await expect.poll(() => v.page.evaluate(() => document.activeElement === document.body)).toBe(true);
     await v.page.evaluate(() => { document.querySelector('.shell').inert = false; });
     await expect(v.page.locator('#keeper-next')).toBeFocused();
     clean(v);
