@@ -605,6 +605,64 @@ for (const adapter of ['rest', 'sdk']) {
     const checked = await service.refreshPayPalOrder({ providerOrderId: orderId, ...OWNER });
     assert.equal(checked.check.verdict, 'match');
     assert.equal(progressFor(env.db, DEMO_GOAL_ID).progressCents, 8500);
+    // The retry settled the earlier attempt too, so no watch is left behind: a capture of the same amount that nobody
+    // released here (made in PayPal directly, say) is still never counted.
+    env.fake.orders.get(orderId).purchase_units[0].payments.captures.push({ id: 'STRAYCAPTURE0001', status: 'COMPLETED', amount: { currency_code: 'USD', value: '15.00' }, custom_id: id });
+    assert.equal((await service.refreshPayPalOrder({ providerOrderId: orderId, ...OWNER })).outcome, 'rejected_mismatch');
+    assert.equal(progressFor(env.db, DEMO_GOAL_ID).progressCents, 8500);
+  });
+
+  test(`[${adapter}] a first release PayPal made without confirming stays unknown while PayPal's own status shows a capture the read does not list`, async () => {
+    const env = setupDomain({ adapter, mode: 'sandbox' });
+    const { orderId, id } = await held(env, { amountCents: 4000 });
+    const service = await losingFirstAnswer(env, '/capture', 'captureAuthorizedPayment');
+    assert.equal((await service.releaseHold(decision(id, { amountCents: 1500, keepRest: true }))).outcome, 'unknown');
+    // The next read of the order is behind: it says "partly captured" and lists no capture. Nothing counted here explains
+    // that status, so the release is not called off.
+    env.fake.behavior.staleOrderReads = 1;
+    const behind = await service.refreshPayPalOrder({ providerOrderId: orderId, ...OWNER });
+    assert.equal(behind.outcome, 'unknown');
+    assert.deepEqual(pick(behind.contribution.hold, ['status', 'pending', 'releasedCents']), { status: 'releasing', pending: 'release', releasedCents: 0 });
+    await assert.rejects(service.returnHold(decision(id)), { code: 'hold_in_progress' });
+    const settled = await service.refreshPayPalOrder({ providerOrderId: orderId, ...OWNER });
+    assert.equal(settled.outcome, 'completed');
+    assert.deepEqual(pick(settled.contribution.hold, ['status', 'pending', 'releasedCents']), { status: 'held', pending: null, releasedCents: 1500 });
+    assert.equal(progressFor(env.db, DEMO_GOAL_ID).progressCents, 7500);
+  });
+
+  test(`[${adapter}] a later release reopened by a read that was behind is counted once PayPal lists it, whatever the adult decided meanwhile`, async () => {
+    for (const next of ['return', 'release']) {
+      const env = setupDomain({ adapter, mode: 'sandbox' });
+      const { orderId, id } = await held(env, { amountCents: 4000 });
+      await env.service.releaseHold(decision(id, { amountCents: 1000, keepRest: true }));
+      // PayPal captures a second release of $15.00, its answer is lost, and the next read of the order does not show it.
+      const service = await losingFirstAnswer(env, '/capture', 'captureAuthorizedPayment');
+      assert.equal((await service.releaseHold(decision(id, { amountCents: 1500, keepRest: true }))).outcome, 'unknown', next);
+      env.fake.behavior.staleOrderReads = 1;
+      assert.equal((await service.refreshPayPalOrder({ providerOrderId: orderId, ...OWNER })).outcome, 'held', next);
+      // The adult decides something else: returns the rest, or releases $5.00 as the final release.
+      if (next === 'return') assert.equal((await service.returnHold(decision(id))).outcome, 'returned', next);
+      else assert.equal((await service.releaseHold(decision(id, { amountCents: 500 }))).outcome, 'completed', next);
+      const meanwhile = next === 'return' ? 7000 : 7500;
+      assert.equal(progressFor(env.db, DEMO_GOAL_ID).progressCents, meanwhile, next);
+      // PayPal's order lists the capture after all: it is the release an adult approved, and it is counted, once.
+      const found = await service.refreshPayPalOrder({ providerOrderId: orderId, ...OWNER });
+      assert.equal(found.outcome, 'completed', next);
+      assert.equal(found.check.verdict, 'match', next);
+      assert.equal(progressFor(env.db, DEMO_GOAL_ID).progressCents, meanwhile + 1500, next);
+      assert.match(found.contribution.statusDetail, /release of \$15\.00 that it had not confirmed in time/, next);
+      assert.deepEqual(trail(found), next === 'return'
+        ? [['held', 4000], ['released', 1000], ['released', 1500], ['returned', 1500]]
+        : [['held', 4000], ['released', 1000], ['released', 500], ['released', 1500], ['returned', 1000]], next);
+      assert.equal(found.contribution.hold.status, next === 'return' ? 'returned' : 'released', 'the hold stays as the later decision left it');
+      await service.refreshPayPalOrder({ providerOrderId: orderId, ...OWNER });
+      assert.equal(progressFor(env.db, DEMO_GOAL_ID).progressCents, meanwhile + 1500, next);
+      assert.equal(env.fake.orders.get(orderId).purchase_units[0].payments.captures.reduce((sum, c) => sum + Number(c.amount.value) * 100, 0), meanwhile + 1500 - 6000, 'the ledger now counts exactly what PayPal took');
+      // The watch was used up: one more capture of that amount, which nobody released here, is not counted.
+      env.fake.orders.get(orderId).purchase_units[0].payments.captures.push({ id: 'STRAYCAPTURE0002', status: 'COMPLETED', amount: { currency_code: 'USD', value: '15.00' }, custom_id: id });
+      await service.refreshPayPalOrder({ providerOrderId: orderId, ...OWNER });
+      assert.equal(progressFor(env.db, DEMO_GOAL_ID).progressCents, meanwhile + 1500, next);
+    }
   });
 
   test(`[${adapter}] a later release that PayPal declined, its answer lost, reopens the hold on a check and is never counted`, async () => {

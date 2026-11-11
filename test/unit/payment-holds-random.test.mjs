@@ -152,17 +152,9 @@ async function history(seed, { staleReads }) {
     for (let i = 0; i < 2; i++) ({ check } = await w.service.refreshPayPalOrder({ providerOrderId: hold.orderId, ...OWNER }));
     log.push('settle');
     alwaysTrue(w, holds, label());
-    const counted = sum(creditedFor(w, hold), 'amount_cents');
-    if (staleReads) {
-      // A read that hid a capture can let an adult decide something else, and that capture then stays uncounted. It is
-      // never silent: the check does not say PayPal and the ledger agree.
-      if (counted !== taken(w, hold)) {
-        log.push(`uncounted ${taken(w, hold) - counted}, check says ${check.verdict}`);
-        assert.notEqual(check.verdict, 'match', `uncounted money is reported — ${label()}`);
-      }
-      continue;
-    }
-    assert.equal(counted, taken(w, hold), `everything PayPal took is counted, once — ${label()}`);
+    // With stale reads too: a read that hid a capture can let an adult decide something else, and the capture is still
+    // counted once PayPal lists it.
+    assert.equal(sum(creditedFor(w, hold), 'amount_cents'), taken(w, hold), `everything PayPal took is counted, once — ${label()}`);
     const view = w.service.contributions(DEMO_GOAL_ID).find((c) => c.id === hold.id).hold;
     const theirs = unitOf(w, hold).payments.authorizations.at(-1).status;
     assert.equal(view.status, { CREATED: 'held', PARTIALLY_CAPTURED: 'held', CAPTURED: 'released', VOIDED: 'returned' }[theirs], `the hold ends where PayPal says it did (${theirs}) — ${label()}`);
@@ -173,6 +165,7 @@ async function history(seed, { staleReads }) {
     if (!declinedListed) assert.equal(check.verdict, 'match', `the check agrees — ${label()}`);
   }
   if (process.env.HOLD_SEED || process.env.HOLD_LOG) console.log(label());
+  w.db.close(); // thousands of histories would otherwise each keep an in-memory database open
 }
 
 const seeds = process.env.HOLD_SEED ? [Number(process.env.HOLD_SEED)] : Array.from({ length: Number(process.env.HOLD_SEEDS ?? 100) }, (_, i) => i + 1);
@@ -181,6 +174,6 @@ test('random hold histories: the ledger never counts money PayPal did not take, 
   for (const seed of seeds) await history(seed, { staleReads: false });
 });
 
-test('random hold histories with stale order reads: nothing is counted twice or invented, and uncounted money is always reported', async () => {
+test('random hold histories with stale order reads: nothing is counted twice or invented, and a final check still counts everything PayPal took', async () => {
   for (const seed of seeds) await history(seed, { staleReads: true });
 });
