@@ -5,7 +5,7 @@ import { WAYSIDE_SITES } from '../core/woodland-discoveries.js';
 // Static parts join the woodland's instance batches; only the small pennant moves.
 export function createWaysideDetails({group,builder,part,models,colours:C,groundLevel}) {
   const root=new THREE.Group();root.name='woodland-waysides';group.add(root);
-  const stone=0x88978d,pale=0xf4e4be;
+  const stone=0x88978d,pale=0xf4e4be,wheat=0xcfb46c;
   const box=(g,x,y,z,w,h,d,c,ry=0,rz=0)=>part(g,'box',x,y,z,w,h,d,c,ry,rz);
   const rock=(g,x,y,z,w,h,d,c)=>part(g,'rock',x,y,z,w,h,d,c);
   const round=(g,x,y,z,w,h,d,c,ry=0,rz=0)=>part(g,'round',x,y,z,w,h,d,c,ry,rz);
@@ -113,11 +113,71 @@ export function createWaysideDetails({group,builder,part,models,colours:C,ground
     for(const side of [-1,1])box(flag,-1.55,-.3+side*.21,0,.4,.2,.055,C.blue,0,side*.24);
     flags.push(flag);
   }
+  // A small live pennant on a pole top; it shares the outrider's sway in tick().
+  function pennant(g,x,y,z,colour) {
+    const flag=new THREE.Group();flag.position.set(x,y,z);flag.userData.live=true;g.add(flag);
+    box(flag,-.6,-.25,0,1.2,.5,.055,colour);box(flag,-.6,-.48,0,1.2,.08,.07,C.gold);
+    flags.push(flag);
+  }
+  function pavilion(g,x,z,colour) {
+    round(g,x,1.1,z,3.2,2.2,3.2,C.cream);
+    for(let i=0;i<8;i++){const a=i*Math.PI/4+.39;box(g,x+Math.cos(a)*1.52,1.1,z+Math.sin(a)*1.52,.5,2.2,.12,colour,Math.PI/2-a);}
+    round(g,x,2.25,z,3.45,.14,3.45,C.gold);part(g,'cone',x,3.3,z,3.8,2,3.8,colour);
+    box(g,x,.85,z+1.6,.9,1.7,.1,C.dark);
+    round(g,x,4.9,z,.08,1.4,.08,C.wood);pennant(g,x,5.55,z,colour);
+  }
+  function tourney(g) {
+    rock(g,0,.02,0,15,.1,5,C.road);
+    // The lists: a tilt rail between two striped pavilions, a quintain and a rack of shields.
+    for(let i=-3;i<=3;i++)box(g,i*2,.55,0,.2,1.1,.2,C.wood);
+    box(g,0,1.05,0,12.4,.16,.16,C.cream);box(g,0,.62,0,12.4,.12,.1,C.red);
+    pavilion(g,-5,-5.2,C.red);pavilion(g,5,-5.2,C.blue);
+    box(g,3,1.3,3.4,.2,2.6,.2,C.wood);box(g,3,2.5,3.4,2.2,.14,.14,C.wood);
+    models.shield(g,3.95,2.05,3.48,C.red,.8);rock(g,2.05,1.95,3.4,.5,.75,.5,C.soil);
+    for(const x of [-5.2,-2.8])box(g,x,.75,3.6,.14,1.5,.14,C.wood);
+    box(g,-4,1.4,3.6,2.8,.12,.12,C.wood);
+    [C.blue,C.red,C.gold].forEach((c,i)=>models.shield(g,-4.8+i*.8,.95,3.7,c,.8));
+    for(const z of [5.6,6.6])box(g,-3.5,z===5.6?.3:.55,z,5,.18,.6,C.wood);
+  }
+  function hay(g) {
+    rock(g,0,.02,0,13,.1,9,wheat);
+    for(const [x,z,s] of [[-3.6,-1.6,1.25],[.2,-2.6,1],[3.4,-.6,1.1]]) {
+      round(g,x,.55*s,z,2.3*s,1.1*s,2.3*s,wheat);part(g,'cone',x,1.75*s,z,2.6*s,1.4*s,2.6*s,wheat);
+      round(g,x,1.08*s,z,2.45*s,.08,2.45*s,C.road);
+    }
+    for(let row=0;row<2;row++)for(let i=0;i<5;i++)part(g,'cone',-4+i*1.5+row*.7,.45,2+row*1.3,.55,.9,.55,C.road);
+    // A scarecrow in a cream shirt and straw hat, and a split-rail fence along the back.
+    box(g,4.6,1.2,2.6,.14,2.4,.14,C.wood);box(g,4.6,1.75,2.6,1.9,.12,.12,C.wood);
+    box(g,4.6,1.55,2.6,.75,.9,.35,C.cream);rock(g,4.6,2.3,2.6,.5,.5,.5,wheat);part(g,'cone',4.6,2.65,2.6,.85,.35,.85,C.road);
+    for(let i=-3;i<=3;i++)box(g,i*2,.5,-4.3,.18,1,.18,C.wood);
+    for(const y of [.45,.8])box(g,0,y,-4.3,12.2,.1,.1,C.wood);
+  }
+  function stones(g) {
+    // A ring of weathered uprights, one pair still carrying its lintel, around a low altar.
+    const at=i=>i*Math.PI*2/9+.2;
+    for(let i=0;i<9;i++) {
+      const a=at(i),h=i<2?3.4:2.3+(i*7%4)*.4,x=Math.cos(a)*5,z=Math.sin(a)*5;
+      box(g,x,h/2,z,1.5,h,.9,i%3?C.stone:stone,Math.PI/2-a);
+      if(i%4===2)rock(g,x,h+.03,z,.8,.2,.6,C.leaf);
+    }
+    const mid=(at(0)+at(1))/2;
+    box(g,Math.cos(mid)*5,3.7,Math.sin(mid)*5,5,.6,1.1,C.stone,Math.PI/2-mid);
+    rock(g,0,.4,0,2.4,.8,1.5,C.stone);rock(g,.3,.86,0,.3,.14,.3,C.gold);
+    rock(g,-3.1,.3,2.2,1.6,.6,.9,stone);
+  }
+  function watchtower(g) {
+    rock(g,0,.02,0,7,.12,7,C.soil);
+    models.tower(g,0,0,6.5,C.blue,true,{banner:true});
+    for(let i=0;i<7;i++){const a=.9+i*.55;part(g,'cone',Math.cos(a)*3.6,.8,Math.sin(a)*3.6,.4,1.6,.4,C.wood);}
+  }
+  const meadows={tourney,hay,stones,watchtower};
   for(const site of WAYSIDE_SITES) {
     const g=new THREE.Group();g.name=site.id;g.position.set(site.x,groundLevel,site.z);root.add(g);
     if(site.kind==='shelter')shelter(g);
     if(site.kind==='well')well(g);
     if(site.kind==='rider')rider(g);
+    // Meadow pieces are drawn a little larger so they read from the whole-realm view.
+    if(meadows[site.kind]){g.scale.setScalar(1.4);meadows[site.kind](g);}
     if(site.kind==='timber') {
       log(g,0,.4,0,3.3,site.angle,site.id.includes('birch'));stump(g,1.55,1.15);
       for(let i=0;i<3;i++)part(g,'cone',-.7+i*.35,.25,-.55,.6,.5,.35,C.leaf,i,.5);

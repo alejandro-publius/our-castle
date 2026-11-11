@@ -22,7 +22,7 @@ test('a quiet camp is found while exploring, its waterfalls meet rivers and redu
   expect(initial.discoveries.waterfalls).toHaveLength(2);
   expect(initial.discoveries.waterfalls.every(f=>f.insideWater&&f.channel===f.river)).toBe(true);
   expect(initial.discoveries.camp.knights).toBe(2);
-  expect(initial.discoveries.waysides.pennants).toBe(1);
+  expect(initial.discoveries.waysides.pennants).toBe(3);
   expect(initial.surround.mistGroves).toHaveLength(2);
   await expect.poll(async()=>(await scene(page)).discoveries.seconds).toBeGreaterThan(initial.discoveries.seconds);
   await expect.poll(async()=>(await scene(page)).discoveries.waysides.pennantAngle).not.toBe(initial.discoveries.waysides.pennantAngle);
