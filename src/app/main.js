@@ -171,7 +171,8 @@ const sky = {
 // The weather client makes no request until a town is searched or a chosen town's weather is loaded.
 const weatherClient = () => (sky.client ??= createWeatherClient());
 function applySky() {
-  const resolved = resolveAtmosphere({ timeMode: sky.time, weatherMode: sky.weather, now: new Date(),
+  // Until someone picks a weather on this device, the status says it is only the starting one.
+  const resolved = resolveAtmosphere({ timeMode: sky.time, weatherMode: sky.weather, now: new Date(), weatherChosen: WEATHER_MODES.includes(pref.get('atmosphere:weather')),
     local: sky.weather === 'local' ? { place: sky.place, result: sky.result?.place?.id === sky.place?.id ? sky.result : null, error: sky.error, loading: sky.loading } : null });
   sky.resolved = resolved;
   sound.setEnvironment({ period: resolved.period });

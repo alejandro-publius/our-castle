@@ -54,6 +54,11 @@ export function amountsIn(value, into = new Set(), key = null, parent = null) {
   return into;
 }
 
+/** What a reader is told before any check has run: the server has not yet looked at this capture. */
+export const UNCOUNTED_CAPTURE_NOTE = 'PayPal shows a completed capture the ledger has not counted. Use “Check with PayPal” to let the server verify and record it.';
+/** Capture statuses that mean PayPal took nothing. */
+const TOOK_NOTHING = ['DECLINED', 'DENIED', 'FAILED'];
+
 /** Compare one PayPal order with the server's own record of that contribution. */
 export function reconcileOrder(order, contribution) {
   const unit = (order?.purchase_units ?? []).find((u) => u.reference_id === contribution.id) ?? order?.purchase_units?.[0];
@@ -73,8 +78,15 @@ export function reconcileOrder(order, contribution) {
   if (order?.error || !order?.id) return { ...facts, verdict: 'unavailable', note: 'PayPal did not return this order.' };
   if (order.id !== contribution.providerOrderId || unit?.reference_id !== contribution.id)
     return { ...facts, verdict: 'differs', note: 'PayPal returned a different order or contribution reference. Nothing was changed.' };
-  // A hold released in steps has one capture per step: each must be one the ledger counted, for the amount it counted.
   const allCaptures = unit?.payments?.captures ?? [];
+  // A capture PayPal declined took nothing, and stays listed on its order. With nothing counted for it here either, the
+  // two agree about it: the rest of the order is compared as if it were not listed.
+  const declined = allCaptures.filter((c) => TOOK_NOTHING.includes(c?.status) && !contribution.captures.some((mine) => mine.captureId === c.id && mine.credited));
+  if (declined.length) {
+    const rest = reconcileOrder({ ...order, purchase_units: order.purchase_units.map((u) => (u === unit ? { ...u, payments: { ...u.payments, captures: allCaptures.filter((c) => !declined.includes(c)) } } : u)) }, contribution);
+    return rest.verdict === 'match' ? { ...rest, note: `${rest.note} A capture that PayPal declined took nothing.` } : rest;
+  }
+  // A hold released in steps has one capture per step: each must be one the ledger counted, for the amount it counted.
   if (contribution.hold && allCaptures.length > 1) return reconcileSteps(unit, contribution, facts);
   const recordedCapture = contribution.captures.find((c) => c.captureId === capture?.id && c.credited);
   const captureMatches = !capture || Boolean(recordedCapture);
@@ -103,7 +115,7 @@ export function reconcileOrder(order, contribution) {
   }
   if (!capture && !credited) return { ...facts, verdict: 'match', note: 'Not captured in PayPal, and not counted in the ledger.' };
   if (capture?.status === 'PENDING' && amountsMatch && !credited) return { ...facts, verdict: 'match', note: 'Pending in PayPal, and not counted yet.' };
-  if (paypalComplete && amountsMatch && !credited) return { ...facts, verdict: 'action', note: 'PayPal shows a completed capture the ledger has not counted. Use “Check with PayPal” to let the server verify and record it.' };
+  if (paypalComplete && amountsMatch && !credited) return { ...facts, verdict: 'action', note: UNCOUNTED_CAPTURE_NOTE };
   return { ...facts, verdict: 'differs', note: 'PayPal and the ledger disagree. Nothing was changed; review this contribution.' };
 }
 
@@ -114,7 +126,7 @@ function reconcileSteps(unit, contribution, facts) {
   const total = completed.reduce((sum, c) => sum + (decimalStringToCents(c.amount?.value) ?? 0), 0);
   const stepFacts = { ...facts, paypalCaptureId: completed.at(-1)?.id ?? null, paypalCaptureStatus: completed.at(-1)?.status ?? null, paypalAmountCents: total };
   if (completed.some((c) => !counted.has(c.id))) {
-    return { ...stepFacts, verdict: 'action', note: 'PayPal shows a completed capture the ledger has not counted. Use “Check with PayPal” to let the server verify and record it.' };
+    return { ...stepFacts, verdict: 'action', note: UNCOUNTED_CAPTURE_NOTE };
   }
   const listed = new Set(unit.payments.captures.map((c) => c?.id));
   const differs = completed.some((c) => decimalStringToCents(c.amount?.value) !== counted.get(c.id).amountCents || c.amount?.currency_code !== contribution.currency)

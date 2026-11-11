@@ -46,8 +46,9 @@ const WEATHER_LOOK = Object.freeze({ clear: 'clear', rain: 'rain', cloudy: 'over
  * @param options.now a Date
  * @param options.timeZone the device zone (tests pass one explicitly)
  * @param options.local { place, result, error, loading } for local weather, or null
+ * @param options.weatherChosen false when nobody has picked a weather on this device yet: the mode is only where it starts
  */
-export function resolveAtmosphere({ timeMode = 'auto', weatherMode = 'clear', now = new Date(), timeZone = deviceTimeZone(), local = null } = {}) {
+export function resolveAtmosphere({ timeMode = 'auto', weatherMode = 'clear', now = new Date(), timeZone = deviceTimeZone(), local = null, weatherChosen = true } = {}) {
   const time = TIME_MODES.includes(timeMode) ? timeMode : 'auto';
   let period, timeSource;
   if (time === 'auto') {
@@ -61,7 +62,7 @@ export function resolveAtmosphere({ timeMode = 'auto', weatherMode = 'clear', no
 
   const mode = WEATHER_MODES.includes(weatherMode) ? weatherMode : 'clear';
   // Chosen snow is the winter scene. A real local snow report is still drawn as overcast (WEATHER_LOOK).
-  let weather = mode === 'rain' || mode === 'snow' ? mode : 'clear', weatherSource = 'chosen by you', live = false;
+  let weather = mode === 'rain' || mode === 'snow' ? mode : 'clear', weatherSource = weatherChosen ? 'chosen by you' : 'starting weather', live = false;
   let weatherLabel = { rain: 'Rain', snow: 'Snow' }[mode] ?? 'Clear';
   if (mode === 'local') {
     const place = local?.place?.label;

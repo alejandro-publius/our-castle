@@ -4,7 +4,7 @@ import {
 } from '../household.mjs';
 import { centsToDecimalString, decimalStringToCents, formatCents } from '../../src/core/rules.js';
 import { PayPalError } from './paypal-client.mjs';
-import { reconcileOrder } from '../steward/index.mjs';
+import { UNCOUNTED_CAPTURE_NOTE, reconcileOrder } from '../steward/index.mjs';
 
 export const MIN_CONTRIBUTION_CENTS = 100;
 /** Explicit checks remembered per order. Older ones are dropped. */
@@ -192,8 +192,13 @@ export function createContributionService({ db, clock, mode, paypal = null, webh
    */
   function recordCheck(row, { order = null, outcome, failure = null }) {
     const current = view(row.id);
-    const reconciliation = order ? reconcileOrder(order, current)
+    let reconciliation = order ? reconcileOrder(order, current)
       : { verdict: 'unavailable', note: failure ?? 'PayPal did not return this order.', paypalOrderStatus: null, paypalCaptureId: null, paypalCaptureStatus: null, paypalAmountCents: null };
+    // That note asks for the very check that has just run. A capture still uncounted after it is one this server will
+    // not count (it matches nothing an adult approved here), so checking again cannot help: it is saved as a difference.
+    if (reconciliation.note === UNCOUNTED_CAPTURE_NOTE) {
+      reconciliation = { ...reconciliation, verdict: 'differs', note: 'PayPal shows a completed capture that this check could not count: it does not match what an adult approved here. Nothing was changed. Review this contribution in PayPal.' };
+    }
     const unit = order ? (order.purchase_units ?? []).find((u) => u.reference_id === row.id) : null;
     const capture = unit?.payments?.captures?.[0];
     const refundIds = (unit?.payments?.refunds ?? []).map((r) => r.id).filter((id) => typeof id === 'string' && !id.includes(','));
@@ -313,6 +318,9 @@ export function createContributionService({ db, clock, mode, paypal = null, webh
       // One release of a hold, counted once already. PayPal must still report the amount that was counted.
       return result(row, amountCents === recorded.amount_cents && currency === recorded.currency ? 'already_completed' : 'rejected_mismatch');
     }
+    // A capture PayPal declined is already on record here as taking nothing. Hearing of it again (a late webhook, say,
+    // while another release is under way) changes nothing.
+    if (recorded && !recorded.credited && recorded.order_id === row.id && FAILED_CAPTURE.has(recorded.status) && FAILED_CAPTURE.has(capture.status)) return result(row, 'declined');
     const expectedCents = expectedCaptureCents(row);
     if (expectedCents === null) {
       // A capture of a hold that no adult has released here (made in PayPal directly, say). Never credited on its own.
@@ -420,6 +428,7 @@ export function createContributionService({ db, clock, mode, paypal = null, webh
     for (const capture of unit.payments?.captures ?? []) {
       const known = captureById(capture.id);
       if (known?.credited && known.order_id === row.id) continue; // counted once already
+      if (known?.order_id === row.id && FAILED_CAPTURE.has(known.status) && FAILED_CAPTURE.has(capture.status)) continue; // declined before: it took nothing, and is no news
       const applied = applyCapture(row, capture, unit.custom_id);
       if (captured?.outcome !== 'completed') captured = applied; // a credit made here is the answer, even beside a stray
     }
