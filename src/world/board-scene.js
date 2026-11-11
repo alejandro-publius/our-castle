@@ -11,6 +11,7 @@ import { createGoldFountains } from './gold-fountain.js';
 import { createFamilyProject } from './family-project.js';
 import { createKitPreview } from './kit-preview.js';
 import { createSponsorSigns } from './sponsor-signs.js';
+import { createWinterSleigh } from './winter-sleigh.js';
 import { FAMILY_PROJECT_SITE, projectSite } from '../core/family-project.js';
 import { PLAN_GROUND } from '../core/kit-preview.js';
 import { REALM_SIZE, REALM_BOUNDS, REALM_DISTRICTS, REALM_LEGENDS, REALM_BRIDGES, REALM_ROUTE, homeDistrict, districtById, legendById, viewLocation, journeyLeg, journeyPosition } from '../core/realm.js';
@@ -379,7 +380,7 @@ export function createBoardScene(container, { reducedMotion = false, isOccluded 
       const flap = 0.25 + 0.75 * Math.abs(Math.sin(seconds * 9 + f.phase));
       f.left.rotation.z = flap; f.right.rotation.z = -flap;
     }
-    stepRain(seconds);
+    stepRain(seconds); stepSnow(seconds);
   }
   function startAmbient() {
     if (reducedMotion || ambientTimer) return;
@@ -406,7 +407,7 @@ export function createBoardScene(container, { reducedMotion = false, isOccluded 
     night: { sky: 0x6aa6c8, ground: 0x24424c, hemi: 1.5, sun: 0xa9c1ff, sunI: 0.9, sunAt: [18, 30, -14], water: 0x1b3d62, overcast: 0x5a6f80 },
   };
   const atmosphere = { period: 'day', weather: 'clear' };
-  let glow = null; let rain = null;
+  let glow = null; let rain = null; let snow = null;
   function seeded(seed) { let x = seed >>> 0; return () => { x = (x * 1664525 + 1013904223) >>> 0; return x / 4294967296; }; }
   function buildAtmosphere() {
     const t = new THREE.Object3D(), spots = realmModels.lightSpots();
@@ -437,6 +438,14 @@ export function createBoardScene(container, { reducedMotion = false, isOccluded 
     splashes.renderOrder = 3; splashes.userData.ownedGeometry = true; splashes.userData.ownedMaterial = true;
     const group = new THREE.Group(); group.add(streaks, splashes); group.visible = false; groups.atmosphere.add(group);
     rain = { group, streaks, splashes, height, placeSplash, next: 0 };
+    // Snow: slow white flakes in two stacked layers, and the winter scenery that only this weather shows.
+    const flakes = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.9, depthWrite: false }), count * 2);
+    for (let i = 0; i < count; i++) {
+      const x = REALM_BOUNDS.minX + rand() * REALM_SIZE.width, z = REALM_BOUNDS.minZ + rand() * REALM_SIZE.depth, y = rand() * height;
+      for (const layer of [0, 1]) { t.position.set(x, y + layer * height, z); t.rotation.set(0, 0, 0); t.scale.set(0.34, 0.34, 0.34); t.updateMatrix(); flakes.setMatrixAt(i * 2 + layer, t.matrix); }
+    }
+    flakes.renderOrder = 3; flakes.visible = false; flakes.userData.ownedGeometry = true; flakes.userData.ownedMaterial = true; groups.atmosphere.add(flakes);
+    snow = { flakes, winter: createWinterSleigh({ group: groups.atmosphere, builder, colours }) };
   }
   function stepRain(seconds) {
     if (!rain?.group.visible || reducedMotion) return;
@@ -444,9 +453,14 @@ export function createBoardScene(container, { reducedMotion = false, isOccluded 
     for (let k = 0; k < 40; k++) { rain.placeSplash(rain.next); rain.next = (rain.next + 1) % rain.splashes.count; }
     rain.splashes.instanceMatrix.needsUpdate = true;
   }
+  function stepSnow(seconds) {
+    if (!snow?.flakes.visible || reducedMotion) return;
+    snow.flakes.position.y = -((seconds * 1.6) % rain.height);
+    snow.winter.tick(seconds);
+  }
   function applyAtmosphere() {
     const look = LOOKS[atmosphere.period] ?? LOOKS.day, wet = atmosphere.weather === 'rain', dull = wet || atmosphere.weather === 'overcast';
-    const night = atmosphere.period === 'night';
+    const night = atmosphere.period === 'night', snowy = atmosphere.weather === 'snow';
     court.setNight(night);
     pipeline.setCloudSurround({ enabled: !villageActive, period: atmosphere.period, weather: atmosphere.weather });
     hemi.color.setHex(look.sky); if (dull) hemi.color.lerp(new THREE.Color(look.overcast), 0.65);
@@ -458,6 +472,11 @@ export function createBoardScene(container, { reducedMotion = false, isOccluded 
     ripples?.material.color.setHex(look.water).lerp(new THREE.Color(0x9abfc1), night ? .22 : .6);
     if (wet) ripples?.material.color.multiplyScalar(0.82);
     ground?.material.color.setHex(wet ? 0xbcc7c5 : 0xffffff);
+    // Snow whitens the land through the ground's emissive term (its colour is a multiplier, so it cannot lighten); rivers turn icy.
+    ground?.material.emissive.setHex(snowy ? 0xffffff : 0x000000); if (ground) ground.material.emissiveIntensity = snowy ? (night ? 0.25 : 0.7) : 0;
+    if (snowy) water?.material.color.lerp(new THREE.Color(0xd5e8ee), 0.55);
+    snow.flakes.visible = snowy; snow.winter.root.visible = snowy;
+    if (!snowy) snow.flakes.position.y = 0;
     // Wet roofs and walls: a lower roughness gives the standard materials a damp sheen.
     for (const material of builder.materials.values()) material.roughness = wet ? 0.5 : 0.87;
     glow.glass.emissive.setHex(night ? 0xffbd5a : 0x000000); glow.glass.emissiveIntensity = night ? 1.45 : 0;
@@ -473,6 +492,7 @@ export function createBoardScene(container, { reducedMotion = false, isOccluded 
     return {
       ...atmosphere, panes, lamps, glassGlow: glow.glass.emissiveIntensity, lampGlow: glow.lamp.emissiveIntensity,
       pointLights: glow.lights.filter((l) => l.visible).length, pointLightCapacity: glow.lights.length, pools: glow.pools.visible ? glow.pools.count : 0,
+      snow: { visible: snow.flakes.visible, flakes: snow.flakes.count, ...snow.winter.debug() },
       rain: { visible: rain.group.visible, streaks: rain.streaks.count, splashes: rain.splashes.count, animated: rain.group.visible && !reducedMotion && Boolean(ambientTimer) },
       hemi: hemi.intensity, sun: sun.intensity,
     };
@@ -788,7 +808,7 @@ export function createBoardScene(container, { reducedMotion = false, isOccluded 
     /** Cosmetic light and weather: period 'day' | 'afternoon' | 'night', weather 'clear' | 'rain' | 'overcast'. */
     setAtmosphere({ period = atmosphere.period, weather = atmosphere.weather } = {}) {
       atmosphere.period = LOOKS[period] ? period : 'day';
-      atmosphere.weather = ['clear', 'rain', 'overcast'].includes(weather) ? weather : 'clear';
+      atmosphere.weather = ['clear', 'rain', 'overcast', 'snow'].includes(weather) ? weather : 'clear';
       applyAtmosphere(); draw();
       return atmosphereDebug();
     },

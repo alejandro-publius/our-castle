@@ -41,6 +41,21 @@ test.beforeEach(async ({ request }) => {
   expect((await request.post('/api/demo/reset', { data: {} })).ok()).toBeTruthy();
 });
 
+test('Snow shows the winter scene and the sleigh, Clear puts them away, and neither writes anything', async ({ page }) => {
+  await closeDeedsWhenTheyAppear(page);
+  const seen = track(page);
+  await ready(page);
+  expect((await sky(page)).snow.visible).toBe(false);
+  await openMenu(page, 'world-settings'); await page.selectOption('#weather-mode', 'snow');
+  await expect(status(page)).toContainText('Snow (chosen by you)');
+  const a = await sky(page);
+  expect(a).toMatchObject({ weather: 'snow', snow: { visible: true, reindeer: 5 }, rain: { visible: false } });
+  await expect.poll(async () => (await sky(page)).snow.x).not.toBe(a.snow.x); // the sleigh is flying
+  await page.selectOption('#weather-mode', 'clear');
+  expect(await sky(page)).toMatchObject({ weather: 'clear', snow: { visible: false } });
+  expect([...seen.writes, ...seen.weather]).toEqual([]);
+});
+
 test('Night and Rain light the world, survive refresh, district inspection and a payment, and never write or unlock anything', async ({ page }) => {
   await closeDeedsWhenTheyAppear(page);
   const seen = track(page);
