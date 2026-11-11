@@ -1,63 +1,77 @@
-# Proposed demonstration: one family, then one village — not recorded
+# Locked demonstration cut: 2:50, one family, then one village — not recorded
 
-Revised November 10, 2026 (Pacific) against `main` after the village, loading and hold-first merges (#82 as `3bfe6e1`, #83 as `a56170a`; [release readiness](RELEASE-READINESS.md)). This is a plan for a future recording. Recording remains paused; no media was created or changed for this update. The existing 2:42 review cut is preserved below and shows neither the family-planning flow nor the shared village.
+Locked November 10, 2026 (Pacific) against `main` at `97c084a`, for the owner's review. This is the plan for the owner's recording. Recording stays paused until the owner resumes it; no media was created or changed for this update. It replaces the earlier 2:55 proposal, which remains in Git history. The preserved 2:42 review cut is unchanged below.
 
-The plan uses two separate example sessions, and the cut between them must be visible:
+Keep the [recording checklist](VIDEO-CHECKLIST.md) open during the take.
 
-1. **One family** — the [playable family-trip example](FAMILY-TRIP-EXAMPLE.md), `npm run demo -- --family-trip`.
-2. **One village** — the [five-family shared fund](VILLAGE-DEMO.md), `npm run demo -- --village-fund`.
+## Sessions
 
-Label both sessions' families, catalogue and payments as examples. Neither route makes a live model request or a PayPal request. Separate, dated segments show the existing live AI recording and the preserved sandbox evidence.
+Both example sessions run current `main`. Do not record the saved apps on 3010 or 3021: they run an older build with no stepped release.
 
-| Proposed time | Show | Meaning and boundary |
-| --- | --- | --- |
-| 0:00–0:12 | Woodland and the family trip; “An expense changed. Can we still go?” | One concrete family outcome. Invented example, not a customer testimonial. If the knight-and-dragon loading scene appears while the realm starts, keep it as it happened; do not stage, slow or lengthen it. |
-| 0:12–0:38 | The kit list, two torches already at home, Rowan/Ash's offers; enter a $90 one-off and compare | The actual engine returns distinct $150/$180 kits. Sample prices, tax/shipping excluded. |
-| 0:38–1:02 | Choose $180, keep the stove, change the one-off to $120 | Show the computed $150 repair and the tent it switches. No catalogue/model call or payment caused by the trial. |
-| 1:02–1:18 | Review the repaired kit, save the goal/schedule explicitly | The family's control remains visible. Do not hide required actions or imply comparison saved anything. |
-| 1:18–1:38 | Approve one simulated contribution, see the world change, follow Review the receipt | Clearly label simulated money. The receipt shows its actual local state, never a fabricated PayPal Match. |
-| 1:38–2:12 | **Second session, labelled.** Village fund: **Class trip together** at $200/$400. Enter 40, approve that exact amount, contribute: $240 and the schoolhouse's second stage. Open **Records** for the one receipt, **Visit the shared square**, then **My realm** | Five invented families and simulated money. The schoolhouse shows funding progress, not a purchased trip or building. The family's own goal stays $60/$300. Seeded family names are not online visitors. No recipient-bound PayPal payment or PYUSD observation is shown; both are fake-transport tested only. |
-| 2:12–2:22 | Existing live Claude planner result, labelled **Historical live AI · earlier interface · November 3** | Use the actual preserved clip linked below. The current examples use rules; do not imply this model produced the kit repair or the village project draft. |
-| 2:22–2:38 | Separate dated card for the preserved in-app $15 sandbox capture and same-order check | Historical integration evidence, not a replay of checkout or a new check. Use the in-app verification record, not the older subsequently refunded verifier. It is not evidence for the shared fund. |
-| 2:38–2:55 | Treasury/Studio, concise integration roles, repository and the two run commands | Explain that the steward is read-only and adult approval is required. Mention Channel3's configured path separately from sample listings. Call the filmed solver Rust only if the capture used the compiled binary. |
+1. **One family** — the [playable family-trip example](FAMILY-TRIP-EXAMPLE.md), `npm run demo -- --family-trip`. Beats 1 to 3 and the first half of beat 5.
+2. **One village** — the [five-family shared fund](VILLAGE-DEMO.md), `npm run demo -- --village-fund`. Beat 4 and the second half of beat 5. The cut between the two sessions must be visible and labelled.
+3. **Only if it exists** — the screen recording of the [real sandbox hold run](SANDBOX-HOLD-PROOF.md). It replaces the picture of beat 3; see [the sandbox variant](#beat-3-the-sandbox-variant).
 
-The family segment ends with the existing **Review the receipt** action after the deed. Do not cut out that action and describe Treasury as automatic. The saved $150 repaired goal, the historical $300 sandbox goal and the $400 shared fund are three separate scenarios; their unlocks and totals need not agree.
+**Before pressing record in session 1:** choose **Try a one-off expense**, type `90`, choose **See which complete kits fit**, then **Compare complete kits**. The take starts with the $150 and $180 kits already on screen, and the narration says the comparison was run.
 
-**Left out on purpose.** [Two fresh signed-in families](VILLAGE-FIRST-USE.md) starting a neighborhood from nothing needs passkeys in two browsers and more time than this cut has; mention it in the entry instead. Hold first, then release or return ([how it works](PAYMENT-HOLDS.md)) is in this build, but its only evidence is fake-provider and example-mode tests. A simulated hold could replace part of 1:18–1:38 if it is labelled simulated; any PayPal hold claim needs a real sandbox hold first.
+## The cut
 
-### Proposed narration
+| Time | Do, on screen | Must be readable | Boundary |
+| --- | --- | --- | --- |
+| **1.** 0:00–0:25 | The woodland for a few seconds, then the kit list and the two kits. **Choose this kit** on the $180 kit. **Keep stove as it is**. | The example label; **$150** and **$180**; **Your chosen kit**; the stove marked as kept | Invented family, sample prices, tax and shipping excluded. If the knight-and-dragon loading scene appears, keep it as it happened. |
+| **2.** 0:25–1:10 | Change **One-off amount** to `120`. The chosen kit is now $30 short by the date. **Proposal · smallest change** shows a $150 kit that switches only the tent. **Choose this kit** on that repair, **Review this kit**, **Save goal and propose this schedule**, **Use this plan**. | `120`; **Your chosen kit · does not fit** and the $30 shortfall; **Proposal · smallest change**; **$150**; the tent line switched, the stove unchanged; each save pressed in view | No catalogue or model call, and no payment. Trying the expense saved nothing; the adult's presses did. |
+| **3.** 1:10–1:50 | **Contribute**: amount `40.00`, tick **Hold it first**, tick **I approve holding $40.00 USD (simulated).**, **Simulate approved hold**. Pause on the header: unchanged. **Ledger**: the record reads **Held — not counted**. **Simulate release…**, type the amount the header's **Next:** line names (`15.00` in the earlier plan's take; read it, do not assume), tick **Keep the rest held for a later release**, press **Confirm release of $15.00, keep $25.00 held**. The header moves and the world changes. | **(simulated)**; **Held**; the header amount before the release and after it; **$25.00 still held** | Simulated money, no PayPal request. Nothing may be said about PayPal in this beat unless the sandbox variant is used. |
+| **4.** 1:50–2:30 | **Visible cut, labelled as a second example.** **Class trip together** at $200 of $400. Enter `40`, tick the approval for that exact amount, contribute. The shared total becomes $240 and the schoolhouse reaches its second stage. **Visit the shared square**, briefly, then **My realm**: the family's own goal is still $60.00 toward $300.00. | **$200** then **$240** of **$400**; the schoolhouse before and after; the private **$60.00 toward $300.00** unchanged | Five invented families, simulated money. The schoolhouse shows funding progress, not a purchased trip or building. No recipient-bound PayPal payment or PYUSD observation is shown; both are fake-transport tested only. Seeded family names are not online visitors. |
+| **5.** 2:30–2:50 | Session 1's Ledger record with its money trail (record this at the end of beat 3 and place it here). Then session 2's **Records** with its one receipt. End card: the repository address, the two commands and the commit recorded. | **Held $40.00 → Released $15.00 → $25.00 still held**; the single village receipt; the simulated tags on both | These are records of goal progress, not a bank balance. |
 
-This is a script for a future take, not recorded narration. Keep the on-screen example and historical labels visible. Leave short pauses for the actual controls and results.
+The time ranges are editing targets, not a measured walkthrough. Hard stop at 2:55. If a take runs long, shorten the square visit in beat 4 before cutting an approval, a confirm press or a label.
 
-**0:00–0:12:** “An unexpected expense should not mean rebuilding the whole family trip. Our Castle helps a family see what it can afford and decide the next step together.”
+### Beat 3, the sandbox variant
 
-**0:12–0:38:** “This is an example family with sample prices. Rowan can offer twenty dollars a week, Ash ten. They already have their torches. With a ninety-dollar expense, the complete kit has two choices: a hundred fifty dollars, or a hundred eighty for lower listed weight.”
+Use it only if the [sandbox hold run](SANDBOX-HOLD-PROOF.md) went exactly as written and its screen was recorded. Then beat 3's picture is that recording: steps 3 to 5 of the runbook (hold $25.00, **Held — not counted** at $60.00, release $15.00 keeping $10.00 held, the Manor raised at $75.00), and beat 5 opens with its finished trail, **Held $25.00 → Released $15.00 → Returned $10.00**.
 
-**0:38–1:02:** “They choose the lighter kit and keep the stove. Then the expense grows to a hundred twenty. The engine finds the smallest repair: change only the tent, and the kit is back to a hundred fifty.”
+- Label it on screen for its whole length: **PayPal sandbox · test money · separate session, new household**. It is a third session, not the family from beats 1 and 2.
+- Trim waiting time only. Never cut the approval tick, the PayPal approval or the confirm press.
+- Without that recording, record the simulated beat above and say simulated. A screenshot from the run is not footage of it.
 
-**1:02–1:18:** “The family reviews that repair, saves its goal, then accepts the weekly schedule. Trying an expense committed them to nothing.”
+## Narration
 
-**1:18–1:38:** “An adult approves this exact fifteen-dollar simulated contribution. The world responds to recorded progress, and Review the receipt opens that contribution in the Treasury.”
+A script for the take, not recorded narration. Leave pauses for the controls and their results.
 
-**1:38–2:12:** “Some goals are bigger than one household. In this second example, five invented families share a class trip fund, at two hundred of four hundred dollars. An adult approves exactly forty. The shared total becomes two hundred forty, and the schoolhouse reaches its next stage. One receipt records it. In the shared square, no family's private amounts appear, and this family's own goal has not moved.”
+**0:00–0:25:** “An unexpected expense should not mean starting the family trip over. This is an example family with sample prices. With a ninety-dollar expense, two complete kits fit: a hundred fifty dollars, or a hundred eighty for less weight. They choose the lighter kit and keep the stove.”
 
-**2:12–2:22:** “This earlier recording shows a real Claude schedule. The server checks its dates and totals before the family can use it.”
+**0:25–1:10:** “Then the expense grows to a hundred twenty. The chosen kit is now thirty dollars short by the date. Our Castle does not start over. It proposes the smallest change: switch only the tent, keep the stove, and the kit is a hundred fifty again. An adult accepts that repair, reviews it, saves the goal and accepts the schedule. Trying the expense committed the family to nothing.”
 
-**2:22–2:38:** “Separately, our preserved PayPal sandbox record shows one fifteen-dollar capture and a same-order check. This is historical evidence, not footage of the examples you just saw.”
+**1:10–1:50, simulated:** “Now a contribution. An adult can hold it first. Forty simulated dollars are held, and nothing counts: the goal has not moved. Later an adult releases exactly fifteen and keeps the rest held. Only now does the goal move, and the world with it.”
 
-**2:38–2:55:** “The steward can read, but cannot spend. Families make the decisions; the castle makes their progress visible. The public repository includes both examples and their evidence. Our Castle: keep the trip, change the plan together.”
+**1:10–1:50, sandbox variant:** “Now a contribution, in a separate session against the PayPal sandbox, with test money. An adult holds twenty-five dollars. PayPal authorizes it, and nothing counts. Then the adult releases exactly fifteen and keeps ten held. Only now does the goal move, and the Manor is raised. The last ten dollars are returned.”
 
-### Existing evidence to use
+**1:50–2:30:** “Some goals are bigger than one household. In this second example, five invented families share a class trip fund, at two hundred of four hundred dollars. An adult approves exactly forty. Those dollars count once, for the shared fund: two hundred forty, and the schoolhouse reaches its next stage. This family's own goal has not moved.”
 
-- **AI:** [the actual planner-result clip](demos/woodland-review/sources/planner-result.mp4), already used by the `live-ai` scene in the [preserved timeline](demos/current-review/timeline.json). The [source manifest](demos/woodland-review/sources/manifest.json) identifies its origin. Its SHA-256 remains `809ca81f712c77e7508888a933a168d262dec61d1d209d59a680f13c7644aef2`. It shows an earlier live schedule result, not live current-kit optimization.
-- **PayPal:** [the in-app contribution and same-order verification record](IN-APP-SANDBOX-VERIFICATION.md). The completed $15 record is historical. Opening its receipt is not a fresh verification, and a card made from this report is not missing popup footage.
-- **Current interface:** [journal screenshots and provenance](JOURNAL-DESIGN.md), plus the [family-trip route](JUDGE-HANDOFF.md#2-a-short-review-route). Record the actual source SHA when capture resumes. Existing screenshots are not substitute footage.
-- **Shared village:** [the five-family route and its evidence boundaries](VILLAGE-DEMO.md) and [what the combined release checked](VALIDATION.md#combined-village-and-loading-release--november-10-2026). Those are fake-provider checks on disposable data. There is no recipient, wallet, connected assistant or real-family evidence to show, so the segment shows the example and says so.
-- **Loading scene:** [how it behaves](DRAGON-LOADING.md). It appears only while startup is still pending after 120 ms and leaves when the realm is ready. A fast machine may never show it.
+**2:30–2:50:** “Every step leaves a record. The hold shows its trail: held, released, and what is still held. The village shows its one receipt. Families decide; the castle makes their progress visible. Our Castle.”
+
+For the sandbox variant, the last beat's second sentence becomes: “The hold shows its trail: held, released, returned.”
+
+## Left out of this cut
+
+These stay in the [entry text](SUBMISSION-DRAFT.md) with their evidence, and are not shown:
+
+- the historical live Claude planner clip from November 3 and the preserved in-app $15 sandbox capture;
+- the Treasury and Studio widgets beyond the Ledger record, and the integration roles;
+- [two fresh signed-in families](VILLAGE-FIRST-USE.md) starting a neighborhood, which needs passkeys in two browsers;
+- photo reading, Cohere ordering, the Village Exchange, PYUSD and the assistant bridge;
+- extending a hold, which cannot be reached within one take.
+
+## Reference frames
+
+Existing captures that show what each beat should look like. They are references for framing, not substitute footage.
+
+- **Beats 1 and 2:** [the two kits compared](screenshots/family-trip-desktop-comparison.png) and [the smallest change](screenshots/family-trip-desktop-repair.png), with [the plan on the map](screenshots/kit-preview-desktop-repair.png).
+- **Beat 3:** [Hold it first](screenshots/payment-holds-1-hold-it-first.jpg), [partly released](screenshots/payment-holds-2-partly-released.jpg) and [the finished trail](screenshots/payment-holds-3-trail.jpg). These are simulated holds in example mode.
+- **Beat 4:** [the fund's sheet](screenshots/village-fund-desktop-sheet.jpg) and [the shared square](screenshots/village-fund-desktop-square.png).
+- **Loading scene:** [how it behaves](DRAGON-LOADING.md). It appears only while startup is still pending after 120 ms; a fast machine may never show it. Do not stage, slow or lengthen it.
 
 [Official rules](https://paypalaihackathon.devpost.com/rules), rechecked November 10 UTC, equally weight implementation, design, impact, innovation and presentation. They allow a runnable local build and call for a publicly visible YouTube demonstration under three minutes. The deadline is November 12 at noon Pacific. This plan does not establish a ranking or prize ceiling.
-
-The time ranges are editing targets, not a measured walkthrough. The family segments are each a few seconds shorter than in the previous plan to make room for the village; if a take runs long, shorten the village's square visit before cutting a required approval or label. Keep optional photo reading, Cohere, passkey setup, Village Exchange handovers, PYUSD and the assistant bridge out of the main story unless genuine material and the remaining time justify them. Their implementations and evidence remain linked from the entry.
 
 ## Preserved material
 
