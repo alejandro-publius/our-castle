@@ -124,8 +124,24 @@ export function createKeeper({ available, currentTab, journalOpen, showTab, clos
     guide.style.setProperty('--keeper-lift', `${height > 0 ? Math.ceil(height) + 24 : 14}px`);
   }
 
+  // The page can still be under its loading cover when the tour opens: its shell is inert then, and a focus call made
+  // inside it is silently dropped. The opening focus is given again as soon as the page accepts focus, if the tour is
+  // still up and nothing else has taken focus meanwhile.
+  function focusNext() {
+    const next = $('keeper-next');
+    next.focus({ preventScroll: true });
+    const blocked = doc.activeElement === next ? null : next.closest?.('[inert]');
+    if (!blocked) return;
+    const waiting = new MutationObserver(() => {
+      if (blocked.inert) return;
+      waiting.disconnect();
+      if (guide && !guide.hidden && guide.contains(next) && (!doc.activeElement || doc.activeElement === doc.body)) next.focus({ preventScroll: true });
+    });
+    waiting.observe(blocked, { attributes: true, attributeFilter: ['inert'] });
+  }
+
   function open(from = null) {
-    if (guide) { if (!guide.hidden) $('keeper-next').focus(); return; }
+    if (guide) { if (!guide.hidden) focusNext(); return; }
     returnTo = from;
     start = { tab: currentTab(), journal: journalOpen() };
     shownTab = null;
@@ -142,7 +158,7 @@ export function createKeeper({ available, currentTab, journalOpen, showTab, clos
     render();
     syncPaused();
     measure();
-    if (!guide.hidden) $('keeper-next').focus({ preventScroll: true });
+    if (!guide.hidden) focusNext();
   }
 
   function close() {
