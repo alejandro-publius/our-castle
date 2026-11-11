@@ -2,16 +2,16 @@
 
 ## Current source release: shared village and loading
 
-**What it is.** One combined source release, on branch `claude/village-loading-finish-20261110`, made by normally merging three reviewed lines of work and their corrections:
+**What it is.** One combined source release, now on `main` as merge commit `3bfe6e1c02e899cf9402c8510591d7fb1a166ad1` ([#82](https://github.com/alejandro-publius/our-castle/pull/82), merged November 10 Pacific with an ordinary merge commit). It was made by normally merging three reviewed lines of work and their corrections, and every original commit is kept:
 
 | Part | Pull request | Exact head |
 | --- | --- | --- |
 | Shared village fund, money adapters, square, treasurer, MCP bridge | [#79](https://github.com/alejandro-publius/our-castle/pull/79) | `1f76ba619f87df646310573dc1a2ed64887e0896` |
 | Two fresh families reaching one shared project | [#81](https://github.com/alejandro-publius/our-castle/pull/81) | `9bda275b28f0aa2a369a11acf5c075f626d05ed1` |
 | The owner's dragon loading scene | [#80](https://github.com/alejandro-publius/our-castle/pull/80) | `84470b27adde0ab23473ef92f746e2321df03c49` |
-| Corrections on the combined branch | the combined release pull request | loader canvas, wait feedback, this handoff |
+| Corrections on the combined branch: loader canvas, wait feedback, the tour's opening focus, this handoff | [#82](https://github.com/alejandro-publius/our-castle/pull/82) | `795a6e7ff4c63d5d58cf64703f38eb2eeaf0d078` |
 
-**Status.** Implemented and tested **source**. It is not deployed, and the saved Mac apps below were not read, migrated, restarted or activated by it; they remain as recorded below (`b21b2d8`, schema 12). Its hosted results are on the combined release pull request; [what was checked](VALIDATION.md#combined-village-and-loading-release--november-10-2026). To look at it: `npm ci`, then `npm run demo -- --village-fund` ([the short route](VILLAGE-DEMO.md)). For a critical read without touching anything, start with [the critique brief](CRITIQUE-BRIEF.md).
+**Status.** Implemented and tested **source**. It is not deployed, and the saved Mac apps below were not read, migrated, restarted or activated by it; they remain as recorded below (`b21b2d8`, schema 12). The final-candidate [run 42933883601](https://github.com/alejandro-publius/our-castle/actions/runs/42933883601) passed all ten jobs on the reviewed head `795a6e7`, and the automatic post-merge [run 42936771527](https://github.com/alejandro-publius/our-castle/actions/runs/42936771527) passed all ten jobs on `main` at `3bfe6e1`; [what was checked](VALIDATION.md#combined-village-and-loading-release--november-10-2026). To look at it: `npm ci`, then `npm run demo -- --village-fund` ([the short route](VILLAGE-DEMO.md)). For a critical read without touching anything, start with [the critique brief](CRITIQUE-BRIEF.md).
 
 **What remains, and who it waits on:**
 
@@ -19,6 +19,8 @@
 - **Sandbox recipient and devnet wallet.** Neither exists yet. Recipient-bound PayPal sandbox payments and PYUSD devnet observation are checked only against fake transports. Real acceptance needs owner-guided setup of a separate sandbox recipient and a devnet receiving wallet.
 - **Not established by fake checks:** an owner's own assistant connected over MCP, AI drafting or live ranking quality, and recurring-agreement eligibility. Recurring charges and refunds are not ingested at all; nothing collects weekly.
 - **A watched wallet proves little.** Observing an address does not restrict what its owner spends on, enforce a vote, prove a bill was paid or prevent fraud.
+- **Cohere ordering.** The owner's key is now in private, ignored local configuration, and with it the complete-kit ordering selects Cohere. The saved apps were not restarted, so they use it only after their next restart. One live request through the adapter returned an ordering, which shows the connection works; whether the ordering is good has not been evaluated.
+- **Hold first, then release or return.** Implemented with fake-provider tests on its own pull request, [#83](https://github.com/alejandro-publius/our-castle/pull/83). It is not part of this release and waits for the owner's decision and a real sandbox hold.
 - **Separate records.** The saved runtimes and the historical $15 sandbox order are untouched and are not evidence for this release.
 - **Still the owner's:** the final demo, any video, the submission, and any evidence from real people or devices. None is claimed here.
 

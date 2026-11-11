@@ -24,6 +24,8 @@ One branch, `claude/village-loading-finish-20261110`: a normal merge of the firs
 
 Left to the hosted run on the combined release pull request, and not rerun locally after the last Exchange change: the two-family Exchange and village-library specs, the woodland cases on the phone project, the whole unit suite, and the release and kit-planner selections. Raw traces, timings, before and after captures and mutation runs are ignored under `test-results/village-loading-finish-20261110/`.
 
+**Hosted results and the merge.** The final-candidate [run 42933883601](https://github.com/alejandro-publius/our-castle/actions/runs/42933883601) passed all ten jobs on `795a6e7`: unit and Rust on Node 22.16.0, 24 and 26, the release selection on desktop (two shards) and phone, the shared village journeys and the kit-planner journeys. [#82](https://github.com/alejandro-publius/our-castle/pull/82) then merged it into `main` with an ordinary merge commit, `3bfe6e1c02e899cf9402c8510591d7fb1a166ad1`, whose tree is identical to that head. The automatic post-merge [run 42936771527](https://github.com/alejandro-publius/our-castle/actions/runs/42936771527) passed the same ten jobs on `main`. #79 is recorded as merged by GitHub; #80 and #81 were closed as superseded with their branches kept.
+
 Limits: timings are from one Mac and a software-rendered Chromium; they explain a test failure and are not a performance claim. Virtual authenticators and an emulated phone, not people or devices. Simulated contributions; no provider call.
 
 ## Fresh two-family village journey — November 10, 2026
