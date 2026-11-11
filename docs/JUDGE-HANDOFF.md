@@ -1,6 +1,6 @@
 # Run and review Our Castle
 
-Our Castle turns a family's shared goal into a woodland project. The focused library example shows an adult-approved contribution, a visible world change and its receipt; the deeper family-trip route shows how to keep a goal affordable when an expense changes.
+Our Castle turns family goals and a neighborhood's shared fund into woodland projects. The focused class-trip example follows an adult-approved contribution across five families, a shared world change and its receipt. The deeper family-trip route shows how to keep a goal affordable when an expense changes.
 
 Start with the runnable example below. The [four-step route](#2-a-short-review-route) follows one family decision; [source and integration evidence](#6-for-source-reviewers) comes later. The [illustrated journal and original castle identity](JOURNAL-DESIGN.md) are in the current source. Review [main](https://github.com/alejandro-publius/our-castle/tree/main) and state the commit you inspected.
 
@@ -12,11 +12,11 @@ Use **Node.js 22.16 or later**. No provider account or Rust installation is need
 git clone https://github.com/alejandro-publius/our-castle.git
 cd our-castle
 npm ci
-npm run demo -- --village-story
+npm run demo -- --village-fund
 # Open the localhost URL printed in the terminal.
 ```
 
-The library, families and starting contribution are invented; payments are simulated. This opening demonstrates one organizer household's project, not a live shared fund or direct recipient payment. It uses the existing contribution and progression rules, with all providers off. [Historical live evidence](#3-evidence-without-mixing-modes) is identified separately. For the complete-kit decision instead, run **`npm run demo -- --family-trip`**.
+The five families and starting $200 are invented; contributions are simulated. This opening runs the shared-fund service and keeps private family savings separate. It makes no PayPal, AI or blockchain request. [The focused route and current limits](VILLAGE-DEMO.md) distinguish implemented adapters from actual account acceptance. [Historical live evidence](#3-evidence-without-mixing-modes) is identified separately. For the complete-kit decision instead, run **`npm run demo -- --family-trip`**.
 
 <details>
 <summary>Other run modes and optional live integrations</summary>
@@ -33,7 +33,9 @@ For live integrations on another machine, use your own sandbox developer credent
 
 ### A focused village opening
 
-Use **`npm run demo -- --village-story`** for a shorter contribution-to-world story. The library starts at **$150/$300 in simulated contributions**, with the journal already on Contribute and the schoolhouse in view. Approve the suggested **$30**, choose **Simulate approved payment**, finish the deed, then **Review the receipt** to select that exact record in Treasury. This is one organizer household's invented project, not a live shared fund or demonstrated payment to another PayPal account. [Complete route, optional neighbor book offer and limits](VILLAGE-STORY.md).
+Use **`npm run demo -- --village-fund`**. Review **Class trip together**, starting at **$200/$400**, then approve **$40** and choose **Add simulated contribution**. The shared project advances to its next stage and Records shows the contribution. **Visit the shared square** shows the schoolhouse and family appearances; **My realm** restores private progress, which remains $60. Refresh retains the single contribution. [Full route](VILLAGE-DEMO.md).
+
+The earlier **`--village-story`** runner remains a separate single-household library example at $150/$300. [Historical route](VILLAGE-STORY.md).
 
 ### Start with the family decision
 

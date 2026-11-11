@@ -1,6 +1,9 @@
 import { DatabaseSync } from 'node:sqlite';
 import { mkdirSync } from 'node:fs';
 import path from 'node:path';
+import { ensureVillagePaymentsSchema } from './payments/village-payments.mjs';
+import { ensureVaultSchema } from './vault/index.mjs';
+import { ensureVillageSubscriptionsSchema } from './planner/village-subscriptions.mjs';
 
 const hasColumn = (db, table, column) => db.prepare(`PRAGMA table_info(${table})`).all().some((c) => c.name === column);
 // The family access tables (step 7). Every statement is IF NOT EXISTS, so it is safe to run again.
@@ -469,6 +472,64 @@ export const MIGRATIONS = Object.freeze([
       if (!hasColumn(db, 'exchange_offers', 'shared_alias')) db.exec('ALTER TABLE exchange_offers ADD COLUMN shared_alias TEXT');
     },
   }),
+  Object.freeze({
+    id: 'village-funds',
+    ensure(db) { db.exec(`
+      CREATE TABLE IF NOT EXISTS village_funds (
+        id TEXT PRIMARY KEY,
+        circle_id TEXT NOT NULL REFERENCES exchange_circles(id) ON DELETE RESTRICT,
+        organizer_household_id TEXT NOT NULL REFERENCES households(id) ON DELETE CASCADE,
+        organizer_member_id TEXT NOT NULL,
+        organizer_reference TEXT NOT NULL, organizer_alias TEXT NOT NULL,
+        title TEXT NOT NULL, project_kind TEXT NOT NULL CHECK(project_kind = 'schoolhouse'),
+        rail TEXT NOT NULL CHECK(rail IN ('simulated','paypal-sandbox','pyusd-devnet')),
+        currency TEXT NOT NULL, decimals INTEGER NOT NULL,
+        target_minor INTEGER NOT NULL CHECK(target_minor BETWEEN 1 AND 1000000000000),
+        deadline TEXT NOT NULL, recipient_json TEXT,
+        status TEXT NOT NULL DEFAULT 'open' CHECK(status IN ('open','closed')),
+        revision INTEGER NOT NULL DEFAULT 1 CHECK(revision > 0),
+        published INTEGER NOT NULL DEFAULT 0 CHECK(published IN (0,1)),
+        created_at TEXT NOT NULL, updated_at TEXT NOT NULL,
+        CHECK((rail IN ('simulated','paypal-sandbox') AND currency = 'USD' AND decimals = 2)
+          OR (rail = 'pyusd-devnet' AND currency = 'PYUSD' AND decimals = 6))
+      );
+      CREATE INDEX IF NOT EXISTS village_fund_circle ON village_funds(circle_id, created_at);
+      CREATE TABLE IF NOT EXISTS village_shares (
+        fund_id TEXT NOT NULL REFERENCES village_funds(id) ON DELETE CASCADE,
+        household_id TEXT NOT NULL REFERENCES households(id) ON DELETE CASCADE,
+        family_reference TEXT NOT NULL, alias TEXT NOT NULL,
+        committed_minor INTEGER NOT NULL CHECK(committed_minor BETWEEN 0 AND 1000000000000),
+        member_id TEXT NOT NULL, updated_at TEXT NOT NULL,
+        PRIMARY KEY(fund_id, household_id)
+      );
+      CREATE TABLE IF NOT EXISTS village_receipts (
+        id TEXT PRIMARY KEY,
+        fund_id TEXT NOT NULL REFERENCES village_funds(id) ON DELETE CASCADE,
+        source TEXT NOT NULL CHECK(source IN ('simulated','paypal-sandbox','pyusd-devnet')),
+        event_ref TEXT NOT NULL, event_index TEXT NOT NULL,
+        kind TEXT NOT NULL CHECK(kind IN ('capture','transfer','refund','reversal')),
+        parent_ref TEXT, parent_index TEXT,
+        amount_minor INTEGER NOT NULL CHECK(amount_minor BETWEEN 1 AND 1000000000000),
+        household_id TEXT, family_reference TEXT, alias TEXT,
+        recipient_json TEXT, occurred_at TEXT NOT NULL, recorded_at TEXT NOT NULL,
+        UNIQUE(source,event_ref,event_index),
+        CHECK((kind IN ('capture','transfer') AND parent_ref IS NULL AND parent_index IS NULL)
+          OR (kind IN ('refund','reversal') AND parent_ref IS NOT NULL AND parent_index IS NOT NULL))
+      );
+      CREATE INDEX IF NOT EXISTS village_receipt_fund ON village_receipts(fund_id, recorded_at);
+      CREATE INDEX IF NOT EXISTS village_receipt_parent ON village_receipts(source,parent_ref,parent_index);
+      CREATE TABLE IF NOT EXISTS village_presentations (
+        household_id TEXT PRIMARY KEY REFERENCES households(id) ON DELETE CASCADE,
+        shared INTEGER NOT NULL DEFAULT 0 CHECK(shared IN (0,1)),
+        updated_at TEXT NOT NULL
+      );
+    `); },
+  }),
+  Object.freeze({
+    id: 'village-payment-watchers',
+    ensure(db) { ensureVillagePaymentsSchema(db); ensureVaultSchema(db); },
+  }),
+  Object.freeze({ id: 'village-subscriptions', ensure: ensureVillageSubscriptionsSchema }),
 ]);
 
 export function openDatabase(file) {

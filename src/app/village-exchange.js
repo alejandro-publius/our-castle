@@ -16,25 +16,28 @@ const button = (label, action, attrs={}) => h('button',{type:'button',onclick:ac
 const values = form => Object.fromEntries(new FormData(form));
 const stateText = { offered:'Offered · not in your kit yet', accepted:'Accepted · waiting for handover', received:'Received · available for the agreed dates', returned:'Returned or released', withdrawn:'Withdrawn', declined:'Declined' };
 
-export function createVillageExchange({getState,actor,applyState,onCompare}) {
+export function createVillageExchange({getState,actor,applyState,onCompare,onReturn=()=>{}}) {
   const root=$('village-exchange'), forms=$('exchange-forms'), board=$('exchange-board'), status=$('exchange-status');
   const dialog=$('exchange-dialog'), detail=$('exchange-detail-dialog'), list=$('exchange-list');
-  let built=null, busy=false, preview=null, lastBoard=null, selected=null, blockedSelection=null, directory=[], nextOffset=null, requestGeneration=0, pendingRead=null, origin=null, opened=false, marketView='browse', previewId=null;
+  let built=null, busy=false, preview=null, lastBoard=null, selected=null, blockedSelection=null, directory=[], nextOffset=null, requestGeneration=0, pendingRead=null, origin=null, opened=false, marketView='browse', previewId=null, returning=false;
   const scope=()=>JSON.stringify([getState()?.household?.id,getState()?.goal?.id,actor()?.id]);
   const adult=()=>actor()?.role==='adult';
   const say=text=>{status.textContent=text;$('exchange-detail-status').textContent=text;};
   async function act(action, data={}) {
     if(busy || !adult()) return null;
-    const before=scope();busy=true;say('Saving…');root.setAttribute('aria-busy','true');
+    const before=scope();busy=true;say(action==='preview'?'Checking the invitation…':'Saving…');root.setAttribute('aria-busy','true');dialog.setAttribute('aria-busy','true');
     try {
       const res=await api.post('/api/exchange',{action,...data,...(getState().access?{}:{memberId:actor().id})});
       if(before!==scope()) return null;
-      applyState(res.state);say(action==='receive'?'Item received. Compare the kit to see what is left to buy.':action==='return'?'Kit updated. Compare again before changing the plan.':'Saved.');
-      if(action==='settings'){built=null;render();}
+      applyState(res.state);
+      if(action==='settings'){built=null;render();} // rebuilding the forms clears the status line, so it happens before the result is said
+      say(action==='receive'?'Item received. Compare the kit to see what is left to buy.':action==='return'?'Kit updated. Compare again before changing the plan.':action==='preview'?'Review the invitation below. Nothing is joined yet.':'Saved.');
+      // Opened from the village fund: the form just used is gone, so say where to go and put focus on the way back.
+      if(returning&&['create','join'].includes(action)&&dialog.open){say('Saved. Go back to the village fund to continue.');$('exchange-return-fund').focus();}
       if($('exchange-scope').value==='worldwide') await loadDirectory();
       return res;
     }catch(e){if(before===scope()) { say(e.message); if(e.code==='exchange_kit_changed') status.append(button('Review the latest kit',()=>{buildForms();say('Choose an item from the latest saved kit, then review before sharing.');})); }return null;}
-    finally{busy=false;root.removeAttribute('aria-busy');}
+    finally{busy=false;root.removeAttribute('aria-busy');dialog.removeAttribute('aria-busy');}
   }
   function form(contents, label, submit) {
     const f=h('form',{class:'exchange-form'},contents,h('button',{type:'submit'},label));
@@ -61,7 +64,7 @@ export function createVillageExchange({getState,actor,applyState,onCompare}) {
     ],'Save sharing settings',v=>act('settings',{...v,confirmed:v.confirmed==='on'}));
     forms.append(h('details',{},h('summary',{},'Sharing settings'),settingsForm));
     if(!ex.neighborhood){
-      forms.append(h('details',{},h('summary',{},'Start a neighborhood'),form([
+      forms.append(h('details',{'data-exchange-section':'start'},h('summary',{},'Start a neighborhood'),form([
         field('Neighborhood name',input('name','text',{required:true,maxlength:50})),
         field('Your shared family name',input('alias','text',{required:true,maxlength:40})),
       ],'Create neighborhood',v=>act('create',v))));
@@ -74,8 +77,9 @@ export function createVillageExchange({getState,actor,applyState,onCompare}) {
         const confirmation=h('div',{class:'exchange-confirm'},h('p',{},`Join ${res.preview.name}? Neighbors see your chosen family name and the needs you choose to share. Your household records stay private.`),
           button('Join this neighborhood',()=>act('join',{...preview,confirmed:true})),button('Cancel',()=>{confirmation.remove();preview=null;}));
         f.querySelector('.exchange-confirm')?.remove();f.append(confirmation);
+        confirmation.scrollIntoView({block:'nearest'}); // the decision must not sit below the fold on a narrow screen
       });
-      forms.append(h('details',{},h('summary',{},'Join with an invitation'),join));return;
+      forms.append(h('details',{'data-exchange-section':'join'},h('summary',{},'Join with an invitation'),join));return;
     }
     const needed=getState().kit.items.filter(i=>i.remaining>0&&!ex.requests.some(r=>r.mine&&r.status==='open'&&r.item===i.name));
     if(needed.length) {
@@ -92,9 +96,10 @@ export function createVillageExchange({getState,actor,applyState,onCompare}) {
     }else forms.append(h('p',{class:'fine'},'Add the items you still need to the kit list to ask your neighbors.'));
     if(ex.neighborhood.owner){
       const output=h('div',{class:'exchange-invite-output'});
-      forms.append(h('details',{},h('summary',{},'Invite another family'),h('p',{class:'fine'},'One family can use each code, within 24 hours. Share it with someone you know.'),
+      forms.append(h('details',{'data-exchange-section':'invite'},h('summary',{},'Invite another family'),h('p',{class:'fine'},'One family can use each code, within 24 hours. Share it with someone you know.'),
         button('Create invitation',async()=>{const res=await act('invite');if(!res)return;
           output.replaceChildren(field('Invitation code to share',h('textarea',{rows:2,readonly:true},res.invitation.token)),h('p',{class:'fine'},'This code is shown here once. Anyone with it can join until it is used, revoked or expires.'));
+          output.scrollIntoView({block:'nearest'}); // on a narrow screen the new code would otherwise be below the fold
         }),output));
     }
     forms.append(h('details',{},h('summary',{},'Neighborhood settings'),button('Leave neighborhood',()=>act('leave'))));
@@ -231,12 +236,27 @@ export function createVillageExchange({getState,actor,applyState,onCompare}) {
     }catch(e){if(before===scope()&&selected===id&&detail.open){blockedSelection=id;lastBoard=null;render();$('exchange-detail-status').textContent=e.message;}}
   }
   function closeAll(){pendingRead?.abort();requestGeneration++;if(detail.open)detail.close();if(dialog.open)dialog.close();}
-  function open(){origin=document.activeElement;if(!opened&&getState().example?.id==='village-exchange')$('exchange-scope').value='worldwide';opened=true;render();if(!dialog.open)dialog.showModal();$('exchange-title').focus();loadDirectory();}
-  dialog.addEventListener('close',()=>{pendingRead?.abort();requestGeneration++;origin?.isConnected&&origin.focus({preventScroll:true});});
+  // `from:'fund'` opens over the village fund and offers the way back; `section` ('start', 'join' or 'invite') shows that
+  // existing form, already expanded. Nothing is filled in, created or sent by opening it.
+  function open({from=null,section=null}={}){
+    origin=document.activeElement;if(!opened&&getState().example?.id==='village-exchange')$('exchange-scope').value='worldwide';opened=true;
+    returning=from==='fund';$('exchange-return').hidden=!returning;
+    render();if(!dialog.open)dialog.showModal();
+    if(section){
+      marketView='manage';$('exchange-search').value='';$('exchange-manage').open=true;renderList();
+      const part=forms.querySelector(`[data-exchange-section="${section}"]`);if(part)part.open=true;
+      // Scroll no further than needed: the form comes into view and the way back above it stays in view.
+      (part??$('exchange-manage')).scrollIntoView({block:'nearest'});(part??$('exchange-manage')).querySelector('summary').focus({preventScroll:true});
+    }else $('exchange-title').focus();
+    loadDirectory();
+  }
+  dialog.addEventListener('close',()=>{pendingRead?.abort();requestGeneration++;origin?.isConnected&&origin.focus({preventScroll:true});
+    if(returning){returning=false;$('exchange-return').hidden=true;onReturn();}});
   detail.addEventListener('close',()=>{const id=selected;selected=null;say('');if(dialog.open)list.querySelector(`[data-open-request="${id}"]`)?.focus({preventScroll:true});});
   $('exchange-close').addEventListener('click',closeAll);
   for(const id of ['exchange-detail-close','exchange-back'])$(id).addEventListener('click',()=>detail.close());
-  $('exchange-browse').addEventListener('click',open);
+  $('exchange-browse').addEventListener('click',()=>open());
+  $('exchange-return-fund').addEventListener('click',closeAll);
   $('exchange-preview-open').addEventListener('click',()=>{if(previewId)openRequest(previewId);});
   for(const b of dialog.querySelectorAll('[data-exchange-view]'))b.addEventListener('click',()=>{
     marketView=b.dataset.exchangeView;$('exchange-search').value='';

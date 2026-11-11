@@ -10,9 +10,20 @@
   <link rel="stylesheet" href="app.css">
   <link rel="stylesheet" href="src/ui/parchment.css">
   <link rel="stylesheet" href="src/ui/castle-header.css">
+  <link rel="stylesheet" href="src/ui/village-fund.css">
+  <link rel="stylesheet" href="src/ui/realm-loader.css">
+  <script type="module" src="src/app/realm-loader.js"></script>
   <script type="importmap">{"imports":{"three":"./vendor/three/three.module.js"}}</script>
 </head>
 <body>
+  <section id="realm-loader" class="realm-loader" aria-label="Opening Our Castle" hidden>
+    <div class="realm-loader-inner">
+      <p class="realm-loader-brand"><img src="assets/brand/our-castle/crest.webp" width="42" height="48" alt="">Our Castle</p>
+      <figure class="realm-loader-stage"><canvas width="384" height="176" aria-hidden="true"></canvas></figure>
+      <p class="realm-loader-title">A little trouble at the gates</p>
+      <p class="realm-loader-note" role="status">Loading…</p>
+    </div>
+  </section>
   <a class="skip-link" href="#journey">Skip to the household journey</a>
   <div class="shell">
     <header class="topbar">
@@ -120,8 +131,9 @@
           <p id="kit-preview-changes" hidden></p>
           <details class="kit-preview-about"><summary>About this picture</summary><p id="kit-preview-about"></p></details>
         </section>
-        <div class="board-foot"><p id="realm-focus-status" class="area-status" role="status" aria-live="polite"></p><button type="button" class="chip" id="open-merchant" aria-label="Open the Market Town merchant" hidden>Merchant</button><button type="button" class="chip" id="open-exchange" hidden>Village Exchange</button><button type="button" class="chip" id="view-deed" aria-describedby="realm-focus-status" hidden>View deed</button><p id="board-status" class="sr-only" role="status" aria-live="polite"></p><ol id="tier-track" class="sr-only" aria-label="House milestones"></ol></div>
+        <div class="board-foot"><p id="realm-focus-status" class="area-status" role="status" aria-live="polite"></p><button type="button" class="chip" id="open-merchant" aria-label="Open the Market Town merchant" hidden>Merchant</button><button type="button" class="chip" id="open-exchange" hidden>Village Exchange</button><button type="button" class="chip" id="open-village" hidden>Village fund</button><button type="button" class="chip" id="view-deed" aria-describedby="realm-focus-status" hidden>View deed</button><p id="board-status" class="sr-only" role="status" aria-live="polite"></p><ol id="tier-track" class="sr-only" aria-label="House milestones"></ol></div>
         <p id="world-fallback" class="world-fallback" hidden>The board is unavailable. Your journal still works. <a href="references/images/our-house-castle.png">See the realm.</a></p>
+        <section id="village-square-controls" class="village-square-controls" aria-label="Shared village square" hidden></section>
         <div id="celebration" class="celebration" hidden></div>
       </section>
 
@@ -526,6 +538,7 @@
       </div>
     </article>
   </dialog>
+  <dialog id="village-fund-dialog" class="exchange-window village-window" aria-labelledby="village-fund-title"></dialog>
   <dialog id="exchange-dialog" class="exchange-window" aria-labelledby="exchange-title">
     <header class="exchange-window-head">
       <img src="assets/brand/our-castle/crest.webp" alt="" width="40" height="44">
@@ -563,6 +576,8 @@
       <ul id="exchange-list" class="exchange-directory" aria-labelledby="exchange-list-title"></ul>
       <button type="button" id="exchange-more" hidden>Show more requests</button>
       <details id="exchange-manage" class="exchange-manage"><summary>Your sharing &amp; requests</summary>
+        <!-- Shown only while the Exchange was opened from the village fund. -->
+        <p id="exchange-return" class="exchange-return fine" hidden>Opened from the village fund. <button type="button" class="link-button" id="exchange-return-fund">Back to the village fund</button></p>
         <div id="exchange-forms"></div>
         <ul id="exchange-invites" class="exchange-invites" aria-label="Your open invitations"></ul>
       </details>

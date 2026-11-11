@@ -322,7 +322,7 @@ test('a second passkey needs a recent check; data and sessions persist through a
   } finally { await s?.close(); rmSync(dir, { recursive: true, force: true }); }
 });
 
-test('upgrading a goal-project database adds the access, deferred-refund, family-choice, kit-list and kit-planner tables; existing rows are unchanged', () => {
+test('upgrading a goal-project database adds access, planning, exchange and village tables; existing rows are unchanged', () => {
   const dir = mkdtempSync(path.join(tmpdir(), 'our-castle-access-migration-'));
   const file = path.join(dir, 'before.sqlite');
   try {
@@ -339,7 +339,7 @@ test('upgrading a goal-project database adds the access, deferred-refund, family
     const db = openDatabase(file);
     assert.equal(db.prepare('PRAGMA user_version').get().user_version, MIGRATIONS.length);
     assert.deepEqual(rows(db, beforeTables), before, 'every earlier table and row identical');
-    assert.deepEqual(tables(db).filter((t) => !beforeTables.includes(t)).sort(), ['accounts', 'audit_events', 'auth_challenges', 'deferred_refunds', 'exchange_circles', 'exchange_invites', 'exchange_members', 'exchange_offers', 'exchange_profiles', 'exchange_requests', 'family_choices', 'family_offers', 'family_preferences', 'goal_kits', 'invitations', 'kit_candidates', 'kit_lists', 'kit_selections', 'memberships', 'passkeys', 'sessions']);
+    assert.deepEqual(tables(db).filter((t) => !beforeTables.includes(t)).sort(), ['accounts', 'audit_events', 'auth_challenges', 'deferred_refunds', 'exchange_circles', 'exchange_invites', 'exchange_members', 'exchange_offers', 'exchange_profiles', 'exchange_requests', 'family_choices', 'family_offers', 'family_preferences', 'goal_kits', 'invitations', 'kit_candidates', 'kit_lists', 'kit_selections', 'memberships', 'passkeys', 'sessions', 'village_funds', 'village_payment_intents', 'village_presentations', 'village_receipts', 'village_shares', 'village_subscriptions', 'village_vault_accounts', 'village_vault_events', 'village_vault_issues', 'village_vault_watches']);
     db.close();
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });

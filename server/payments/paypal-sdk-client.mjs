@@ -10,6 +10,7 @@ import {
 } from '@paypal/paypal-server-sdk';
 import { centsToDecimalString } from '../../src/core/rules.js';
 import { PayPalError, createPayPalClient as createRestClient } from './paypal-client.mjs';
+import { paypalRecipient, paypalAuthAssertion } from './recipient.mjs';
 
 // PayPal's official Server SDK (APIMatic-generated), as used in PayPal's own Node integration guide.
 // The environment is fixed to Sandbox: this prototype has no path to live endpoints.
@@ -97,9 +98,11 @@ export function createPayPalSdkClient({ clientId, clientSecret, controllers = nu
     environment: 'sandbox',
     implementation: 'paypal-server-sdk',
 
-    createOrder({ localId, amountCents, currency, description, requestId }) {
-      return call(() => orders.createOrder({
+    createOrder({ localId, amountCents, currency, description, requestId, recipient, assertAccess }) {
+      const payee = paypalRecipient(recipient);
+      return call(() => guardedController(OrdersController, orders, assertAccess).createOrder({
         paypalRequestId: requestId,
+        ...(payee ? { paypalAuthAssertion: paypalAuthAssertion(clientId, payee) } : {}),
         prefer: 'return=representation',
         body: {
           intent: CheckoutPaymentIntent.Capture,
@@ -108,6 +111,7 @@ export function createPayPalSdkClient({ clientId, clientSecret, controllers = nu
             customId: localId,
             invoiceId: localId,
             description: description.slice(0, 127),
+            ...(payee ? { payee: { merchantId: payee.merchantId } } : {}),
             amount: { currencyCode: currency, value: centsToDecimalString(amountCents) },
           }],
           paymentSource: {
@@ -120,15 +124,17 @@ export function createPayPalSdkClient({ clientId, clientSecret, controllers = nu
             },
           },
         },
-      }));
+      }), assertAccess);
     },
 
-    captureOrder(orderId, { requestId, assertAccess }) {
-      return call(() => guardedController(OrdersController, orders, assertAccess).captureOrder({ id: orderId, paypalRequestId: requestId, prefer: 'return=representation' }), assertAccess);
+    captureOrder(orderId, { requestId, assertAccess, recipient }) {
+      return call(() => guardedController(OrdersController, orders, assertAccess).captureOrder({ id: orderId, paypalRequestId: requestId, prefer: 'return=representation',
+        ...(recipient ? { paypalAuthAssertion: paypalAuthAssertion(clientId, recipient) } : {}) }), assertAccess);
     },
 
-    getOrder(orderId) {
-      return call(() => orders.getOrder({ id: orderId }));
+    getOrder(orderId, { recipient, assertAccess } = {}) {
+      return call(() => guardedController(OrdersController, orders, assertAccess).getOrder({ id: orderId,
+        ...(recipient ? { paypalAuthAssertion: paypalAuthAssertion(clientId, recipient) } : {}) }), assertAccess);
     },
 
     getCapture(captureId) {

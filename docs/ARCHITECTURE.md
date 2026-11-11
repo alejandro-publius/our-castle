@@ -13,6 +13,12 @@ flowchart LR
     Routes --> Exchange["Village Exchange<br/>invite-only needs and item handovers"]
     Exchange --> Planning
     Exchange --> Records
+    Routes --> Village["Shared village fund<br/>voluntary shares · net receipts · explicit publication"]
+    Village --> Records
+    Village --> Square["Schoolhouse and castle appearances<br/>opt-in presence, one renderer"]
+    Village -. "recipient-bound Orders" .-> PayPal
+    Village -. "read-only finalized transfers" .-> Devnet["Solana devnet<br/>PYUSD test tokens only"]
+    MCP["Local stdio MCP<br/>three scoped read tools"] -->|"expiring adult grant"| Routes
     Routes --> Steward["Read-only steward<br/>scoped ledger and PayPal tools"]
     Planning <--> Solver["Rust kit solver<br/>JS reference when unbuilt"]
     Planning -. "search and refresh" .-> Catalogue["Channel3"]
@@ -33,6 +39,8 @@ The complete-kit planner derives a budget from the family's offers and deadline,
 | Optional AI | [weekly planner](../server/planner/index.mjs), [photo reader](../server/kit/reader.mjs), [kit ordering](../server/kit/rerank.mjs), [steward](../server/steward/index.mjs) |
 | Neighbor item sharing | [exchange service](../server/exchange/index.mjs), [available shared items](../server/exchange/stock.mjs), [journal](../src/app/village-exchange.js) |
 | Contributions and storage | [contributions.mjs](../server/payments/contributions.mjs), [db.mjs](../server/db.mjs) |
+| Shared funds and recipients | [village](../server/village/index.mjs), [HTTP composition](../server/village-http.mjs), [recipient-bound payments](../server/payments/village-payments.mjs), [devnet watcher](../server/vault/index.mjs) |
+| Village assistance and presence | [reviewed drafts](../server/planner/village-draft.mjs), [record treasurer](../server/steward/village-treasurer.mjs), [MCP capabilities](../server/mcp/capabilities.mjs), [temporary presence](../server/village-presence.mjs) |
 | Treasury and world | [treasury.js](../src/app/treasury.js), [ledger-grid.js](../src/app/ledger-grid.js), [board-scene.js](../src/world/board-scene.js) |
 
 `src/core/rules.js` is shared by both sides and has no DOM, Three.js or Node dependency, so tiers, board position, milestone cents and money parsing are tested directly in Node.
@@ -55,6 +63,11 @@ The complete-kit planner derives a budget from the family's offers and deadline,
 | `order_checks`, `deferred_refunds` | Saved receipt comparisons and verified refunds received before their capture is known. |
 | `exchange_circles`, `exchange_members`, `exchange_invites` | Private neighborhood membership and hashed, expiring, single-use invitations. |
 | `exchange_requests`, `exchange_offers` | Explicitly shared kit needs and item handover state; no financial credit. |
+| `exchange_profiles` | Private-by-default worldwide item-discovery preferences and stable family display references. |
+| `village_funds`, `village_shares`, `village_receipts`, `village_presentations` | One rail per shared project, voluntary own-family commitments, immutable net-accounting events and consented castle appearance. Separate from private savings. |
+| `village_payment_intents` | Immutable approved amount/recipient, private payer identity, nullable public attribution, durable order recovery and reservation. |
+| `village_vault_watches`, `village_vault_accounts`, `village_vault_events`, `village_vault_issues` | Finalized devnet baseline/cursor, watched token accounts, instruction-level deduplication and unsupported evidence retained for review. No keys or outgoing transaction tools. |
+| `village_subscriptions` | Disabled-by-default finite recurring agreements and checked status; no recurring-charge accounting. |
 
 
 Example mode and sandbox mode use different database files (`data/our-castle-example.sqlite`, `data/our-castle-sandbox.sqlite`), so simulated entries can never mix with PayPal-confirmed ones.

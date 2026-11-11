@@ -1,5 +1,78 @@
 # Validation
 
+## Combined village and loading release — November 10, 2026
+
+One branch, `claude/village-loading-finish-20261110`: a normal merge of the first-use village path (PR #81, `9bda275`) and the dragon loading scene (PR #80, `84470b2`), both built on the shared-fund integration (PR #79, `1f76ba6`), plus the corrections below. [What it contains and what remains](RELEASE-READINESS.md#current-source-release-shared-village-and-loading).
+
+**The hosted failure on PR #80.** [Run 42909511119](https://github.com/alejandro-publius/our-castle/actions/runs/42909511119) timed out one existing case, `woodland-discoveries.spec.mjs:5`, at its 150 s budget during the reduced-motion reload. Two things were true:
+- **That runner was slow.** Every case in its desktop shard 2 ran about 1.5 to 1.9 times slower than in three other runs of the same cases. The trace spent its time waiting for stable frames (5 to 25 s per click) and 31 s reaching the reload's load event.
+- **The loader was not free.** On one machine, alternating runs of that case: the merged source failed 3 of 3, PR #81's head passed 3 of 3, and the merged source with only the loader's mount call disabled passed 3 of 3. Traced as CI traces, showing the loader added about 1.1 s to the time the reloaded page took to become ready (14.8 s against 13.6 s, in a step that allows 15 s). One-change variants put that second in the loader's canvas: not drawing, or drawing on a bitmap canvas, removed it; the `inert` toggle and the observer made no difference.
+
+**Correction:** the loader's 384 × 176 scene asks for a plain bitmap canvas. The same case then passed 3 of 3 with the reload back at 13.7 to 13.8 s. No test, assertion, timeout or retry was changed for it. The step still has little room on a slow machine with or without the loader; that margin is the existing test's.
+
+**A second hosted failure, on this branch's own first run.** [Run 42928421451](https://github.com/alejandro-publius/our-castle/actions/runs/42928421451) at `d457e79` passed nine jobs and failed one existing case, `keeper.spec.mjs:128`: Moss's tour opened by `?tour=1` did not have focus on its Next button. While the loading cover is up the page behind it is inert, and a focus call made there is silently dropped; the tour opens during startup, before the page is marked ready, so on a runner fast enough for the tour to open under the cover its opening focus was lost. The tour now gives that focus again as soon as the page accepts it, if it is still open and nothing else has taken focus. A new loader case reproduces the hand-off exactly (it failed before the correction with the same "expected focused, received inactive"), and the tour's two unit cases pass. On the Mac used here the realm starts more slowly than the cover's 12 s limit, so the full browser cases could not be run to completion locally while the machine was busy; a bare-page check of the corrected tour showed focus dropped while inert and on Next afterwards. The hosted run on the corrected head is the check that counts.
+
+**Waits on the village path.** Each real request was held with a local route and released unchanged, at desktop and 390 px. The app start, the fund's opening read, the square and background refreshes were already right and are untouched. Changed: each window's status line now stays inside the visible part of the window (it was out of sight during a contribution, a treasurer question and an Exchange save); busy windows dim their submit buttons; the Exchange marks its own window busy, says it is checking an invitation rather than saving, and no longer wipes "Saved." after a settings save; a member change clears the fund's status line. The dragon is not used for any of these. [The map and decisions](VILLAGE-FIRST-USE.md#waits-on-this-path-mapped-before-the-change).
+
+**Checks on the final source**, Node 26.0.0, under the transport guard with nothing refused but its self-checks:
+- The village CI selection, including the two-family journey and the new wait cases: **17 passed (desktop 11, phone 6) with five designed desktop-only skips**.
+- The loader spec after the canvas correction: 10 passed across desktop and phone. The woodland case: 3 of 3 on desktop.
+- Seven deliberate breaks of the new behaviour (status out of view, status kept for the next member, Exchange window not marked busy, GPU canvas again, "Saving…" for a check, settings result wiped, buttons not dimmed) each failed the matching case at its own step.
+- The original-art, palette, renderer and syntax guard and the whitespace check passed.
+
+- The Exchange-dashboard spec, which saves sharing settings: 2 passed across desktop and phone.
+
+Left to the hosted run on the combined release pull request, and not rerun locally after the last Exchange change: the two-family Exchange and village-library specs, the woodland cases on the phone project, the whole unit suite, and the release and kit-planner selections. Raw traces, timings, before and after captures and mutation runs are ignored under `test-results/village-loading-finish-20261110/`.
+
+Limits: timings are from one Mac and a software-rendered Chromium; they explain a test failure and are not a performance claim. Virtual authenticators and an emulated phone, not people or devices. Simulated contributions; no provider call.
+
+## Fresh two-family village journey — November 10, 2026
+
+Stacked on the shared-fund integration (PR #79 at `1f76ba6`). Two fresh, separately signed-in families can now reach one shared project through visible controls. [What was mapped, changed and deliberately left alone](VILLAGE-FIRST-USE.md).
+
+**Mapped before editing**, at `1f76ba6`, desktop and 390 px, on a disposable family-mode server with two browser contexts and nothing seeded. The draft, joining, own-family shares, the simulated contribution, the live update to the other family's open page (about 0.1 s), the square and the unchanged private records already worked and are untouched. Demonstrated gaps: the empty fund offered only Close; Village Exchange offered no way back; Families had no invitation handoff; the draft and a read-only treasurer question both reported "Saved."; the draft's accept button was an unstyled system button; **My realm** left focus on the page body. At 390 px, a new invitation code and the join confirmation also appeared below the fold.
+
+**Changed:** contextual actions from the fund into the existing Exchange forms, which open over the fund and return to it; truthful status lines; existing parchment button treatments on the controls of this path; focus restored after return and after **My realm**. No new form, dialog, payment type, server route or schema. Children and non-founding families are offered none of the new actions.
+
+**Checks on the final source**, Node 26.0.0, under the transport guard with nothing refused but its self-checks:
+- The existing village CI selection plus the new journey: desktop **9 passed**; phone **5 passed** with four designed desktop-only skips.
+- The existing Exchange, Exchange-dashboard and village-library specs that share the changed dialog: **8 passed** across desktop and phone. The first run of these failed two cases for a harness reason this change introduced: three new buttons had the same text as the Exchange headings an existing test finds page-wide. The buttons were reworded and that test passes unedited.
+- Affected unit files (13 results) and the original-art, palette, renderer and syntax guard passed.
+- Nine deliberate breaks of the production code each failed the matching case at its own step.
+
+The whole unit suite and the release-browser and kit-planner selections were not rerun locally; the one hosted run for this branch covers them and is recorded on its pull request. Raw maps, screenshots before and after, logs and mutation runs are ignored under `test-results/village-first-use-20261110/`.
+
+Limits: virtual authenticators and an emulated phone, not people, a physical device or a screen reader. Contributions are simulated; no provider call, sandbox recipient or devnet wallet is involved.
+
+## Shared village fund — November 10, 2026
+
+The five source tracks are integrated on base `84a35b1`: shared fund accounting, recipient-bound sandbox payments and read-only devnet observation, the original-model village square, reviewed drafts/record answers, and an adult-scoped local MCP adapter. [The runnable route and remaining setup](VILLAGE-DEMO.md) distinguish this source from actual provider acceptance. The schema is 17 with 43 application tables; only in-memory and disposable migration fixtures were opened.
+
+Focused backend checks on Node 24.22.1 cover **185 distinct cases** across the new service/HTTP/MCP checks and affected existing access/payment/server/migration checks. Two explicit migration inventories initially failed because they still listed the preceding schema; both were updated to name the exact new steps/tables, and their affected cases passed. No preservation assertion was weakened. The original-art/runtime guard still verifies 47 copied files, the 90-color palette and renderer wiring.
+
+Review also reproduced and corrected four boundary gaps before integration: an MCP read could outlive neighborhood membership during an awaited reader; an outside payer could be incorrectly attributed to a nonmember household; a delayed devnet scan could persist after its organizer lost access; and leaving a neighborhood could hide an externally active recurring agreement's recovery controls. Their regressions now cover the corrected behavior. Pending payment recovery uses the retained exact amount/recipient and stops unknown order creation retries after six hours; it does not silently free an uncertain payment reservation.
+
+Browser evidence is separated into the real authored-server journey (`village-fund-journey.spec.mjs`) and scoped UI edge cases with explicit fake API responses (`village-square.spec.mjs`). Both use desktop and 390 px emulation, disposable examples and routes that deny outside origins. The release workflow runs them in their own bounded jobs. The integration PR records the final browser result, exact tested source head and hosted run; a configured provider, physical device, human playtest or live assistant connection is not inferred from those checks.
+
+Devnet and organizer subscriptions default off. No sandbox recipient account or devnet wallet has been set up in this work. Subscription agreement tracking does not import recurring charges and is not advertised as automatic weekly collection. No saved app, `.env`, household database, existing $15 order, video, deployment or submission was changed.
+
+### Member-selector correction and exact-head hosted review
+
+**Reproduced at `9eb7601`.** In the real `--village-fund` example, with the real member selector and the page's state object unchanged (one state read in total), the Village fund control was hidden after adult → child and stayed hidden after child → adult, including eight seconds later. A fresh load with the child already selected showed it. The fund sheet dropped its projection on every scope change and took the state's again only when a new state object arrived; the example selector redraws without one.
+
+**Correction.** An example member choice inside one household takes the projection the state already holds. The example server builds that projection per household and names no member in it. Every other scope change still shows nothing until its own state arrives: a signed-in member, another household, and a change between an example and a signed-in scope in either direction. A child still gets no payment form, and what a child entered is cleared for the adult.
+
+**Regressions**, both in the existing village jobs:
+- The real-server journey, desktop and 390 px: adult → child → adult through the selector on one state read. The child sees the project with the payment, share and create forms hidden; a payment form filled and submitted directly sends nothing. The adult's amount and approval start empty. The server's records are unchanged and the page wrote nothing.
+- A fixture case, desktop: five scope changes are each withheld until a new projection arrives (a signed-in member, a signed-in household, signed-in to example, another example household, example to signed-in); the example member choice is drawn for child and adult.
+- Each was broken on purpose. Without the correction, and with each of its three conditions removed in turn, the fixture case failed at that condition's own step. With both client-side adult checks removed, the journey failed on a payment request being sent; the server's records were still unchanged.
+
+**Hosted [run 42895401398](https://github.com/alejandro-publius/our-castle/actions/runs/42895401398) at `9eb7601`: six jobs passed, four failed.** Passed: both kit-planner jobs (9 and 9), the three release-browser jobs (17, 17, and 31 with three designed skips) and the phone village job (3, two designed skips). Failed:
+- **All three unit jobs, the same five cases** (725 results: 719 passed, 5 failed, 1 skipped). Four older migration inventories still expected schema 14 and 33 tables; they now name schema 17, the ten village tables and 43 tables, with every exact-list and unchanged-row assertion kept. The fifth expected the full `npm run demo -- --family-trip` command in the unknown-option help, which had been shortened; the help gives the full command again and the assertion is unchanged.
+- **The desktop village job, one case** (4 passed, 1 failed). After a step in the square, the check read the drawn position before the server's answer had returned. It now waits for the same expected position.
+
+**Local checks on the corrected source**, Node 26.0.0, under the transport guard with no refusal other than its self-checks: the source guard; the seven affected unit files, 66 results, all passed (JavaScript reference solver; the hosted jobs compile the Rust one); the village selection, desktop 7 passed and phone 4 passed with three designed skips. The whole unit and release-browser suites were not rerun locally. The hosted result for the corrected head belongs on the integration PR. Raw logs, the reproduction and the mutation runs are ignored under `test-results/village-handoff-20261110/`.
+
 ## November 10 source integration and CI correction
 
 The combined release retains the eight commits from PRs #70–#77, ending at `47dbf4e`. The review covers the Exchange's private-by-default directory and participant boundaries, schema-14 migration fixtures, illustrated parchment/header, licensed local music, focused library example, and woodland/clearing additions. The production source and assets are byte-identical to that reviewed head; this integration changes only the release workflow, one browser startup assertion and release documentation.

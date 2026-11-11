@@ -1,5 +1,29 @@
 # Release readiness — November 10, 2026
 
+## Current source release: shared village and loading
+
+**What it is.** One combined source release, on branch `claude/village-loading-finish-20261110`, made by normally merging three reviewed lines of work and their corrections:
+
+| Part | Pull request | Exact head |
+| --- | --- | --- |
+| Shared village fund, money adapters, square, treasurer, MCP bridge | [#79](https://github.com/alejandro-publius/our-castle/pull/79) | `1f76ba619f87df646310573dc1a2ed64887e0896` |
+| Two fresh families reaching one shared project | [#81](https://github.com/alejandro-publius/our-castle/pull/81) | `9bda275b28f0aa2a369a11acf5c075f626d05ed1` |
+| The owner's dragon loading scene | [#80](https://github.com/alejandro-publius/our-castle/pull/80) | `84470b27adde0ab23473ef92f746e2321df03c49` |
+| Corrections on the combined branch | the combined release pull request | loader canvas, wait feedback, this handoff |
+
+**Status.** Implemented and tested **source**. It is not deployed, and the saved Mac apps below were not read, migrated, restarted or activated by it; they remain as recorded below (`b21b2d8`, schema 12). Its hosted results are on the combined release pull request; [what was checked](VALIDATION.md#combined-village-and-loading-release--november-10-2026). To look at it: `npm ci`, then `npm run demo -- --village-fund` ([the short route](VILLAGE-DEMO.md)). For a critical read without touching anything, start with [the critique brief](CRITIQUE-BRIEF.md).
+
+**What remains, and who it waits on:**
+
+- **Activation.** Merged source is not a running app. Activating a saved app is a separate, owner-approved step with backups; schemas 13 to 17 have only ever been applied to disposable fixtures.
+- **Sandbox recipient and devnet wallet.** Neither exists yet. Recipient-bound PayPal sandbox payments and PYUSD devnet observation are checked only against fake transports. Real acceptance needs owner-guided setup of a separate sandbox recipient and a devnet receiving wallet.
+- **Not established by fake checks:** an owner's own assistant connected over MCP, AI drafting or live ranking quality, and recurring-agreement eligibility. Recurring charges and refunds are not ingested at all; nothing collects weekly.
+- **A watched wallet proves little.** Observing an address does not restrict what its owner spends on, enforce a vote, prove a bill was paid or prevent fraud.
+- **Separate records.** The saved runtimes and the historical $15 sandbox order are untouched and are not evidence for this release.
+- **Still the owner's:** the final demo, any video, the submission, and any evidence from real people or devices. None is claimed here.
+
+Everything below this section describes earlier releases and the saved apps. Where it says a village or PYUSD feature was only a proposal, it is describing that earlier time.
+
 **Public source:** [PR #59](https://github.com/alejandro-publius/our-castle/pull/59) integrated the reviewed PR #40–#58 source at `b21b2d8`; [PR #60](https://github.com/alejandro-publius/our-castle/pull/60) recorded the saved-app activation and live synthetic photo evidence. This source also includes the [playable family-trip example](FAMILY-TRIP-EXAMPLE.md) and its [temporary kit map preview](KIT-MAP-PREVIEW.md); [selected product scope](PRODUCT-COMPLETION.md) reconciles the completed features and evidence limits. The latest source checks are recorded at the top of [validation](VALIDATION.md); the two saved runtimes below remain pinned separately.
 
 It includes household snapshots and restart recovery; refund ordering, including a refund arriving before its capture; two-server payment checks; readable receipts and request references; optional muted music and Moss's tour; family choices, saved schedules and family-fit shopping; typed or photographed kit lists; and complete-kit planning with a checked Rust solver and optional Cohere ordering. See [validation](VALIDATION.md), [kit lists](KIT-LIST.md) and [complete kits](KIT-PLANNER.md).
@@ -12,6 +36,10 @@ It includes household snapshots and restart recovery; refund ordering, including
 The separate post-merge [run 42672760816](https://github.com/alejandro-publius/our-castle/actions/runs/42672760816) encountered GitHub internal errors. Its second attempt passed all four jobs GitHub created (three unit/Rust jobs and the native-kit journey); GitHub never created its release-browser job and refused another retry. It is not a fully green post-merge run. The passing equivalent-tree PR run above remains distinct evidence. These are fake-provider checks, not live payment or ranking-quality evidence.
 
 ## November 10 source additions
+
+The new [shared-fund route](VILLAGE-DEMO.md), `npm run demo -- --village-fund`, uses five invented families and separate shared accounting. It includes a parchment fund sheet, original-model shared square, optional presence, reviewed fund drafts and an adult-scoped MCP bridge. Recipient-bound sandbox and read-only PYUSD devnet adapters have fake-provider evidence; actual recipient/wallet acceptance remains pending. The earlier statement below that PYUSD was only a proposal describes the preceding release. It is now implemented source, disabled unless explicitly configured, without a real devnet transfer claim. Recurring-agreement tracking is also optional and does not import charges.
+
+Source migrations append schemas 15–17 for these new records. They have been exercised only against disposable fixtures. This source update does not activate or migrate the saved runtimes below. Final source/hosted results belong in the shared-fund integration PR and validation note.
 
 [Village Exchange](VILLAGE-EXCHANGE.md) adds private neighborhood invitations and equipment handovers connected to kit planning. The source migration appends five tables (schema 13, 32 application tables). Property markers now start as compact arrows; the expanded realm is 452 × 356 world units with two waterfalls flowing into existing rivers, a hidden forest camp and a lantern glade. The steward filters transaction-list results to the current household goal's server-recorded capture IDs before the model receives them.
 

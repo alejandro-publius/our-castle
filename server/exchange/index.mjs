@@ -2,6 +2,7 @@ import { createHash, randomBytes } from 'node:crypto';
 import { DomainError, getGoal, getMember, isIsoDate, newId } from '../household.mjs';
 import { transaction } from '../db.mjs';
 import { kitView } from '../kit/list.mjs';
+import { assertVillageLeaveAllowed } from '../village/index.mjs';
 
 const fail = (status, code, message) => new DomainError(status, code, message);
 const hash = token => createHash('sha256').update(token).digest('hex');
@@ -143,6 +144,7 @@ export function exchangeAction(db, { scope, actor, action, input }, clock) {
     }
     const g = needMember();
     if (action === 'leave') {
+      assertVillageLeaveAllowed(db, scope.householdId);
       const held = db.prepare(`SELECT 1 FROM exchange_offers o JOIN exchange_requests r ON r.id = o.request_id
         WHERE (r.household_id = ? AND o.status IN ('accepted','received'))
           OR (o.household_id = ? AND (o.status = 'accepted' OR (o.status = 'received' AND o.kind = 'loan')))`).get(scope.householdId, scope.householdId);

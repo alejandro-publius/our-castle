@@ -24,6 +24,7 @@ import { createFamilyChoices } from './family-choices.js';
 import { createKitList } from './kit-list.js';
 import { createKitPlan } from './kit-plan.js';
 import { createVillageExchange } from './village-exchange.js';
+import { createVillageFund, villageMoney, villageRailLabel } from './village-fund.js';
 import { scheduleLines } from '../core/family-choices.js';
 import { needSummary } from '../core/family-fit.js';
 import { catalogueOf } from '../core/catalogue.js';
@@ -99,6 +100,7 @@ let merchant = null;
 let familyChoices = null; // the Plan journal's family choices (src/app/family-choices.js)
 let kitList = null; // the Plan journal's kit list (src/app/kit-list.js)
 let villageExchange = null;
+let villageFund = null;
 let kitPlan = null; // complete kits for that list (src/app/kit-plan.js)
 let treasury = null;
 let planCheck = null;
@@ -148,6 +150,8 @@ function worldInsets() {
   // A kit preview's plaque sits under the toolbar: the picture it describes is framed below it.
   const plaque = $('#kit-preview').getBoundingClientRect();
   if (plaque.height) top = Math.max(top, plaque.bottom - world.top);
+  const squareControls = $('#village-square-controls').getBoundingClientRect();
+  if (squareControls.height) top = Math.max(top, squareControls.bottom - world.top);
   const foot = $('.board-foot').getBoundingClientRect();
   if (foot.height && foot.top < world.bottom) bottom = world.bottom - foot.top;
   return { top: (top + 8) / world.height, bottom: (bottom + 6) / world.height };
@@ -334,6 +338,10 @@ async function boot() {
     setJournalOpen(pref.get('journal') !== 'closed', { remember: false });
     if (state.example?.id === 'village-story') scene?.focusLegend(FAMILY_PROJECT_SITE.id);
     else scene?.focusDistrict(homeDistrict(state.board.builtTier).id);
+    const villageParams = new URLSearchParams(location.search);
+    const requestedVillage = villageParams.get('villageFund') ?? villageParams.get('village');
+    if (requestedVillage) await villageFund?.openReview(requestedVillage);
+    else if (state.example?.id === 'village-fund') villageFund?.open();
     if (family.on) startFamilyLive();
     // Moss, the castle keeper: an optional authored tour, offered only while payments are simulated. It may only show
     // a journal tab; it never presses a control, writes a record or saves a preference.
@@ -364,7 +372,7 @@ async function boot() {
   window.__booted = true;
 }
 function exposeDebug() {
-  window.__ourCastle = { get state() { return state; }, scene: () => scene?.debug() ?? null, treasury: () => treasury?.status() ?? null, sky: () => ({ time: sky.time, weather: sky.weather, place: sky.place, loading: sky.loading, error: sky.error, result: sky.result && { kind: sky.result.kind, label: sky.result.label, expiresAt: sky.result.expiresAt }, resolved: sky.resolved }), route: () => scene?.routeOnScreen() ?? null, bus, sound: () => ({ enabled: sound.enabled, played: sound.played() }), family: () => ({ on: family.on, refreshes: family.refreshes, lost: family.lost, live: family.status, revision: family.revision, discarded: family.discarded, stream: family.live?.status() ?? null }) };
+  window.__ourCastle = { get state() { return state; }, scene: () => scene?.debug() ?? null, treasury: () => treasury?.status() ?? null, village: () => villageFund?.debug() ?? null, sky: () => ({ time: sky.time, weather: sky.weather, place: sky.place, loading: sky.loading, error: sky.error, result: sky.result && { kind: sky.result.kind, label: sky.result.label, expiresAt: sky.result.expiresAt }, resolved: sky.resolved }), route: () => scene?.routeOnScreen() ?? null, bus, sound: () => ({ enabled: sound.enabled, played: sound.played() }), family: () => ({ on: family.on, refreshes: family.refreshes, lost: family.lost, live: family.status, revision: family.revision, discarded: family.discarded, stream: family.live?.status() ?? null }) };
 }
 
 // ---------- Family access (shared families with passkeys; absent in example mode) ----------
@@ -410,6 +418,7 @@ function sessionLost(error) {
   family.lost = true;
   kitPlan?.closePreview(); // nothing of this household's plan stays drawn on the map
   villageExchange?.close(); // these native windows sit outside the hidden household shell
+  villageFund?.dispose();
   family.live?.stop();
   clearInterval(family.timer); clearTimeout(family.statusTimer); clearTimeout(family.retryTimer);
   showLiveStatus(false);
@@ -552,6 +561,7 @@ function drawState(next, { animate = true, result = null } = {}) {
   renderLedger();
   renderTabs();
   renderFooter();
+  villageFund?.render();
   bus.emit('state:applied', { result, added: added.map((r) => r.id) });
 }
 
@@ -672,7 +682,19 @@ function renderActiveMember() {
   if (index >= 0) portrait.src = avatarImage(memberAvatar(state.members[index], index).id);
 }
 
-function renderQuest() {
+function renderQuest(shared = villageFund?.activeFund()) {
+  if (shared) {
+    const net = shared.progress?.netMinor ?? 0, scale = 10 ** shared.decimals;
+    $('#goal-name').textContent = shared.title; $('#goal-name').title = shared.title;
+    $('#progress-amount').textContent = villageMoney(net, shared); $('#target-amount').textContent = villageMoney(shared.targetMinor, shared);
+    $('#meter-fill').style.width = `${Math.min(100, (shared.progress?.basisPoints ?? 0) / 100)}%`;
+    $('#meter').setAttribute('aria-valuemax', String(shared.targetMinor / scale)); $('#meter').setAttribute('aria-valuenow', String(Math.min(net, shared.targetMinor) / scale));
+    $('#meter').setAttribute('aria-valuetext', `${villageMoney(net, shared)} of ${villageMoney(shared.targetMinor, shared)} for the shared project`);
+    $('#meter-ticks').replaceChildren();
+    $('#quest-next').textContent = `${villageMoney(shared.progress?.remainingMinor ?? 0, shared)} to go · ${villageRailLabel(shared.rail)}`;
+    $('#progress-breakdown').textContent = 'Shared project progress comes from recorded contributions minus refunds. Family promises do not count as payments.';
+    return;
+  }
   const { goal, progress, board } = state;
   $('#goal-name').textContent = goal.name;
   $('#goal-name').title = goal.name;
@@ -2203,6 +2225,7 @@ function renderFooter() {
   const sandbox = modes.payments.mode === 'sandbox';
   // A shared family signs in with passkeys; the example household's members are demo profiles.
   const mode = sandbox ? 'PayPal sandbox · test money only.' : state.access ? 'Simulated payments.'
+    : state.example?.id === 'village-fund' ? 'Example village fund · invented families and simulated contributions.'
     : state.example?.id === 'village-story' ? 'Example village library · invented families and book offers · simulated payments.'
     : state.example ? `${state.example.title} · the family, shops, listings and prices are invented · simulated payments.` : 'Demo mode · simulated payments.';
   const people = state.access ? 'Each member signs in with their own passkey.' : 'Demo profiles, not sign-in.';
@@ -2233,8 +2256,11 @@ function bindEvents() {
     fitSource: () => familyChoices?.fitSource() ?? null, onKitListing: addKitListing });
   familyChoices = createFamilyChoices({ getState: () => state, actor: persona, openMerchant: (from, options) => merchant.open(from, options), onReview: useFamilyChoice, applyState,
     onProposed: () => $('#plan-headline').focus() });
-  villageExchange = createVillageExchange({ getState: () => state, actor: persona, applyState,
+  villageExchange = createVillageExchange({ getState: () => state, actor: persona, applyState, onReturn: () => villageFund?.resume(),
     onCompare: () => { selectTab('plan'); setJournalOpen(true); $('#kit-list').open = true; $('#kit-plan-compare').scrollIntoView({ block: 'center' }); $('#kit-plan-compare').focus(); } });
+  villageFund = createVillageFund({ getState: () => state, actor: persona, applyState, getScene: () => scene,
+    onSquare: (shown) => { if (shown) { closeKitPreview(); setJournalOpen(false); } renderQuest(); scene?.reframe(); }, onFundView: renderQuest,
+    onExchange: (section) => villageExchange?.open({ from: 'fund', section }) });
   kitList = createKitList({ getState: () => state, actor: persona, applyState, onRender: () => kitPlan?.render() });
   kitPlan = createKitPlan({ getState: () => state, actor: persona, applyState, openMerchant: (from, options) => merchant.open(from, options),
     reserve: () => { const src = familyChoices?.fitSource(); return { cents: src?.reserveCents ?? 0, invalid: Boolean(src?.reserveInvalid) }; },
@@ -2298,7 +2324,7 @@ function bindEvents() {
     e.currentTarget.textContent = on ? 'Pixel art' : 'Raw 3D';
     scene?.setPixelMode(on);
   });
-  $('#persona').addEventListener('change', (e) => { ui.personaId = e.target.value; pref.set('persona', ui.personaId); renderActiveMember(); ui.refundArm = null; $('#give-approve').checked = false; ui.approvalBasis = null; renderGive(); renderLedger(); renderNextStep(); renderExampleEntry(); familyChoices?.render(); kitList?.render(); villageExchange?.render(); });
+  $('#persona').addEventListener('change', (e) => { ui.personaId = e.target.value; pref.set('persona', ui.personaId); renderActiveMember(); ui.refundArm = null; $('#give-approve').checked = false; ui.approvalBasis = null; renderGive(); renderLedger(); renderNextStep(); renderExampleEntry(); familyChoices?.render(); kitList?.render(); villageExchange?.render(); villageFund?.render(); });
   $('#next-step-go').addEventListener('click', openNextStep);
   $('#deed-visit').addEventListener('click', visitDeed);
   $('#deed-next').addEventListener('click', () => { ui.deeds.index++; renderDeed(); $('#deed-name').focus(); });
