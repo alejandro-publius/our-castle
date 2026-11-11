@@ -530,6 +530,26 @@ export const MIGRATIONS = Object.freeze([
     ensure(db) { ensureVillagePaymentsSchema(db); ensureVaultSchema(db); },
   }),
   Object.freeze({ id: 'village-subscriptions', ensure: ensureVillageSubscriptionsSchema }),
+  Object.freeze({
+    id: 'payment-holds',
+    // A household contribution can be held first: PayPal authorizes the adult-approved amount and nothing is credited.
+    // One row per held order. An adult later releases an exact amount of it (one final capture) or returns it (a void);
+    // the decision is written here before PayPal is asked, so an unanswered request can be reconciled, never guessed.
+    ensure(db) { db.exec(`
+      CREATE TABLE IF NOT EXISTS payment_holds (
+        order_id TEXT PRIMARY KEY REFERENCES payment_orders(id) ON DELETE CASCADE,
+        authorization_id TEXT UNIQUE,
+        status TEXT NOT NULL CHECK (status IN ('awaiting', 'held', 'releasing', 'released', 'returning', 'returned', 'lapsed', 'failed')),
+        held_cents INTEGER NOT NULL CHECK (held_cents > 0),
+        release_cents INTEGER CHECK (release_cents IS NULL OR (release_cents > 0 AND release_cents <= held_cents)),
+        decided_by TEXT,
+        decision_request_id TEXT UNIQUE,
+        expires_at TEXT,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      );
+    `); },
+  }),
 ]);
 
 export function openDatabase(file) {

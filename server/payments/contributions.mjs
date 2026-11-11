@@ -36,6 +36,13 @@ export function createContributionService({ db, clock, mode, paypal = null, webh
     return orderByRequestId(requestId);
   };
   const captureById = (id) => db.prepare('SELECT * FROM payment_captures WHERE capture_id = ?').get(id);
+  // A held contribution: PayPal authorized the adult-approved amount and nothing is credited. It ends in exactly one of
+  // two adult decisions, each recorded before PayPal is asked: release an exact amount (one final capture, credited
+  // like any other capture) or return it (a void, never credited).
+  const holdFor = (orderId) => db.prepare('SELECT * FROM payment_holds WHERE order_id = ?').get(orderId);
+  const setHold = (orderId, status) => db.prepare('UPDATE payment_holds SET status = ?, updated_at = ? WHERE order_id = ?').run(status, clock.iso(), orderId);
+  /** What a capture of this order must be for: the adult's exact release of a hold, otherwise the order's own amount. */
+  const expectedCaptureCents = (row) => { const hold = holdFor(row.id); return hold ? hold.release_cents : row.amount_cents; };
 
   function requireMode(expected) {
     if (mode !== expected) {
@@ -76,7 +83,10 @@ export function createContributionService({ db, clock, mode, paypal = null, webh
       })),
     }));
     const checks = checksFor(row.id);
+    const hold = holdFor(row.id);
     return {
+      // Present only on a held contribution, so every other receipt keeps its exact shape.
+      ...(hold ? { hold: { status: hold.status, heldCents: hold.held_cents, releaseCents: hold.release_cents, authorizationId: hold.authorization_id, decidedBy: hold.decided_by, expiresAt: hold.expires_at } } : {}),
       id: row.id,
       provider: row.provider,
       simulated: row.provider === 'simulated',
@@ -162,6 +172,11 @@ export function createContributionService({ db, clock, mode, paypal = null, webh
       && row.amount_cents === input.amountCents && row.approved_by === input.approverId;
   }
 
+  function insertHold(orderId, heldCents, status, authorizationId = null) {
+    const at = clock.iso();
+    db.prepare('INSERT INTO payment_holds (order_id, authorization_id, status, held_cents, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)').run(orderId, authorizationId, status, heldCents, at, at);
+  }
+
   function insertOrder({ id, provider, providerOrderId, input, goal, status }) {
     const at = clock.iso();
     db.prepare(`INSERT INTO payment_orders (id, provider, provider_order_id, request_id, household_id, goal_id, approved_by, amount_cents, currency, status, created_at, updated_at)
@@ -189,6 +204,7 @@ export function createContributionService({ db, clock, mode, paypal = null, webh
         .run(row.household_id, row.goal_id, kinds.contribution, amountCents, currency, kinds.source, `${kinds.prefix}-capture:${captureId}`,
           row.approved_by, `${row.provider === 'simulated' ? 'Simulated contribution' : 'PayPal sandbox contribution'} approved by ${approver?.name ?? 'an adult'}`, at);
       db.prepare("UPDATE payment_orders SET status = 'completed', status_detail = NULL, updated_at = ? WHERE id = ?").run(at, row.id);
+      db.prepare("UPDATE payment_holds SET status = 'released', updated_at = ? WHERE order_id = ?").run(at, row.id); // a held order only
       // A verified refund can arrive while this capture is still pending locally. Keep that evidence when an older
       // completion arrives: apply the stored reversals before awarding milestones, in this same transaction.
       let refunded = adoptDeferredRefunds(captureId);
@@ -211,9 +227,15 @@ export function createContributionService({ db, clock, mode, paypal = null, webh
       setStatus(row, 'failed', 'PayPal returned a capture without an id.');
       return result(row, 'rejected_mismatch');
     }
-    if (amountCents !== row.amount_cents || currency !== row.currency || customId !== row.id) {
+    const expectedCents = expectedCaptureCents(row);
+    if (expectedCents === null) {
+      // A capture of a hold that no adult has released here (made in PayPal directly, say). Never credited on its own.
+      if (!SETTLED.has(orderById(row.id).status)) setStatus(row, 'rejected', `Capture ${capture.id} arrived for a held contribution that no adult has released here. No progress was recorded.`);
+      return result(row, 'rejected_mismatch');
+    }
+    if (amountCents !== expectedCents || currency !== row.currency || customId !== row.id) {
       if (!SETTLED.has(orderById(row.id).status)) {
-        setStatus(row, 'rejected', `Capture ${capture.id} did not match the expected ${formatCents(row.amount_cents, row.currency)} ${row.currency} for this goal. No progress was recorded.`);
+        setStatus(row, 'rejected', `Capture ${capture.id} did not match the expected ${formatCents(expectedCents, row.currency)} ${row.currency} for this goal. No progress was recorded.`);
       }
       return result(row, 'rejected_mismatch');
     }
@@ -247,7 +269,7 @@ export function createContributionService({ db, clock, mode, paypal = null, webh
     }
   }
 
-  function applyOrder(row, order) {
+  function applyOrder(row, order, { explicit = false } = {}) {
     if (!order || order.id !== row.provider_order_id) {
       setStatus(row, 'failed', 'PayPal returned a different order than expected. No progress was recorded.');
       return result(row, 'rejected_mismatch');
@@ -256,6 +278,11 @@ export function createContributionService({ db, clock, mode, paypal = null, webh
     if (!unit) {
       setStatus(row, 'failed', 'The PayPal order did not contain this contribution. No progress was recorded.');
       return result(row, 'rejected_mismatch');
+    }
+    if (holdFor(row.id)) {
+      // A held order shows its authorization first. Until it shows a capture as well, the authorization is the answer.
+      const held = applyAuthorization(row, unit.payments?.authorizations?.[0], unit.custom_id, order.status, explicit);
+      if (!unit.payments?.captures?.length || ['rejected_mismatch', 'returned', 'lapsed', 'declined'].includes(held.outcome)) return held;
     }
     const capture = unit.payments?.captures?.[0];
     if (!capture) {
@@ -288,9 +315,79 @@ export function createContributionService({ db, clock, mode, paypal = null, webh
     // this capture can establish that amount. Credit and replay those reversals together, never the gross milestone.
     if (capture.status === 'PARTIALLY_REFUNDED' && applied.outcome === 'not_credited' && !rejectedRefund) {
       const known = db.prepare("SELECT COALESCE(SUM(amount_cents), 0) AS cents FROM payment_refunds WHERE capture_id = ? AND currency = ? AND status = 'COMPLETED' AND credited = 0").get(capture.id, row.currency).cents;
-      if (known > 0 && known < row.amount_cents) return credit(row, capture.id, row.amount_cents, row.currency);
+      const expectedCents = expectedCaptureCents(row);
+      if (known > 0 && known < expectedCents) return credit(row, capture.id, expectedCents, row.currency);
     }
     return refunded ? result(row, 'refunded') : applied;
+  }
+
+  /**
+   * Check a provider authorization against the held order the server created, then record what it says. It never
+   * credits anything: only a capture of an adult's exact release does that. A decision already under way or finished
+   * here is not overwritten by a read that still shows the hold as open.
+   */
+  function applyAuthorization(row, authorization, purchaseUnitCustomId, orderStatus = null, explicit = false) {
+    const hold = holdFor(row.id);
+    if (!authorization) {
+      if (SETTLED.has(orderById(row.id).status)) return result(row, 'already_completed');
+      if (['held', 'releasing', 'returning', 'released', 'returned', 'lapsed'].includes(hold.status)) return result(row, hold.status === 'held' ? 'held' : 'unknown');
+      if (orderStatus === 'APPROVED') setStatus(row, 'created', 'Approved in PayPal but not held yet.');
+      return result(row, 'not_held');
+    }
+    const amountCents = decimalStringToCents(authorization.amount?.value);
+    const customId = authorization.custom_id ?? purchaseUnitCustomId;
+    const other = authorization.id ? db.prepare('SELECT order_id FROM payment_holds WHERE authorization_id = ?').get(authorization.id) : null;
+    if (!authorization.id || amountCents !== row.amount_cents || authorization.amount?.currency_code !== row.currency || customId !== row.id
+      || (other && other.order_id !== row.id) || (hold.authorization_id && hold.authorization_id !== authorization.id)) {
+      if (!SETTLED.has(orderById(row.id).status) && !['released', 'returned', 'lapsed'].includes(hold.status)) {
+        setHold(row.id, 'failed');
+        setStatus(row, 'rejected', `The hold PayPal reported did not match the expected ${formatCents(row.amount_cents, row.currency)} ${row.currency} for this goal. Nothing was credited.`);
+      }
+      return result(row, 'rejected_mismatch');
+    }
+    const expiresAt = typeof authorization.expiration_time === 'string' && Number.isFinite(Date.parse(authorization.expiration_time)) ? authorization.expiration_time : null;
+    db.prepare('UPDATE payment_holds SET authorization_id = ?, expires_at = COALESCE(?, expires_at), updated_at = ? WHERE order_id = ?').run(authorization.id, expiresAt, clock.iso(), row.id);
+    const money = formatCents(row.amount_cents, row.currency);
+    switch (authorization.status) {
+      case 'CREATED':
+        // An adult's release or return may already be on its way to PayPal; a read made before it landed changes nothing.
+        if (['releasing', 'returning'].includes(hold.status)) {
+          if (!explicit) return result(row, 'unknown');
+          // An adult's explicit check shows PayPal still holding the whole amount: that decision did not take effect.
+          reopenHold(row);
+          setStatus(row, 'held', `PayPal still holds ${money}: the earlier decision did not go through. An adult can decide again.`);
+          return result(row, 'held');
+        }
+        if (['released', 'returned', 'lapsed'].includes(hold.status)) return result(row, hold.status === 'released' ? 'already_completed' : hold.status);
+        setHold(row.id, 'held');
+        setStatus(row, 'held', `PayPal is holding ${money}. Nothing is credited until an adult releases or returns it.`);
+        return result(row, 'held');
+      case 'PENDING':
+        if (hold.status === 'awaiting') setStatus(row, 'pending', 'PayPal is still reviewing this hold. Nothing is held or credited yet.');
+        return result(row, 'pending');
+      case 'VOIDED':
+        if (SETTLED.has(orderById(row.id).status)) return result(row, 'already_completed');
+        setHold(row.id, 'returned');
+        setStatus(row, 'returned', `The hold of ${money} was returned. Nothing was charged or credited.`);
+        return result(row, 'returned');
+      case 'EXPIRED':
+        if (SETTLED.has(orderById(row.id).status)) return result(row, 'already_completed');
+        setHold(row.id, 'lapsed');
+        setStatus(row, 'lapsed', `The hold of ${money} expired in PayPal. Nothing was charged or credited.`);
+        return result(row, 'lapsed');
+      case 'DENIED':
+        if (SETTLED.has(orderById(row.id).status)) return result(row, 'already_completed');
+        setHold(row.id, 'failed');
+        setStatus(row, 'declined', 'PayPal declined this hold. Nothing was held or credited.');
+        return result(row, 'declined');
+      case 'CAPTURED':
+      case 'PARTIALLY_CAPTURED':
+        // The capture itself decides, and is checked against the adult's recorded release.
+        return result(row, SETTLED.has(orderById(row.id).status) ? 'already_completed' : 'unknown');
+      default:
+        // A status this server does not know: never act on a guess.
+        return result(row, 'unknown');
+    }
   }
 
   function ownedOrder(providerOrderId, householdId, goalId, provider = 'paypal-sandbox') {
@@ -306,9 +403,10 @@ export function createContributionService({ db, clock, mode, paypal = null, webh
   const outcomeUnknown = (error) => !Number.isInteger(error.status) || error.status >= 500;
   const UNRESOLVED = 'PayPal did not confirm this capture in time, so its outcome is not known yet. Nothing was credited; check with PayPal.';
   /** Mark a capture attempt unresolved (pending, recheckable), unless a verified webhook already settled it meanwhile. */
-  function markUnresolved(row) {
-    if (!SETTLED.has(orderById(row.id).status)) setStatus(row, 'pending', UNRESOLVED);
+  function markUnresolved(row, detail = UNRESOLVED) {
+    if (!SETTLED.has(orderById(row.id).status)) setStatus(row, 'pending', detail);
   }
+  const UNRESOLVED_HOLD = 'PayPal did not confirm this hold in time, so its outcome is not known yet. Nothing was credited; check with PayPal.';
 
   function paypalFailure(row, error, message) {
     if (row && !SETTLED.has(orderById(row.id)?.status)) setStatus(row, 'failed', `${message} (${error.paypalName ?? error.status ?? 'error'})`);
@@ -393,6 +491,45 @@ export function createContributionService({ db, clock, mode, paypal = null, webh
     });
   }
 
+  /**
+   * Validate an adult's decision on a hold against the server's own records and write it down before PayPal is asked.
+   * Only one request can move a hold out of "held"; the same request again is answered from the record.
+   */
+  function holdDecision({ contributionId, householdId, goalId, approverId, approvalConfirmed, requestId, amountCents }, kind) {
+    const row = typeof contributionId === 'string' ? orderById(contributionId) : null;
+    const hold = row ? holdFor(row.id) : null;
+    if (!row || !hold) throw new DomainError(404, 'unknown_hold', 'This server has no held contribution with that reference.');
+    requireMode(row.provider === 'simulated' ? 'example' : 'sandbox');
+    if (row.household_id !== householdId || row.goal_id !== goalId) throw new DomainError(409, 'order_mismatch', 'That hold belongs to a different household or goal. Nothing was changed.');
+    const approver = getMember(db, householdId, approverId);
+    if (!approver || approver.role !== 'adult') throw new DomainError(403, 'adult_approval_required', 'An adult must decide what happens to a held contribution.');
+    if (approvalConfirmed !== true) throw new DomainError(400, 'approval_required', 'Confirm this decision first.');
+    if (typeof requestId !== 'string' || !REQUEST_ID.test(requestId)) throw new DomainError(400, 'invalid_request_id', 'Missing request id.');
+    if (hold.decision_request_id === requestId) return { row, hold, replay: true };
+    if (['released', 'returned', 'lapsed', 'failed'].includes(hold.status)) throw new DomainError(409, 'hold_decided', 'This hold was already decided. Nothing was changed.');
+    if (['releasing', 'returning'].includes(hold.status)) throw new DomainError(409, 'hold_in_progress', 'A decision on this hold is still being confirmed. Check it with PayPal before trying again.');
+    if (hold.status !== 'held') throw new DomainError(409, 'not_held', 'PayPal has not confirmed this hold yet.');
+    if (kind === 'release') {
+      if (!Number.isSafeInteger(amountCents) || amountCents < MIN_CONTRIBUTION_CENTS || amountCents > hold.held_cents) {
+        throw new DomainError(400, 'invalid_amount', `Release between ${formatCents(MIN_CONTRIBUTION_CENTS)} and the ${formatCents(hold.held_cents)} that is held.`);
+      }
+      const goal = getGoal(db, row.goal_id);
+      if (!goal || goal.status !== 'active') throw new DomainError(409, 'goal_closed', 'This goal is no longer active. Return the hold instead.');
+      const remaining = goal.targetCents - progressFor(db, goal.id).progressCents;
+      if (remaining <= 0) throw new DomainError(409, 'goal_complete', 'This goal is complete. Return the hold instead.');
+      if (amountCents > remaining) throw new DomainError(400, 'over_goal', `That would go past the goal. The most still needed is ${formatCents(remaining)}.`);
+    }
+    const moved = db.prepare("UPDATE payment_holds SET status = ?, release_cents = ?, decided_by = ?, decision_request_id = ?, updated_at = ? WHERE order_id = ? AND status = 'held'")
+      .run(kind === 'release' ? 'releasing' : 'returning', kind === 'release' ? amountCents : null, approverId, requestId, clock.iso(), row.id).changes;
+    if (!moved) throw new DomainError(409, 'hold_in_progress', 'A decision on this hold is still being confirmed. Check it with PayPal before trying again.');
+    return { row, hold: holdFor(row.id), replay: false };
+  }
+  /** A decision that definitely did not take effect: the hold is open again and an adult may decide afresh. */
+  function reopenHold(row) {
+    db.prepare("UPDATE payment_holds SET status = 'held', release_cents = NULL, decided_by = NULL, decision_request_id = NULL, updated_at = ? WHERE order_id = ? AND status IN ('releasing', 'returning')").run(clock.iso(), row.id);
+  }
+  const replayOutcome = (hold) => ({ released: 'already_completed', returned: 'returned', lapsed: 'lapsed', held: 'held' }[holdFor(hold.order_id).status] ?? 'unknown');
+
   function refundResult(applied) {
     if (!applied.row) return { outcome: applied.outcome };
     return result(applied.row, applied.outcome);
@@ -423,17 +560,22 @@ export function createContributionService({ db, clock, mode, paypal = null, webh
       requireMode('sandbox');
       const existing = priorRequest(input.requestId);
       if (existing) {
-        if (!sameRequest(existing, input, 'paypal-sandbox')) throw new DomainError(409, 'request_conflict', 'That request id was already used for a different contribution.');
+        if (!sameRequest(existing, input, 'paypal-sandbox') || Boolean(holdFor(existing.id)) !== (input.hold === true)) throw new DomainError(409, 'request_conflict', 'That request id was already used for a different contribution.');
         if (existing.provider_order_id) return { orderId: existing.provider_order_id, approveUrl: null, contribution: view(existing.id) };
         throw new DomainError(409, 'in_progress', 'This contribution is already being created.');
       }
       const { goal } = validateRequest(input);
       const id = newId('ctb');
-      const row = insertOrder({ id, provider: 'paypal-sandbox', providerOrderId: null, input, goal, status: 'creating' });
+      const hold = input.hold === true;
+      const row = transaction(db, () => {
+        const created = insertOrder({ id, provider: 'paypal-sandbox', providerOrderId: null, input, goal, status: 'creating' });
+        if (hold) insertHold(id, input.amountCents, 'awaiting');
+        return created;
+      });
       let data;
       try {
         ({ data } = await paypal.createOrder({
-          localId: id, amountCents: input.amountCents, currency: goal.currency,
+          localId: id, amountCents: input.amountCents, currency: goal.currency, hold,
           description: `Our Castle sandbox contribution toward ${goal.name}`, requestId: `create-${id}`,
         }));
       } catch (error) {
@@ -459,6 +601,9 @@ export function createContributionService({ db, clock, mode, paypal = null, webh
       const row = ownedOrder(providerOrderId, householdId, goalId);
       assertAccess();
       if (SETTLED.has(row.status)) return result(row, 'already_completed');
+      // A held order places its hold here instead of capturing. One that already holds, or is over, has nothing to place.
+      const holding = Boolean(holdFor(row.id));
+      if (holding && ['held', 'returned', 'lapsed'].includes(row.status)) return result(row, row.status);
       const caller = { assertAccess };
       let flight = inflight.get(row.id);
       if (!flight) {
@@ -476,10 +621,12 @@ export function createContributionService({ db, clock, mode, paypal = null, webh
         flight.work = (async () => {
           let order;
           try {
-            ({ data: order } = await paypal.captureOrder(providerOrderId, { requestId: `capture-${row.id}`, assertAccess: assertDispatchAccess }));
+            ({ data: order } = holding
+              ? await paypal.authorizeOrder(providerOrderId, { requestId: `authorize-${row.id}`, assertAccess: assertDispatchAccess })
+              : await paypal.captureOrder(providerOrderId, { requestId: `capture-${row.id}`, assertAccess: assertDispatchAccess }));
           } catch (error) {
             if (!(error instanceof PayPalError)) throw error;
-            if (error.hasIssue('ORDER_ALREADY_CAPTURED')) ({ data: order } = await paypal.getOrder(providerOrderId));
+            if (error.hasIssue(holding ? 'ORDER_ALREADY_AUTHORIZED' : 'ORDER_ALREADY_CAPTURED')) ({ data: order } = await paypal.getOrder(providerOrderId));
             else if (['INSTRUMENT_DECLINED', 'ORDER_NOT_APPROVED'].some((issue) => error.hasIssue(issue)) && SETTLED.has(orderById(row.id).status)) {
               // Another request (on a second server, say) captured and credited this order while this refusal was on its
               // way. Canonical state wins: a late refusal does not reopen a settled order.
@@ -493,12 +640,12 @@ export function createContributionService({ db, clock, mode, paypal = null, webh
             } else if (outcomeUnknown(error)) {
               // The capture may have happened. Mark it unresolved, then settle from what PayPal holds for this same order;
               // never report it as failed. (2) A webhook may settle the order while we wait: canonical state is re-read.
-              markUnresolved(row);
+              markUnresolved(row, holding ? UNRESOLVED_HOLD : UNRESOLVED);
               try { ({ data: order } = await paypal.getOrder(providerOrderId)); } catch (readError) {
                 if (!(readError instanceof PayPalError)) throw readError;
                 return result(row, SETTLED.has(orderById(row.id).status) ? 'already_completed' : 'unknown');
               }
-            } else throw paypalFailure(row, error, 'PayPal sandbox could not capture this order.');
+            } else throw paypalFailure(row, error, holding ? 'PayPal sandbox could not place this hold.' : 'PayPal sandbox could not capture this order.');
           }
           return applyOrder(row, order);
         })().finally(() => { inflight.delete(row.id); });
@@ -524,7 +671,7 @@ export function createContributionService({ db, clock, mode, paypal = null, webh
         }
         throw error;
       }
-      const applied = applyOrder(row, order);
+      const applied = applyOrder(row, order, { explicit: true });
       const check = recordCheck(row, { order, outcome: applied.outcome });
       return { ...applied, contribution: view(row.id), check };
     },
@@ -568,6 +715,86 @@ export function createContributionService({ db, clock, mode, paypal = null, webh
       }));
     },
 
+    /**
+     * An adult releases an exact amount of a hold: one final capture, checked and credited like any other capture.
+     * Whatever is not released goes back to the payer. Works for a simulated hold in example mode too.
+     */
+    async releaseHold(input) {
+      const { row, hold, replay } = holdDecision(input, 'release');
+      if (replay) return result(row, replayOutcome(hold));
+      const amountCents = hold.release_cents;
+      if (row.provider === 'simulated') return credit(row, `SIM-CAPTURE-${row.id.slice(4, 16).toUpperCase()}`, amountCents, row.currency);
+      let data;
+      try {
+        input.assertAccess?.();
+        // The amount is part of the request id: asking again for the same release is the same request to PayPal.
+        ({ data } = await paypal.captureAuthorization(hold.authorization_id, { amountCents, currency: row.currency, requestId: `release-${row.id}-${amountCents}`, assertAccess: input.assertAccess }));
+      } catch (error) {
+        if (!(error instanceof PayPalError)) { reopenHold(row); throw error; } // refused here, before anything was sent
+        if (outcomeUnknown(error)) {
+          markUnresolved(row, 'PayPal did not confirm this release in time, so its outcome is not known yet. Nothing was credited; check with PayPal.');
+          return result(row, 'unknown');
+        }
+        if (error.hasIssue('AUTHORIZATION_VOIDED')) {
+          setHold(row.id, 'returned'); setStatus(row, 'returned', 'PayPal reports this hold was already returned. Nothing was charged or credited.');
+          return result(row, 'returned');
+        }
+        if (error.hasIssue('AUTHORIZATION_EXPIRED')) {
+          setHold(row.id, 'lapsed'); setStatus(row, 'lapsed', 'This hold expired in PayPal before it was released. Nothing was charged or credited.');
+          return result(row, 'lapsed');
+        }
+        if (error.hasIssue('AUTHORIZATION_ALREADY_CAPTURED')) {
+          // Captured by an earlier attempt whose answer was lost, or outside this app: settle from PayPal's own order.
+          let order;
+          try { ({ data: order } = await paypal.getOrder(row.provider_order_id)); } catch (readError) {
+            if (!(readError instanceof PayPalError)) throw readError;
+            markUnresolved(row, 'PayPal reports this hold was already captured, but did not return the order. Nothing was credited; check with PayPal.');
+            return result(row, 'unknown');
+          }
+          return applyOrder(row, order);
+        }
+        reopenHold(row);
+        throw new DomainError(502, 'paypal_error', 'PayPal sandbox could not release this hold. Nothing was credited, and the hold is unchanged.', { debugId: error.debugId, issues: error.issues });
+      }
+      return applyCapture(row, data, row.id);
+    },
+
+    /** An adult returns the whole hold: a void. Nothing is charged or credited. */
+    async returnHold(input) {
+      const { row, hold, replay } = holdDecision(input, 'return');
+      if (replay) return result(row, replayOutcome(hold));
+      const returned = () => {
+        setHold(row.id, 'returned');
+        setStatus(row, 'returned', `${row.provider === 'simulated' ? 'Simulated: the' : 'The'} hold of ${formatCents(hold.held_cents, row.currency)} was returned. Nothing was charged or credited.`);
+        return result(row, 'returned');
+      };
+      if (row.provider === 'simulated') return returned();
+      try {
+        input.assertAccess?.();
+        await paypal.voidAuthorization(hold.authorization_id, { requestId: `return-${row.id}`, assertAccess: input.assertAccess });
+      } catch (error) {
+        if (!(error instanceof PayPalError)) { reopenHold(row); throw error; }
+        if (outcomeUnknown(error)) {
+          markUnresolved(row, 'PayPal did not confirm this return in time, so its outcome is not known yet. Check with PayPal.');
+          return result(row, 'unknown');
+        }
+        if (error.hasIssue('PREVIOUSLY_VOIDED')) return returned();
+        if (error.hasIssue('PREVIOUSLY_CAPTURED')) {
+          // Money was captured outside this decision. It is checked like any capture and never credited on its own.
+          let order;
+          try { ({ data: order } = await paypal.getOrder(row.provider_order_id)); } catch (readError) {
+            if (!(readError instanceof PayPalError)) throw readError;
+            markUnresolved(row, 'PayPal reports this hold was captured, not returned, but did not return the order. Check with PayPal.');
+            return result(row, 'unknown');
+          }
+          return applyOrder(row, order);
+        }
+        reopenHold(row);
+        throw new DomainError(502, 'paypal_error', 'PayPal sandbox could not return this hold. Nothing was changed.', { debugId: error.debugId, issues: error.issues });
+      }
+      return returned();
+    },
+
     /** Verified PayPal webhooks: capture completion/denial and refunds, each processed once. */
     async handleWebhook({ headers, rawBody }) {
       requireMode('sandbox');
@@ -594,6 +821,13 @@ export function createContributionService({ db, clock, mode, paypal = null, webh
         if (!row || row.provider !== 'paypal-sandbox') outcome = 'ignored_unknown_order';
         // A verified event that names our own order id may omit custom_id.
         else outcome = applyCapture(row, resource, orderId ? row.id : null).outcome;
+      } else if (['PAYMENT.AUTHORIZATION.CREATED', 'PAYMENT.AUTHORIZATION.VOIDED'].includes(event.event_type)) {
+        // The same server-owned mapping as captures. Only an order this server created as a hold is touched, and an
+        // authorization never credits anything.
+        const orderId = resource.supplementary_data?.related_ids?.order_id;
+        const row = typeof orderId === 'string' ? orderByProviderId(orderId) : resource.custom_id ? orderById(resource.custom_id) : null;
+        if (!row || row.provider !== 'paypal-sandbox' || !holdFor(row.id)) outcome = 'ignored_unknown_order';
+        else outcome = applyAuthorization(row, resource, orderId ? row.id : null).outcome;
       } else if (['PAYMENT.CAPTURE.REFUNDED', 'PAYMENT.CAPTURE.REVERSED'].includes(event.event_type)) {
         const up = (resource.links ?? []).find((l) => l.rel === 'up')?.href ?? '';
         const captureId = /\/captures\/([^/?#]+)/.exec(up)?.[1];
@@ -633,6 +867,12 @@ export function createContributionService({ db, clock, mode, paypal = null, webh
       const id = newId('ctb');
       const tag = id.slice(4, 16).toUpperCase();
       const row = insertOrder({ id, provider: 'simulated', providerOrderId: `SIM-ORDER-${tag}`, input, goal, status: 'created' });
+      if (input.hold === true) {
+        // The same hold, labeled as simulated: nothing is credited until an adult releases or returns it.
+        insertHold(row.id, row.amount_cents, 'held', `SIM-AUTH-${tag}`);
+        setStatus(row, 'held', `Simulated: ${formatCents(row.amount_cents, row.currency)} is held. Nothing is credited until an adult releases or returns it.`);
+        return result(row, 'held');
+      }
       const outcome = input.outcome ?? 'completed';
       if (outcome === 'completed') return credit(row, `SIM-CAPTURE-${tag}`, row.amount_cents, row.currency);
       if (outcome === 'pending') {

@@ -76,7 +76,8 @@ export function reconcileOrder(order, contribution) {
   const recordedCapture = contribution.captures.find((c) => c.captureId === capture?.id && c.credited);
   const captureMatches = !capture || Boolean(recordedCapture);
   const paypalComplete = ['COMPLETED', 'PARTIALLY_REFUNDED', 'REFUNDED'].includes(capture?.status);
-  const amountsMatch = paypalCents === contribution.amountCents && capture?.amount?.currency_code === contribution.currency;
+  // A held contribution is captured for the exact amount an adult released, which may be less than what was held.
+  const amountsMatch = paypalCents === (contribution.hold?.releaseCents ?? contribution.amountCents) && capture?.amount?.currency_code === contribution.currency;
   if (paypalComplete && amountsMatch && credited && captureMatches) {
     const refunds = (unit.payments?.refunds ?? []).filter(r => r.status === 'COMPLETED' && (
       r.links?.some(l => l.rel === 'up' && l.href?.endsWith(`/captures/${capture.id}`)) || (!r.links?.some(l => l.rel === 'up') && unit.payments.captures.length === 1)
@@ -89,6 +90,11 @@ export function reconcileOrder(order, contribution) {
       return { ...facts, verdict: 'action', note: 'PayPal reports a refund that needs checking against this receipt. Use “Check with PayPal” to refresh the server record.' };
     if (refunded !== recordedRefund) return { ...facts, verdict: 'differs', note: 'PayPal and the ledger show different refunded amounts. Nothing was changed.' };
     return { ...facts, verdict: 'match', note: 'PayPal and the ledger agree.' };
+  }
+  if (!capture && !credited && contribution.hold) {
+    const authorization = unit?.payments?.authorizations?.[0];
+    const note = { CREATED: 'Held in PayPal, and not counted in the ledger.', VOIDED: 'Returned in PayPal, and not counted in the ledger.', EXPIRED: 'Expired in PayPal, and not counted in the ledger.' }[authorization?.status];
+    if (note) return { ...facts, verdict: 'match', note };
   }
   if (!capture && !credited) return { ...facts, verdict: 'match', note: 'Not captured in PayPal, and not counted in the ledger.' };
   if (capture?.status === 'PENDING' && amountsMatch && !credited) return { ...facts, verdict: 'match', note: 'Pending in PayPal, and not counted yet.' };
