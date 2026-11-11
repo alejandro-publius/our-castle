@@ -486,7 +486,7 @@ test('a schema-9 database gains only the need column (and later kit/exchange/vil
     old.close();
     const db = openDatabase(file);
     assert.equal(db.prepare('PRAGMA user_version').get().user_version, MIGRATIONS.length);
-    assert.deepEqual(tables(db), [...beforeTables, 'exchange_circles', 'exchange_invites', 'exchange_members', 'exchange_offers', 'exchange_profiles', 'exchange_requests', 'goal_kits', 'kit_candidates', 'kit_lists', 'kit_selections', 'payment_holds', 'village_funds', 'village_payment_intents', 'village_presentations', 'village_receipts', 'village_shares', 'village_subscriptions', 'village_vault_accounts', 'village_vault_events', 'village_vault_issues', 'village_vault_watches'].sort(), 'only the subsequent kit, exchange and village tables are new');
+    assert.deepEqual(tables(db), [...beforeTables, 'exchange_circles', 'exchange_invites', 'exchange_members', 'exchange_offers', 'exchange_profiles', 'exchange_requests', 'goal_kits', 'kit_candidates', 'kit_lists', 'kit_selections', 'payment_hold_steps', 'payment_holds', 'village_funds', 'village_payment_intents', 'village_presentations', 'village_receipts', 'village_shares', 'village_subscriptions', 'village_vault_accounts', 'village_vault_events', 'village_vault_issues', 'village_vault_watches'].sort(), 'only the subsequent kit, exchange and village tables are new');
     const after = rows(db, beforeTables);
     assert.deepEqual(after.family_choices, before.family_choices.map((r) => ({ ...r, need_json: null })), 'the old choice gains an empty need');
     for (const t of beforeTables.filter((n) => n !== 'family_choices')) assert.deepEqual(after[t], before[t], t);

@@ -141,12 +141,22 @@ export function createPayPalSdkClient({ clientId, clientSecret, controllers = nu
       return call(() => payments.getAuthorizedPayment({ authorizationId }));
     },
 
-    captureAuthorization(authorizationId, { amountCents, currency, requestId, assertAccess }) {
+    captureAuthorization(authorizationId, { amountCents, currency, requestId, assertAccess, final = true }) {
       return call(() => guardedController(PaymentsController, payments, assertAccess).captureAuthorizedPayment({
         authorizationId,
         paypalRequestId: requestId,
         prefer: 'return=representation',
-        body: { amount: { currencyCode: currency, value: centsToDecimalString(amountCents) }, finalCapture: true },
+        body: { amount: { currencyCode: currency, value: centsToDecimalString(amountCents) }, finalCapture: final === true },
+      }), assertAccess);
+    },
+
+    // SDK 2.5.0: PaymentsController.reauthorizePayment({ authorizationId, paypalRequestId, prefer, body: { amount } }).
+    reauthorizeAuthorization(authorizationId, { amountCents, currency, requestId, assertAccess }) {
+      return call(() => guardedController(PaymentsController, payments, assertAccess).reauthorizePayment({
+        authorizationId,
+        paypalRequestId: requestId,
+        prefer: 'return=representation',
+        body: { amount: { currencyCode: currency, value: centsToDecimalString(amountCents) } },
       }), assertAccess);
     },
 

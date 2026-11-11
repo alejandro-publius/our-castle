@@ -138,11 +138,22 @@ export function createPayPalClient({ clientId, clientSecret, fetch: rawFetch = g
       return request('GET', `/v2/payments/authorizations/${encodeURIComponent(authorizationId)}`, { prefer: null });
     },
 
-    /** Capture part or all of a hold as its final capture: PayPal gives whatever is left back to the payer. */
-    captureAuthorization(authorizationId, { amountCents, currency, requestId, assertAccess }) {
+    /**
+     * Capture part or all of a hold. A final capture gives whatever is left back to the payer; a capture that is not
+     * final leaves the rest held for a later capture or a void.
+     */
+    captureAuthorization(authorizationId, { amountCents, currency, requestId, assertAccess, final = true }) {
       return request('POST', `/v2/payments/authorizations/${encodeURIComponent(authorizationId)}/capture`, {
         requestId, assertAccess,
-        body: { amount: { currency_code: currency, value: centsToDecimalString(amountCents) }, final_capture: true },
+        body: { amount: { currency_code: currency, value: centsToDecimalString(amountCents) }, final_capture: final === true },
+      });
+    },
+
+    /** Hold the same amount again after the three-day honor period: PayPal answers with a new authorization. */
+    reauthorizeAuthorization(authorizationId, { amountCents, currency, requestId, assertAccess }) {
+      return request('POST', `/v2/payments/authorizations/${encodeURIComponent(authorizationId)}/reauthorize`, {
+        requestId, assertAccess,
+        body: { amount: { currency_code: currency, value: centsToDecimalString(amountCents) } },
       });
     },
 

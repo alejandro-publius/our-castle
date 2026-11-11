@@ -1,5 +1,19 @@
 # Validation
 
+## Hold extension and stepped releases — November 10, 2026
+
+Branch `claude/hold-lifecycle-20261110`, built on `main` at `9c95254`. A hold can now be extended once after PayPal's three-day honor period (a reauthorization), released in up to three steps with the last one final, and read as a money trail on its Ledger record. [What it does and the rules it keeps](PAYMENT-HOLDS.md).
+
+**Every check here uses the fake PayPal sandbox or example mode.** No real sandbox order was held, reauthorized, captured or voided, and none of this is live PayPal evidence. The saved Mac apps were not changed: they stay on schema 18.
+
+- `test/unit/payment-holds.test.mjs`: **44 of 44 passed** on Node 26.0.0. Nineteen cases run against both PayPal adapters (REST, and the pinned Server SDK 2.5.0 with its transport replaced); six more cover example mode, reconciliation wording, the database rule and the upgrades from schemas 17 and 18.
+- Full local unit run with the change: **769 results, 767 passed, two existing skips, no failure.** `npm run check` passed.
+- **Nineteen deliberate breaks** of the new rules, one at a time, each under the network guard: extending inside the guarantee, extending twice, extending a partly released hold, asking PayPal for more than is held, adopting an extension for another amount, another currency or another contribution, ending a hold on news about the replaced authorization, capturing from the replaced authorization, sending a keep-the-rest release as final, a fourth release, the code letting a release take more than is still held, the database rule removed, crediting a capture of a hold with no release under way, refunding while part is still held, never reopening a stepped hold whose release did not happen, treating a repeated decision as new, refusing to resend an unanswered extension, uncounting the released part on a return, and ending the hold on every release. **Each was caught** (at least one case failed while all 44 still loaded), the guard was loaded in every run, no outside connection was attempted, and both sources were restored byte for byte. The first pass caught 18 of 19; the survivor (an extension for another currency or contribution) now has its own assertions and is caught. With the code's own amount check removed, the database rule alone still refused the over-large release.
+- Inventories were updated for schema 19 and 45 application tables in the six migration and access tests that list them; the test that requires every earlier schema to upgrade to exactly the fresh one passed unchanged.
+- `test/e2e/payment-holds.spec.mjs` now releases the $40 hold in two steps ($10 keeping the rest, then $15 final) and checks the trail. It was not run on the loaded development Mac; hosted runs are its result.
+
+Not established, and waiting on the owner: a real sandbox hold left past its honor period, extended and released in steps; whether the sandbox wants a void after an extension to name the new authorization (as built) or the original one; whether the order's details list the reauthorization (handled either way); and whether the sandbox refuses a reauthorization inside the honor period.
+
 ## Saved Mac runtime upgrade — November 10, 2026
 
 At the owner's explicit request, the two saved Mac apps were moved from `b21b2d8` (schema 12) to `a56170a`, main after #82 and #83 (schema 18). [Sanitized record](evidence/runtime-activation-20261110.json); the raw databases, backups, logs and reports stay private and outside Git.

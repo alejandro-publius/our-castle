@@ -6,7 +6,7 @@ import { closeDeedsWhenTheyAppear } from './support/deeds.mjs';
 const read = async (request) => (await request.get('/api/state')).json();
 const holds = (state) => state.contributions.filter((c) => c.hold).map((c) => [c.amountCents, c.status, c.hold.status, c.hold.releaseCents]);
 
-test('a held contribution counts nothing until an adult releases part of it; another is returned; a child decides neither', { tag: '@release' }, async ({ page, request }, info) => {
+test('a held contribution counts nothing until an adult releases it, here in two steps; another is returned; a child decides neither', { tag: '@release' }, async ({ page, request }, info) => {
   test.skip(info.project.name !== 'desktop', 'The same controls on both layouts; the phone release selection is close to its time budget.');
   test.setTimeout(240_000); // three contributions and two decisions; the same budget as the other long journeys on software-rendered runners
   await request.post('/api/demo/reset', { data: {} });
@@ -51,9 +51,12 @@ test('a held contribution counts nothing until an adult releases part of it; ano
   expect(now.progress).toEqual(before.progress);
   expect(now.ledger.goalEntries).toEqual(before.ledger.goalEntries);
 
-  // ---- An adult releases part of it: armed, then confirmed for an exact amount ----
+  // ---- An adult releases part of it and keeps the rest held: armed, then confirmed for an exact amount ----
   await tab('ledger');
   await expect(record).toContainText('Held — not counted');
+  const trail = record.locator('.hold-trail');
+  await expect(trail).toHaveText('Held $40.00');
+  await expect(record.locator('.hold-note')).toContainText('The simulated three-day guarantee lasts until');
   await record.locator('[data-hold="release"]').click();
   const releaseAmount = record.locator('.hold-amount'), confirmRelease = record.locator('[data-hold="confirm-release"]');
   await expect(releaseAmount).toHaveValue('40.00');
@@ -61,15 +64,28 @@ test('a held contribution counts nothing until an adult releases part of it; ano
   await releaseAmount.fill('45.00');
   await confirmRelease.click();
   await expect(ledgerStatus).toContainText('Release between $1.00 and the $40.00 that is held.'); // refused here, before the server
-  await releaseAmount.fill('25.00');
-  await expect(confirmRelease).toHaveText('Confirm release of $25.00');
+  await releaseAmount.fill('10.00');
+  await record.locator('[data-hold="keep-rest"]').check();
+  await expect(confirmRelease).toHaveText('Confirm release of $10.00, keep $30.00 held');
   await confirmRelease.click();
-  await expect(ledgerStatus).toContainText('Released $25.00. It now counts toward the goal.');
+  await expect(ledgerStatus).toContainText('Released $10.00. It now counts toward the goal. $30.00 is still held.');
+  await expect(page.locator('#progress-amount')).toHaveText('$70.00');
+  await expect(record).toContainText('Partly released — part counted');
+  await expect(trail).toHaveText('Held $40.00 → Released $10.00 → $30.00 still held');
+
+  // ---- Then a final release of part of the rest: what it does not take goes back ----
+  await record.locator('[data-hold="release"]').click();
+  await expect(releaseAmount).toHaveValue('30.00');
+  await releaseAmount.fill('15.00');
+  await expect(confirmRelease).toHaveText('Confirm release of $15.00');
+  await confirmRelease.click();
+  await expect(ledgerStatus).toContainText('Released $15.00. It now counts toward the goal.');
   await expect(page.locator('#progress-amount')).toHaveText('$85.00');
   await expect(record).toContainText('Completed — counted');
+  await expect(trail).toHaveText('Held $40.00 → Released $10.00 → Released $15.00 → Returned $15.00');
   await expect(record.locator('[data-hold]')).toHaveCount(0);
   now = await read(request);
-  expect(holds(now)).toEqual([[4000, 'completed', 'released', 2500]]);
+  expect(holds(now)).toEqual([[4000, 'completed', 'released', 1500]]);
   expect(now.progress.progressCents).toBe(8500);
 
   // ---- Another is returned: nothing is counted, and nothing can be released afterwards ----
@@ -99,10 +115,10 @@ test('a held contribution counts nothing until an adult releases part of it; ano
   expect(refused.status()).toBe(403);
 
   now = await read(request);
-  expect(holds(now).sort()).toEqual([[1000, 'held', 'held', null], [1500, 'returned', 'returned', null], [4000, 'completed', 'released', 2500]]);
+  expect(holds(now).sort()).toEqual([[1000, 'held', 'held', null], [1500, 'returned', 'returned', null], [4000, 'completed', 'released', 1500]]);
   expect(now.progress.progressCents).toBe(8500);
-  expect(now.ledger.goalEntries.length).toBe(before.ledger.goalEntries.length + 1); // one credit, for the released $25.00
-  expect(writes).toEqual(['/api/example/contributions', '/api/contributions/ID/release', '/api/example/contributions', '/api/contributions/ID/return', '/api/example/contributions']);
+  expect(now.ledger.goalEntries.length).toBe(before.ledger.goalEntries.length + 2); // one credit per release: $10.00, then $15.00
+  expect(writes).toEqual(['/api/example/contributions', '/api/contributions/ID/release', '/api/contributions/ID/release', '/api/example/contributions', '/api/contributions/ID/return', '/api/example/contributions']);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   expect(errors).toEqual([]); expect(outside).toEqual([]);
 });

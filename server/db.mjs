@@ -550,6 +550,47 @@ export const MIGRATIONS = Object.freeze([
       );
     `); },
   }),
+  Object.freeze({
+    id: 'hold-lifecycle',
+    // A hold can now be extended once after PayPal's three-day guarantee ends (a reauthorization, which has its own id),
+    // and released in up to three steps, the last one final. New columns and one new table; every existing row keeps its
+    // values. A hold released under schema 18 had exactly one final capture, so its released total is that amount.
+    ensure(db) {
+      const columns = new Set(db.prepare('PRAGMA table_info(payment_holds)').all().map((c) => c.name));
+      const add = (name, definition) => { if (!columns.has(name)) db.exec(`ALTER TABLE payment_holds ADD COLUMN ${name} ${definition}`); };
+      // The amount released so far can never exceed what is held, and a release under way can never ask for more than
+      // what is still held: no release can leave a negative remaining authorization.
+      add('released_cents', `INTEGER NOT NULL DEFAULT 0 CHECK (released_cents >= 0 AND released_cents <= held_cents
+        AND (status <> 'releasing' OR release_cents IS NULL OR released_cents + release_cents <= held_cents))`);
+      add('original_authorization_id', 'TEXT'); // set by an extension: the authorization it replaced
+      add('honor_until', 'TEXT'); // when PayPal's three-day guarantee for the current authorization ends
+      add('extended_at', 'TEXT');
+      if (!columns.has('released_cents')) db.exec("UPDATE payment_holds SET released_cents = release_cents WHERE status = 'released' AND release_cents IS NOT NULL");
+      db.exec(`
+        CREATE UNIQUE INDEX IF NOT EXISTS payment_holds_original_authorization ON payment_holds(original_authorization_id) WHERE original_authorization_id IS NOT NULL;
+        -- Every adult decision on a hold (extend, release, return), written before PayPal is asked. The same request id
+        -- again is answered from its row; a decision that definitely did not take effect is kept as failed.
+        CREATE TABLE IF NOT EXISTS payment_hold_steps (
+          id INTEGER PRIMARY KEY,
+          order_id TEXT NOT NULL REFERENCES payment_holds(order_id) ON DELETE CASCADE,
+          seq INTEGER NOT NULL CHECK (seq > 0),
+          kind TEXT NOT NULL CHECK (kind IN ('extend', 'release', 'return')),
+          amount_cents INTEGER NOT NULL CHECK (amount_cents > 0),
+          final INTEGER NOT NULL CHECK (final IN (0, 1)),
+          request_id TEXT NOT NULL,
+          member_id TEXT NOT NULL,
+          state TEXT NOT NULL CHECK (state IN ('sent', 'done', 'failed')),
+          provider_ref TEXT,
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL,
+          UNIQUE (order_id, seq)
+        );
+        CREATE UNIQUE INDEX IF NOT EXISTS payment_hold_steps_request ON payment_hold_steps(request_id) WHERE state <> 'failed';
+        -- At most one decision on a hold can be waiting for PayPal at a time.
+        CREATE UNIQUE INDEX IF NOT EXISTS payment_hold_steps_open ON payment_hold_steps(order_id) WHERE state = 'sent';
+      `);
+    },
+  }),
 ]);
 
 export function openDatabase(file) {
