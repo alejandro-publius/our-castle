@@ -87,7 +87,7 @@ The walkthrough captures use isolated test households and simulated contribution
 
 | Snow: the sleigh over Rosewind Palace | A tourney field in an outer meadow |
 | --- | --- |
-| ![Snow weather: white ground, icy rivers and a red sleigh with reindeer flying over Rosewind Palace](docs/screenshots/winter-sleigh.png) | ![An outer meadow with a tilt rail, two striped pavilions and a rack of shields](docs/screenshots/meadow-tourney.png) |
+| ![Snow weather: white ground, icy rivers and a green and gold sleigh with a red-coated driver and brown reindeer flying over Rosewind Palace](docs/screenshots/winter-sleigh.png) | ![An outer meadow with a tilt rail, two striped pavilions and a rack of shields](docs/screenshots/meadow-tourney.png) |
 
 ## Hold first, then release in steps
 

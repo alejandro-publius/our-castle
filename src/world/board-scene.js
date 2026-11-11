@@ -475,7 +475,7 @@ export function createBoardScene(container, { reducedMotion = false, isOccluded 
     // Snow whitens the land through the ground's emissive term (its colour is a multiplier, so it cannot lighten); rivers turn icy.
     ground?.material.emissive.setHex(snowy ? 0xffffff : 0x000000); if (ground) ground.material.emissiveIntensity = snowy ? (night ? 0.25 : 0.7) : 0;
     if (snowy) water?.material.color.lerp(new THREE.Color(0xd5e8ee), 0.55);
-    snow.flakes.visible = snowy; snow.winter.root.visible = snowy;
+    snow.flakes.visible = snowy; snow.winter.root.visible = snowy; snow.winter.light(atmosphere.period);
     if (!snowy) snow.flakes.position.y = 0;
     // Wet roofs and walls: a lower roughness gives the standard materials a damp sheen.
     for (const material of builder.materials.values()) material.roughness = wet ? 0.5 : 0.87;
