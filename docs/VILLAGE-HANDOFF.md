@@ -1,5 +1,7 @@
 # Village source checkpoint for Claude — November 10, 2026
 
+**Historical.** This is the handoff note from that checkpoint. Its task was completed, and its source is now part of the combined village and loading release described at the top of [release readiness](RELEASE-READINESS.md). The branch, head and "pending" statements below describe that moment.
+
 The owner asked Codex to stop at a reviewable checkpoint so the existing Claude terminal can take over. This is a source handoff, not a claim that every provider integration is live or that this branch is on main.
 
 ## Exact source

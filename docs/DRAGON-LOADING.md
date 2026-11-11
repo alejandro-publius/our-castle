@@ -45,6 +45,12 @@ These are fixed-frame screenshots of the actual startup screen, captured while i
 
 [Phone loading screen](evidence/dragon-loading/phone.png)
 
+## Where the scene is used, and one correction
+
+The scene covers the page only when the whole page is what is waiting: starting the app, the reload after a passkey sign-in, and a review link opened at start. It is not shown for any wait inside a window. Saving, drafting, a treasurer question, a contribution and an invitation check keep their window, the exact amount and the approval in view and say what they are doing in the window's own status line ([the waits that were mapped](VILLAGE-FIRST-USE.md#waits-on-this-path-mapped-before-the-change)).
+
+The scene is drawn on a plain bitmap canvas. The first hosted run of this branch timed out one existing woodland case, and same-machine comparisons showed that the scene's GPU-backed canvas added about a second to the time the page took to become ready where the GPU is emulated in software. Art, copy, timing and reduced-motion behaviour are unchanged ([the investigation](VALIDATION.md#combined-village-and-loading-release--november-10-2026)).
+
 ## Source boundary
 
-This branch starts at reviewed PR #79 head `1f76ba619f87df646310573dc1a2ed64887e0896`. It adds a standalone startup module, renderer, stylesheet, preview and tests, plus ten lines in `index.html`. It does not edit Fable's first-use task files, main application logic, existing artwork, payment logic or stored data. Saved Mac demos remain on their existing source until a separate integration/activation.
+This scene was built on reviewed PR #79 head `1f76ba619f87df646310573dc1a2ed64887e0896` as PR #80 and is part of the combined release in [release readiness](RELEASE-READINESS.md). The rest of this section describes that original branch. It adds a standalone startup module, renderer, stylesheet, preview and tests, plus ten lines in `index.html`. It does not edit Fable's first-use task files, main application logic, existing artwork, payment logic or stored data. Saved Mac demos remain on their existing source until a separate integration/activation.

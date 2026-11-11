@@ -1,5 +1,7 @@
 # One shared project, five families
 
+This route is part of the combined village and loading release described at the top of [release readiness](RELEASE-READINESS.md). While the realm starts you may briefly see the knight and dragon; the scene leaves the moment the realm is ready.
+
 Run `npm run demo -- --village-fund` after `npm ci` on Node 22.16 or later. This creates a disposable in-memory village, binds an unused loopback port, ignores `.env` and inherited provider credentials, and leaves saved households and existing servers untouched.
 
 1. The parchment opens **Class trip together**. Four invented neighboring families have each contributed $50; the shared fund starts at $200/$400. Alder's separate private goal remains $60/$300.

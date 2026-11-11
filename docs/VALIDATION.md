@@ -1,5 +1,29 @@
 # Validation
 
+## Combined village and loading release — November 10, 2026
+
+One branch, `claude/village-loading-finish-20261110`: a normal merge of the first-use village path (PR #81, `9bda275`) and the dragon loading scene (PR #80, `84470b2`), both built on the shared-fund integration (PR #79, `1f76ba6`), plus the corrections below. [What it contains and what remains](RELEASE-READINESS.md#current-source-release-shared-village-and-loading).
+
+**The hosted failure on PR #80.** [Run 42909511119](https://github.com/alejandro-publius/our-castle/actions/runs/42909511119) timed out one existing case, `woodland-discoveries.spec.mjs:5`, at its 150 s budget during the reduced-motion reload. Two things were true:
+- **That runner was slow.** Every case in its desktop shard 2 ran about 1.5 to 1.9 times slower than in three other runs of the same cases. The trace spent its time waiting for stable frames (5 to 25 s per click) and 31 s reaching the reload's load event.
+- **The loader was not free.** On one machine, alternating runs of that case: the merged source failed 3 of 3, PR #81's head passed 3 of 3, and the merged source with only the loader's mount call disabled passed 3 of 3. Traced as CI traces, showing the loader added about 1.1 s to the time the reloaded page took to become ready (14.8 s against 13.6 s, in a step that allows 15 s). One-change variants put that second in the loader's canvas: not drawing, or drawing on a bitmap canvas, removed it; the `inert` toggle and the observer made no difference.
+
+**Correction:** the loader's 384 × 176 scene asks for a plain bitmap canvas. The same case then passed 3 of 3 with the reload back at 13.7 to 13.8 s. No test, assertion, timeout or retry was changed for it. The step still has little room on a slow machine with or without the loader; that margin is the existing test's.
+
+**Waits on the village path.** Each real request was held with a local route and released unchanged, at desktop and 390 px. The app start, the fund's opening read, the square and background refreshes were already right and are untouched. Changed: each window's status line now stays inside the visible part of the window (it was out of sight during a contribution, a treasurer question and an Exchange save); busy windows dim their submit buttons; the Exchange marks its own window busy, says it is checking an invitation rather than saving, and no longer wipes "Saved." after a settings save; a member change clears the fund's status line. The dragon is not used for any of these. [The map and decisions](VILLAGE-FIRST-USE.md#waits-on-this-path-mapped-before-the-change).
+
+**Checks on the final source**, Node 26.0.0, under the transport guard with nothing refused but its self-checks:
+- The village CI selection, including the two-family journey and the new wait cases: **17 passed (desktop 11, phone 6) with five designed desktop-only skips**.
+- The loader spec after the canvas correction: 10 passed across desktop and phone. The woodland case: 3 of 3 on desktop.
+- Seven deliberate breaks of the new behaviour (status out of view, status kept for the next member, Exchange window not marked busy, GPU canvas again, "Saving…" for a check, settings result wiped, buttons not dimmed) each failed the matching case at its own step.
+- The original-art, palette, renderer and syntax guard and the whitespace check passed.
+
+- The Exchange-dashboard spec, which saves sharing settings: 2 passed across desktop and phone.
+
+Left to the hosted run on the combined release pull request, and not rerun locally after the last Exchange change: the two-family Exchange and village-library specs, the woodland cases on the phone project, the whole unit suite, and the release and kit-planner selections. Raw traces, timings, before and after captures and mutation runs are ignored under `test-results/village-loading-finish-20261110/`.
+
+Limits: timings are from one Mac and a software-rendered Chromium; they explain a test failure and are not a performance claim. Virtual authenticators and an emulated phone, not people or devices. Simulated contributions; no provider call.
+
 ## Fresh two-family village journey — November 10, 2026
 
 Stacked on the shared-fund integration (PR #79 at `1f76ba6`). Two fresh, separately signed-in families can now reach one shared project through visible controls. [What was mapped, changed and deliberately left alone](VILLAGE-FIRST-USE.md).

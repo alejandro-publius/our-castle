@@ -2,7 +2,7 @@
 
 Two separately signed-in families can now go from an empty Village fund to one shared project through visible controls: start or join a neighborhood, describe the project in a sentence, invite the second family, choose their own shares, and see one approved simulated contribution on both open pages. Nothing is seeded for them and nothing new was built to do it. The fund, the neighborhood invitation, the reviewed sentence draft, voluntary shares and simulated contributions already existed; this change connects them.
 
-This stacks on the unmerged shared-fund integration ([PR #79](https://github.com/alejandro-publius/our-castle/pull/79), head `1f76ba6`). [The five-family example](VILLAGE-DEMO.md) and [the fund sheet and square](VILLAGE-SQUARE.md) describe what it connects.
+It was built on the shared-fund integration ([PR #79](https://github.com/alejandro-publius/our-castle/pull/79), head `1f76ba6`) and is part of the combined release in [release readiness](RELEASE-READINESS.md). [The five-family example](VILLAGE-DEMO.md) and [the fund sheet and square](VILLAGE-SQUARE.md) describe what it connects.
 
 ## The path as it was (mapped before any edit)
 
@@ -99,6 +99,7 @@ To try it by hand, run the existing family mode with a new data folder (`npm run
 - **The journey:** `test/e2e/village-first-use.spec.mjs`, at 1440 × 1000 and an emulated 390 × 844 phone. A disposable in-memory family-mode server with its real handlers, two browser contexts each with its own virtual authenticator, no seeded neighborhood, fund, share or receipt, and no mocked response. Requests leaving the server's origin are refused and counted (none). It also checks: one payment request, from B only; no invitation or neighborhood made by merely opening a form; 44 px controls; no page or console error; no horizontal overflow.
 - **Who is offered what:** a desktop fixture case in `test/e2e/village-square.spec.mjs`. A child gets none of the new actions; only the founding family's adult gets the invitation; without the Exchange there is no action.
 - **Both were broken on purpose.** Nine single changes to the production code (five to who is offered an action, four to the return, focus, stacking and draft status) each made the matching case fail at its own step.
-- Both run in the existing village CI job. Results and source identifiers are in [validation](VALIDATION.md#fresh-two-family-village-journey--november-10-2026).
+- **Waits:** two more cases in `test/e2e/village-square.spec.mjs`. On the real five-family example, a held contribution, a locally failed save, a held treasurer question and a held Exchange save each keep their status line fully in view, at both sizes; opening the fund and its periodic refresh stay quiet; exactly one payment request is sent. A fixture case shows a wait is not left in the status line for the next member. The journey also holds the invitation check for a moment. Seven more deliberate breaks each failed the matching case.
+- All of these run in the existing village CI job. Results and source identifiers are in [validation](VALIDATION.md#fresh-two-family-village-journey--november-10-2026).
 
 Limits: these are automated interaction checks with virtual authenticators and an emulated phone. They are not a playtest with people, a physical device or a screen reader. Contributions are simulated; no provider was called and no sandbox recipient or devnet wallet exists yet. The draft used the built-in rules; the optional AI drafting path was not exercised here.
