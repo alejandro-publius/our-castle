@@ -94,13 +94,16 @@ export function createPayPalClient({ clientId, clientSecret, fetch: rawFetch = g
   return {
     environment: 'sandbox',
 
-    /** Create a CAPTURE order whose purchase unit carries our local contribution id. */
-    createOrder({ localId, amountCents, currency, description, requestId, recipient, assertAccess }) {
+    /**
+     * Create an order whose purchase unit carries our local contribution id. With `hold`, PayPal is asked to authorize
+     * the amount (hold it) rather than capture it: nothing is taken until this server captures that authorization.
+     */
+    createOrder({ localId, amountCents, currency, description, requestId, recipient, assertAccess, hold = false }) {
       const payee = paypalRecipient(recipient);
       return request('POST', '/v2/checkout/orders', {
         requestId, recipient: payee, assertAccess,
         body: {
-          intent: 'CAPTURE',
+          intent: hold ? 'AUTHORIZE' : 'CAPTURE',
           purchase_units: [{
             reference_id: localId,
             custom_id: localId,
@@ -124,6 +127,28 @@ export function createPayPalClient({ clientId, clientSecret, fetch: rawFetch = g
 
     captureOrder(orderId, { requestId, assertAccess, recipient }) {
       return request('POST', `/v2/checkout/orders/${encodeURIComponent(orderId)}/capture`, { requestId, body: {}, assertAccess, recipient });
+    },
+
+    /** After the buyer approves an AUTHORIZE order: place the hold. Nothing is captured by this. */
+    authorizeOrder(orderId, { requestId, assertAccess, recipient }) {
+      return request('POST', `/v2/checkout/orders/${encodeURIComponent(orderId)}/authorize`, { requestId, body: {}, assertAccess, recipient });
+    },
+
+    getAuthorization(authorizationId) {
+      return request('GET', `/v2/payments/authorizations/${encodeURIComponent(authorizationId)}`, { prefer: null });
+    },
+
+    /** Capture part or all of a hold as its final capture: PayPal gives whatever is left back to the payer. */
+    captureAuthorization(authorizationId, { amountCents, currency, requestId, assertAccess }) {
+      return request('POST', `/v2/payments/authorizations/${encodeURIComponent(authorizationId)}/capture`, {
+        requestId, assertAccess,
+        body: { amount: { currency_code: currency, value: centsToDecimalString(amountCents) }, final_capture: true },
+      });
+    },
+
+    /** Give the whole hold back. Nothing is captured. */
+    voidAuthorization(authorizationId, { requestId, assertAccess }) {
+      return request('POST', `/v2/payments/authorizations/${encodeURIComponent(authorizationId)}/void`, { requestId, assertAccess });
     },
 
     getOrder(orderId, { recipient, assertAccess } = {}) {

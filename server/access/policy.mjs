@@ -106,6 +106,9 @@ export const ROUTE_POLICIES = Object.freeze([
   ['POST', /^\/api\/paypal\/orders\/([\w-]+)\/refresh$/, 'adult'],
   ['POST', /^\/api\/paypal\/orders\/([\w-]+)\/cancel$/, 'adult'],
   ['POST', /^\/api\/paypal\/captures\/([\w-]+)\/refund$/, 'adult'],
+  // A held contribution: only an adult releases an exact amount of it, or returns it.
+  ['POST', /^\/api\/contributions\/([\w-]+)\/release$/, 'adult'],
+  ['POST', /^\/api\/contributions\/([\w-]+)\/return$/, 'adult'],
   ['POST', '/api/paypal/webhook', 'machine'],
   ['POST', '/api/example/contributions', 'adult'],
   ['POST', /^\/api\/example\/contributions\/([\w-]+)\/complete$/, 'adult'],
