@@ -25,18 +25,19 @@ export function createVillageExchange({getState,actor,applyState,onCompare,onRet
   const say=text=>{status.textContent=text;$('exchange-detail-status').textContent=text;};
   async function act(action, data={}) {
     if(busy || !adult()) return null;
-    const before=scope();busy=true;say('Saving…');root.setAttribute('aria-busy','true');
+    const before=scope();busy=true;say(action==='preview'?'Checking the invitation…':'Saving…');root.setAttribute('aria-busy','true');dialog.setAttribute('aria-busy','true');
     try {
       const res=await api.post('/api/exchange',{action,...data,...(getState().access?{}:{memberId:actor().id})});
       if(before!==scope()) return null;
-      applyState(res.state);say(action==='receive'?'Item received. Compare the kit to see what is left to buy.':action==='return'?'Kit updated. Compare again before changing the plan.':action==='preview'?'Review the invitation below. Nothing is joined yet.':'Saved.');
+      applyState(res.state);
+      if(action==='settings'){built=null;render();} // rebuilding the forms clears the status line, so it happens before the result is said
+      say(action==='receive'?'Item received. Compare the kit to see what is left to buy.':action==='return'?'Kit updated. Compare again before changing the plan.':action==='preview'?'Review the invitation below. Nothing is joined yet.':'Saved.');
       // Opened from the village fund: the form just used is gone, so say where to go and put focus on the way back.
       if(returning&&['create','join'].includes(action)&&dialog.open){say('Saved. Go back to the village fund to continue.');$('exchange-return-fund').focus();}
-      if(action==='settings'){built=null;render();}
       if($('exchange-scope').value==='worldwide') await loadDirectory();
       return res;
     }catch(e){if(before===scope()) { say(e.message); if(e.code==='exchange_kit_changed') status.append(button('Review the latest kit',()=>{buildForms();say('Choose an item from the latest saved kit, then review before sharing.');})); }return null;}
-    finally{busy=false;root.removeAttribute('aria-busy');}
+    finally{busy=false;root.removeAttribute('aria-busy');dialog.removeAttribute('aria-busy');}
   }
   function form(contents, label, submit) {
     const f=h('form',{class:'exchange-form'},contents,h('button',{type:'submit'},label));

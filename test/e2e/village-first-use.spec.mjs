@@ -140,9 +140,19 @@ test('two fresh families start a neighborhood, describe one project, choose thei
     await expect(B.section('join').locator('summary')).toBeFocused();
     await B.section('join').getByLabel('Invitation code', { exact: true }).fill(code);
     await B.section('join').getByLabel('Your shared family name', { exact: true }).fill('Birch');
+    // The invitation check is held for a moment and then let through unchanged: a slow check says what it is doing,
+    // where B is looking, and marks its own window busy.
+    let letThrough, checking; const held = new Promise(resolve => { letThrough = resolve; }), arrived = new Promise(resolve => { checking = resolve; });
+    await b.page.route('**/api/exchange', async route => { if (route.request().postDataJSON()?.action === 'preview') { checking(); await held; } return route.fallback(); });
     await b.page.getByRole('button', { name: 'Review invitation', exact: true }).click();
+    await arrived;
+    await expect(b.page.locator('#exchange-status')).toHaveText('Checking the invitation…');
+    await expect(b.page.locator('#exchange-status')).toBeInViewport({ ratio: 1 });
+    await expect(B.exchange).toHaveAttribute('aria-busy', 'true');
+    letThrough();
     await expect(B.section('join')).toContainText('Join Maple Lane families?');
     await expect(b.page.locator('#exchange-status')).toHaveText('Review the invitation below. Nothing is joined yet.');
+    await expect(B.exchange).not.toHaveAttribute('aria-busy', 'true');
     await expect(b.page.getByRole('button', { name: 'Join this neighborhood', exact: true })).toBeInViewport({ ratio: 1 }); // also on the narrow screen
     expect((await read(b.page)).village.neighborhood).toBe(null); // reviewing joined nothing
     await touchSized(b.page.getByRole('button', { name: 'Join this neighborhood', exact: true }));

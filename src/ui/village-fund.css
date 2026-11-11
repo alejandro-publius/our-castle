@@ -45,6 +45,16 @@
 .village-create-grid > label:has([name=recipient]) { grid-column:1/-1; }
 .village-create-grid .field { margin:0; }
 .village-status { min-height:1em; font-size:15px; line-height:1.4; color:#654219; }
+/* Each window's one status line stays inside the visible part of the window while it has something to say: the wait,
+   its result or its error. It is the same line as before, kept in view. Nothing is covered, disabled or animated. */
+/* Room is kept for it: whatever is scrolled or focused into view stops above where the line sits. */
+.exchange-window-body { scroll-padding-bottom:68px; }
+.exchange-window-body > .village-status,.exchange-window-body > #exchange-status { position:sticky; top:0; bottom:-10px; z-index:2; margin:10px 0 0; padding:9px 12px; border:1px solid #aa8750; border-radius:2px; background:#f0d9a6; box-shadow:0 2px 6px #5b3a1a33; color:#4a3013; font-size:15px; line-height:1.4; }
+.exchange-window-body > .village-status:empty { visibility:hidden; }
+.exchange-window-body > #exchange-status:empty { display:none; }
+/* A busy window dims its submit buttons, as the kit preview and Market Town results already do while they work. */
+.exchange-window[aria-busy='true'] :is(.exchange-form > button[type='submit'],.village-paper form > button,.village-action) { opacity:.55; cursor:progress; }
+@media (forced-colors: active) { .exchange-window-body > .village-status,.exchange-window-body > #exchange-status { background:Canvas; color:CanvasText; border-color:CanvasText; box-shadow:none; } }
 .village-address { display:block; overflow-wrap:anywhere; user-select:all; font-size:14px; padding:12px; border:1px solid #aa8750; background:#f8e9c56e; }
 .village-payment-followup { display:flex; flex-wrap:wrap; gap:12px; margin-bottom:12px; align-items:center; }
 .village-payment-followup[hidden] { display:none; }

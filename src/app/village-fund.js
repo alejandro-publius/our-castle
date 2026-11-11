@@ -208,7 +208,7 @@ export function createVillageFund({ getState, actor, applyState, getScene, onSqu
   function render() {
     if (destroyed) return;
     const state = getState(), nextScope = scope(), changed = scopeKey !== null && nextScope !== scopeKey;
-    if (changed) { generation++; presenceEpoch++; paymentReadEpoch++; close(); leaveSquare({ notify: false }); selected = null; village = null; review = null; recoveryFundId = null; assistantGrant = null; watched.clear(); ownPaymentsKey = null; paymentRequest = null; pendingPayment = null; paymentFollowup.replaceChildren(); amount.value = ''; approved.checked = false; draft = null; draftResult.replaceChildren(); answer.textContent = ''; }
+    if (changed) { generation++; presenceEpoch++; paymentReadEpoch++; close(); leaveSquare({ notify: false }); selected = null; village = null; review = null; recoveryFundId = null; assistantGrant = null; watched.clear(); ownPaymentsKey = null; paymentRequest = null; pendingPayment = null; paymentFollowup.replaceChildren(); amount.value = ''; approved.checked = false; draft = null; draftResult.replaceChildren(); answer.textContent = ''; say(''); } // a wait or a result belongs to the member who started it
     // An example member choice is a local selector over one household's own projection, which names no member, and it
     // redraws without a new state: the state already held is the newly chosen member's too. Any other scope change
     // (a signed-in member or another household) shows nothing until that scope's own new state arrives.

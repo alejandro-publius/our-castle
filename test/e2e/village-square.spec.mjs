@@ -373,3 +373,157 @@ test('the first-use actions are an adult’s, the invitation is the founding fam
     expect(await asked()).toEqual(['start', 'join', 'invite']); expect(writes).toEqual([]); expect(errors).toEqual([]);
   } finally { await context.close(); await demo.close(); }
 });
+
+// Hold the first matching real request until released, then let it through unchanged. `fail` answers it with a local
+// server error instead; `background` matches only the page's own quiet refreshes (or only its foreground requests).
+async function hold(page, method, path, { fail = false, background = null } = {}) {
+  let release, seen, taken = false; const gate = new Promise(r => { release = r; }), arrived = new Promise(r => { seen = r; });
+  await page.route('**/*', async route => {
+    const q = route.request(), quiet = q.headers()['x-our-castle-refresh'] === 'background';
+    if (taken || q.method() !== method || new URL(q.url()).pathname !== path || (background !== null && quiet !== background)) return route.fallback();
+    taken = true; seen(); await gate;
+    return fail ? route.fulfill({ status: 503, contentType: 'application/json', body: JSON.stringify({ error: { message: 'The server could not save this. Nothing changed.' } }) }) : route.fallback();
+  });
+  return { release, arrived };
+}
+
+// The real five-family example and its real handlers; requests are only delayed (one save is failed locally).
+test('a wait, its result and its failure stay in view in the fund and the Exchange; quiet reads stay quiet', async ({ browser }, info) => {
+  test.setTimeout(180000);
+  const demo = await startDemo({ villageFund: true });
+  const { viewport, isMobile, hasTouch, deviceScaleFactor } = info.project.use;
+  const context = await browser.newContext({ viewport, isMobile, hasTouch, deviceScaleFactor, reducedMotion: 'reduce' });
+  const page = await context.newPage(), errors = [], outside = [], payments = [];
+  page.on('pageerror', e => errors.push(e.message));
+  await context.route('**/*', route => {
+    const q = route.request(), url = new URL(q.url());
+    if (url.origin !== demo.url) { outside.push(url.href); return route.abort(); }
+    if (q.method() === 'POST' && url.pathname === '/api/village/payments') payments.push(q.postDataJSON());
+    return route.fallback();
+  });
+  const fund = page.locator('#village-fund-dialog'), status = page.locator('#village-status'), total = page.locator('.village-progress-copy');
+  const exchange = page.locator('#exchange-dialog'), exchangeStatus = page.locator('#exchange-status');
+  const dimmed = locator => locator.evaluate(el => getComputedStyle(el).opacity);
+  const own = () => page.evaluate(async () => { const s = await (await fetch('/api/state')).json(), f = s.village.funds.find(x => x.id === s.village.selectedFundId), mine = s.village.members.find(m => m.mine); return { committed: f.shares.find(x => x.familyReference === mine.familyReference).committedMinor, receipts: f.receipts.length, privateCents: s.progress.progressCents }; });
+  try {
+    await page.goto(demo.url); await expect(page.locator('body')).toHaveAttribute('data-ready', 'true', { timeout: 30000 });
+    await expect(fund).toBeVisible(); await expect(total).toHaveText('$200.00 of $400.00 recorded');
+    const before = await own();
+    await page.getByRole('button', { name: 'Close village fund', exact: true }).click();
+
+    // Opening the fund does not wait on its read: the project is there at once and nothing claims to be working.
+    let h = await hold(page, 'GET', '/api/village', { background: false });
+    await page.locator('#open-village').click(); await h.arrived;
+    await expect(page.locator('#village-project-title')).toHaveText('Class trip together'); await expect(total).toBeVisible();
+    await expect(status).toHaveText(''); await expect(fund).not.toHaveAttribute('aria-busy', 'true');
+    h.release();
+    // Nor does the fund's own periodic refresh.
+    h = await hold(page, 'GET', '/api/village', { background: true });
+    await h.arrived; await expect(status).toHaveText(''); await expect(fund).not.toHaveAttribute('aria-busy', 'true');
+    h.release();
+
+    // One approved contribution, held: the amount and approval stay, nothing is sent twice, no progress is invented.
+    const amount = page.locator('#village-amount'), approval = page.locator('#village-approve'), contribute = page.locator('#village-contribute');
+    await amount.fill('40.00'); await approval.check();
+    h = await hold(page, 'POST', '/api/village/payments');
+    await contribute.click(); await h.arrived;
+    await expect(fund).toHaveAttribute('aria-busy', 'true');
+    await expect(status).toHaveText('Working…'); await expect(status).toBeInViewport({ ratio: 1 });
+    await expect(amount).toHaveValue('40.00'); await expect(amount).toBeVisible(); await expect(approval).toBeChecked();
+    await expect(page.locator('#village-payment-form .check')).toContainText('I approve $40.00 toward Class trip together (simulated).');
+    await expect(contribute).toBeDisabled(); await expect(total).toHaveText('$200.00 of $400.00 recorded');
+    await page.screenshot({ path: info.outputPath('contribution-working.png') });
+    h.release();
+    await expect(total).toHaveText('$240.00 of $400.00 recorded');
+    await expect(status).toContainText('Simulated contribution recorded'); await expect(status).toBeInViewport({ ratio: 1 });
+    await expect(fund).not.toHaveAttribute('aria-busy', 'true');
+    expect(payments).toHaveLength(1); expect(payments[0].amountMinor).toBe(4000);
+
+    // A save that fails: said in view, the window is no longer busy, and what was typed is still there.
+    await fund.getByText('Our family’s share', { exact: true }).click();
+    const share = page.locator('#village-share-form [name=committed]'), save = page.getByRole('button', { name: 'Save our share', exact: true });
+    await share.fill('95'); await page.locator('#village-share-form [name=confirmed]').check();
+    h = await hold(page, 'POST', '/api/village', { fail: true });
+    await save.click(); await h.arrived;
+    await expect(status).toHaveText('Working…'); await expect(status).toBeInViewport({ ratio: 1 });
+    expect(await dimmed(save)).toBe('0.55'); await expect(save).toBeInViewport({ ratio: 1 });
+    h.release();
+    await expect(status).toHaveText('The server could not save this. Nothing changed.'); await expect(status).toBeInViewport({ ratio: 1 });
+    await expect(fund).not.toHaveAttribute('aria-busy', 'true'); expect(await dimmed(save)).toBe('1');
+    await expect(share).toHaveValue('95');
+
+    // A read-only question: working in view while it waits, and an answer rather than "Saved.".
+    await fund.getByText('Ask the treasurer', { exact: true }).first().click();
+    await page.getByLabel('Ask the treasurer', { exact: true }).fill('Who has contributed?');
+    h = await hold(page, 'POST', '/api/village/treasurer');
+    await page.getByRole('button', { name: 'Read the fund records', exact: true }).click(); await h.arrived;
+    await expect(status).toHaveText('Working…'); await expect(status).toBeInViewport({ ratio: 1 });
+    h.release();
+    await expect(page.locator('#village-answer')).toContainText('net recorded contributions'); await expect(status).toHaveText('');
+    await page.getByRole('button', { name: 'Close village fund', exact: true }).click();
+
+    // Village Exchange says it is saving where the person is looking, and marks its own window busy.
+    await page.locator('#open-exchange').click(); await page.locator('#exchange-manage > summary').click();
+    await page.getByText('Sharing settings', { exact: true }).click();
+    const saveSettings = page.getByRole('button', { name: 'Save sharing settings', exact: true });
+    h = await hold(page, 'POST', '/api/exchange');
+    await saveSettings.click(); await h.arrived;
+    await expect(exchange).toHaveAttribute('aria-busy', 'true');
+    await expect(exchangeStatus).toHaveText('Saving…'); await expect(exchangeStatus).toBeInViewport({ ratio: 1 });
+    await page.screenshot({ path: info.outputPath('exchange-saving.png') });
+    h.release();
+    await expect(exchangeStatus).toHaveText('Saved.'); await expect(exchangeStatus).toBeInViewport({ ratio: 1 });
+    await expect(exchange).not.toHaveAttribute('aria-busy', 'true');
+
+    // Only the one contribution reached the records; the failed save changed nothing; private savings are untouched.
+    expect(await own()).toEqual({ committed: before.committed, receipts: before.receipts + 1, privateCents: before.privateCents });
+    expect(payments).toHaveLength(1);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    expect(errors).toEqual([]); expect(outside).toEqual([]);
+  } finally { await context.close(); await demo.close(); }
+});
+
+test('a wait is not left in the status line for the next member, and its late answer changes nothing they see', async ({ browser }, info) => {
+  test.skip(info.project.name !== 'desktop', 'Lifecycle of the fund controller; the same code on both layouts.');
+  const demo = await startDemo({ villageStory: true }), context = await browser.newContext(), page = await context.newPage();
+  const errors = []; page.on('pageerror', error => errors.push(error.message));
+  const villageOf = (name, committed) => ({ available: true, neighborhood: { id: `circle_${name}`, name: `Circle ${name}` }, members: [{ familyReference: `FAM_${name}`, alias: `Family ${name}`, mine: true }], selectedFundId: `fund_${name}`,
+    funds: [{ id: `fund_${name}`, title: `Project ${name}`, rail: 'simulated', decimals: 2, targetMinor: 10000, revision: 1, status: 'open', progress: { netMinor: 0, remainingMinor: 10000, basisPoints: 0, stage: 0 }, receipts: [],
+      shares: [{ familyReference: `FAM_${name}`, alias: `Family ${name}`, committedMinor: committed, paidMinor: 0 }] }] });
+  const fixture = `<!doctype html><meta charset="utf-8"><title>Status scope fixture</title><button id="open-village">Village fund</button><dialog id="village-fund-dialog"></dialog><section id="village-square-controls" hidden></section><script type="module">
+    import { createVillageFund } from '/src/app/village-fund.js';
+    let member={id:'adult-a',role:'adult'};const state={household:{id:'house-a'},access:{me:{memberId:'adult-a',role:'adult'}},village:${JSON.stringify(villageOf('A', 1000))}};
+    window.controller=createVillageFund({getState:()=>state,actor:()=>member,applyState:()=>{},getScene:()=>null});window.controller.render();
+    window.nextMember=village=>{member={id:'adult-b',role:'adult'};state.access.me.memberId=member.id;state.village=village;window.controller.render()};
+  </script>`;
+  let served = villageOf('A', 1000), releaseSave, saving; const waiting = new Promise(resolve => { saving = resolve; });
+  await context.route('**/*', async route => {
+    const request = route.request(), url = new URL(request.url());
+    if (url.origin !== demo.url) { errors.push(`Unexpected outside request: ${url.origin}`); return route.abort(); }
+    const json = body => route.fulfill({ contentType: 'application/json', body: JSON.stringify(body) });
+    if (url.pathname === '/__status_fixture') return route.fulfill({ contentType: 'text/html', body: fixture });
+    if (url.pathname === '/api/village' && request.method() === 'POST') { saving(); await new Promise(resolve => { releaseSave = resolve; }); return json({ village: villageOf('A', 9900) }); }
+    if (url.pathname === '/api/village') return json({ village: served });
+    return route.continue();
+  });
+  const status = page.locator('#village-status'), fund = page.locator('#village-fund-dialog');
+  try {
+    await page.goto(`${demo.url}/__status_fixture`); await page.locator('#open-village').click();
+    await expect(page.locator('#village-project-title')).toHaveText('Project A');
+    await page.getByText('Our family’s share', { exact: true }).click();
+    await page.locator('#village-share-form [name=committed]').fill('99'); await page.locator('#village-share-form [name=confirmed]').check();
+    await page.getByRole('button', { name: 'Save our share', exact: true }).click(); await waiting;
+    await expect(status).toHaveText('Working…'); await expect(fund).toHaveAttribute('aria-busy', 'true');
+    // Another member signs in while that save is still out.
+    served = villageOf('B', 2000); await page.evaluate(village => window.nextMember(village), served);
+    await expect(fund).not.toHaveAttribute('open', ''); await expect(status).toHaveText('');
+    releaseSave();
+    await expect(fund).not.toHaveAttribute('aria-busy', 'true');
+    await page.locator('#open-village').click();
+    await expect(page.locator('#village-project-title')).toHaveText('Project B'); await expect(status).toHaveText('');
+    await page.locator('[data-village-tab=families]').click();
+    await expect(page.locator('.village-family-list')).toContainText('$20.00 voluntary share'); // not the first member's late $99
+    await expect(page.locator('.village-family-list')).not.toContainText('Family A');
+    expect(errors).toEqual([]);
+  } finally { releaseSave?.(); await context.close(); await demo.close(); }
+});
