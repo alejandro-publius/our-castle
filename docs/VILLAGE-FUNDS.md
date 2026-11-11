@@ -29,3 +29,14 @@ Schema 15 appends `village_funds`, `village_shares`, `village_receipts` and `vil
 `clearExampleVillage` is restricted to an in-memory database whose entire neighborhood consists of authored example households. It exists only for the separate demo's Reset. It refuses saved database files and real-family fixtures.
 
 Focused tests cover authorization, private defaults, optional public projection, commitments, exact recipient/source binding, replay and cross-fund conflicts, out-of-order refunds, unattributed deposits, late settlement, restart/two-handle deduplication and reset restrictions. All data is synthetic; these are source/service tests, not evidence of a live payment, wallet ownership, merchant eligibility or a deployed multi-family service.
+
+## Random histories
+
+`test/unit/village-privacy-random.test.mjs` runs 60 seeded random histories of one neighborhood: two to five families, a family outside it and a family in another neighborhood, with funds created, shares committed, castles shared and hidden, funds published and unpublished, contributions, unmatched deposits, refunds, repeated receipts and changes to a family's own savings. Every family carries private facts that appear nowhere else: its household and member ids and names, its own goal, and what it has saved.
+
+- **After every step, for every viewer:** everything that viewer can be shown is searched for every other family's private facts. A family outside the neighborhood sees none of its funds, shares or receipts, and of a published fund only the small review. A castle is shown only if its family chose to share it.
+- **Totals:** each shared total is exactly its receipts less refunds, each share is what that family itself committed and paid, and no village step moves a family's own savings.
+- **Refusals:** naming another family's share, and publishing a fund one does not organize, are always refused.
+- **Does it bite?** Nine deliberate breaks of these rules, one at a time, each failed it; an unchanged run passed. 800 seeds found no leak.
+
+It checks the server's views, not the page, and all data is synthetic.
