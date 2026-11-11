@@ -2,7 +2,7 @@
 // Shared and dependency-free, so the clock and weather rules can be tested without a browser.
 
 export const TIME_MODES = Object.freeze(['auto', 'day', 'afternoon', 'night']);
-export const WEATHER_MODES = Object.freeze(['clear', 'rain', 'local']);
+export const WEATHER_MODES = Object.freeze(['clear', 'rain', 'snow', 'local']);
 export const PERIODS = Object.freeze(['day', 'afternoon', 'night']);
 export const PERIOD_LABELS = Object.freeze({ day: 'Day', afternoon: 'Afternoon', night: 'Night' });
 // Device-clock bands (not astronomical sunrise or sunset): day 06–15, afternoon 15–19, night 19–06.
@@ -42,7 +42,7 @@ const WEATHER_LOOK = Object.freeze({ clear: 'clear', rain: 'rain', cloudy: 'over
 /**
  * Resolve the time and weather modes into what the scene draws and what the status line says.
  * @param options.timeMode 'auto' | 'day' | 'afternoon' | 'night'
- * @param options.weatherMode 'clear' | 'rain' | 'local'
+ * @param options.weatherMode 'clear' | 'rain' | 'snow' | 'local'
  * @param options.now a Date
  * @param options.timeZone the device zone (tests pass one explicitly)
  * @param options.local { place, result, error, loading } for local weather, or null
@@ -60,8 +60,9 @@ export function resolveAtmosphere({ timeMode = 'auto', weatherMode = 'clear', no
   }
 
   const mode = WEATHER_MODES.includes(weatherMode) ? weatherMode : 'clear';
-  let weather = mode === 'rain' ? 'rain' : 'clear', weatherSource = 'chosen by you', live = false;
-  let weatherLabel = mode === 'rain' ? 'Rain' : 'Clear';
+  // Chosen snow is the winter scene. A real local snow report is still drawn as overcast (WEATHER_LOOK).
+  let weather = mode === 'rain' || mode === 'snow' ? mode : 'clear', weatherSource = 'chosen by you', live = false;
+  let weatherLabel = { rain: 'Rain', snow: 'Snow' }[mode] ?? 'Clear';
   if (mode === 'local') {
     const place = local?.place?.label;
     const result = local?.result;

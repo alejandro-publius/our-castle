@@ -34,6 +34,8 @@ test('Auto follows the device zone; a manual time overrides it', () => {
   assert.equal(a.status, 'Day (chosen by you) · Rain (chosen by you)');
   a = resolveAtmosphere({ timeMode: 'auto', now, timeZone: 'Not/AZone' });
   assert.match(a.status, /\(browser clock \d\d:\d\d \(time zone unavailable\)\)/);
+  a = resolveAtmosphere({ timeMode: 'day', weatherMode: 'snow', now, timeZone: 'America/Los_Angeles' });
+  assert.deepEqual([a.weather, a.status], ['snow', 'Day (chosen by you) · Snow (chosen by you)']);
   // Unknown modes fall back to Auto and Clear rather than throwing.
   a = resolveAtmosphere({ timeMode: 'dusk', weatherMode: 'hail', now, timeZone: 'America/Los_Angeles' });
   assert.deepEqual([a.timeMode, a.weatherMode, a.weather], ['auto', 'clear', 'clear']);
