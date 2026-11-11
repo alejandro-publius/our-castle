@@ -159,10 +159,8 @@ async function history(seed, { staleReads }) {
     const theirs = unitOf(w, hold).payments.authorizations.at(-1).status;
     assert.equal(view.status, { CREATED: 'held', PARTIALLY_CAPTURED: 'held', CAPTURED: 'released', VOIDED: 'returned' }[theirs], `the hold ends where PayPal says it did (${theirs}) — ${label()}`);
     assert.equal(view.pending, null, `no decision is left waiting — ${label()}`);
-    // Known gap, found by this test: a capture PayPal declined stays listed on its order, and a later check reads that
-    // as a difference although nothing was taken and nothing was counted. The agreement is asserted without one.
-    const declinedListed = unitOf(w, hold).payments.captures?.some((c) => c.status !== 'COMPLETED');
-    if (!declinedListed) assert.equal(check.verdict, 'match', `the check agrees — ${label()}`);
+    // A capture PayPal declined stays listed on its order; it took nothing, so the check still agrees.
+    assert.equal(check.verdict, 'match', `the check agrees — ${label()}`);
   }
   if (process.env.HOLD_SEED || process.env.HOLD_LOG) console.log(label());
   w.db.close(); // thousands of histories would otherwise each keep an in-memory database open

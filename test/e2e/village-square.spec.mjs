@@ -178,7 +178,8 @@ test('a published outsider review restores an exact unfinished checkout without 
   });
   try {
     await page.goto(`${demo.url}/?villageFund=${fund.id}`);
-    await expect(page.locator('#village-project-title')).toHaveText('School trip');
+    // The first sight of the page: like this file's other first waits, it gets 30 seconds for the realm to start.
+    await expect(page.locator('#village-project-title')).toHaveText('School trip', { timeout: 30000 });
     await expect(page.locator('.exchange-eyebrow').filter({ hasText: 'Published project' })).toContainText('Willow family');
     await expect(page.locator('[data-village-tab=families]')).toBeHidden(); await expect(page.locator('[data-village-tab=records]')).toBeHidden();
     await expect(page.locator('#village-visit')).toBeHidden(); await expect(page.locator('.village-family-list > li')).toHaveCount(0);
