@@ -418,7 +418,8 @@ export function createContributionService({ db, clock, mode, paypal = null, webh
     for (const capture of unit.payments?.captures ?? []) {
       const known = captureById(capture.id);
       if (known?.credited && known.order_id === row.id) continue; // counted once already
-      captured = applyCapture(row, capture, unit.custom_id);
+      const applied = applyCapture(row, capture, unit.custom_id);
+      if (captured?.outcome !== 'completed') captured = applied; // a credit made here is the answer, even beside a stray
     }
     const hold = holdFor(row.id);
     const authorization = currentAuthorization(unit, hold);
@@ -439,9 +440,11 @@ export function createContributionService({ db, clock, mode, paypal = null, webh
   function currentAuthorization(unit, hold) {
     const listed = unit.payments?.authorizations ?? [];
     if (!hold.authorization_id) return listed[0];
-    // While an extension waits for PayPal, a new authorization listed for this order is that extension's answer.
+    // While an extension waits for PayPal, the newest authorization listed for this order that this server has not seen
+    // before is that extension's answer. One it already refused to use never is.
     if (openStep(hold.order_id)?.kind === 'extend') {
-      const fresh = listed.find((a) => a?.id && a.id !== hold.authorization_id && a.id !== hold.original_authorization_id);
+      const seen = new Set([hold.authorization_id, hold.original_authorization_id, ...stepsFor(hold.order_id).map((s) => s.provider_ref)]);
+      const fresh = listed.filter((a) => a?.id && !seen.has(a.id)).at(-1);
       if (fresh) return fresh;
     }
     // An extended hold whose new authorization is not listed has nothing here to act on.
@@ -489,7 +492,8 @@ export function createContributionService({ db, clock, mode, paypal = null, webh
     const taken = authorization?.id ? db.prepare('SELECT 1 FROM payment_holds WHERE authorization_id = ? OR original_authorization_id = ?').get(authorization.id, authorization.id) : null;
     if (!authorization?.id || taken || amountCents !== hold.held_cents || authorization.amount?.currency_code !== row.currency || (customId != null && customId !== row.id)) {
       // An authorization that is not exactly this hold is never captured from. The original one still holds the money.
-      markStep(step, 'failed');
+      // Its id is kept on the failed step, so a later read or event about it is recognised and ignored.
+      markStep(step, 'failed', typeof authorization?.id === 'string' ? authorization.id : null);
       setHoldDetail(row, `PayPal’s answer to the extension did not match this hold, so it was not used. The hold continues on its original authorization${until}.`);
       return result(row, 'rejected_mismatch');
     }
@@ -510,7 +514,7 @@ export function createContributionService({ db, clock, mode, paypal = null, webh
         setHoldDetail(row, 'PayPal is still reviewing the extension. The hold is unchanged until it answers.');
         return result(row, 'pending');
       case 'DENIED':
-        markStep(step, 'failed');
+        markStep(step, 'failed', authorization.id);
         setHoldDetail(row, `PayPal declined the extension. Nothing was charged; the hold continues on its original authorization${until}.`);
         return result(row, 'declined');
       default:
@@ -546,8 +550,10 @@ export function createContributionService({ db, clock, mode, paypal = null, webh
       if (orderStatus === 'APPROVED') setStatus(row, 'created', 'Approved in PayPal but not held yet.');
       return result(row, 'not_held');
     }
-    // After an extension, the authorization it replaced no longer holds this money: what PayPal says about it changes nothing.
+    // After an extension, the authorization it replaced no longer holds this money, and an extension answer this server
+    // refused to use never did: what PayPal says about either changes nothing.
     if (hold.original_authorization_id && authorization.id === hold.original_authorization_id) return result(row, 'superseded');
+    if (authorization.id && stepsFor(row.id).some((s) => s.kind === 'extend' && s.state === 'failed' && s.provider_ref === authorization.id)) return result(row, 'superseded');
     // While an extension waits for PayPal, a new authorization for this order is that extension's answer.
     if (authorization.id && hold.authorization_id && authorization.id !== hold.authorization_id && openStep(row.id)?.kind === 'extend') {
       return applyExtension(row, authorization, purchaseUnitCustomId);

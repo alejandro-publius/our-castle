@@ -432,6 +432,30 @@ for (const adapter of ['rest', 'sdk']) {
     assert.equal(holdRow(other, second.id).status, 'lapsed');
   });
 
+  test(`[${adapter}] an extension answer this server refused is never adopted later, and news about it never ends the hold`, async () => {
+    const env = setupDomain({ adapter, mode: 'sandbox', paypalOptions: { reauthorizationAmountOverride: '46.00' } });
+    const { orderId, id, placed } = await held(env, { amountCents: 4000 });
+    setNow(env, Date.parse(placed.contribution.hold.honorUntil) + 60_000);
+    assert.equal((await env.service.extendHold(decision(id))).outcome, 'rejected_mismatch');
+    const refused = env.fake.orders.get(orderId).purchase_units[0].payments.authorizations.at(-1);
+    const event = { id: 'WH-REFUSED-LATE', event_type: 'PAYMENT.AUTHORIZATION.CREATED', resource: { ...refused, supplementary_data: { related_ids: { order_id: orderId } } } };
+    assert.equal((await env.service.handleWebhook({ headers: webhookHeaders, rawBody: JSON.stringify(event) })).outcome, 'superseded');
+    assert.deepEqual(pick(view(env, id).hold, ['status', 'authorizationId']), { status: 'held', authorizationId: placed.contribution.hold.authorizationId });
+    // A later extension whose answer is lost, while PayPal's order details list only the answer already refused: a check
+    // does not take that one for the new answer, and asking again adopts the new one.
+    env.fake.behavior.reauthorizationAmountOverride = null;
+    env.fake.behavior.orderListsReauthorizations = false;
+    const lossy = await losingFirstAnswer(env, '/reauthorize', 'reauthorizePayment');
+    assert.equal((await lossy.extendHold(decision(id))).outcome, 'unknown');
+    const still = await lossy.refreshPayPalOrder({ providerOrderId: orderId, ...OWNER });
+    assert.equal(still.contribution.hold.pending, 'extend', 'the refused answer is not mistaken for the new one');
+    const again = await lossy.extendHold(decision(id));
+    assert.equal(again.outcome, 'extended');
+    assert.notEqual(again.contribution.hold.authorizationId, refused.id);
+    assert.equal(again.contribution.hold.originalAuthorizationId, placed.contribution.hold.authorizationId);
+    assert.equal(progressFor(env.db, DEMO_GOAL_ID).progressCents, 6000);
+  });
+
   test(`[${adapter}] an extension never outlasts the hold's 29 days, is refused after them, and is refused once part was released`, async () => {
     const env = setupDomain({ adapter, mode: 'sandbox' });
     const { id, placed } = await held(env);
