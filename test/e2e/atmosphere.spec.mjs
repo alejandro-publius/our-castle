@@ -187,7 +187,10 @@ test('a slow answer never overrides a newer choice, and an unreachable service i
 
 test('after a failed load, scheduled refreshes wait 15 minutes; an explicit choice can retry sooner', async ({ page }) => {
   const seen = track(page);
-  await page.clock.setFixedTime(new Date());
+  // The page's clock stands still at `start`, and every later step is measured from it. Measured from the current time
+  // instead, a slow run's own minute or more would carry the "14 minutes" step past the 15-minute line.
+  const start = Date.now();
+  await page.clock.setFixedTime(new Date(start));
   await mockOpenMeteo(page, { fail: true });
   await ready(page);
   await chooseLisbon(page);
@@ -197,12 +200,12 @@ test('after a failed load, scheduled refreshes wait 15 minutes; an explicit choi
   // The minute tick and the page becoming visible both run the scheduled load: nothing within 15 minutes.
   const visible = () => page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
   for (const minutes of [1, 5, 14]) {
-    await page.clock.setFixedTime(new Date(Date.now() + minutes * 60_000));
+    await page.clock.setFixedTime(new Date(start + minutes * 60_000));
     await visible();
   }
   await page.waitForTimeout(300);
   expect(forecasts()).toBe(1);
-  await page.clock.setFixedTime(new Date(Date.now() + 16 * 60_000));
+  await page.clock.setFixedTime(new Date(start + 16 * 60_000));
   await visible();
   await expect.poll(forecasts).toBe(2);
   // Choosing Local weather again is an explicit request and may retry at once.
