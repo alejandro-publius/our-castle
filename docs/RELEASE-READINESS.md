@@ -2,24 +2,26 @@
 
 ## Current source release: shared village and loading
 
-**What it is.** One combined source release, on branch `claude/village-loading-finish-20261110`, made by normally merging three reviewed lines of work and their corrections:
+**What it is.** One combined source release, now on `main` as merge commit `3bfe6e1c02e899cf9402c8510591d7fb1a166ad1` ([#82](https://github.com/alejandro-publius/our-castle/pull/82), merged November 10 Pacific with an ordinary merge commit). It was made by normally merging three reviewed lines of work and their corrections, and every original commit is kept:
 
 | Part | Pull request | Exact head |
 | --- | --- | --- |
 | Shared village fund, money adapters, square, treasurer, MCP bridge | [#79](https://github.com/alejandro-publius/our-castle/pull/79) | `1f76ba619f87df646310573dc1a2ed64887e0896` |
 | Two fresh families reaching one shared project | [#81](https://github.com/alejandro-publius/our-castle/pull/81) | `9bda275b28f0aa2a369a11acf5c075f626d05ed1` |
 | The owner's dragon loading scene | [#80](https://github.com/alejandro-publius/our-castle/pull/80) | `84470b27adde0ab23473ef92f746e2321df03c49` |
-| Corrections on the combined branch | the combined release pull request | loader canvas, wait feedback, this handoff |
+| Corrections on the combined branch: loader canvas, wait feedback, the tour's opening focus, this handoff | [#82](https://github.com/alejandro-publius/our-castle/pull/82) | `795a6e7ff4c63d5d58cf64703f38eb2eeaf0d078` |
 
-**Status.** Implemented and tested **source**. It is not deployed, and the saved Mac apps below were not read, migrated, restarted or activated by it; they remain as recorded below (`b21b2d8`, schema 12). Its hosted results are on the combined release pull request; [what was checked](VALIDATION.md#combined-village-and-loading-release--november-10-2026). To look at it: `npm ci`, then `npm run demo -- --village-fund` ([the short route](VILLAGE-DEMO.md)). For a critical read without touching anything, start with [the critique brief](CRITIQUE-BRIEF.md).
+**Status.** Implemented and tested source, not deployed anywhere public. With [hold-first contributions](PAYMENT-HOLDS.md) added by [#83](https://github.com/alejandro-publius/our-castle/pull/83) (`a56170a`), it is now what the owner's two saved Mac apps run: they were upgraded at the owner's explicit request on November 10 Pacific, with every saved record kept ([current Mac app](#current-mac-app)). The final-candidate [run 42933883601](https://github.com/alejandro-publius/our-castle/actions/runs/42933883601) passed all ten jobs on the reviewed head `795a6e7`, and the automatic post-merge [run 42936771527](https://github.com/alejandro-publius/our-castle/actions/runs/42936771527) passed all ten jobs on `main` at `3bfe6e1`; [what was checked](VALIDATION.md#combined-village-and-loading-release--november-10-2026). To look at it: `npm ci`, then `npm run demo -- --village-fund` ([the short route](VILLAGE-DEMO.md)). For a critical read without touching anything, start with [the critique brief](CRITIQUE-BRIEF.md).
 
 **What remains, and who it waits on:**
 
-- **Activation.** Merged source is not a running app. Activating a saved app is a separate, owner-approved step with backups; schemas 13 to 17 have only ever been applied to disposable fixtures.
+- **Activation.** Done for the two saved Mac apps, at the owner's request, after backups and a rehearsed rollback ([record](evidence/runtime-activation-20261110.json)). Both went from schema 12 to 18 with every original row unchanged. This is a verified local upgrade, not a hosted deployment.
 - **Sandbox recipient and devnet wallet.** Neither exists yet. Recipient-bound PayPal sandbox payments and PYUSD devnet observation are checked only against fake transports. Real acceptance needs owner-guided setup of a separate sandbox recipient and a devnet receiving wallet.
 - **Not established by fake checks:** an owner's own assistant connected over MCP, AI drafting or live ranking quality, and recurring-agreement eligibility. Recurring charges and refunds are not ingested at all; nothing collects weekly.
 - **A watched wallet proves little.** Observing an address does not restrict what its owner spends on, enforce a vote, prove a bill was paid or prevent fraud.
-- **Separate records.** The saved runtimes and the historical $15 sandbox order are untouched and are not evidence for this release.
+- **Cohere ordering.** The owner's key is now in private, ignored local configuration, and with it the complete-kit ordering selects Cohere. Both saved apps were restarted in the upgrade and now report preference ordering as live. One live request through the adapter returned an ordering, which shows the connection works; whether the ordering is good has not been evaluated, and the upgrade itself made no Cohere request.
+- **Hold first, then release or return.** Merged at the owner's request by [#83](https://github.com/alejandro-publius/our-castle/pull/83) and running in the saved apps as an opt-in choice. Its evidence is fake-provider and example-mode only; a real sandbox hold, partial release and return are still the owner's to make.
+- **Separate records.** The saved households and the historical $15 sandbox order were carried through the upgrade unchanged. They are evidence of the earlier release they were made on, not of the village, loading or hold features.
 - **Still the owner's:** the final demo, any video, the submission, and any evidence from real people or devices. None is claimed here.
 
 Everything below this section describes earlier releases and the saved apps. Where it says a village or PYUSD feature was only a proposal, it is describing that earlier time.
@@ -57,11 +59,21 @@ The plain `npm run demo` retains its fresh household with no catalogue. The fami
 
 ## Current Mac app
 
-Both saved apps now run `b21b2d8` from `~/projects/our-castle-runtime-release-20261109`, activated November 9 at 20:34–20:35 UTC:
-- **Owner:** http://localhost:3010, PID **440**, $60/$300.
-- **Preserved rehearsal:** http://localhost:3021, PID **985**, $75/$300, retaining its one completed $15 sandbox capture and one credit.
+Both saved apps now run `a56170a` (main after #82 and #83) from `~/projects/our-castle-runtime-release-20261110`, upgraded at the owner's explicit request on November 10 Pacific (02:44 UTC on November 11):
+- **Owner:** http://localhost:3010, PID **83876**, $60/$300.
+- **Preserved rehearsal:** http://localhost:3021, PID **83914**, $75/$300, retaining its one completed $15 sandbox capture and one credit.
+- **Schema:** 12 → 18, 27 → 44 application tables. Every original row is unchanged; the seventeen new tables are empty. Startup advanced the achievement ID counter, as it does on every start, and nothing else.
+- **Runtime:** the compiled Rust solver is selected (the same verified binary; its source did not change). OpenAI kit-photo reading stays configured. Cohere preference ordering is now **live** from the key the owner supplied. Payment, planner, Merchant and access modes are as they were.
+- **How it was done:** consistent online backups, then on private copies a migration and startup rehearsal and a rollback rehearsal (stopped copy restored, previous source started on it), all with outside network refused and no connection attempted. Then each app in turn: stop, stopped backup, start the new source, compare. Each was down for under two seconds. [Sanitized record](evidence/runtime-activation-20261110.json); [what was checked](VALIDATION.md#saved-mac-runtime-upgrade--november-10-2026).
+- **Rollback source:** the previous checkout `~/projects/our-castle-runtime-release-20261109` (`b21b2d8`) is kept, with per-app stopped-database copies in the private folder `~/projects/our-castle-activation-private-20261110/`. See the [runbook](RUNBOOK.md#saved-mac-runtime--november-10-2026).
+
+Refresh an idle page to load the new assets. The rest of this section is the earlier November 9 upgrade, kept as history.
+
+On November 9 at 20:34–20:35 UTC both saved apps were moved to `b21b2d8` in `~/projects/our-castle-runtime-release-20261109`:
+- **Owner:** http://localhost:3010, then PID 440, $60/$300.
+- **Preserved rehearsal:** http://localhost:3021, then PID 985, $75/$300, retaining its one completed $15 sandbox capture and one credit.
 - **Schema:** 7 → 12, 19 → 27 application tables. Every original application-table value and row is unchanged; the eight new tables are empty.
-- **Runtime:** the compiled Rust solver is selected. OpenAI kit-photo reading is configured; Cohere ordering is off. Existing payment, planner, Merchant and access modes are preserved.
+- **Runtime:** the compiled Rust solver is selected. OpenAI kit-photo reading is configured; Cohere ordering was off. Existing payment, planner, Merchant and access modes are preserved.
 
 Consistent online and stopped-database backups, private-copy migration/startup rehearsals, original-table fingerprints and seven served-resource hashes passed. Startup advances the achievement ID counter without adding an application row; other ID counters are unchanged. An over-strict operator assertion initially treated that metadata change as a failure, briefly stopping 3010; the corrected check and resumed app passed before 3021 was upgraded. No financial/application row was lost or rewritten.
 

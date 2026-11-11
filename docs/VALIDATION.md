@@ -1,8 +1,38 @@
 # Validation
 
+## Saved Mac runtime upgrade — November 10, 2026
+
+At the owner's explicit request, the two saved Mac apps were moved from `b21b2d8` (schema 12) to `a56170a`, main after #82 and #83 (schema 18). [Sanitized record](evidence/runtime-activation-20261110.json); the raw databases, backups, logs and reports stay private and outside Git.
+
+**Before anything was stopped**
+- A new runtime checkout at `a56170a` with a clean `npm ci`. The solver source is byte-identical to the previous source and this Mac has no Rust toolchain, so the already verified solver binary was reused and its SHA-256 rechecked.
+- A consistent online backup of each database through SQLite's backup interface: schema 12, 27 application tables, integrity check `ok`, no foreign-key violation.
+- **Rehearsal on private copies**, three server starts per app, each with outside network refused: the previous source (to learn what an ordinary start changes), the new source (the migration, exactly as the real upgrade performs it), then a rollback (the stopped copy put back and the previous source started on it). In all six starts the guard was loaded and **no outside connection was attempted**.
+  - Migration: 12 → 18, 27 → 44 application tables, every original table's rows unchanged, seventeen new tables all empty, saved facts identical, the new files served.
+  - Rollback: schema 12 again, saved facts identical, integrity `ok`.
+  - The only difference anywhere was the achievement ID counter, which every start advances without adding a row.
+
+**The upgrade**, one app at a time: confirm the listener is the expected process and still matches the rehearsed backup, stop it, copy the stopped database, start the new source with the same minimal environment, compare. A failed comparison would have restored the stopped copy and restarted the previous source automatically; neither app needed it.
+
+| | Owner, port 3010 | Rehearsal, port 3021 |
+| --- | --- | --- |
+| Process | 440 → 83876 | 985 → 83914 |
+| Down for | under 2 s | under 2 s |
+| Stopped copy equals the online backup | yes | yes |
+| Schema, application tables | 12 → 18, 27 → 44 | 12 → 18, 27 → 44 |
+| Original rows changed | none | none |
+| New tables with rows | none | none |
+| Progress | $60 of $300, unchanged | $75 of $300, unchanged |
+| Completed $15 sandbox capture | not applicable | still present, still credited once |
+| Payment, planner, Merchant, photo modes | unchanged | unchanged |
+| Cohere preference ordering | off → live | off → live |
+| Seven served files equal the new checkout | yes | yes |
+
+Limits: this is a local upgrade on one Mac, checked by reading the apps over loopback and by comparing database fingerprints. It is not a hosted deployment or a disaster-recovery guarantee. Nobody used the upgraded pages as part of this check, no browser journey was run against the saved apps, and no payment, hold, model, catalogue or ranking request was made. "Cohere live" means the key is loaded and selected, not that a ranking was requested or judged.
+
 ## Hold first, then release or return — November 10, 2026
 
-One branch, `claude/payment-holds-20261110`, built on the combined village and loading release below. [What it does and the rules it keeps](PAYMENT-HOLDS.md). It is opt-in: the existing checkout is unchanged and is still the default.
+One branch, `claude/payment-holds-20261110`, built on the combined village and loading release below, and merged to `main` at the owner's request by [#83](https://github.com/alejandro-publius/our-castle/pull/83) as `a56170a`. [What it does and the rules it keeps](PAYMENT-HOLDS.md). It is opt-in: the existing checkout is unchanged and is still the default.
 
 **Every check here uses the fake PayPal sandbox or example mode.** No real sandbox order was held, captured or voided, and none of this is live PayPal evidence.
 
@@ -39,6 +69,8 @@ One branch, `claude/village-loading-finish-20261110`: a normal merge of the firs
 - The Exchange-dashboard spec, which saves sharing settings: 2 passed across desktop and phone.
 
 Left to the hosted run on the combined release pull request, and not rerun locally after the last Exchange change: the two-family Exchange and village-library specs, the woodland cases on the phone project, the whole unit suite, and the release and kit-planner selections. Raw traces, timings, before and after captures and mutation runs are ignored under `test-results/village-loading-finish-20261110/`.
+
+**Hosted results and the merge.** The final-candidate [run 42933883601](https://github.com/alejandro-publius/our-castle/actions/runs/42933883601) passed all ten jobs on `795a6e7`: unit and Rust on Node 22.16.0, 24 and 26, the release selection on desktop (two shards) and phone, the shared village journeys and the kit-planner journeys. [#82](https://github.com/alejandro-publius/our-castle/pull/82) then merged it into `main` with an ordinary merge commit, `3bfe6e1c02e899cf9402c8510591d7fb1a166ad1`, whose tree is identical to that head. The automatic post-merge [run 42936771527](https://github.com/alejandro-publius/our-castle/actions/runs/42936771527) passed the same ten jobs on `main`. #79 is recorded as merged by GitHub; #80 and #81 were closed as superseded with their branches kept.
 
 Limits: timings are from one Mac and a software-rendered Chromium; they explain a test failure and are not a performance claim. Virtual authenticators and an emulated phone, not people or devices. Simulated contributions; no provider call.
 

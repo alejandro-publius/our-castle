@@ -2,6 +2,16 @@
 
 Commands and integration setup for Our Castle. Current state and live-proof limits are in [JUDGE-HANDOFF.md](JUDGE-HANDOFF.md); historical results are not a reason to repeat paid checks.
 
+## Saved Mac runtime — November 10, 2026
+
+The owner's two saved apps run `a56170a`, schema 18, from `~/projects/our-castle-runtime-release-20261110`. Owner 3010 (PID 83876) retains $60/$300; rehearsal 3021 (PID 83914) retains $75/$300 and its completed $15 sandbox capture. [Record](evidence/runtime-activation-20261110.json); [what was checked](VALIDATION.md#saved-mac-runtime-upgrade--november-10-2026).
+
+These processes are independent of any assistant or terminal. Refresh an idle browser page for the current assets; do not start a second process on either occupied port. Each was started from that checkout with an explicit, minimal environment: loopback host, its own port, its own absolute data folder, the private configuration file, example access and the native solver. Plain `npm start` in another checkout can choose different settings and data, so it is not a restart instruction for them.
+
+**Recovery is an operator action.** The private folder `~/projects/our-castle-activation-private-20261110/` holds, for each app, a consistent online backup, the stopped database exactly as it lay on disk (`<role>-stopped-rollback/`), fingerprints and reports. It contains real saved records and must stay private. The previous checkout `~/projects/our-castle-runtime-release-20261109` (`b21b2d8`, schema 12) is kept as the rollback source. To go back: stop the exact process, keep a copy of the current database and its sidecars, restore the stopped copy, and start the previous checkout with the same environment. This was rehearsed on private copies before the upgrade. Never open a schema-18 database with the schema-12 source, and never replace a database under a running app. Anything saved after the upgrade exists only in the schema-18 database and would be lost by a restore.
+
+No restore is needed after this upgrade. It made no provider request. The section below describes the earlier November 9 upgrade and its own, older private folder.
+
 ## Saved Mac runtime — November 9, 2026
 
 The owner's two saved apps have been upgraded to reviewed source `b21b2d8`, schema 12, from `~/projects/our-castle-runtime-release-20261109`. Owner 3010 (PID 440) retains $60/$300; rehearsal 3021 (PID 985) retains $75/$300 and its completed $15 sandbox capture. [Activation evidence and operator correction](VALIDATION.md#saved-mac-runtime-activation--november-9-2026).

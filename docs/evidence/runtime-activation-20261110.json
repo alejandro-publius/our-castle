@@ -1,0 +1,164 @@
+{
+  "recordedAt": "2026-11-11T02:45:23.240174+00:00",
+  "scope": "Sanitized summary of the owner-authorized local upgrade of the two saved Mac apps; raw saved databases, backups, logs and reports remain private.",
+  "source": "a56170ab74761ffb8b676c67c276281b5e7b6739",
+  "runtimeTree": "bb9288d1c7eb5085628fdbcba54b0bcc3ef7c1d9",
+  "runtimeCheckout": "~/projects/our-castle-runtime-release-20261110",
+  "previousSource": "b21b2d8bd04fe59de7eee885cc47dbdccf2dd302",
+  "previousRuntimeCheckoutKeptForRollback": "~/projects/our-castle-runtime-release-20261109",
+  "localNode": "26.0.0",
+  "nativeSolverSHA256": "f151bd874022b56f9f3ea9790fea721b33dc12eadb4dc25cbae55ac9c437abdb",
+  "nativeSolverNote": "The solver source is byte-identical between the previous and new source, and no Rust toolchain is installed on this Mac, so the already verified binary was reused and its hash rechecked.",
+  "roles": [
+    {
+      "role": "owner",
+      "port": 3010,
+      "source": "a56170ab74761ffb8b676c67c276281b5e7b6739",
+      "previousPid": 440,
+      "newPid": 83876,
+      "phase": "activated_verified",
+      "stoppedAt": "2026-11-11T02:44:04.356835+00:00",
+      "startedAt": "2026-11-11T02:44:05.646590+00:00",
+      "finishedAt": "2026-11-11T02:44:05.783771+00:00",
+      "stoppedBackupMatchesOnlineBackup": true,
+      "schemaBefore": 12,
+      "schemaAfter": 18,
+      "tablesBefore": 27,
+      "tablesAfter": 44,
+      "integrityCheck": "ok",
+      "foreignKeyViolations": 0,
+      "originalRowsChanged": 0,
+      "originalTablesRedefinedOrRemoved": 0,
+      "newTables": 17,
+      "newTablesWithRows": 0,
+      "savedFactsUnchanged": true,
+      "existingModesMatch": true,
+      "expectedStartupMetadata": {
+        "achievementIdCounterAdvance": 1,
+        "otherSequenceCountersUnchanged": true
+      },
+      "servedResourceHashes": {
+        "/": "97b183fc421bd4f25fff7ea6bb41f9c24a427bee67593061c1acfd9735b8d603",
+        "/app.css": "64929abb4c0b5e7f9c17fa7a5322a0e524bb7bb9e42be9be1de14d3d7c494759",
+        "/src/app/keeper.js": "dc3eab86d12712e3092ff628c8e73bdc36f9c665ac11d759500add94b97ebb7d",
+        "/src/app/main.js": "9d5bea525a4d164e65c1d8a347534562168dc6317adb972a23e9a5e16a2aef4a",
+        "/src/app/realm-loader.js": "004f6b91abc35c7cdc1164909e17f0747b42769dc7fd0017dfecbb4659aff1a7",
+        "/src/app/village-fund.js": "10150d44764c911c16189c3a40054b2f99eaacc36bb60044233ad75b0203fadf",
+        "/src/world/board-scene.js": "f0b5a835f88100a0e27ffcb61b401f2c91c3a0aa1d2eafea69d8bf5cf627b856"
+      },
+      "servedResourcesMatchCheckout": true,
+      "paymentsMode": "sandbox",
+      "plannerMode": "live",
+      "merchantMode": "live",
+      "OpenAIPhotoMode": "live",
+      "CohereModeBefore": "off",
+      "CohereModeAfter": "live",
+      "progressCents": 6000,
+      "targetCents": 30000,
+      "historical15DollarCapturesPreserved": 0,
+      "requestsMadeByTheOperator": "loopback only"
+    },
+    {
+      "role": "rehearsal",
+      "port": 3021,
+      "source": "a56170ab74761ffb8b676c67c276281b5e7b6739",
+      "previousPid": 985,
+      "newPid": 83914,
+      "phase": "activated_verified",
+      "stoppedAt": "2026-11-11T02:44:21.389925+00:00",
+      "startedAt": "2026-11-11T02:44:22.421851+00:00",
+      "finishedAt": "2026-11-11T02:44:22.514785+00:00",
+      "stoppedBackupMatchesOnlineBackup": true,
+      "schemaBefore": 12,
+      "schemaAfter": 18,
+      "tablesBefore": 27,
+      "tablesAfter": 44,
+      "integrityCheck": "ok",
+      "foreignKeyViolations": 0,
+      "originalRowsChanged": 0,
+      "originalTablesRedefinedOrRemoved": 0,
+      "newTables": 17,
+      "newTablesWithRows": 0,
+      "savedFactsUnchanged": true,
+      "existingModesMatch": true,
+      "expectedStartupMetadata": {
+        "achievementIdCounterAdvance": 2,
+        "otherSequenceCountersUnchanged": true
+      },
+      "servedResourceHashes": {
+        "/": "97b183fc421bd4f25fff7ea6bb41f9c24a427bee67593061c1acfd9735b8d603",
+        "/app.css": "64929abb4c0b5e7f9c17fa7a5322a0e524bb7bb9e42be9be1de14d3d7c494759",
+        "/src/app/keeper.js": "dc3eab86d12712e3092ff628c8e73bdc36f9c665ac11d759500add94b97ebb7d",
+        "/src/app/main.js": "9d5bea525a4d164e65c1d8a347534562168dc6317adb972a23e9a5e16a2aef4a",
+        "/src/app/realm-loader.js": "004f6b91abc35c7cdc1164909e17f0747b42769dc7fd0017dfecbb4659aff1a7",
+        "/src/app/village-fund.js": "10150d44764c911c16189c3a40054b2f99eaacc36bb60044233ad75b0203fadf",
+        "/src/world/board-scene.js": "f0b5a835f88100a0e27ffcb61b401f2c91c3a0aa1d2eafea69d8bf5cf627b856"
+      },
+      "servedResourcesMatchCheckout": true,
+      "paymentsMode": "sandbox",
+      "plannerMode": "live",
+      "merchantMode": "live",
+      "OpenAIPhotoMode": "live",
+      "CohereModeBefore": "off",
+      "CohereModeAfter": "live",
+      "progressCents": 7500,
+      "targetCents": 30000,
+      "historical15DollarCapturesPreserved": 1,
+      "requestsMadeByTheOperator": "loopback only"
+    }
+  ],
+  "privateCopyRehearsals": [
+    {
+      "role": "owner",
+      "copyMatchesOnlineBackup": true,
+      "migration": {
+        "schemaBefore": 12,
+        "schemaAfter": 18,
+        "tablesBefore": 27,
+        "tablesAfter": 44,
+        "integrityCheck": "ok",
+        "originalTablesChangedBesidesIdCounters": [],
+        "savedFactsUnchanged": true,
+        "servedResourcesMatchCheckout": true
+      },
+      "rollback": {
+        "restoredFromStoppedCopy": true,
+        "previousSourceStartedOnIt": true,
+        "schema": 12,
+        "integrityCheck": "ok",
+        "savedFactsUnchanged": true,
+        "tablesChangedBesidesIdCounters": []
+      },
+      "networkGuard": {
+        "loadedInAllThreeStarts": true,
+        "outsideConnectionAttempts": 0
+      }
+    },
+    {
+      "role": "rehearsal",
+      "copyMatchesOnlineBackup": true,
+      "migration": {
+        "schemaBefore": 12,
+        "schemaAfter": 18,
+        "tablesBefore": 27,
+        "tablesAfter": 44,
+        "integrityCheck": "ok",
+        "originalTablesChangedBesidesIdCounters": [],
+        "savedFactsUnchanged": true,
+        "servedResourcesMatchCheckout": true
+      },
+      "rollback": {
+        "restoredFromStoppedCopy": true,
+        "previousSourceStartedOnIt": true,
+        "schema": 12,
+        "integrityCheck": "ok",
+        "savedFactsUnchanged": true,
+        "tablesChangedBesidesIdCounters": []
+      },
+      "networkGuard": {
+        "loadedInAllThreeStarts": true,
+        "outsideConnectionAttempts": 0
+      }
+    }
+  ]
+}

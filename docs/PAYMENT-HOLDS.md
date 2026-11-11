@@ -2,7 +2,7 @@
 
 A contribution can be **held** before anything is taken. PayPal authorizes the adult-approved amount, nothing is credited and the world does not move. Later an adult either **releases** an exact amount of it to the goal or **returns** it. This sits beside the existing checkout, which is unchanged and is still the default.
 
-Status: implemented and tested source on its own branch. Every check so far uses the fake PayPal sandbox or example mode. **No real sandbox hold, capture or void has been made with it.**
+Status: merged to `main` by [#83](https://github.com/alejandro-publius/our-castle/pull/83) at the owner's request, and present in the saved Mac apps since their November 10 upgrade. Every check so far uses the fake PayPal sandbox or example mode. **No real sandbox hold, capture or void has been made with it.**
 
 ## What happens
 
@@ -43,6 +43,6 @@ What is not released goes back to the payer, because the capture is final. A hel
 
 - **A real sandbox hold.** One held order approved in the PayPal sandbox, then one release (ideally partial) and, on another order, one return. The fake sandbox cannot show that the checkout button accepts an `AUTHORIZE` order, that a partial final capture returns the remainder, or how long the sandbox honors a hold.
 - **Hold webhooks** need a public webhook endpoint, which this project does not run.
-- **Saved apps.** They are not on this source. Schema 18 has been applied only to disposable fixtures.
+- **Use it for real.** The saved apps now carry schema 18 (applied with every existing row unchanged), so the option is there in sandbox mode. Nothing has been held with it yet.
 
 Not built: re-authorizing an expired hold, more than one capture per hold, payouts and invoicing.
