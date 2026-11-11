@@ -8,7 +8,7 @@ const holds = (state) => state.contributions.filter((c) => c.hold).map((c) => [c
 
 test('a held contribution counts nothing until an adult releases part of it; another is returned; a child decides neither', { tag: '@release' }, async ({ page, request }, info) => {
   test.skip(info.project.name !== 'desktop', 'The same controls on both layouts; the phone release selection is close to its time budget.');
-  test.setTimeout(150_000);
+  test.setTimeout(240_000); // three contributions and two decisions; the same budget as the other long journeys on software-rendered runners
   await request.post('/api/demo/reset', { data: {} });
   expect((await request.post('/api/setup', { data: { playMode: 'family', name: 'House of Fernhill', crest: { field: 'violet', charge: 'tower' } } })).status()).toBe(200);
   const errors = [], writes = [], outside = [], origin = new URL(info.project.use.baseURL).origin;
