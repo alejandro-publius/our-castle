@@ -22,6 +22,11 @@ export const MAX_RELEASES = 3;
 const OPEN_HOLD = new Set(['awaiting', 'held', 'releasing', 'returning']);
 /** Capture statuses that mean PayPal took nothing. */
 const FAILED_CAPTURE = new Set(['DECLINED', 'DENIED', 'FAILED']);
+/**
+ * The mark on a release step that a check reopened because PayPal's order did not list its capture. The read may have
+ * been stale, so the capture may still exist: if PayPal lists it later, it is counted as this release.
+ */
+const UNCONFIRMED = 'unconfirmed';
 const validTime = (value) => (typeof value === 'string' && Number.isFinite(Date.parse(value)) ? value : null);
 const dayText = (iso) => new Date(iso).toISOString().slice(0, 10);
 /** Three days from `from`, but never past the authorization's own expiry. */
@@ -255,8 +260,11 @@ export function createContributionService({ db, clock, mode, paypal = null, webh
     return orderById(id);
   }
 
-  /** Credit a confirmed capture exactly once, with its milestones, in one transaction. */
-  function credit(row, captureId, amountCents, currency) {
+  /**
+   * Credit a confirmed capture exactly once, with its milestones, in one transaction. `late` is the unconfirmed release
+   * step this capture belongs to, when PayPal made that release without confirming it in time (see lateRelease).
+   */
+  function credit(row, captureId, amountCents, currency, late = null) {
     const kinds = LEDGER[row.provider];
     const outcome = transaction(db, () => {
       const existing = captureById(captureId);
@@ -277,7 +285,13 @@ export function createContributionService({ db, clock, mode, paypal = null, webh
       // held. A release recorded before decisions had steps was always final.
       const hold = holdFor(row.id);
       let detail = null;
-      if (hold) {
+      if (hold && late) {
+        // An adult approved exactly this release and it was sent; only PayPal's confirmation was missing. It counts now.
+        // The hold itself stays as later decisions left it, and a decision still waiting for PayPal is not touched.
+        db.prepare('UPDATE payment_holds SET released_cents = ?, updated_at = ? WHERE order_id = ?').run(hold.released_cents + amountCents, at, row.id);
+        markStep(late, 'done', captureId);
+        detail = `PayPal made a release of ${formatCents(amountCents, currency)} that it had not confirmed in time. It was found on PayPal’s order and is now counted.`;
+      } else if (hold) {
         const step = openStep(row.id);
         const released = hold.released_cents + amountCents;
         const finished = !step || step.final === 1 || released >= hold.held_cents;
@@ -299,6 +313,17 @@ export function createContributionService({ db, clock, mode, paypal = null, webh
     return result(row, outcome.duplicate ? 'already_completed' : outcome.refunded ? 'refunded' : 'completed', { awarded: outcome.awarded });
   }
 
+  /**
+   * The unconfirmed release this capture can belong to: an adult approved exactly this amount for this hold, the request
+   * was sent, and a check that could not see the capture reopened the hold. Never more than the hold still allows.
+   */
+  function lateRelease(row, amountCents) {
+    const hold = holdFor(row.id);
+    if (!hold || hold.released_cents + amountCents > hold.held_cents) return null;
+    return db.prepare("SELECT * FROM payment_hold_steps WHERE order_id = ? AND kind = 'release' AND state = 'failed' AND provider_ref = ? AND amount_cents = ? ORDER BY seq LIMIT 1")
+      .get(row.id, UNCONFIRMED, amountCents) ?? null;
+  }
+
   /** Check one provider capture against the order the server created, then act on its status. */
   function applyCapture(row, capture, purchaseUnitCustomId) {
     const amountCents = decimalStringToCents(capture?.amount?.value);
@@ -314,6 +339,11 @@ export function createContributionService({ db, clock, mode, paypal = null, webh
       return result(row, amountCents === recorded.amount_cents && currency === recorded.currency ? 'already_completed' : 'rejected_mismatch');
     }
     const expectedCents = expectedCaptureCents(row);
+    if (expectedCents === null || amountCents !== expectedCents) {
+      // Not the release under way, if any. It may still be one an adult approved earlier and PayPal did not confirm.
+      const late = capture.status === 'COMPLETED' && currency === row.currency && customId === row.id ? lateRelease(row, amountCents) : null;
+      if (late) return credit(row, capture.id, amountCents, currency, late);
+    }
     if (expectedCents === null) {
       // A capture of a hold that no adult has released here (made in PayPal directly, say). Never credited on its own.
       if (!SETTLED.has(orderById(row.id).status)) setStatus(row, 'rejected', `Capture ${capture.id} arrived for a held contribution that no adult has released here. No progress was recorded.`);
@@ -427,11 +457,15 @@ export function createContributionService({ db, clock, mode, paypal = null, webh
     const authorization = currentAuthorization(unit, hold);
     // A listed capture that is neither counted here nor definitely failed may still count: nothing is reopened around it.
     const waiting = (unit.payments?.captures ?? []).some((c) => !captureById(c.id)?.credited && !FAILED_CAPTURE.has(c?.status));
+    // "Partly captured" with nothing counted here means PayPal took a capture this read does not list: the read is behind,
+    // and the decision under way stays unknown until the capture shows.
     if (explicit && !waiting && authorization?.status === 'PARTIALLY_CAPTURED' && authorization.id === hold.authorization_id
-      && ['releasing', 'returning'].includes(hold.status)) {
+      && ['releasing', 'returning'].includes(hold.status) && hold.released_cents > 0) {
       // An adult's explicit check: every capture PayPal lists is counted here or failed, and the rest is still held, so
-      // the decision under way did not take effect. The hold is open again and an adult may decide afresh.
-      reopenHold(row);
+      // the decision under way did not take effect as far as this read shows. The hold is open again and an adult may
+      // decide afresh. Earlier releases explain PayPal's status, so a release reopened here keeps a mark: if its capture
+      // is listed later after all, it is counted then.
+      reopenHold(row, { unconfirmed: true });
       setHoldDetail(row, `PayPal still holds the other ${formatCents(hold.held_cents - hold.released_cents, row.currency)}: the earlier decision did not go through. An adult can decide again.`);
       return result(row, 'held');
     }
@@ -815,6 +849,12 @@ export function createContributionService({ db, clock, mode, paypal = null, webh
         }
         if (!moved) throw new DomainError(409, 'hold_in_progress', IN_PROGRESS);
       }
+      // The same release decided again, with nothing counted since, reaches PayPal as the very same request. Its answer
+      // settles the earlier attempt too, so that attempt needs no separate watch.
+      if (kind === 'release') {
+        db.prepare(`UPDATE payment_hold_steps SET provider_ref = 'retried' WHERE order_id = ? AND kind = 'release' AND state = 'failed' AND provider_ref = ? AND amount_cents = ? AND final = ?
+          AND seq > COALESCE((SELECT MAX(seq) FROM payment_hold_steps WHERE order_id = ? AND kind = 'release' AND state = 'done'), 0)`).run(row.id, UNCONFIRMED, amount, final, row.id);
+      }
       const seq = db.prepare('SELECT COALESCE(MAX(seq), 0) + 1 AS n FROM payment_hold_steps WHERE order_id = ?').get(row.id).n;
       db.prepare(`INSERT INTO payment_hold_steps (order_id, seq, kind, amount_cents, final, request_id, member_id, state, created_at, updated_at)
         VALUES (?, ?, ?, ?, ?, ?, ?, 'sent', ?, ?)`).run(row.id, seq, kind, amount, final, requestId, approverId, at, at);
@@ -822,9 +862,10 @@ export function createContributionService({ db, clock, mode, paypal = null, webh
     });
   }
   /** A decision that definitely did not take effect: the hold is open again and an adult may decide afresh. */
-  function reopenHold(row) {
+  function reopenHold(row, { unconfirmed = false } = {}) {
     transaction(db, () => {
-      failOpenStep(row.id);
+      const step = openStep(row.id);
+      if (step) markStep(step, 'failed', unconfirmed && step.kind === 'release' ? UNCONFIRMED : null);
       // The last release that did take effect, if any, stays the one on record.
       db.prepare(`UPDATE payment_holds SET status = 'held', decided_by = NULL, decision_request_id = NULL, updated_at = ?,
         release_cents = (SELECT amount_cents FROM payment_hold_steps WHERE order_id = ? AND kind = 'release' AND state = 'done' ORDER BY seq DESC LIMIT 1)
