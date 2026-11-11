@@ -83,7 +83,7 @@ The walkthrough captures use isolated test households and simulated contribution
 | --- | --- |
 | ![Manor deed arriving on another family member's page](docs/screenshots/shared-live-owner-manor.png) | ![Illustrated Treasury milestone, weekly plan and contribution records](docs/screenshots/sponsor-treasury-desktop.png) |
 
-**World settings** change only how the map looks. Time of day follows the device clock or a chosen Day, Afternoon or Night; Weather is Clear, Rain, Snow or an opt-in local report. Snow turns the ground white and the rivers icy, and brings out a sleigh that circles the realm and a decorated tree with a snowman. None of it touches a district, reward, payment or record. [Light and weather](docs/ART-DIRECTION.md) · [Wayside and meadow scenery](docs/WOODLAND-WAYSIDES.md)
+**World settings** change only how the map looks. Time of day follows the device clock or a chosen Day, Afternoon or Night; Weather starts in Snow and can be changed to Clear, Rain or an opt-in local report. Snow turns the ground white and the rivers icy, and brings out a sleigh that circles the realm and a decorated tree with a snowman. None of it touches a district, reward, payment or record. [Light and weather](docs/ART-DIRECTION.md) · [Wayside and meadow scenery](docs/WOODLAND-WAYSIDES.md)
 
 | Snow: the sleigh over Rosewind Palace | A tourney field in an outer meadow |
 | --- | --- |
