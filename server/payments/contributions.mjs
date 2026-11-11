@@ -1097,7 +1097,9 @@ export function createContributionService({ db, clock, mode, paypal = null, webh
       if (row.provider === 'simulated') return returned();
       try {
         input.assertAccess?.();
-        await paypal.voidAuthorization(hold.authorization_id, { requestId: `return-${row.id}`, assertAccess: input.assertAccess });
+        // PayPal refuses to void a reauthorization (CANNOT_BE_VOIDED: "Please void the original parent authorization"),
+        // so an extended hold is returned through the authorization it was first placed under.
+        await paypal.voidAuthorization(hold.original_authorization_id ?? hold.authorization_id, { requestId: `return-${row.id}`, assertAccess: input.assertAccess });
       } catch (error) {
         if (!(error instanceof PayPalError)) { reopenHold(row); throw error; }
         if (outcomeUnknown(error)) {

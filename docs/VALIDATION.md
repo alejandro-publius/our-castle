@@ -26,7 +26,7 @@ Branch `claude/hold-lifecycle-20261110` ([#85](https://github.com/alejandro-publ
 - Inventories were updated for schema 19 and 45 application tables in the six migration and access tests that list them; the test that requires every earlier schema to upgrade to exactly the fresh one passed unchanged.
 - `test/e2e/payment-holds.spec.mjs` now releases the $40 hold in two steps ($10 keeping the rest, then $15 final) and checks the trail. It was not run on the loaded development Mac; hosted runs are its result.
 
-Not established, and waiting on the owner: a real sandbox hold left past its honor period, extended and released in steps; whether the sandbox wants a void after an extension to name the new authorization (as built) or the original one; whether the order's details list the reauthorization (handled either way); and whether the sandbox refuses a reauthorization inside the honor period.
+Not established, and waiting on the owner: a real sandbox hold left past its honor period, extended and released in steps; what the sandbox reports after an extended hold is returned (since November 11 the void names the original authorization, as PayPal's published `CANNOT_BE_VOIDED` rule requires; the earlier build named the new one); whether the order's details list the reauthorization (handled either way); and whether the sandbox refuses a reauthorization inside the honor period.
 
 ## Saved Mac runtime upgrade — November 10, 2026
 

@@ -345,7 +345,7 @@ for (const adapter of ['rest', 'sdk']) {
     assert.equal(checked.check.verdict, 'match');
   });
 
-  test(`[${adapter}] an extended hold is returned from the authorization that now holds it; news about the one it replaced changes nothing`, async () => {
+  test(`[${adapter}] an extended hold is returned through its original authorization, as PayPal requires; earlier news about that one changes nothing`, async () => {
     for (const orderListsReauthorizations of [true, false]) {
       const label = `order details list the extension: ${orderListsReauthorizations}`;
       const env = setupDomain({ adapter, mode: 'sandbox', paypalOptions: { orderListsReauthorizations } });
@@ -364,7 +364,8 @@ for (const adapter of ['rest', 'sdk']) {
       assert.equal(env.fake.requests.some((r) => r.method === 'GET' && r.pathname === `/v2/payments/authorizations/${hold.authorizationId}`), !orderListsReauthorizations, label);
       const returned = await env.service.returnHold(decision(id));
       assert.equal(returned.outcome, 'returned', label);
-      assert.deepEqual(paths(env, '/void').map((r) => r.pathname), [`/v2/payments/authorizations/${hold.authorizationId}/void`], label);
+      // PayPal refuses to void a reauthorization (the fake answers CANNOT_BE_VOIDED): the one void names the parent.
+      assert.deepEqual(paths(env, '/void').map((r) => r.pathname), [`/v2/payments/authorizations/${original}/void`], label);
       assert.equal((await env.service.refreshPayPalOrder({ providerOrderId: orderId, ...OWNER })).outcome, 'returned', label);
       assert.equal(progressFor(env.db, DEMO_GOAL_ID).progressCents, 6000, label);
       assert.deepEqual(ledger(env), [], label);

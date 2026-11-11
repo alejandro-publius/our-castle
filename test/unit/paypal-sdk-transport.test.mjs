@@ -5,7 +5,8 @@ import { PayPalError } from '../../server/payments/paypal-client.mjs';
 
 // APIMatic typescript-testing seam: real SDK 2.5.0 auth, controllers and serializers; only axios transport is fake.
 // No token seeding, controller replacement, network, provider credentials or retry overrides.
-const ORDER = 'FAKEORDER123', CAPTURE = 'FAKECAPTURE123';
+const ORDER = 'FAKEORDER123', CAPTURE = 'FAKECAPTURE123', AUTH = 'FAKEAUTH123';
+const HOLD_PATHS = [`/v2/checkout/orders/${ORDER}/authorize`, ...['', '/capture', '/reauthorize', '/void'].map((step) => `/v2/payments/authorizations/${AUTH}${step}`)];
 const amount = { currency_code: 'USD', value: '15.00' };
 const capture = { id: CAPTURE, status: 'COMPLETED', amount, final_capture: true,
   seller_receivable_breakdown: { gross_amount: amount, paypal_fee: { currency_code: 'USD', value: '0.50' }, net_amount: { currency_code: 'USD', value: '14.50' } }, future_capture_field: 'keep-me' };
@@ -17,7 +18,7 @@ function harness(reply = () => ({ body: completed }), options = {}) {
   const httpAdapter = async (config) => {
     const url = new URL(config.url);
     assert.equal(url.origin, 'https://api-m.sandbox.paypal.com', 'even the token request must stay in sandbox');
-    assert.ok(['/v1/oauth2/token', '/v2/checkout/orders', `/v2/checkout/orders/${ORDER}`, `/v2/checkout/orders/${ORDER}/capture`, `/v2/payments/captures/${CAPTURE}`, `/v2/payments/captures/${CAPTURE}/refund`].includes(url.pathname), `unexpected SDK endpoint: ${url.pathname}`);
+    assert.ok(['/v1/oauth2/token', '/v2/checkout/orders', `/v2/checkout/orders/${ORDER}`, `/v2/checkout/orders/${ORDER}/capture`, `/v2/payments/captures/${CAPTURE}`, `/v2/payments/captures/${CAPTURE}/refund`, ...HOLD_PATHS].includes(url.pathname), `unexpected SDK endpoint: ${url.pathname}`);
     calls.push(config);
     if (url.pathname === '/v1/oauth2/token') await options.beforeToken?.();
     const result = url.pathname === '/v1/oauth2/token' && !options.authError
@@ -119,6 +120,46 @@ test('malformed or wrong-shaped SDK responses cannot become a successful receipt
   for (const body of ['{not JSON', { purchase_units: 'not an array' }]) {
     const { client, operations } = harness(() => ({ body }));
     await assert.rejects(client.captureOrder(ORDER, { requestId: 'capture-bad-body' }));
+    assert.equal(operations().length, 1);
+  }
+});
+
+// The hold calls, through the real SDK serializers. Response shapes follow PayPal's published samples; they are not
+// evidence about what the sandbox really returns.
+const held = { id: AUTH, status: 'CREATED', amount: { currency_code: 'USD', value: '25.00' }, custom_id: 'ctb_fixture', invoice_id: 'ctb_fixture',
+  seller_protection: { status: 'ELIGIBLE', dispute_categories: ['ITEM_NOT_RECEIVED', 'UNAUTHORIZED_TRANSACTION'] }, expiration_time: '2026-12-10T12:00:00Z', create_time: '2026-11-11T12:00:00Z' };
+const release = { ...capture, final_capture: false, custom_id: 'ctb_fixture', supplementary_data: { related_ids: { order_id: ORDER, authorization_id: AUTH } } };
+
+test('hold wire contracts: authorize, capture kept open or final, reauthorize and void carry request IDs, decimal money and the final flag', async () => {
+  const { client, operations } = harness((req) => {
+    if (req.url.endsWith('/authorize')) return { status: 201, body: { id: ORDER, status: 'COMPLETED', purchase_units: [{ reference_id: 'ctb_fixture', payments: { authorizations: [held] } }] } };
+    if (req.url.endsWith('/capture')) return { status: 201, body: release };
+    if (req.url.endsWith('/void')) return { status: 204, body: '' }; // PayPal's answer to a void may have no body at all
+    return { status: req.url.endsWith('/reauthorize') ? 201 : 200, body: held };
+  });
+  assert.equal((await client.authorizeOrder(ORDER, { requestId: 'authorize-ctb_fixture' })).data.purchase_units[0].payments.authorizations[0].id, AUTH);
+  assert.deepEqual((await client.captureAuthorization(AUTH, { amountCents: 1500, currency: 'USD', final: false, requestId: 'release-keep' })).data, release);
+  await client.captureAuthorization(AUTH, { amountCents: 1000, currency: 'USD', requestId: 'release-final' });
+  assert.equal((await client.reauthorizeAuthorization(AUTH, { amountCents: 2500, currency: 'USD', requestId: 'extend-1' })).data.id, AUTH);
+  assert.deepEqual(await client.voidAuthorization(AUTH, { requestId: 'return-ctb_fixture' }), { data: null, debugId: 'fixture-debug-id', status: 204 });
+  assert.equal((await client.getAuthorization(AUTH)).data.status, 'CREATED');
+  const sent = operations().map((req) => [req.method, new URL(req.url).pathname, headers(req)['paypal-request-id'], req.data ? JSON.parse(req.data) : null]);
+  assert.deepEqual(sent, [
+    ['post', HOLD_PATHS[0], 'authorize-ctb_fixture', null],
+    ['post', `/v2/payments/authorizations/${AUTH}/capture`, 'release-keep', { amount: { currency_code: 'USD', value: '15.00' }, final_capture: false }],
+    ['post', `/v2/payments/authorizations/${AUTH}/capture`, 'release-final', { amount: { currency_code: 'USD', value: '10.00' }, final_capture: true }],
+    ['post', `/v2/payments/authorizations/${AUTH}/reauthorize`, 'extend-1', { amount: { currency_code: 'USD', value: '25.00' } }],
+    ['post', `/v2/payments/authorizations/${AUTH}/void`, 'return-ctb_fixture', null],
+    ['get', `/v2/payments/authorizations/${AUTH}`, undefined, null],
+  ]);
+});
+
+test('a successful answer the SDK cannot read is an unknown outcome, never a refusal: PayPal has already acted', async () => {
+  // A number where the SDK's generated schema wants text, and a body that is not JSON. Both arrive with a 2xx status.
+  for (const body of [{ ...release, seller_receivable_breakdown: { exchange_rate: { value: 1 } } }, '<html>gateway</html>']) {
+    const { client, operations } = harness(() => ({ status: 201, body }));
+    await assert.rejects(client.captureAuthorization(AUTH, { amountCents: 1500, currency: 'USD', final: false, requestId: 'release-keep' }),
+      (e) => e instanceof PayPalError && e.status === null && e.paypalName === 'UNEXPECTED_BODY');
     assert.equal(operations().length, 1);
   }
 });

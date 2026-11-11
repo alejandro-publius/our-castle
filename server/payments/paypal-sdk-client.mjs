@@ -35,6 +35,12 @@ function isApiError(error) {
 }
 
 function toPayPalError(error) {
+  // The SDK could not read a successful answer: its generated schema (a 2xx ResponseValidationError) or its JSON parser
+  // refused it. PayPal has already acted on the request, so this is an unknown outcome for the caller to settle from
+  // PayPal's own records. It is never a refusal, and never "nothing was sent".
+  if ((typeof error?.statusCode === 'number' && error.statusCode < 300) || /^Could not parse body as /.test(error?.message ?? '')) {
+    return new PayPalError('PayPal answered in a form the SDK could not read.', { name: 'UNEXPECTED_BODY', debugId: header(error.headers, 'paypal-debug-id') });
+  }
   if (isApiError(error)) {
     let data = null;
     try { data = typeof error.body === 'string' && error.body ? JSON.parse(error.body) : null; } catch { data = null; }

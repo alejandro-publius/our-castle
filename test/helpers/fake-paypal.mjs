@@ -178,10 +178,18 @@ export function createFakePayPal(options = {}) {
       const held = heldBy(m[1]);
       if (!held) return issue(404, 'RESOURCE_NOT_FOUND', 'INVALID_RESOURCE_ID');
       if (behavior.voidError) return issue(behavior.voidError.status, 'UNPROCESSABLE_ENTITY', behavior.voidError.issue);
-      if (held.authorization.status === 'VOIDED') return issue(422, 'UNPROCESSABLE_ENTITY', 'PREVIOUSLY_VOIDED');
+      // PayPal's published rule (Payments v2 errors, read Nov 11, 2026): "A reauthorization cannot be voided. Please void
+      // the original parent authorization."
+      const parentOf = (a) => a.links?.find((l) => l.rel === 'up')?.href.split('/').pop() ?? null;
+      if (parentOf(held.authorization)) return issue(422, 'UNPROCESSABLE_ENTITY', 'CANNOT_BE_VOIDED');
+      // Voiding the parent gives back what its reauthorization holds too. That both then read VOIDED is assumed here:
+      // PayPal documents the rule, not the statuses afterwards.
+      const others = [...held.unit.payments.authorizations, ...[...unlisted.values()].filter((u) => u.unit === held.unit).map((u) => u.authorization)];
+      const chain = [held.authorization, ...others.filter((a) => parentOf(a) === m[1])];
+      if (chain.some((a) => a.status === 'VOIDED')) return issue(422, 'UNPROCESSABLE_ENTITY', 'PREVIOUSLY_VOIDED');
       // A partly captured authorization can still be voided: that gives back what is left.
-      if (!['CREATED', 'PARTIALLY_CAPTURED'].includes(held.authorization.status)) return issue(422, 'UNPROCESSABLE_ENTITY', 'PREVIOUSLY_CAPTURED');
-      held.authorization.status = 'VOIDED';
+      if (chain.some((a) => !['CREATED', 'PARTIALLY_CAPTURED'].includes(a.status))) return issue(422, 'UNPROCESSABLE_ENTITY', 'PREVIOUSLY_CAPTURED');
+      for (const a of chain) a.status = 'VOIDED';
       return json(200, structuredClone(held.authorization));
     }
     m = /^\/v2\/checkout\/orders\/([^/]+)$/.exec(pathname);
