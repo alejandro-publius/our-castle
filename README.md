@@ -8,19 +8,17 @@ Decide what the family can afford together, compare complete kits and adjust the
 
 The illustrated journal has four chapters—House, Plan, Contribute and Ledger—with an original pixel crest and castle illustration. Family heraldry stays personal. [See the journal and brand design](docs/JOURNAL-DESIGN.md).
 
-[Architecture diagram](#architecture-at-a-glance) · [Payment sequence](docs/ARCHITECTURE.md#payment-states)
+[Architecture diagram](#architecture-at-a-glance) · [Payment sequence](docs/ARCHITECTURE.md#payment-states) · [Life of a held contribution](#hold-first-then-release-in-steps)
 
 The source is **public on GitHub**. It includes:
-- payment recovery and safety fixes;
-- opt-in music;
-- Moss's optional tour;
-- family choices and schedules;
-- shopping within the family's limits;
-- a kit list from typed text or a photo;
-- complete-kit planning and a playable family-trip example with an invented catalogue;
-- an invite-only Village Exchange that connects received loans and gifts to the kit planner.
+- family choices, schedules and shopping within the family's limits;
+- a kit list from typed text or a photo, complete-kit planning and a playable family-trip example with an invented catalogue;
+- an invite-only Village Exchange that connects received loans and gifts to the kit planner;
+- a shared village fund, where neighboring families fund one project together, with a shared square and a read-only assistant bridge;
+- adult-approved PayPal sandbox contributions with recovery and safety checks, and an opt-in **hold first** path: hold an amount, extend it once, release it in up to three steps, or return it;
+- an original knight-and-dragon loading scene, time of day and weather (including Snow), opt-in music and Moss's optional tour.
 
-The saved Mac apps at http://localhost:3010 and http://localhost:3021 were upgraded to `b21b2d8` (database schema 12) with their original records preserved. They remain pinned to that runtime; the new family-trip example below starts a separate fresh session. [Release status and remaining video/submission steps](docs/RELEASE-READINESS.md). For an independent code review, use the [source map and evidence guide](docs/JUDGE-HANDOFF.md#6-for-source-reviewers).
+The owner's saved Mac apps at http://localhost:3010 and http://localhost:3021 were upgraded on November 10 to `a56170a` (database schema 18) with their original records preserved. They stay on that runtime until the owner asks for another upgrade, so they do not yet run the hold extension, stepped releases, meadow scenery or Snow. Every example below starts its own fresh session. [Release status and remaining video/submission steps](docs/RELEASE-READINESS.md). For an independent code review, use the [source map and evidence guide](docs/JUDGE-HANDOFF.md#6-for-source-reviewers).
 
 ## Try it locally
 
@@ -35,6 +33,12 @@ npm run demo -- --village-fund
 ```
 
 Five invented families have contributed **$200 toward a $400 class trip**. In the parchment fund sheet, approve **$40**, see the shared schoolhouse advance, then inspect the contribution in Records. Each family's private savings stay separate. Visit the square to see opted-in castle appearances; people appear only after joining. Everything in this runner is simulated, with no credentials or provider traffic. [One-minute route, implementation and remaining setup](docs/VILLAGE-DEMO.md).
+
+| The fund sheet after one simulated $40 contribution | The shared square: the schoolhouse and five castles |
+| --- | --- |
+| ![The village fund sheet for Class trip together: $240.00 of $400.00 recorded, labelled as a simulated contribution where no money moves](docs/screenshots/village-fund-desktop-sheet.jpg) | ![The shared square: a blue-roofed schoolhouse at its second stage with five family castles around it, and the shared total of $240.00 toward $400.00](docs/screenshots/village-fund-desktop-square.png) |
+
+While a realm starts, an original knight-and-dragon scene may appear for a moment. It leaves as soon as the realm is ready, and a fast machine may never show it. [How it behaves](docs/DRAGON-LOADING.md).
 
 The configured family app also includes recipient-bound PayPal sandbox orders, a read-only PYUSD devnet watcher, reviewed sentence-to-fund drafts and a scoped local MCP bridge. Those adapters have fake-provider evidence; a separate recipient account, devnet wallet and assistant-client setup are still needed for their real end-to-end checks. Subscription agreement tracking is disabled by default and does not import recurring charges. The earlier single-household library example remains available as `--village-story`.
 
@@ -66,12 +70,12 @@ Run **`npm run demo -- --village-exchange`** to try it in a fresh, keyless sessi
 
 1. **House:** name the house, choose a crest and set a shared goal.
 2. **Merchant → Plan:** choose **Find an item** beside Goal in Plan, or visit Market Town. Search real products within a budget. **Use as goal** creates a draft; confirm before saving. **Check schedule** tries a weekly amount/date without saving; a suggested later date only fills the form. Claude can propose a weekly schedule that the server independently checks, and the family reviews it before using it.
-3. **Contribute:** an adult approves the exact amount. In sandbox mode, the server verifies the completed PayPal capture and credits once. In example mode, contributions are explicitly simulated.
+3. **Contribute:** an adult approves the exact amount. In sandbox mode, the server verifies the completed PayPal capture and credits once. In example mode, contributions are explicitly simulated. An adult can instead [hold the amount first](#hold-first-then-release-in-steps) and decide later.
 4. **Realm → Treasury:** a milestone opens a bridge, briefly spills coins from a small gold-trimmed courtyard fountain and announces a deed. Earlier buildings remain, while the campsite reflects current goal progress; **Visit campsite** in Plan brings it into view. The Ledger shows the next area, records and a receipt on selection. Its existing read-only steward can check that order.
 
 Searching does not buy an item. This is goal progress, not a bank balance. Reported savings, bills, gifts, simulated contributions and PayPal sandbox receipts retain their sources. Verified utility-bill rewards require a provider connection that is not present.
 
-Small **arrow markers** reveal property names when selected or reached by keyboard. The map has another 32-unit square of land on every side, two animated waterfalls feeding the rivers, and a hidden camp with two resting knights. The **compass beside View** lets you drag between homes at your current close-up scale; switch it off to turn the map again. The **Sound button at the top right** enables quiet retro RPG music and board effects. Every page starts muted; the music loads only when enabled. [Soundtrack sources and licences](assets/music/README.md). After contributing, **Review the receipt** opens that contribution in Treasury, with its saved-check status and the single steward note. [Receipt walkthrough and desktop/phone captures](docs/RECEIPT-HANDOFF.md).
+Small **arrow markers** reveal property names when selected or reached by keyboard. The map has another 32-unit square of land on every side, two animated waterfalls feeding the rivers, and a hidden camp with two resting knights. Four of its outer meadows hold small miniatures: a tourney field, a hay meadow, standing stones and a border watchtower. The **compass beside View** lets you drag between homes at your current close-up scale; switch it off to turn the map again. The **Sound button at the top right** enables quiet retro RPG music and board effects. Every page starts muted; the music loads only when enabled. [Soundtrack sources and licences](assets/music/README.md). After contributing, **Review the receipt** opens that contribution in Treasury, with its saved-check status and the single steward note. [Receipt walkthrough and desktop/phone captures](docs/RECEIPT-HANDOFF.md).
 
 The walkthrough captures use isolated test households and simulated contributions:
 
@@ -79,11 +83,66 @@ The walkthrough captures use isolated test households and simulated contribution
 | --- | --- |
 | ![Manor deed arriving on another family member's page](docs/screenshots/shared-live-owner-manor.png) | ![Illustrated Treasury milestone, weekly plan and contribution records](docs/screenshots/sponsor-treasury-desktop.png) |
 
+**World settings** change only how the map looks. Time of day follows the device clock or a chosen Day, Afternoon or Night; Weather is Clear, Rain, Snow or an opt-in local report. Snow turns the ground white and the rivers icy, and brings out a sleigh that circles the realm and a decorated tree with a snowman. None of it touches a district, reward, payment or record. [Light and weather](docs/ART-DIRECTION.md) · [Wayside and meadow scenery](docs/WOODLAND-WAYSIDES.md)
+
+| Snow: the sleigh over Rosewind Palace | A tourney field in an outer meadow |
+| --- | --- |
+| ![Snow weather: white ground, icy rivers and a red sleigh with reindeer flying over Rosewind Palace](docs/screenshots/winter-sleigh.png) | ![An outer meadow with a tilt rail, two striped pavilions and a rack of shields](docs/screenshots/meadow-tourney.png) |
+
+## Hold first, then release in steps
+
+On **Contribute**, an adult can tick **Hold it first**. The approved amount is held and nothing counts toward the goal. Later, on that record in the **Ledger**, an adult does one of three things:
+
+- **Release** an exact amount to the goal, all at once or in up to three steps. The last release is final, and whatever it does not take goes back to the payer.
+- **Return** what is still held. A part released earlier still counts.
+- **Extend** the hold once, after PayPal's three-day guarantee has ended and before the hold expires.
+
+The record shows its money trail, for example **Held $40.00 → Released $10.00 → Released $15.00 → Returned $15.00**, and how long the guarantee lasts.
+
+| 1. Hold it first (Contribute) | 2. Release part and keep the rest held (Ledger) |
+| --- | --- |
+| ![Contribute with Hold it first ticked and the approval reading: I approve holding $40.00 USD (simulated)](docs/screenshots/payment-holds-1-hold-it-first.jpg) | ![A simulated $40.00 hold, partly released: $10.00 counts toward the goal, the trail reads Held $40.00, Released $10.00, $30.00 still held, and Simulate release and Simulate return are offered](docs/screenshots/payment-holds-2-partly-released.jpg) |
+
+After a final release of $15.00, the same record reads:
+
+![The finished record: $25.00 of this contribution counts toward the goal. Held $40.00, Released $10.00, Released $15.00, Returned $15.00](docs/screenshots/payment-holds-3-trail.jpg)
+
+```mermaid
+stateDiagram-v2
+    accTitle: Held contribution states
+    accDescr: An adult-approved amount is held and nothing counts. An adult may extend the hold once after the three-day guarantee, release it in up to three steps, or return what is still held. Only a confirmed release adds progress.
+    state "Partly released" as Partly
+    [*] --> Held: Adult approves holding an exact amount
+    Held --> Held: Extend once after the three-day guarantee
+    Held --> Partly: Release part and keep the rest held
+    Partly --> Partly: Second release that keeps the rest
+    Held --> Released: Final release
+    Partly --> Released: Final release
+    Held --> Returned: Return what is held
+    Partly --> Returned: Return the rest
+    Held --> Expired: PayPal reports the hold expired
+    Released --> [*]
+    Returned --> [*]
+    Expired --> [*]
+```
+
+The server keeps these rules:
+
+- **It owns every amount.** A release is at most what is still held and never more than the goal still needs. The code refuses anything larger, and so does a database rule.
+- **Every decision is written down before PayPal is asked,** and only one decision can wait for PayPal at a time. The same request again is answered from the record.
+- **Each release counts once.** A release decided again after an unanswered attempt reaches PayPal as the same request, so it cannot capture twice.
+- **Unknown is not guessed.** If PayPal does not answer, nothing is credited until a check settles it from PayPal's own record.
+- **Adults decide, and no AI is involved.**
+
+To try it, run `npm run demo`, set up a house, tick **Hold it first** on Contribute and choose **Simulate approved hold**, then open the record in the Ledger. Extending is offered only after the three days have passed, so a short session will not reach it.
+
+In sandbox mode the same steps use PayPal Orders v2 with intent `AUTHORIZE` and Payments v2 capture, reauthorize and void through the pinned Server SDK. **Every check of this path so far uses a fake PayPal or example mode. No real sandbox hold, extension, capture or void has been made.** [Rules, timing and evidence](docs/PAYMENT-HOLDS.md)
+
 ## Decide on a purchase together
 
 In **Plan → Family choices**, shortlist up to three Market Town items, let each adult offer their own comfortable weekly amount, and let family members express a preference. Try an unexpected expense to see which item still fits the date and how much later the others finish. Choosing an item opens a goal draft for explicit review. **Save goal and propose this schedule** proposes the dated weeks it previews, keeping the expense and each adult's share, and **Use this plan** puts them in use. **Find options that fit** searches Market Town within the family's planning limit for its date, with optional must-haves from the catalog's own lists. It suggests only items the catalog confirms, and keeps why one was chosen.
 
-These features are in the source and the saved `b21b2d8` runtimes. Adding live catalogue items needs Channel3; the separate family-trip example supplies invented listings. Without either catalogue, adults' offers and the current goal can still be compared. The capture uses invented tents and fake provider responses. [Walkthrough, worked example and research](docs/FAMILY-CHOICES.md).
+These features are in the source and the saved Mac apps. Adding live catalogue items needs Channel3; the separate family-trip example supplies invented listings. Without either catalogue, adults' offers and the current goal can still be compared. The capture uses invented tents and fake provider responses. [Walkthrough, worked example and research](docs/FAMILY-CHOICES.md).
 
 ![A family compares three purchase options beside the woodland](docs/screenshots/family-choices-desktop-three.png)
 
@@ -117,39 +176,45 @@ These are test captures. The family (Rowan, Ash and Wren) is invented, and the "
 | **AG Grid / AG Studio** | Illustrated Treasury milestone, weekly plan, records and receipts in parchment | Studio 3.1 live data preserves the report; Grid 36.3 keeps selection and filters. The Agent Framework manages the existing steward through a scoped custom runner, with cancellation and cleanup. [Details](docs/TREASURY.md) |
 | **APIMatic** | Behind the scenes | Official generated PayPal Server SDK 2.5.0 and eight installed, discovery-verified Codex context skills; real SDK serialization/auth/retry tests with fake transport, plus documented capture-recovery/read fixes. [Details](docs/APIMATIC-CODEX.md) |
 
-PayPal JavaScript SDK v6 handles the browser session; Server SDK Orders v2/Payments v2 handle sandbox operations. PayPal Agent Toolkit enables only scoped read tools. Anthropic Claude (`claude-opus-5-5`) supplies runtime planning/steward answers; it cannot authorize, capture or refund a payment. Postman provides guarded walkthroughs.
+PayPal JavaScript SDK v6 handles the browser session; Server SDK Orders v2/Payments v2 handle sandbox operations, including the hold-first calls (authorize, reauthorize, capture and void). PayPal Agent Toolkit enables only scoped read tools. Anthropic Claude (`claude-opus-5-5`) supplies runtime planning/steward answers; it cannot authorize, capture or refund a payment. Postman provides guarded walkthroughs.
 
 ## Architecture at a glance
 
 ```mermaid
 flowchart TB
     accTitle: Our Castle architecture at a glance
-    accDescr: The family journal sends explicit actions to a local Node server. The server uses planning services and SQLite, calls configured providers, and returns world progress and Treasury records.
-    Family["Family journal<br/>goals, offers and kit list"] --> Server["Local Node.js server<br/>access, approvals and validation"]
+    accDescr: The family journal sends explicit actions to a local Node server. The server checks access and adult approval, runs planning and contribution rules against SQLite, calls configured providers, and returns world progress and Treasury records.
+    Family["Family journal<br/>goals, offers, kit list and approvals"] --> Server["Local Node.js server<br/>access · adult approval · validation"]
     Server <--> Planning["Planning engine<br/>compare complete kits and repair plans<br/>Rust solver or JavaScript reference"]
-    Server <--> Records[("SQLite<br/>household and contribution records")]
+    Server <--> Payments["Contributions<br/>checkout, or hold · extend · release in steps · return<br/>one credit per capture · refunds · unknown outcomes rechecked"]
+    Server <--> Records[("SQLite<br/>households, ledger, holds and their steps")]
+    Payments <--> Records
     Server <--> Exchange["Village Exchange<br/>private invitations · loans · gifts"]
     Exchange --> Fund["Shared village fund<br/>voluntary shares · separate receipts"]
     Fund --> Square["Shared schoolhouse and castle appearances<br/>opt-in, expiring presence"]
     Server <--> Fund
     Assistant["Local MCP client<br/>one adult-selected fund, read only"] -. "short-lived access" .-> Server
     Exchange -->|"received items reduce shopping needs"| Planning
-    Server -. "configured integrations" .-> Providers["PayPal sandbox · Channel3<br/>Claude · OpenAI · Cohere"]
-    Server --> View["World progress and Treasury<br/>pixel woodland · AG Grid / AG Studio"]
+    Payments -. "sandbox only" .-> PayPal["PayPal sandbox<br/>Orders v2 · Payments v2 · verified webhooks"]
+    Server -. "optional keys" .-> Providers["Channel3 · Claude · OpenAI · Cohere"]
+    Server --> View["World progress and Treasury<br/>pixel woodland, weather and scenery · AG Grid / AG Studio"]
 ```
 
-The family reviews a plan before saving it and approves each contribution explicitly. The default example uses simulated payments and built-in planning rules; the dotted edge represents integrations that need configuration. The kit solver uses the JavaScript reference when no Rust build is present.
+The family reviews a plan before saving it and approves each contribution explicitly. The default example uses simulated payments and built-in planning rules; the dotted edges are integrations that need configuration. The kit solver uses the JavaScript reference when no Rust build is present.
 
-[Detailed architecture and sandbox payment sequence](docs/ARCHITECTURE.md) · [Receipt handoff](docs/RECEIPT-HANDOFF.md) · [Kit planning](docs/KIT-PLANNER.md)
+[Detailed architecture and sandbox payment sequence](docs/ARCHITECTURE.md) · [Held contributions](docs/PAYMENT-HOLDS.md) · [Receipt handoff](docs/RECEIPT-HANDOFF.md) · [Kit planning](docs/KIT-PLANNER.md)
 
 ## What is verified
 
-- **Required release checks:** the [workflow](.github/workflows/release-checks.yml) runs the source guard and unit suite on Node 22.16.0, 24 and 26; builds and tests the pinned Rust solver; and exercises the release and native-kit journeys on desktop and 390 px phone. Each PR records its exact tested head and results. [Current changes and actual checks](docs/VALIDATION.md).
+- **Required release checks:** the [workflow](.github/workflows/release-checks.yml) has ten jobs. It runs the source guard and unit suite on Node 22.16.0, 24 and 26; builds and tests the pinned Rust solver; and exercises the release, shared-village and native-kit journeys on desktop and 390 px phone. Each PR records its exact tested head and results. [Current changes and actual checks](docs/VALIDATION.md).
+- **Current release:** the shared village and loading scene ([#82](https://github.com/alejandro-publius/our-castle/pull/82)), hold-first contributions ([#83](https://github.com/alejandro-publius/our-castle/pull/83)), the entry copy ([#84](https://github.com/alejandro-publius/our-castle/pull/84)) and the hold extension with stepped releases ([#85](https://github.com/alejandro-publius/our-castle/pull/85)) each passed all ten jobs on their reviewed head before merging, and `main` passed all ten again after each merge. For #85 those are [run 42961844750](https://github.com/alejandro-publius/our-castle/actions/runs/42961844750) (777 unit results on Node 26 with 776 passes and one existing skip) and [run 42964411136](https://github.com/alejandro-publius/our-castle/actions/runs/42964411136) on `main` at `fb65357`. These are fake-provider checks.
+- **Hold first:** 52 unit cases (23 scenarios, each run against both PayPal adapters with the transport replaced, and six more) and one example-mode browser journey. Deliberate breaks of each server rule were caught by those cases. No real sandbox hold exists yet. [Details](docs/VALIDATION.md#hold-extension-and-stepped-releases--november-10-2026)
 - **Earlier integrated release:** [PR #60 run 42696659169](https://github.com/alejandro-publius/our-castle/actions/runs/42696659169) passed all five jobs: 556 unit passes and one existing skip per Node version, nine Rust tests per build, 45 release-browser passes with three designed skips, and two native-kit journey passes. These are fake-provider checks of that earlier head, separate from live evidence below.
 - **Feature checks:** each change's unit and browser checks are recorded in [VALIDATION.md](docs/VALIDATION.md). The development feature suites use fake transports. The separate live synthetic OpenAI check is listed below.
 - **Historical live sandbox:** hosted buyer approval, $15 capture, single credit, replay/mismatch checks, matching PayPal order and refund. [Original report](docs/LIVE-VERIFICATION.md)
 - **Historical live AI:** feasible and impossible plans, ledger reading and PayPal transaction listing. [Original report](docs/LIVE-VERIFICATION-AI.md)
-- **One live OpenAI check:** the production photo adapter read one synthetic packing-list image correctly. This is a single adapter check, not a real-photo accuracy benchmark or a human usability test. [Image, result and limits](docs/VALIDATION.md#one-live-openai-synthetic-photo--november-9-2026). Cohere live ranking remains untested.
+- **One live OpenAI check:** the production photo adapter read one synthetic packing-list image correctly. This is a single adapter check, not a real-photo accuracy benchmark or a human usability test. [Image, result and limits](docs/VALIDATION.md#one-live-openai-synthetic-photo--november-9-2026).
+- **One live Cohere check:** on November 10 one request through the ordering adapter returned an ordering. That shows the connection works; whether the ordering is good has not been evaluated. [Release readiness](docs/RELEASE-READINESS.md)
 - **Earlier public clone:** an anonymous clone, install, source guard and ten journey/phone checks passed for an earlier build, using the actual isolated `npm run demo` command. [Recording and scope](docs/demos/current-review/sources/public-demo-capture.json)
 - **Historical in-app sandbox result** (preserved 3021 rehearsal, release `4082df5`): an owner-completed $15 contribution, one credit from $60 reported to $75, village/Manor open, and an actual same-order `get_order` with server reconciliation `match`. A model compatibility fix passed 10 focused tests. It predates this source and does not validate the newer features. [Evidence and recording limits](docs/IN-APP-SANDBOX-VERIFICATION.md)
 

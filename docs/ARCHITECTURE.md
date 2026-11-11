@@ -9,7 +9,7 @@ flowchart LR
     Journal["Journal, Treasury<br/>and pixel woodland"] <-->|"actions and authorized state"| Routes["Local Node.js routes<br/>household access and adult approvals"]
     Routes <--> Records[("SQLite<br/>household records")]
     Routes --> Planning["Family choices and Merchant<br/>kit list and weekly planning"]
-    Routes --> Payments["Contribution service<br/>capture and refund reconciliation"]
+    Routes --> Payments["Contribution service<br/>capture, holds and refund reconciliation"]
     Routes --> Exchange["Village Exchange<br/>invite-only needs and item handovers"]
     Exchange --> Planning
     Exchange --> Records
@@ -54,6 +54,7 @@ The complete-kit planner derives a budget from the family's offers and deadline,
 | `ledger_entries` | Goal-progress ledger. `kind` + `effect` are enforced by a CHECK constraint: starting progress and contributions +1, refunds −1, bills and gifts 0. `source_ref` is unique (one row per capture or refund). |
 | `payment_orders` | Server-created orders with the expected household, goal, approver, amount and currency, plus a unique client request id. |
 | `payment_captures`, `payment_refunds` | Provider ids (primary keys), status, whether credited, refunded cents. |
+| `payment_holds`, `payment_hold_steps` | A held contribution: its current authorization, held and released totals, guarantee end and one extension; and every adult decision on it (extend, release, return), written before PayPal is asked. A CHECK refuses a release larger than what is still held. |
 | `webhook_events` | Processed webhook event ids (deduplication). |
 | `plans` | Proposed/accepted/superseded plans with their inputs, the arithmetic basis and the validated plan JSON. |
 | `achievements` | Tier keepsakes (`tier:1..3`) and habit gardens (`garden:1..4`), unique per goal. |
@@ -132,11 +133,36 @@ Crediting happens in one SQLite transaction: insert/upgrade the capture row, ins
 
 Webhooks are processed only when `PAYPAL_WEBHOOK_ID` is set and PayPal's `verify-webhook-signature` returns `SUCCESS`. Capture events are matched through the server's own order id mapping; refund events through the refund's `up` link to the capture.
 
+### Held contributions
+
+A contribution can instead be held first: the order is created with intent `AUTHORIZE`, and nothing is credited until an adult releases an exact amount. Example mode has the same hold, labelled as simulated.
+
+```mermaid
+stateDiagram-v2
+    accTitle: Held contribution states
+    accDescr: An adult-approved amount is held and nothing counts. An adult may extend the hold once after the three-day guarantee, release it in up to three steps, or return what is still held. Only a confirmed release adds progress.
+    state "Partly released" as Partly
+    [*] --> Held: Adult approves holding an exact amount
+    Held --> Held: Extend once after the three-day guarantee
+    Held --> Partly: Release part and keep the rest held
+    Partly --> Partly: Second release that keeps the rest
+    Held --> Released: Final release
+    Partly --> Released: Final release
+    Held --> Returned: Return what is held
+    Partly --> Returned: Return the rest
+    Held --> Expired: PayPal reports the hold expired
+    Released --> [*]
+    Returned --> [*]
+    Expired --> [*]
+```
+
+Each decision is a row in `payment_hold_steps`, written before PayPal is asked, and only one can wait for PayPal at a time. A release is a capture of the current authorization (not final when the rest is kept); it is credited through the same single-credit transaction as any capture, and only if it matches the release under way in amount, currency and contribution reference. An extension is a reauthorization for exactly the held amount; PayPal answers with a new authorization, which later captures and a return use. A release decided again after an unanswered attempt carries the same `PayPal-Request-Id`, so it cannot capture twice. An unanswered decision is settled by an explicit check from PayPal's own order, never guessed. All of this has fake-provider and example-mode evidence only. [Rules, timing and evidence](PAYMENT-HOLDS.md)
+
 Ordinary receipt selection reads existing records. An explicit **Check with PayPal** fetches the same order and may reconcile its capture/refunds; a steward lookup reports what it found but cannot capture, refund or alter contribution credit. A closed checkout window alone establishes no payment outcome. See [the receipt handoff](RECEIPT-HANDOFF.md).
 
 ## PayPal adapters
 
-`createContributionService` talks to PayPal through one small interface (`createOrder`, `captureOrder`, `getOrder`, `refundCapture`, `verifyWebhookSignature`, `generateClientToken`). At runtime it is `server/payments/paypal-sdk-client.mjs`, built on PayPal's official Server SDK (`OrdersController`, `PaymentsController`, fixed to `Environment.Sandbox`). The adapter passes `paypalRequestId` and `prefer: return=representation`, and hands the service PayPal's raw REST JSON from the SDK response body. It maps the SDK's `ApiError` to PayPal issue names (for example `ORDER_ALREADY_CAPTURED` and `INSTRUMENT_DECLINED`). Webhook signature verification and browser client tokens are not in the Server SDK, so those two calls use `server/payments/paypal-client.mjs`, a minimal REST client with the same sandbox-only base URL. The payment test suite runs every scenario against both adapters.
+`createContributionService` talks to PayPal through one small interface (`createOrder`, `captureOrder`, `getOrder`, `refundCapture`, `verifyWebhookSignature`, `generateClientToken`, and for held contributions `authorizeOrder`, `getAuthorization`, `captureAuthorization`, `reauthorizeAuthorization`, `voidAuthorization`). At runtime it is `server/payments/paypal-sdk-client.mjs`, built on PayPal's official Server SDK (`OrdersController`, `PaymentsController`, fixed to `Environment.Sandbox`). The adapter passes `paypalRequestId` and `prefer: return=representation`, and hands the service PayPal's raw REST JSON from the SDK response body. It maps the SDK's `ApiError` to PayPal issue names (for example `ORDER_ALREADY_CAPTURED` and `INSTRUMENT_DECLINED`). Webhook signature verification and browser client tokens are not in the Server SDK, so those two calls use `server/payments/paypal-client.mjs`, a minimal REST client with the same sandbox-only base URL. The payment test suite runs every scenario against both adapters.
 
 ## AI planner
 

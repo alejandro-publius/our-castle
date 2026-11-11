@@ -2,7 +2,7 @@
 
 A contribution can be **held** before anything is taken. PayPal authorizes the adult-approved amount, nothing is credited and the world does not move. Later an adult **releases** an exact amount to the goal, in one step or up to three, or **returns** what is still held. If the decision takes longer than PayPal's three-day guarantee, an adult can **extend** the hold once. This sits beside the existing checkout, which is unchanged and is still the default.
 
-Status: hold, release and return were merged to `main` by [#83](https://github.com/alejandro-publius/our-castle/pull/83). The extension, stepped releases and the money trail come from [#85](https://github.com/alejandro-publius/our-castle/pull/85) and are not in the saved Mac apps, which stay on schema 18 until the owner asks for another upgrade. Every check so far uses the fake PayPal sandbox or example mode. **No real sandbox hold, capture, reauthorization or void has been made with any of it.**
+Status: hold, release and return were merged to `main` by [#83](https://github.com/alejandro-publius/our-castle/pull/83). The extension, stepped releases and the money trail were merged by [#85](https://github.com/alejandro-publius/our-castle/pull/85) and are not in the saved Mac apps, which stay on schema 18 until the owner asks for another upgrade. Every check so far uses the fake PayPal sandbox or example mode. **No real sandbox hold, capture, reauthorization or void has been made with any of it.**
 
 ## What happens
 
@@ -14,6 +14,35 @@ Status: hold, release and return were merged to `main` by [#83](https://github.c
 | Return | An adult confirms returning what is still held | Records the decision, then voids the authorization | None more; a part released earlier still counts |
 
 A held record shows its money trail, for example **Held $40.00 → Released $10.00 → Released $15.00 → Returned $15.00**, and where it stands in PayPal's guarantee. It also offers the existing **Check with PayPal**.
+
+| 1. Hold it first (Contribute) | 2. Release part and keep the rest held (Ledger) |
+| --- | --- |
+| ![Contribute with Hold it first ticked and the approval reading: I approve holding $40.00 USD (simulated)](screenshots/payment-holds-1-hold-it-first.jpg) | ![A simulated $40.00 hold, partly released: $10.00 counts toward the goal, the trail reads Held $40.00, Released $10.00, $30.00 still held, and Simulate release and Simulate return are offered](screenshots/payment-holds-2-partly-released.jpg) |
+
+After a final release of $15.00:
+
+![The finished record: $25.00 of this contribution counts toward the goal. Held $40.00, Released $10.00, Released $15.00, Returned $15.00](screenshots/payment-holds-3-trail.jpg)
+
+These three are crops of a simulated hold in example mode, captured from a disposable session by [the capture script](screenshots/readme-demos-capture.mjs); [what they show and do not show](screenshots/readme-demos-sources.json). They are not PayPal evidence.
+
+```mermaid
+stateDiagram-v2
+    accTitle: Held contribution states
+    accDescr: An adult-approved amount is held and nothing counts. An adult may extend the hold once after the three-day guarantee, release it in up to three steps, or return what is still held. Only a confirmed release adds progress.
+    state "Partly released" as Partly
+    [*] --> Held: Adult approves holding an exact amount
+    Held --> Held: Extend once after the three-day guarantee
+    Held --> Partly: Release part and keep the rest held
+    Partly --> Partly: Second release that keeps the rest
+    Held --> Released: Final release
+    Partly --> Released: Final release
+    Held --> Returned: Return what is held
+    Partly --> Returned: Return the rest
+    Held --> Expired: PayPal reports the hold expired
+    Released --> [*]
+    Returned --> [*]
+    Expired --> [*]
+```
 
 ## PayPal's timing, as this server keeps it
 
