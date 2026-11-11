@@ -1731,6 +1731,7 @@ const OUTCOME_TEXT = {
   not_credited: ['error', 'PayPal reported an unexpected status. No progress was recorded.'],
   unknown: ['info', 'PayPal did not confirm this payment in time, so its outcome is not known yet. Nothing was credited; check it from its Ledger receipt.'],
   held: ['ok', 'Held. Nothing is counted until an adult releases or returns it from its Ledger record.'],
+  extended: ['ok', 'Extended. It is held again under a new authorization, with a new three-day guarantee.'],
   returned: ['info', 'Returned. Nothing was charged or counted.'],
   lapsed: ['info', 'This hold expired. Nothing was charged or counted.'],
   not_held: ['info', 'Approved but not held yet. No progress was recorded.'],
@@ -1780,7 +1781,7 @@ function renderReceipt() {
       h('dt', {}, c.simulated ? 'Simulated order' : 'PayPal order'), h('dd', {}, c.providerOrderId ?? '—'),
       h('dt', {}, c.simulated ? 'Simulated capture' : 'PayPal capture'), h('dd', {}, capture?.captureId ?? 'none yet'),
       h('dt', {}, 'Recorded'), h('dd', {}, timeLabel(c.updatedAt)),
-      ...(c.hold ? [h('dt', {}, 'Held'), h('dd', {}, money(c.hold.heldCents)), h('dt', {}, 'Released'), h('dd', {}, c.hold.status === 'released' ? money(c.hold.releaseCents) : 'Nothing')] : []),
+      ...(c.hold ? [h('dt', {}, 'Held'), h('dd', {}, money(c.hold.heldCents)), h('dt', {}, 'Released'), h('dd', {}, c.hold.releasedCents ? money(c.hold.releasedCents) : 'Nothing')] : []),
       ...(completed && r.outcome === 'completed' ? [h('dt', {}, 'Goal progress'), h('dd', {}, `${money(r.before)} → ${money(r.after)} (${formatPercent(r.after, state.goal.targetCents)})`)] : []),
       ...(r.awarded.filter((a) => typeof a === 'number').length ? [h('dt', {}, 'Milestone'), h('dd', {}, r.awarded.filter((a) => typeof a === 'number').map((t) => `${TIERS[t].name} raised`).join(', '))] : []),
     ),
@@ -1830,6 +1831,32 @@ const STATUS_LABEL = {
   refunded: 'Refunded — progress reversed', partially_refunded: 'Partly refunded',
   held: 'Held — not counted', returned: 'Hold returned — not counted', lapsed: 'Hold expired — not counted',
 };
+/** A hold released in steps counts its released part while the rest is still held. */
+const statusLabel = (c) => (c.hold?.status === 'held' && c.hold.releasedCents > 0 ? 'Partly released — part counted' : STATUS_LABEL[c.status] ?? c.status);
+
+// A held contribution's money trail, from the server's records: Held $40.00 → Released $25.00 → Returned $15.00.
+const TRAIL_TEXT = {
+  held: (t) => `Held ${money(t.cents)}`, extended: () => 'Extended', released: (t) => `Released ${money(t.cents)}`,
+  returned: (t) => `Returned ${money(t.cents)}`, expired: (t) => `Expired ${money(t.cents)}`, still_held: (t) => `${money(t.cents)} still held`,
+  releasing: (t) => `Releasing ${money(t.cents)}…`, returning: (t) => `Returning ${money(t.cents)}…`, extending: () => 'Extending…',
+};
+const holdTrailText = (hold) => hold.trail.map((t) => TRAIL_TEXT[t.step]?.(t) ?? t.step).join(' → ');
+const holdDay = (iso) => new Date(iso).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+/** Where an open hold stands in PayPal's three-day guarantee, and what that leaves an adult to do. */
+function holdGuaranteeText(c) {
+  const hold = c.hold;
+  if (hold.status !== 'held') return null;
+  if (hold.pending === 'extend') return 'PayPal has not confirmed the extension yet. Extending again sends the same request, so it cannot happen twice.';
+  const guarantee = c.simulated ? 'The simulated three-day guarantee' : 'PayPal’s three-day guarantee';
+  const expires = hold.expiresAt ? `; the hold expires ${holdDay(hold.expiresAt)}` : '';
+  switch (hold.phase) {
+    case 'guaranteed': return `${guarantee} lasts until ${holdDay(hold.honorUntil)}${hold.extendedAt ? ' (extended)' : ''}.`;
+    case 'ending': return `${guarantee} ends ${holdDay(hold.honorUntil)}. Release it before then${hold.extendedAt || hold.releasedCents ? '' : ', or extend it once afterwards'}.`;
+    case 'unguaranteed': return hold.canExtend ? `${guarantee} has ended. An adult can extend it once${expires}.` : `${guarantee} has ended${expires}.`;
+    case 'expired': return c.simulated ? 'This simulated hold has reached its expiry. Nothing more was counted.' : 'This hold has reached its expiry in PayPal. Check it with PayPal; nothing more was charged.';
+    default: return null;
+  }
+}
 const KIND_LABEL = {
   starting_progress: 'Starting progress', contribution: 'Contribution', refund: 'Refund', simulated_contribution: 'Contribution', simulated_refund: 'Refund',
 };
@@ -2001,7 +2028,8 @@ function renderLedgerRecord() {
   }
   const adult = persona()?.role === 'adult';
   const card = (() => {
-    const capture = c.captures.find((x) => x.credited);
+    // The first counted capture with something left to refund (a hold released in steps has one per step).
+    const capture = c.captures.find((x) => x.credited && x.amountCents - x.refundedCents > 0) ?? c.captures.find((x) => x.credited);
     const refundable = capture && capture.amountCents - capture.refundedCents > 0;
     const refundId = row.recordEntry?.effect < 0 ? row.recordEntry.sourceRef?.split(':').at(-1) : null;
     const actions = [];
@@ -2015,7 +2043,8 @@ function renderLedgerRecord() {
       actions.push(h('button', { type: 'button', onclick: () => askSteward(`Did PayPal confirm the ${money(c.amountCents)} contribution?`, c.providerOrderId) }, 'Ask the steward to verify'));
     }
     if (c.hold?.status === 'held' && adult) actions.push(...holdActions(c));
-    if (refundable && adult) {
+    // A hold released in steps is refunded once it is over (the server refuses earlier).
+    if (refundable && adult && !(c.hold && ['awaiting', 'held', 'releasing', 'returning'].includes(c.hold.status))) {
       const left = capture.amountCents - capture.refundedCents;
       actions.push(ui.refundArm === capture.captureId
         ? h('button', { type: 'button', class: 'danger', onclick: () => refund(capture.captureId, c.simulated) }, `Confirm refund of ${money(left)}`)
@@ -2032,9 +2061,11 @@ function renderLedgerRecord() {
     const history = facts.length > 1 ? h('ol', { class: 'story', 'aria-label': 'Saved records for this contribution, oldest first' },
       ...facts.map(([fact, text]) => h('li', {}, h('time', { datetime: fact.at }, timeLabel(fact.at)), ` · ${text}`))) : null;
     return h('li', { 'data-contribution': c.id, 'data-ledger-record': row.id, tabindex: -1 },
-      h('div', { class: 'row' }, h('span', { class: 'amount' }, row.recordEntry?.effect < 0 ? row.amountText : money(c.amountCents)), h('span', {}, STATUS_LABEL[c.status] ?? c.status,
+      h('div', { class: 'row' }, h('span', { class: 'amount' }, row.recordEntry?.effect < 0 ? row.amountText : money(c.amountCents)), h('span', {}, statusLabel(c),
         h('span', { class: `tag ${c.simulated ? 'simulated' : 'sandbox'}` }, c.simulated ? 'simulated' : 'PayPal sandbox'))),
       h('p', { class: 'counts', 'data-counts': storyKey(story) }, countsSentence(story, money)),
+      c.hold ? h('p', { class: 'hold-trail', 'data-hold-trail': c.hold.trail.map((t) => t.step).join(' ') }, holdTrailText(c.hold)) : null,
+      c.hold && holdGuaranteeText(c) ? h('p', { class: 'hold-note' }, holdGuaranteeText(c)) : null,
       // The server's record of the last explicit "Check with PayPal": its own reconciliation of PayPal's order, kept across reloads.
       // A record that needs a check carries that action right here; a completed capture with no check says so.
       check.key !== 'none' ? h('p', { class: 'fine last-check', 'data-check': check.key },
@@ -2166,50 +2197,73 @@ async function refreshOrder(orderId) {
     setStatus('#ledger-status', 'error', error.message, { debugId: error.debugId });
   }
 }
-// A held contribution's two adult decisions, on its Ledger record. Like a refund, each is armed first and then confirmed
-// by its own button, which names the exact amount; that second press is the adult's explicit approval.
+// A held contribution's adult decisions, on its Ledger record: release, return, and once after PayPal's three-day
+// guarantee, extend. Like a refund, each is armed first and then confirmed by its own button, which names the exact
+// amount; that second press is the adult's explicit approval. A decision still waiting for PayPal offers none, except an
+// extension whose answer was lost, which may be asked for again (the server sends PayPal the very same request).
 function holdActions(c) {
+  const hold = c.hold;
   const arm = ui.holdArm?.id === c.id ? ui.holdArm : null;
+  const left = hold.remainingCents;
   const armWith = (kind) => () => {
-    const most = Math.min(c.hold.heldCents, Math.max(0, state.progress.remainingCents));
-    ui.holdArm = { id: c.id, kind, requestId: newRequestId(), amount: centsToInput(most) };
+    const most = Math.min(left, Math.max(0, state.progress.remainingCents));
+    ui.holdArm = { id: c.id, kind, requestId: newRequestId(), amount: centsToInput(most), keepRest: false };
     renderLedger();
   };
+  if (hold.pending === 'extend') {
+    return [h('button', { type: 'button', 'data-hold': 'extend-again', onclick: () => { armWith('extend')(); decideHold(c); } }, 'Extend again (the same request)')];
+  }
+  if (hold.pending) return [];
   const keep = h('button', { type: 'button', class: 'link-button', onclick: () => { ui.holdArm = null; renderLedger(); } }, 'Keep holding');
   if (!arm) {
     return [h('button', { type: 'button', 'data-hold': 'release', onclick: armWith('release') }, c.simulated ? 'Simulate release…' : 'Release to the goal…'),
-      h('button', { type: 'button', 'data-hold': 'return', onclick: armWith('return') }, c.simulated ? 'Simulate return…' : 'Return the hold…')];
+      h('button', { type: 'button', 'data-hold': 'return', onclick: armWith('return') }, c.simulated ? 'Simulate return…' : 'Return the hold…'),
+      ...(hold.canExtend ? [h('button', { type: 'button', 'data-hold': 'extend', onclick: armWith('extend') }, c.simulated ? 'Simulate extension…' : 'Extend the hold…')] : [])];
   }
   if (arm.kind === 'return') {
-    return [h('button', { type: 'button', class: 'danger', 'data-hold': 'confirm-return', onclick: () => decideHold(c) }, `Confirm return of ${money(c.hold.heldCents)}`), keep];
+    return [h('button', { type: 'button', class: 'danger', 'data-hold': 'confirm-return', onclick: () => decideHold(c) }, `Confirm return of ${money(left)}`), keep];
+  }
+  if (arm.kind === 'extend') {
+    return [h('button', { type: 'button', class: 'primary', 'data-hold': 'confirm-extend', onclick: () => decideHold(c) }, `Confirm extension of ${money(left)}`), keep];
   }
   const confirm = h('button', { type: 'button', class: 'primary', 'data-hold': 'confirm-release', onclick: () => decideHold(c) });
-  const label = () => { const cents = parseAmountToCents(arm.amount); confirm.textContent = cents === null ? 'Confirm release' : `Confirm release of ${money(cents)}`; };
-  const amount = h('input', { class: 'hold-amount', inputmode: 'decimal', autocomplete: 'off', value: arm.amount, 'aria-label': `Amount to release, up to ${money(c.hold.heldCents)}`,
+  const label = () => {
+    const cents = parseAmountToCents(arm.amount);
+    const kept = arm.keepRest && cents !== null && cents < left ? `, keep ${money(left - cents)} held` : '';
+    confirm.textContent = cents === null ? 'Confirm release' : `Confirm release of ${money(cents)}${kept}`;
+  };
+  const amount = h('input', { class: 'hold-amount', inputmode: 'decimal', autocomplete: 'off', value: arm.amount, 'aria-label': `Amount to release, up to ${money(left)}`,
     oninput: (e) => { arm.amount = e.target.value; label(); } });
+  // Only a hold with releases to spare may keep the rest: the last of three is always final.
+  const keepRest = hold.releasesLeft > 1 ? h('label', { class: 'check hold-keep' },
+    h('input', { type: 'checkbox', 'data-hold': 'keep-rest', checked: arm.keepRest, onchange: (e) => { arm.keepRest = e.target.checked; label(); } }),
+    h('span', {}, `Keep the rest held for a later release (${hold.releasesLeft - 1} more allowed)`)) : null;
   label();
-  return [h('label', { class: 'field hold-release' }, h('span', {}, `Release (of ${money(c.hold.heldCents)} held)`), h('span', { class: 'money' }, amount)), confirm, keep];
+  return [h('label', { class: 'field hold-release' }, h('span', {}, `Release (of ${money(left)} held)`), h('span', { class: 'money' }, amount)), confirm, keep, ...(keepRest ? [keepRest] : [])];
 }
 
 async function decideHold(c) {
   const arm = ui.holdArm;
   if (!arm || arm.id !== c.id || persona()?.role !== 'adult') return;
   const body = { ...ownership(), approverId: persona().id, approvalConfirmed: true, requestId: arm.requestId };
+  const left = c.hold.remainingCents;
   if (arm.kind === 'release') {
     const cents = parseAmountToCents(arm.amount);
-    if (cents === null || cents < state.contributionLimits.minCents || cents > c.hold.heldCents) {
-      setStatus('#ledger-status', 'error', `Release between ${money(state.contributionLimits.minCents)} and the ${money(c.hold.heldCents)} that is held.`);
+    if (cents === null || cents < state.contributionLimits.minCents || cents > left) {
+      setStatus('#ledger-status', 'error', `Release between ${money(state.contributionLimits.minCents)} and the ${money(left)} that is held.`);
       return;
     }
     body.amountCents = cents;
+    if (arm.keepRest && cents < left) body.keepRest = true;
   }
-  const releasing = arm.kind === 'release';
-  setStatus('#ledger-status', 'working', c.simulated ? `Recording a simulated ${releasing ? 'release' : 'return'}…` : `Asking PayPal sandbox to ${releasing ? 'release this amount' : 'return this hold'}…`);
+  const doing = { release: ['release', 'release this amount'], return: ['return', 'return this hold'], extend: ['extension', 'extend this hold'] }[arm.kind];
+  setStatus('#ledger-status', 'working', c.simulated ? `Recording a simulated ${doing[0]}…` : `Asking PayPal sandbox to ${doing[1]}…`);
   try {
     const res = await api.post(`/api/contributions/${encodeURIComponent(c.id)}/${arm.kind}`, body);
     handleContributionResult(res);
     const [kind, text] = OUTCOME_TEXT[res.outcome] ?? ['info', `Result: ${res.outcome}`];
-    setStatus('#ledger-status', kind, res.outcome === 'completed' ? `Released ${money(body.amountCents)}. It now counts toward the goal.` : text);
+    const kept = res.contribution?.hold?.status === 'held' ? ` ${money(res.contribution.hold.remainingCents)} is still held.` : '';
+    setStatus('#ledger-status', kind, res.outcome === 'completed' ? `Released ${money(body.amountCents)}. It now counts toward the goal.${kept}` : text);
   } catch (error) {
     // The armed decision keeps its request id, so pressing Confirm again repeats this same request.
     setStatus('#ledger-status', 'error', error.message, { debugId: error.debugId });

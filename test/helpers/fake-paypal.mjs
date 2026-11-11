@@ -13,12 +13,20 @@ export function createFakePayPal(options = {}) {
     authorizationAmountOverride: null,
     releaseError: null, // the same, for capturing a hold
     voidError: null,
+    reauthorizeError: null, // the same, for extending a hold
+    reauthorizationAmountOverride: null,
+    reauthorizationCurrencyOverride: null,
+    reauthorizationCustomIdOverride: null,
+    reauthorizationStatus: 'CREATED',
+    orderListsReauthorizations: true, // false: an order read leaves a reauthorization out; it can still be read on its own
+    staleOrderReads: 0, // this many order reads come back without the newest capture, as a read made too early would
     createStatus: 'CREATED',
     webhookVerification: 'SUCCESS',
     refundStatus: 'COMPLETED',
     ...options,
   };
   const orders = new Map();
+  const unlisted = new Map(); // reauthorizations an order read leaves out (orderListsReauthorizations: false)
   const idempotency = new Map();
   const requests = [];
   let counter = 0;
@@ -106,16 +114,43 @@ export function createFakePayPal(options = {}) {
       return remember(structuredClone(order));
     }
     const heldBy = (id) => {
+      if (unlisted.has(id)) return unlisted.get(id);
       for (const order of orders.values()) {
-        const authorization = order.purchase_units[0].payments?.authorizations?.find((a) => a.id === id);
-        if (authorization) return { unit: order.purchase_units[0], authorization };
+        const unit = order.purchase_units[0];
+        const authorization = unit.payments?.authorizations?.find((a) => a.id === id);
+        if (authorization) return { unit, authorization };
       }
       return null;
     };
+    // Cents captured so far from one authorization.
+    const tookNothing = (capture) => ['DECLINED', 'DENIED', 'FAILED'].includes(capture.status);
+    const capturedFrom = (unit, id) => (unit.payments.captures ?? [])
+      .filter((c) => !tookNothing(c) && c.links?.some((l) => l.rel === 'up' && l.href.endsWith(`/authorizations/${id}`)))
+      .reduce((sum, c) => sum + Math.round(Number(c.amount.value) * 100), 0);
     m = /^\/v2\/payments\/authorizations\/([^/]+)$/.exec(pathname);
     if (m && method === 'GET') {
       const held = heldBy(m[1]);
       return held ? json(200, structuredClone(held.authorization)) : issue(404, 'RESOURCE_NOT_FOUND', 'INVALID_RESOURCE_ID');
+    }
+    m = /^\/v2\/payments\/authorizations\/([^/]+)\/reauthorize$/.exec(pathname);
+    if (m && method === 'POST') {
+      const held = heldBy(m[1]);
+      if (!held) return issue(404, 'RESOURCE_NOT_FOUND', 'INVALID_RESOURCE_ID');
+      if (behavior.reauthorizeError) return issue(behavior.reauthorizeError.status, 'UNPROCESSABLE_ENTITY', behavior.reauthorizeError.issue);
+      if (held.authorization.status === 'VOIDED') return issue(422, 'UNPROCESSABLE_ENTITY', 'AUTHORIZATION_VOIDED');
+      if (held.authorization.status !== 'CREATED') return issue(422, 'UNPROCESSABLE_ENTITY', 'AUTHORIZATION_ALREADY_CAPTURED');
+      const reauthorization = {
+        id: nextId('AUTH'), status: behavior.reauthorizationStatus,
+        amount: {
+          currency_code: behavior.reauthorizationCurrencyOverride ?? body?.amount?.currency_code ?? held.authorization.amount.currency_code,
+          value: behavior.reauthorizationAmountOverride ?? body?.amount?.value ?? held.authorization.amount.value,
+        },
+        custom_id: behavior.reauthorizationCustomIdOverride ?? held.unit.custom_id, expiration_time: held.authorization.expiration_time,
+        links: [{ rel: 'up', href: `https://api-m.sandbox.paypal.com/v2/payments/authorizations/${m[1]}` }],
+      };
+      if (behavior.orderListsReauthorizations) held.unit.payments.authorizations.push(reauthorization);
+      else unlisted.set(reauthorization.id, { unit: held.unit, authorization: reauthorization });
+      return remember(structuredClone(reauthorization));
     }
     m = /^\/v2\/payments\/authorizations\/([^/]+)\/capture$/.exec(pathname);
     if (m && method === 'POST') {
@@ -123,8 +158,9 @@ export function createFakePayPal(options = {}) {
       if (!held) return issue(404, 'RESOURCE_NOT_FOUND', 'INVALID_RESOURCE_ID');
       if (behavior.releaseError) return issue(behavior.releaseError.status, 'UNPROCESSABLE_ENTITY', behavior.releaseError.issue);
       if (held.authorization.status === 'VOIDED') return issue(422, 'UNPROCESSABLE_ENTITY', 'AUTHORIZATION_VOIDED');
-      if (held.authorization.status !== 'CREATED') return issue(422, 'UNPROCESSABLE_ENTITY', 'AUTHORIZATION_ALREADY_CAPTURED');
-      if (Number(body.amount.value) > Number(held.authorization.amount.value)) return issue(422, 'UNPROCESSABLE_ENTITY', 'MAX_CAPTURE_AMOUNT_EXCEEDED');
+      if (!['CREATED', 'PARTIALLY_CAPTURED'].includes(held.authorization.status)) return issue(422, 'UNPROCESSABLE_ENTITY', 'AUTHORIZATION_ALREADY_CAPTURED');
+      const left = Math.round(Number(held.authorization.amount.value) * 100) - capturedFrom(held.unit, m[1]);
+      if (Math.round(Number(body.amount.value) * 100) > left) return issue(422, 'UNPROCESSABLE_ENTITY', 'MAX_CAPTURE_AMOUNT_EXCEEDED');
       const capture = {
         id: nextId('CAPTURE'), status: behavior.captureStatus,
         amount: { currency_code: behavior.captureCurrencyOverride ?? body.amount.currency_code, value: behavior.captureAmountOverride ?? body.amount.value },
@@ -133,7 +169,8 @@ export function createFakePayPal(options = {}) {
         ...(behavior.captureStatus === 'PENDING' ? { status_details: { reason: 'PENDING_REVIEW' } } : {}),
       };
       held.unit.payments.captures = [...(held.unit.payments.captures ?? []), capture];
-      held.authorization.status = body.final_capture === true ? 'CAPTURED' : 'PARTIALLY_CAPTURED';
+      // A declined capture takes nothing and leaves the authorization as it was.
+      if (!tookNothing(capture)) held.authorization.status = body.final_capture === true ? 'CAPTURED' : 'PARTIALLY_CAPTURED';
       return remember(structuredClone(capture));
     }
     m = /^\/v2\/payments\/authorizations\/([^/]+)\/void$/.exec(pathname);
@@ -142,14 +179,18 @@ export function createFakePayPal(options = {}) {
       if (!held) return issue(404, 'RESOURCE_NOT_FOUND', 'INVALID_RESOURCE_ID');
       if (behavior.voidError) return issue(behavior.voidError.status, 'UNPROCESSABLE_ENTITY', behavior.voidError.issue);
       if (held.authorization.status === 'VOIDED') return issue(422, 'UNPROCESSABLE_ENTITY', 'PREVIOUSLY_VOIDED');
-      if (held.authorization.status !== 'CREATED') return issue(422, 'UNPROCESSABLE_ENTITY', 'PREVIOUSLY_CAPTURED');
+      // A partly captured authorization can still be voided: that gives back what is left.
+      if (!['CREATED', 'PARTIALLY_CAPTURED'].includes(held.authorization.status)) return issue(422, 'UNPROCESSABLE_ENTITY', 'PREVIOUSLY_CAPTURED');
       held.authorization.status = 'VOIDED';
       return json(200, structuredClone(held.authorization));
     }
     m = /^\/v2\/checkout\/orders\/([^/]+)$/.exec(pathname);
     if (m && method === 'GET') {
       const order = orders.get(m[1]);
-      return order ? json(200, structuredClone(order)) : issue(404, 'RESOURCE_NOT_FOUND', 'INVALID_RESOURCE_ID');
+      if (!order) return issue(404, 'RESOURCE_NOT_FOUND', 'INVALID_RESOURCE_ID');
+      const read = structuredClone(order);
+      if (behavior.staleOrderReads > 0) { behavior.staleOrderReads--; read.purchase_units[0].payments?.captures?.pop(); }
+      return json(200, read);
     }
     m = /^\/v2\/payments\/captures\/([^/]+)\/refund$/.exec(pathname);
     if (m && method === 'POST') {
@@ -226,6 +267,7 @@ export function fakeSdkControllers(fake) {
       getAuthorizedPayment(args) { record('getAuthorizedPayment', args); return send('GET', `/v2/payments/authorizations/${args.authorizationId}`); },
       captureAuthorizedPayment(args) { record('captureAuthorizedPayment', args); return send('POST', `/v2/payments/authorizations/${args.authorizationId}/capture`, args); },
       voidPayment(args) { record('voidPayment', args); return send('POST', `/v2/payments/authorizations/${args.authorizationId}/void`, args); },
+      reauthorizePayment(args) { record('reauthorizePayment', args); return send('POST', `/v2/payments/authorizations/${args.authorizationId}/reauthorize`, args); },
     },
   };
 }

@@ -321,6 +321,10 @@ button { font: inherit; }
 /* The amount an adult releases from a held contribution: a compact field beside its confirm button. */
 .contributions .hold-release { margin: 0; max-width: 220px; }
 .contributions .hold-release input { min-height: 44px; }
+.contributions .hold-keep { margin: 0; flex-basis: 100%; }
+/* A held contribution's money trail (Held → Released → Returned) and where it stands in PayPal's three-day guarantee. */
+.contributions .hold-trail { margin: 4px 0 0; font-size: 14px; color: var(--ink); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.contributions .hold-note { margin: 2px 0 0; font-size: 13px; color: var(--ink-muted); }
 .entries li { display: flex; justify-content: space-between; gap: 10px; border-bottom: 1px solid #d3bd8c; padding: 5px 0; font-size: 15px; }
 .entries li.empty, .contributions li.empty, .keepsakes li.empty { color: var(--ink-muted); border: 0; background: none; padding: 0; }
 .inline-form { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) auto; gap: 8px; align-items: end; margin-bottom: 8px; }

@@ -622,7 +622,13 @@ export function createApp({ config, db, clock, paypal = null, aiProvider = null,
     }],
     // ---- A held contribution (PayPal sandbox or simulated): an adult's exact release, or its return. ----
     ['POST', /^\/api\/contributions\/([\w-]+)\/release$/, async ({ body, params, scope, assertAccess }) => {
-      const result = await contributions.releaseHold({ contributionId: params[0], ...owner(body, scope), amountCents: body.amountCents,
+      const result = await contributions.releaseHold({ contributionId: params[0], ...owner(body, scope), amountCents: body.amountCents, keepRest: body.keepRest === true,
+        approverId: actingMember(body.approverId, scope), approvalConfirmed: body.approvalConfirmed, requestId: str(body.requestId), assertAccess });
+      return { ...result, state: state(scope) };
+    }],
+    // Once, after PayPal's three-day guarantee ends: hold the same amount again under a new authorization.
+    ['POST', /^\/api\/contributions\/([\w-]+)\/extend$/, async ({ body, params, scope, assertAccess }) => {
+      const result = await contributions.extendHold({ contributionId: params[0], ...owner(body, scope),
         approverId: actingMember(body.approverId, scope), approvalConfirmed: body.approvalConfirmed, requestId: str(body.requestId), assertAccess });
       return { ...result, state: state(scope) };
     }],

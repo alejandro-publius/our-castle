@@ -309,7 +309,7 @@ test('a schema-10 database gains the kit_lists table (and the later kit-planner/
   // A disposable file in the system's temporary folder (left in place), never a saved household database.
   const file = path.join(mkdtempSync(path.join(tmpdir(), 'our-castle-kit-migration-')), 'before.sqlite');
   const step = MIGRATIONS.findIndex((m) => m.id === 'kit-lists');
-  assert.deepEqual([step, MIGRATIONS.length], [10, 18], 'the kit list is step 11 of 18');
+  assert.deepEqual([step, MIGRATIONS.length], [10, 19], 'the kit list is step 11 of 19');
   const old = new DatabaseSync(file);
   MIGRATIONS.slice(0, step).forEach((m, i) => { if (typeof m === 'string') old.exec(m); else m.ensure(old); old.exec(`PRAGMA user_version = ${i + 1}`); });
   old.exec(`INSERT INTO households (id, name, play_mode, crest_field, crest_charge, is_example, setup_complete, created_at) VALUES ('hh_old', 'House of Alder', 'family', 'cobalt', 'stag', 0, 1, '2026-11-01T12:00:00.000Z');
@@ -323,13 +323,13 @@ test('a schema-10 database gains the kit_lists table (and the later kit-planner/
   const beforeTables = tables(old), before = rows(old, beforeTables);
   old.close();
   const db = openDatabase(file);
-  assert.equal(db.prepare('PRAGMA user_version').get().user_version, 18);
-  assert.deepEqual(tables(db), [...beforeTables, 'exchange_circles', 'exchange_invites', 'exchange_members', 'exchange_offers', 'exchange_profiles', 'exchange_requests', 'goal_kits', 'kit_candidates', 'kit_lists', 'kit_selections', 'payment_holds', 'village_funds', 'village_payment_intents', 'village_presentations', 'village_receipts', 'village_shares', 'village_subscriptions', 'village_vault_accounts', 'village_vault_events', 'village_vault_issues', 'village_vault_watches'].sort());
-  assert.equal(tables(db).length, 44);
+  assert.equal(db.prepare('PRAGMA user_version').get().user_version, 19);
+  assert.deepEqual(tables(db), [...beforeTables, 'exchange_circles', 'exchange_invites', 'exchange_members', 'exchange_offers', 'exchange_profiles', 'exchange_requests', 'goal_kits', 'kit_candidates', 'kit_lists', 'kit_selections', 'payment_hold_steps', 'payment_holds', 'village_funds', 'village_payment_intents', 'village_presentations', 'village_receipts', 'village_shares', 'village_subscriptions', 'village_vault_accounts', 'village_vault_events', 'village_vault_issues', 'village_vault_watches'].sort());
+  assert.equal(tables(db).length, 45);
   assert.deepEqual(rows(db, beforeTables), before, 'every earlier row is unchanged');
   assert.deepEqual(rows(db, ['kit_lists']).kit_lists, []);
   db.close();
   const again = openDatabase(file);
-  assert.equal(again.prepare('PRAGMA user_version').get().user_version, 18);
+  assert.equal(again.prepare('PRAGMA user_version').get().user_version, 19);
   again.close();
 });
