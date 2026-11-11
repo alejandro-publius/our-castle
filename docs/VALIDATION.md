@@ -1,8 +1,38 @@
 # Validation
 
+## Saved Mac runtime upgrade — November 10, 2026
+
+At the owner's explicit request, the two saved Mac apps were moved from `b21b2d8` (schema 12) to `a56170a`, main after #82 and #83 (schema 18). [Sanitized record](evidence/runtime-activation-20261110.json); the raw databases, backups, logs and reports stay private and outside Git.
+
+**Before anything was stopped**
+- A new runtime checkout at `a56170a` with a clean `npm ci`. The solver source is byte-identical to the previous source and this Mac has no Rust toolchain, so the already verified solver binary was reused and its SHA-256 rechecked.
+- A consistent online backup of each database through SQLite's backup interface: schema 12, 27 application tables, integrity check `ok`, no foreign-key violation.
+- **Rehearsal on private copies**, three server starts per app, each with outside network refused: the previous source (to learn what an ordinary start changes), the new source (the migration, exactly as the real upgrade performs it), then a rollback (the stopped copy put back and the previous source started on it). In all six starts the guard was loaded and **no outside connection was attempted**.
+  - Migration: 12 → 18, 27 → 44 application tables, every original table's rows unchanged, seventeen new tables all empty, saved facts identical, the new files served.
+  - Rollback: schema 12 again, saved facts identical, integrity `ok`.
+  - The only difference anywhere was the achievement ID counter, which every start advances without adding a row.
+
+**The upgrade**, one app at a time: confirm the listener is the expected process and still matches the rehearsed backup, stop it, copy the stopped database, start the new source with the same minimal environment, compare. A failed comparison would have restored the stopped copy and restarted the previous source automatically; neither app needed it.
+
+| | Owner, port 3010 | Rehearsal, port 3021 |
+| --- | --- | --- |
+| Process | 440 → 83876 | 985 → 83914 |
+| Down for | under 2 s | under 2 s |
+| Stopped copy equals the online backup | yes | yes |
+| Schema, application tables | 12 → 18, 27 → 44 | 12 → 18, 27 → 44 |
+| Original rows changed | none | none |
+| New tables with rows | none | none |
+| Progress | $60 of $300, unchanged | $75 of $300, unchanged |
+| Completed $15 sandbox capture | not applicable | still present, still credited once |
+| Payment, planner, Merchant, photo modes | unchanged | unchanged |
+| Cohere preference ordering | off → live | off → live |
+| Seven served files equal the new checkout | yes | yes |
+
+Limits: this is a local upgrade on one Mac, checked by reading the apps over loopback and by comparing database fingerprints. It is not a hosted deployment or a disaster-recovery guarantee. Nobody used the upgraded pages as part of this check, no browser journey was run against the saved apps, and no payment, hold, model, catalogue or ranking request was made. "Cohere live" means the key is loaded and selected, not that a ranking was requested or judged.
+
 ## Hold first, then release or return — November 10, 2026
 
-One branch, `claude/payment-holds-20261110`, built on the combined village and loading release below. [What it does and the rules it keeps](PAYMENT-HOLDS.md). It is opt-in: the existing checkout is unchanged and is still the default.
+One branch, `claude/payment-holds-20261110`, built on the combined village and loading release below, and merged to `main` at the owner's request by [#83](https://github.com/alejandro-publius/our-castle/pull/83) as `a56170a`. [What it does and the rules it keeps](PAYMENT-HOLDS.md). It is opt-in: the existing checkout is unchanged and is still the default.
 
 **Every check here uses the fake PayPal sandbox or example mode.** No real sandbox order was held, captured or voided, and none of this is live PayPal evidence.
 

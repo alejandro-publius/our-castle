@@ -1,6 +1,6 @@
 # Proposed demonstration: one family, then one village — not recorded
 
-Revised November 10, 2026 (Pacific) against the combined village and loading release on `main` (merge commit `3bfe6e1`, the same tree as its reviewed head `795a6e7`; [release readiness](RELEASE-READINESS.md)). This is a plan for a future recording. Recording remains paused; no media was created or changed for this update. The existing 2:42 review cut is preserved below and shows neither the family-planning flow nor the shared village.
+Revised November 10, 2026 (Pacific) against `main` after the village, loading and hold-first merges (#82 as `3bfe6e1`, #83 as `a56170a`; [release readiness](RELEASE-READINESS.md)). This is a plan for a future recording. Recording remains paused; no media was created or changed for this update. The existing 2:42 review cut is preserved below and shows neither the family-planning flow nor the shared village.
 
 The plan uses two separate example sessions, and the cut between them must be visible:
 
@@ -23,7 +23,7 @@ Label both sessions' families, catalogue and payments as examples. Neither route
 
 The family segment ends with the existing **Review the receipt** action after the deed. Do not cut out that action and describe Treasury as automatic. The saved $150 repaired goal, the historical $300 sandbox goal and the $400 shared fund are three separate scenarios; their unlocks and totals need not agree.
 
-**Left out on purpose.** [Two fresh signed-in families](VILLAGE-FIRST-USE.md) starting a neighborhood from nothing needs passkeys in two browsers and more time than this cut has; mention it in the entry instead. Hold first, then release or return, is on its own unmerged pull request ([#83](https://github.com/alejandro-publius/our-castle/pull/83)) and is not in this build. If the owner merges it, a simulated hold could replace part of 1:18–1:38, labelled simulated; any PayPal hold claim needs a real sandbox hold first.
+**Left out on purpose.** [Two fresh signed-in families](VILLAGE-FIRST-USE.md) starting a neighborhood from nothing needs passkeys in two browsers and more time than this cut has; mention it in the entry instead. Hold first, then release or return ([how it works](PAYMENT-HOLDS.md)) is in this build, but its only evidence is fake-provider and example-mode tests. A simulated hold could replace part of 1:18–1:38 if it is labelled simulated; any PayPal hold claim needs a real sandbox hold first.
 
 ### Proposed narration
 
