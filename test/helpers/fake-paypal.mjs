@@ -8,6 +8,11 @@ export function createFakePayPal(options = {}) {
     captureCurrencyOverride: null,
     captureCustomIdOverride: null,
     captureError: null, // e.g. { status: 422, issue: 'INSTRUMENT_DECLINED' }
+    authorizeError: null, // the same, for placing a hold
+    authorizationStatus: 'CREATED',
+    authorizationAmountOverride: null,
+    releaseError: null, // the same, for capturing a hold
+    voidError: null,
     createStatus: 'CREATED',
     webhookVerification: 'SUCCESS',
     refundStatus: 'COMPLETED',
@@ -83,6 +88,64 @@ export function createFakePayPal(options = {}) {
       order.status = 'COMPLETED';
       return remember(structuredClone(order));
     }
+    m = /^\/v2\/checkout\/orders\/([^/]+)\/authorize$/.exec(pathname);
+    if (m && method === 'POST') {
+      const order = orders.get(m[1]);
+      if (!order) return issue(404, 'RESOURCE_NOT_FOUND', 'INVALID_RESOURCE_ID');
+      if (order.intent !== 'AUTHORIZE') return issue(422, 'UNPROCESSABLE_ENTITY', 'ACTION_DOES_NOT_MATCH_INTENT');
+      if (order.status === 'COMPLETED') return issue(422, 'UNPROCESSABLE_ENTITY', 'ORDER_ALREADY_AUTHORIZED');
+      if (behavior.authorizeError) return issue(behavior.authorizeError.status, 'UNPROCESSABLE_ENTITY', behavior.authorizeError.issue);
+      const unit = order.purchase_units[0];
+      const authorization = {
+        id: nextId('AUTH'), status: behavior.authorizationStatus,
+        amount: { currency_code: unit.amount.currency_code, value: behavior.authorizationAmountOverride ?? unit.amount.value },
+        custom_id: unit.custom_id, expiration_time: '2026-12-02T12:00:00Z',
+      };
+      unit.payments = { authorizations: [authorization] };
+      order.status = 'COMPLETED';
+      return remember(structuredClone(order));
+    }
+    const heldBy = (id) => {
+      for (const order of orders.values()) {
+        const authorization = order.purchase_units[0].payments?.authorizations?.find((a) => a.id === id);
+        if (authorization) return { unit: order.purchase_units[0], authorization };
+      }
+      return null;
+    };
+    m = /^\/v2\/payments\/authorizations\/([^/]+)$/.exec(pathname);
+    if (m && method === 'GET') {
+      const held = heldBy(m[1]);
+      return held ? json(200, structuredClone(held.authorization)) : issue(404, 'RESOURCE_NOT_FOUND', 'INVALID_RESOURCE_ID');
+    }
+    m = /^\/v2\/payments\/authorizations\/([^/]+)\/capture$/.exec(pathname);
+    if (m && method === 'POST') {
+      const held = heldBy(m[1]);
+      if (!held) return issue(404, 'RESOURCE_NOT_FOUND', 'INVALID_RESOURCE_ID');
+      if (behavior.releaseError) return issue(behavior.releaseError.status, 'UNPROCESSABLE_ENTITY', behavior.releaseError.issue);
+      if (held.authorization.status === 'VOIDED') return issue(422, 'UNPROCESSABLE_ENTITY', 'AUTHORIZATION_VOIDED');
+      if (held.authorization.status !== 'CREATED') return issue(422, 'UNPROCESSABLE_ENTITY', 'AUTHORIZATION_ALREADY_CAPTURED');
+      if (Number(body.amount.value) > Number(held.authorization.amount.value)) return issue(422, 'UNPROCESSABLE_ENTITY', 'MAX_CAPTURE_AMOUNT_EXCEEDED');
+      const capture = {
+        id: nextId('CAPTURE'), status: behavior.captureStatus,
+        amount: { currency_code: behavior.captureCurrencyOverride ?? body.amount.currency_code, value: behavior.captureAmountOverride ?? body.amount.value },
+        custom_id: behavior.captureCustomIdOverride ?? held.unit.custom_id, final_capture: body.final_capture === true,
+        links: [{ rel: 'up', href: `https://api-m.sandbox.paypal.com/v2/payments/authorizations/${m[1]}` }],
+        ...(behavior.captureStatus === 'PENDING' ? { status_details: { reason: 'PENDING_REVIEW' } } : {}),
+      };
+      held.unit.payments.captures = [...(held.unit.payments.captures ?? []), capture];
+      held.authorization.status = body.final_capture === true ? 'CAPTURED' : 'PARTIALLY_CAPTURED';
+      return remember(structuredClone(capture));
+    }
+    m = /^\/v2\/payments\/authorizations\/([^/]+)\/void$/.exec(pathname);
+    if (m && method === 'POST') {
+      const held = heldBy(m[1]);
+      if (!held) return issue(404, 'RESOURCE_NOT_FOUND', 'INVALID_RESOURCE_ID');
+      if (behavior.voidError) return issue(behavior.voidError.status, 'UNPROCESSABLE_ENTITY', behavior.voidError.issue);
+      if (held.authorization.status === 'VOIDED') return issue(422, 'UNPROCESSABLE_ENTITY', 'PREVIOUSLY_VOIDED');
+      if (held.authorization.status !== 'CREATED') return issue(422, 'UNPROCESSABLE_ENTITY', 'PREVIOUSLY_CAPTURED');
+      held.authorization.status = 'VOIDED';
+      return json(200, structuredClone(held.authorization));
+    }
     m = /^\/v2\/checkout\/orders\/([^/]+)$/.exec(pathname);
     if (m && method === 'GET') {
       const order = orders.get(m[1]);
@@ -155,10 +218,14 @@ export function fakeSdkControllers(fake) {
       createOrder(args) { record('createOrder', args); return send('POST', '/v2/checkout/orders', args); },
       captureOrder(args) { record('captureOrder', args); return send('POST', `/v2/checkout/orders/${args.id}/capture`, { ...args, body: {} }); },
       getOrder(args) { record('getOrder', args); return send('GET', `/v2/checkout/orders/${args.id}`); },
+      authorizeOrder(args) { record('authorizeOrder', args); return send('POST', `/v2/checkout/orders/${args.id}/authorize`, { ...args, body: {} }); },
     },
     payments: {
       getCapturedPayment(args) { record('getCapturedPayment', args); return send('GET', `/v2/payments/captures/${args.captureId}`); },
       refundCapturedPayment(args) { record('refundCapturedPayment', args); return send('POST', `/v2/payments/captures/${args.captureId}/refund`, args); },
+      getAuthorizedPayment(args) { record('getAuthorizedPayment', args); return send('GET', `/v2/payments/authorizations/${args.authorizationId}`); },
+      captureAuthorizedPayment(args) { record('captureAuthorizedPayment', args); return send('POST', `/v2/payments/authorizations/${args.authorizationId}/capture`, args); },
+      voidPayment(args) { record('voidPayment', args); return send('POST', `/v2/payments/authorizations/${args.authorizationId}/void`, args); },
     },
   };
 }

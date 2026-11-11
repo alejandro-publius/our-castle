@@ -98,14 +98,14 @@ export function createPayPalSdkClient({ clientId, clientSecret, controllers = nu
     environment: 'sandbox',
     implementation: 'paypal-server-sdk',
 
-    createOrder({ localId, amountCents, currency, description, requestId, recipient, assertAccess }) {
+    createOrder({ localId, amountCents, currency, description, requestId, recipient, assertAccess, hold = false }) {
       const payee = paypalRecipient(recipient);
       return call(() => guardedController(OrdersController, orders, assertAccess).createOrder({
         paypalRequestId: requestId,
         ...(payee ? { paypalAuthAssertion: paypalAuthAssertion(clientId, payee) } : {}),
         prefer: 'return=representation',
         body: {
-          intent: CheckoutPaymentIntent.Capture,
+          intent: hold ? CheckoutPaymentIntent.Authorize : CheckoutPaymentIntent.Capture,
           purchaseUnits: [{
             referenceId: localId,
             customId: localId,
@@ -130,6 +130,28 @@ export function createPayPalSdkClient({ clientId, clientSecret, controllers = nu
     captureOrder(orderId, { requestId, assertAccess, recipient }) {
       return call(() => guardedController(OrdersController, orders, assertAccess).captureOrder({ id: orderId, paypalRequestId: requestId, prefer: 'return=representation',
         ...(recipient ? { paypalAuthAssertion: paypalAuthAssertion(clientId, recipient) } : {}) }), assertAccess);
+    },
+
+    authorizeOrder(orderId, { requestId, assertAccess, recipient }) {
+      return call(() => guardedController(OrdersController, orders, assertAccess).authorizeOrder({ id: orderId, paypalRequestId: requestId, prefer: 'return=representation',
+        ...(recipient ? { paypalAuthAssertion: paypalAuthAssertion(clientId, recipient) } : {}) }), assertAccess);
+    },
+
+    getAuthorization(authorizationId) {
+      return call(() => payments.getAuthorizedPayment({ authorizationId }));
+    },
+
+    captureAuthorization(authorizationId, { amountCents, currency, requestId, assertAccess }) {
+      return call(() => guardedController(PaymentsController, payments, assertAccess).captureAuthorizedPayment({
+        authorizationId,
+        paypalRequestId: requestId,
+        prefer: 'return=representation',
+        body: { amount: { currencyCode: currency, value: centsToDecimalString(amountCents) }, finalCapture: true },
+      }), assertAccess);
+    },
+
+    voidAuthorization(authorizationId, { requestId, assertAccess }) {
+      return call(() => guardedController(PaymentsController, payments, assertAccess).voidPayment({ authorizationId, paypalRequestId: requestId, prefer: 'return=representation' }), assertAccess);
     },
 
     getOrder(orderId, { recipient, assertAccess } = {}) {

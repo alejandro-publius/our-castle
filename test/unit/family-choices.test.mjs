@@ -277,7 +277,7 @@ test('a schema-8 database gains only the three planning tables (and later kit/ex
     old.close();
     const db = openDatabase(file);
     assert.equal(db.prepare('PRAGMA user_version').get().user_version, MIGRATIONS.length); // later steps add one column and the kit list
-    assert.deepEqual(tables(db).filter((t) => !beforeTables.includes(t)), ['exchange_circles', 'exchange_invites', 'exchange_members', 'exchange_offers', 'exchange_profiles', 'exchange_requests', 'family_choices', 'family_offers', 'family_preferences', 'goal_kits', 'kit_candidates', 'kit_lists', 'kit_selections', 'village_funds', 'village_payment_intents', 'village_presentations', 'village_receipts', 'village_shares', 'village_subscriptions', 'village_vault_accounts', 'village_vault_events', 'village_vault_issues', 'village_vault_watches']);
+    assert.deepEqual(tables(db).filter((t) => !beforeTables.includes(t)), ['exchange_circles', 'exchange_invites', 'exchange_members', 'exchange_offers', 'exchange_profiles', 'exchange_requests', 'family_choices', 'family_offers', 'family_preferences', 'goal_kits', 'kit_candidates', 'kit_lists', 'kit_selections', 'payment_holds', 'village_funds', 'village_payment_intents', 'village_presentations', 'village_receipts', 'village_shares', 'village_subscriptions', 'village_vault_accounts', 'village_vault_events', 'village_vault_issues', 'village_vault_watches']);
     assert.deepEqual(rows(db, beforeTables), before, 'every earlier table and row identical');
     db.close();
     const again = openDatabase(file); // opening again changes nothing

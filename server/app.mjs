@@ -620,6 +620,17 @@ export function createApp({ config, db, clock, paypal = null, aiProvider = null,
       const result = await contributions.refundPayPalCapture({ captureId: params[0], householdId: owner(body, scope).householdId, approverId: actingMember(body.approverId, scope), approvalConfirmed: body.approvalConfirmed, assertAccess });
       return { ...result, state: state(scope) };
     }],
+    // ---- A held contribution (PayPal sandbox or simulated): an adult's exact release, or its return. ----
+    ['POST', /^\/api\/contributions\/([\w-]+)\/release$/, async ({ body, params, scope, assertAccess }) => {
+      const result = await contributions.releaseHold({ contributionId: params[0], ...owner(body, scope), amountCents: body.amountCents,
+        approverId: actingMember(body.approverId, scope), approvalConfirmed: body.approvalConfirmed, requestId: str(body.requestId), assertAccess });
+      return { ...result, state: state(scope) };
+    }],
+    ['POST', /^\/api\/contributions\/([\w-]+)\/return$/, async ({ body, params, scope, assertAccess }) => {
+      const result = await contributions.returnHold({ contributionId: params[0], ...owner(body, scope),
+        approverId: actingMember(body.approverId, scope), approvalConfirmed: body.approvalConfirmed, requestId: str(body.requestId), assertAccess });
+      return { ...result, state: state(scope) };
+    }],
     ['POST', '/api/paypal/webhook', async ({ req, rawBody }) => {
       // PayPal's signed events name orders, not households: compare each household's payment records before and after,
       // so only the households whose records changed are told to re-read them.
@@ -716,6 +727,8 @@ export function createApp({ config, db, clock, paypal = null, aiProvider = null,
       approverId: actingMember(body.approverId, scope),
       approvalConfirmed: body.approvalConfirmed,
       requestId: str(body.requestId),
+      // Hold the amount first instead of taking it: only the literal `true` asks for that.
+      hold: body.hold === true,
     };
   }
   // The catalog facts the server kept for a result it showed (for a family need), or null once it expired.

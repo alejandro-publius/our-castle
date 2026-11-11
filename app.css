@@ -318,6 +318,9 @@ button { font: inherit; }
 .contributions .story li { border: 0; background: none; padding: 2px 0; border-radius: 0; font-size: inherit; }
 .contributions .story time { color: var(--ink); font-variant-numeric: tabular-nums; }
 .contributions .actions { margin-top: 6px; }
+/* The amount an adult releases from a held contribution: a compact field beside its confirm button. */
+.contributions .hold-release { margin: 0; max-width: 220px; }
+.contributions .hold-release input { min-height: 44px; }
 .entries li { display: flex; justify-content: space-between; gap: 10px; border-bottom: 1px solid #d3bd8c; padding: 5px 0; font-size: 15px; }
 .entries li.empty, .contributions li.empty, .keepsakes li.empty { color: var(--ink-muted); border: 0; background: none; padding: 0; }
 .inline-form { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) auto; gap: 8px; align-items: end; margin-bottom: 8px; }
