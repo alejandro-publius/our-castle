@@ -49,7 +49,8 @@ test('the silent pixel chase yields to the actual ready realm without waiting fo
     await page.screenshot({ path: info.outputPath('loading.png') });
     // Release a real pending startup read; no animation-ending timer participates in readiness.
     release();
-    await expect(page.locator('body')).toHaveAttribute('data-ready', 'true');
+    // The realm behind the cover is built on an emulated GPU; like the wait further down, readiness gets 30 seconds.
+    await expect(page.locator('body')).toHaveAttribute('data-ready', 'true', { timeout: 30_000 });
     await expect(page.locator('#realm-loader')).toHaveCount(0);
     expect(await page.locator('.shell').evaluate(el => el.inert)).toBe(false);
     await expect(page.locator('#sound-label')).toHaveText('Sound off');
@@ -75,7 +76,7 @@ test('reduced motion stays still and a household read failure is not hidden by t
     await page.emulateMedia({ reducedMotion: 'reduce' });
     await expect.poll(() => canvasPixels(page)).toBe(first);
     release();
-    await expect(page.locator('body')).toHaveAttribute('data-ready', 'true');
+    await expect(page.locator('body')).toHaveAttribute('data-ready', 'true', { timeout: 30_000 });
     await expect(page.locator('#realm-loader')).toHaveCount(0);
     await expect(page.locator('#honesty')).toContainText('Could not load the household');
     expect(await page.locator('.shell').evaluate(el => el.inert)).toBe(false);
@@ -119,7 +120,9 @@ test('a tour that opens during startup keeps its opening focus once the loading 
     await expect(v.page.locator('.keeper')).toHaveCount(0);
     await v.page.evaluate(() => { document.querySelector('.shell').inert = true; document.getElementById('keeper-open').click(); });
     await expect(v.page.locator('.keeper')).toBeVisible();
-    expect(await v.page.evaluate(() => document.activeElement?.id || null)).not.toBe('keeper-next'); // an inert page drops the call
+    // An inert page drops the call, and the browser takes focus off the now-inert button on its next frame. Wait for that
+    // frame: until it runs, focus still sits on the button, and the tour rightly leaves a focused control alone.
+    await expect.poll(() => v.page.evaluate(() => document.activeElement === document.body)).toBe(true);
     await v.page.evaluate(() => { document.querySelector('.shell').inert = false; });
     await expect(v.page.locator('#keeper-next')).toBeFocused();
     clean(v);
