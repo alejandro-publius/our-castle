@@ -165,6 +165,7 @@ async function history(seed, { staleReads }) {
     if (!declinedListed) assert.equal(check.verdict, 'match', `the check agrees — ${label()}`);
   }
   if (process.env.HOLD_SEED || process.env.HOLD_LOG) console.log(label());
+  w.db.close(); // thousands of histories would otherwise each keep an in-memory database open
 }
 
 const seeds = process.env.HOLD_SEED ? [Number(process.env.HOLD_SEED)] : Array.from({ length: Number(process.env.HOLD_SEEDS ?? 100) }, (_, i) => i + 1);
