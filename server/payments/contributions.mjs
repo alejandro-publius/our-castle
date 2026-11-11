@@ -20,6 +20,8 @@ const SIMULATED_HOLD_MS = 29 * DAY_MS;
 /** A hold can be released in at most this many steps. The last one is always final. */
 export const MAX_RELEASES = 3;
 const OPEN_HOLD = new Set(['awaiting', 'held', 'releasing', 'returning']);
+/** Capture statuses that mean PayPal took nothing. */
+const FAILED_CAPTURE = new Set(['DECLINED', 'DENIED', 'FAILED']);
 const validTime = (value) => (typeof value === 'string' && Number.isFinite(Date.parse(value)) ? value : null);
 const dayText = (iso) => new Date(iso).toISOString().slice(0, 10);
 /** Three days from `from`, but never past the authorization's own expiry. */
@@ -423,11 +425,12 @@ export function createContributionService({ db, clock, mode, paypal = null, webh
     }
     const hold = holdFor(row.id);
     const authorization = currentAuthorization(unit, hold);
-    const uncounted = (unit.payments?.captures ?? []).some((c) => !captureById(c.id)?.credited);
-    if (explicit && !captured && !uncounted && authorization?.status === 'PARTIALLY_CAPTURED' && authorization.id === hold.authorization_id
+    // A listed capture that is neither counted here nor definitely failed may still count: nothing is reopened around it.
+    const waiting = (unit.payments?.captures ?? []).some((c) => !captureById(c.id)?.credited && !FAILED_CAPTURE.has(c?.status));
+    if (explicit && !waiting && authorization?.status === 'PARTIALLY_CAPTURED' && authorization.id === hold.authorization_id
       && ['releasing', 'returning'].includes(hold.status)) {
-      // An adult's explicit check: every capture PayPal lists is counted here and the rest is still held, so the
-      // decision under way did not take effect. The hold is open again and an adult may decide afresh.
+      // An adult's explicit check: every capture PayPal lists is counted here or failed, and the rest is still held, so
+      // the decision under way did not take effect. The hold is open again and an adult may decide afresh.
       reopenHold(row);
       setHoldDetail(row, `PayPal still holds the other ${formatCents(hold.held_cents - hold.released_cents, row.currency)}: the earlier decision did not go through. An adult can decide again.`);
       return result(row, 'held');
@@ -600,6 +603,9 @@ export function createContributionService({ db, clock, mode, paypal = null, webh
         // What was left of the hold is over. A part released earlier stays counted; a hold already over is not reopened.
         const ending = authorization.status === 'VOIDED' ? 'returned' : 'lapsed';
         if (['released', 'returned', 'lapsed'].includes(hold.status)) return result(row, hold.status === 'released' ? 'already_completed' : hold.status);
+        // While an extension is unanswered, this may be the authorization it replaced, with the money now held under a
+        // new one. Only PayPal's answer to the extension itself settles that (asking again is the same request).
+        if (openStep(row.id)?.kind === 'extend') return result(row, 'unknown');
         endHold(row, ending, endNote(row, ending));
         return result(row, ending);
       }
@@ -1034,11 +1040,14 @@ export function createContributionService({ db, clock, mode, paypal = null, webh
       const amountCents = step.amount_cents;
       const final = step.final === 1;
       if (row.provider === 'simulated') return credit(row, `SIM-CAPTURE-${row.id.slice(4, 16).toUpperCase()}${step.seq > 1 ? `-${step.seq}` : ''}`, amountCents, row.currency);
+      // The same release decided again (the same amount, from the same released total, final or not, on the same
+      // authorization) goes to PayPal as the very same request. A new attempt after an unanswered one can therefore
+      // never capture twice: PayPal answers it with what the first one did. A first final release keeps the id it always had.
+      const paypalRequestId = `release-${row.id}-${amountCents}${hold.released_cents ? `-after-${hold.released_cents}` : ''}${final ? '' : '-keep'}${hold.original_authorization_id ? '-extended' : ''}`;
       let data;
       try {
         input.assertAccess?.();
-        // The step and amount are part of the request id: asking again for the same release is the same request to PayPal.
-        ({ data } = await paypal.captureAuthorization(hold.authorization_id, { amountCents, currency: row.currency, final, requestId: `release-${row.id}-${step.seq}-${amountCents}`, assertAccess: input.assertAccess }));
+        ({ data } = await paypal.captureAuthorization(hold.authorization_id, { amountCents, currency: row.currency, final, requestId: paypalRequestId, assertAccess: input.assertAccess }));
       } catch (error) {
         if (!(error instanceof PayPalError)) { reopenHold(row); throw error; } // refused here, before anything was sent
         if (outcomeUnknown(error)) {

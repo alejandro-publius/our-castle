@@ -78,7 +78,7 @@ for (const adapter of ['rest', 'sdk']) {
     const capture = paths(env, '/capture')[0];
     assert.match(capture.pathname, /^\/v2\/payments\/authorizations\/AUTH/);
     assert.deepEqual(capture.body, { amount: { currency_code: 'USD', value: '15.00' }, final_capture: true });
-    assert.match(capture.headers['paypal-request-id'], /^release-ctb_\w+-1-1500$/);
+    assert.match(capture.headers['paypal-request-id'], /^release-ctb_[0-9a-f]+-1500$/);
     assert.deepEqual(trail(released), [['held', 1500], ['released', 1500]]);
     // The same request again is answered from the record; a new request is refused. PayPal is not asked twice.
     assert.equal((await env.service.releaseHold(first)).outcome, 'already_completed');
@@ -337,6 +337,7 @@ for (const adapter of ['rest', 'sdk']) {
     const released = await env.service.releaseHold(decision(id, { amountCents: 2500 }));
     assert.equal(released.outcome, 'completed');
     assert.equal(paths(env, '/capture')[0].pathname, `/v2/payments/authorizations/${hold.authorizationId}/capture`);
+    assert.match(paths(env, '/capture')[0].headers['paypal-request-id'], /^release-ctb_[0-9a-f]+-2500-extended$/, 'a different authorization is a different request');
     assert.equal(progressFor(env.db, DEMO_GOAL_ID).progressCents, 8500);
     assert.deepEqual(trail(released), [['held', 4000], ['extended', null], ['released', 2500], ['returned', 1500]]);
     const checked = await env.service.refreshPayPalOrder({ providerOrderId: orderId, ...OWNER });
@@ -508,7 +509,8 @@ for (const adapter of ['rest', 'sdk']) {
     const last = await env.service.releaseHold(decision(id, { amountCents: 1000 }));
     assert.equal(last.outcome, 'completed');
     assert.deepEqual(paths(env, '/capture').map((r) => r.body.final_capture), [false, false, true]);
-    assert.equal(new Set(paths(env, '/capture').map((r) => r.headers['paypal-request-id'])).size, 3);
+    // Each step is its own PayPal request: its amount, what was released before it, and whether it keeps the rest.
+    assert.deepEqual(paths(env, '/capture').map((r) => r.headers['paypal-request-id'].replace(/^release-ctb_[0-9a-f]+/, '')), ['-1000-keep', '-1500-after-1000-keep', '-1000-after-2500']);
     assert.equal(paths(env, '/capture').length, 3, 'the refusals and the replay never reached PayPal');
     assert.equal(last.progress.progressCents, 9500);
     assert.equal(last.contribution.hold.status, 'released');
@@ -575,6 +577,76 @@ for (const adapter of ['rest', 'sdk']) {
     assert.deepEqual(pick(reopened.contribution.hold, ['status', 'releaseCents', 'releasedCents', 'pending']), { status: 'held', releaseCents: 1000, releasedCents: 1000, pending: null });
     assert.equal((await other.service.returnHold(decision(second.id))).outcome, 'returned');
     assert.equal(progressFor(other.db, DEMO_GOAL_ID).progressCents, 7000);
+  });
+
+  test(`[${adapter}] a release decided again after an unanswered attempt is the same PayPal request, so it can never capture twice`, async () => {
+    const env = setupDomain({ adapter, mode: 'sandbox' });
+    const { orderId, id } = await held(env, { amountCents: 4000 });
+    await env.service.releaseHold(decision(id, { amountCents: 1000, keepRest: true }));
+    // PayPal captures the second release, but its answer is lost and the next read of the order does not show it yet.
+    const service = await losingFirstAnswer(env, '/capture', 'captureAuthorizedPayment');
+    assert.equal((await service.releaseHold(decision(id, { amountCents: 1500, keepRest: true }))).outcome, 'unknown');
+    env.fake.behavior.staleOrderReads = 1;
+    const reopened = await service.refreshPayPalOrder({ providerOrderId: orderId, ...OWNER });
+    assert.equal(reopened.outcome, 'held', 'the read showed nothing new, so an adult may decide again');
+    assert.equal(progressFor(env.db, DEMO_GOAL_ID).progressCents, 7000);
+    // The adult decides the same release again: a new request to this server, the very same request to PayPal.
+    const again = await service.releaseHold(decision(id, { amountCents: 1500, keepRest: true }));
+    assert.equal(again.outcome, 'completed');
+    const sent = paths(env, '/capture').map((r) => r.headers['paypal-request-id']);
+    assert.equal(sent.length, 3);
+    assert.equal(sent[1], sent[2], 'the new attempt is the same PayPal request as the unanswered one');
+    assert.notEqual(sent[0], sent[1]);
+    assert.equal(env.fake.orders.get(orderId).purchase_units[0].payments.captures.length, 2, 'PayPal captured the second release once');
+    assert.equal(progressFor(env.db, DEMO_GOAL_ID).progressCents, 8500, 'and it is counted once');
+    assert.deepEqual(ledger(env), [1000, 1500].map((amount_cents) => ({ kind: 'contribution', effect: 1, amount_cents })));
+    assert.deepEqual(pick(again.contribution.hold, ['status', 'releasedCents', 'pending']), { status: 'held', releasedCents: 2500, pending: null });
+    const checked = await service.refreshPayPalOrder({ providerOrderId: orderId, ...OWNER });
+    assert.equal(checked.check.verdict, 'match');
+    assert.equal(progressFor(env.db, DEMO_GOAL_ID).progressCents, 8500);
+  });
+
+  test(`[${adapter}] a later release that PayPal declined, its answer lost, reopens the hold on a check and is never counted`, async () => {
+    const env = setupDomain({ adapter, mode: 'sandbox' });
+    const { orderId, id } = await held(env, { amountCents: 4000 });
+    await env.service.releaseHold(decision(id, { amountCents: 1000, keepRest: true }));
+    const service = await losingFirstAnswer(env, '/capture', 'captureAuthorizedPayment');
+    env.fake.behavior.captureStatus = 'DECLINED';
+    assert.equal((await service.releaseHold(decision(id, { amountCents: 1500, keepRest: true }))).outcome, 'unknown');
+    env.fake.behavior.captureStatus = 'COMPLETED';
+    await assert.rejects(service.returnHold(decision(id)), { code: 'hold_in_progress' });
+    const checked = await service.refreshPayPalOrder({ providerOrderId: orderId, ...OWNER });
+    assert.equal(checked.outcome, 'held');
+    assert.deepEqual(pick(checked.contribution.hold, ['status', 'releasedCents', 'remainingCents', 'pending']), { status: 'held', releasedCents: 1000, remainingCents: 3000, pending: null });
+    assert.equal(checked.check.verdict, 'match');
+    assert.equal(progressFor(env.db, DEMO_GOAL_ID).progressCents, 7000, 'a declined capture is never counted');
+    assert.deepEqual(ledger(env), [{ kind: 'contribution', effect: 1, amount_cents: 1000 }]);
+    assert.equal((await service.returnHold(decision(id))).outcome, 'returned');
+  });
+
+  test(`[${adapter}] while an extension is unanswered, news that the old authorization ended is not acted on; the extension's own answer settles it`, async () => {
+    const env = setupDomain({ adapter, mode: 'sandbox', paypalOptions: { orderListsReauthorizations: false } });
+    const { orderId, id, placed } = await held(env);
+    const original = placed.contribution.hold.authorizationId;
+    setNow(env, Date.parse(placed.contribution.hold.honorUntil) + 60_000);
+    const service = await losingFirstAnswer(env, '/reauthorize', 'reauthorizePayment');
+    assert.equal((await service.extendHold(decision(id))).outcome, 'unknown');
+    // PayPal now shows the original authorization as ended, and its order details do not list the new one.
+    env.fake.orders.get(orderId).purchase_units[0].payments.authorizations[0].status = 'VOIDED';
+    const checked = await service.refreshPayPalOrder({ providerOrderId: orderId, ...OWNER });
+    assert.equal(checked.outcome, 'unknown');
+    assert.deepEqual(pick(checked.contribution.hold, ['status', 'pending', 'authorizationId']), { status: 'held', pending: 'extend', authorizationId: original }, 'the hold is not ended on a guess');
+    const event = { id: `WH-OLD-ENDED-${adapter}`, event_type: 'PAYMENT.AUTHORIZATION.VOIDED',
+      resource: { id: original, status: 'VOIDED', amount: { currency_code: 'USD', value: '15.00' }, custom_id: id, supplementary_data: { related_ids: { order_id: orderId } } } };
+    assert.equal((await service.handleWebhook({ headers: webhookHeaders, rawBody: JSON.stringify(event) })).outcome, 'unknown');
+    assert.equal(holdRow(env, id).status, 'held');
+    // Asking again is the same request: PayPal answers with the extension it made, and the money can still be released.
+    const again = await service.extendHold(decision(id));
+    assert.equal(again.outcome, 'extended');
+    const released = await service.releaseHold(decision(id, { amountCents: 1500 }));
+    assert.equal(released.outcome, 'completed');
+    assert.equal(paths(env, '/capture')[0].pathname, `/v2/payments/authorizations/${again.contribution.hold.authorizationId}/capture`);
+    assert.equal(progressFor(env.db, DEMO_GOAL_ID).progressCents, 7500);
   });
 }
 

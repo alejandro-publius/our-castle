@@ -132,7 +132,7 @@ function reconcileSteps(unit, contribution, facts) {
     }
     if (refunded !== recorded) return { ...stepFacts, verdict: 'differs', note: 'PayPal and the ledger show different refunded amounts. Nothing was changed.' };
   }
-  return { ...stepFacts, verdict: 'match', note: `PayPal and the ledger agree on all ${completed.length} releases of this hold.` };
+  return { ...stepFacts, verdict: 'match', note: `PayPal and the ledger agree on ${completed.length === 1 ? 'the one release' : `all ${completed.length} releases`} of this hold.` };
 }
 
 // Transaction search is merchant-wide. Match only server-recorded capture IDs before any result

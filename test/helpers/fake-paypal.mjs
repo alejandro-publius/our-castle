@@ -19,6 +19,7 @@ export function createFakePayPal(options = {}) {
     reauthorizationCustomIdOverride: null,
     reauthorizationStatus: 'CREATED',
     orderListsReauthorizations: true, // false: an order read leaves a reauthorization out; it can still be read on its own
+    staleOrderReads: 0, // this many order reads come back without the newest capture, as a read made too early would
     createStatus: 'CREATED',
     webhookVerification: 'SUCCESS',
     refundStatus: 'COMPLETED',
@@ -122,8 +123,9 @@ export function createFakePayPal(options = {}) {
       return null;
     };
     // Cents captured so far from one authorization.
+    const tookNothing = (capture) => ['DECLINED', 'DENIED', 'FAILED'].includes(capture.status);
     const capturedFrom = (unit, id) => (unit.payments.captures ?? [])
-      .filter((c) => c.links?.some((l) => l.rel === 'up' && l.href.endsWith(`/authorizations/${id}`)))
+      .filter((c) => !tookNothing(c) && c.links?.some((l) => l.rel === 'up' && l.href.endsWith(`/authorizations/${id}`)))
       .reduce((sum, c) => sum + Math.round(Number(c.amount.value) * 100), 0);
     m = /^\/v2\/payments\/authorizations\/([^/]+)$/.exec(pathname);
     if (m && method === 'GET') {
@@ -167,7 +169,8 @@ export function createFakePayPal(options = {}) {
         ...(behavior.captureStatus === 'PENDING' ? { status_details: { reason: 'PENDING_REVIEW' } } : {}),
       };
       held.unit.payments.captures = [...(held.unit.payments.captures ?? []), capture];
-      held.authorization.status = body.final_capture === true ? 'CAPTURED' : 'PARTIALLY_CAPTURED';
+      // A declined capture takes nothing and leaves the authorization as it was.
+      if (!tookNothing(capture)) held.authorization.status = body.final_capture === true ? 'CAPTURED' : 'PARTIALLY_CAPTURED';
       return remember(structuredClone(capture));
     }
     m = /^\/v2\/payments\/authorizations\/([^/]+)\/void$/.exec(pathname);
@@ -184,7 +187,10 @@ export function createFakePayPal(options = {}) {
     m = /^\/v2\/checkout\/orders\/([^/]+)$/.exec(pathname);
     if (m && method === 'GET') {
       const order = orders.get(m[1]);
-      return order ? json(200, structuredClone(order)) : issue(404, 'RESOURCE_NOT_FOUND', 'INVALID_RESOURCE_ID');
+      if (!order) return issue(404, 'RESOURCE_NOT_FOUND', 'INVALID_RESOURCE_ID');
+      const read = structuredClone(order);
+      if (behavior.staleOrderReads > 0) { behavior.staleOrderReads--; read.purchase_units[0].payments?.captures?.pop(); }
+      return json(200, read);
     }
     m = /^\/v2\/payments\/captures\/([^/]+)\/refund$/.exec(pathname);
     if (m && method === 'POST') {
