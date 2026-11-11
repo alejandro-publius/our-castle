@@ -163,7 +163,7 @@ function worldInsets() {
 const savedPlace = () => { try { const p = JSON.parse(pref.get('atmosphere:place') ?? 'null'); return p && typeof p.label === 'string' ? p : null; } catch { return null; } };
 const sky = {
   time: TIME_MODES.includes(pref.get('atmosphere:time')) ? pref.get('atmosphere:time') : 'auto',
-  weather: WEATHER_MODES.includes(pref.get('atmosphere:weather')) ? pref.get('atmosphere:weather') : 'clear',
+  weather: WEATHER_MODES.includes(pref.get('atmosphere:weather')) ? pref.get('atmosphere:weather') : 'snow',
   place: savedPlace(), result: null, error: null, loading: false, editing: false,
   generation: 0, controller: null, searchGeneration: 0, searchController: null, client: null, resolved: null,
   attemptPlaceId: null, nextAttemptAt: 0,
