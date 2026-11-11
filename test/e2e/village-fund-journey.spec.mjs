@@ -51,11 +51,13 @@ test('five families contribute to the shared class trip, visit its square and ke
     await page.locator('[data-village-tab="families"]').click();
     await expect(page.locator('#village-families .village-family-list > li')).toHaveCount(5);
     await page.locator('[data-village-tab="project"]').click();
+    await expect(page.locator('#village-visit')).toHaveText('Visit the shared square'); // the names the shot list gives these controls
     await page.locator('#village-visit').click();
     await expect(page.locator('body')).toHaveAttribute('data-village-square', 'true');
     await expect.poll(async () => (await scene()).stage).toBe(1);
     expect((await scene()).homes).toHaveLength(5);
     await expect(page.locator('canvas')).toHaveCount(1);
+    await expect(page.locator('#village-back')).toHaveText('My realm');
     await page.getByRole('button', { name: 'Project & records', exact: true }).click();
 
     const amount = page.locator('#village-amount'), approval = page.locator('#village-approve'), contribute = page.locator('#village-contribute');
@@ -84,6 +86,9 @@ test('five families contribute to the shared class trip, visit its square and ke
     const receipt = paid.receipts.find(r => !initial.receipts.some(old => old.id === r.id));
     expect(receipt).toMatchObject({ kind: 'capture', amountMinor: 4000, source: 'simulated', alias: 'Alder' });
     await page.locator('[data-village-tab="records"]').click();
+    // Records lists every receipt of the fund: the four $50.00 ones the example starts with, then this one, last.
+    await expect(page.locator('ol.village-records > li')).toHaveCount(5);
+    await expect(page.locator('ol.village-records > li').last()).toContainText('+$40.00');
     await expect(page.locator('#village-records')).toContainText('+$40.00');
     await expect(page.locator('#village-records')).toContainText(receipt.reference);
     await expect(page.locator('#village-records')).toContainText('no money moves');
@@ -101,6 +106,7 @@ test('five families contribute to the shared class trip, visit its square and ke
     await expect(page.locator('body')).not.toHaveAttribute('data-village-square', 'true');
     await expect(page.locator('#goal-name')).toHaveText(before.goal.name);
     await expect(page.locator('#progress-amount')).toHaveText('$60.00');
+    await expect(page.locator('#target-amount')).toHaveText('$300.00');
     expect((await scene()).active).toBe(false);
 
     await page.reload();
