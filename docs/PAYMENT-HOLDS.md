@@ -36,8 +36,8 @@ What is not released goes back to the payer, because the capture is final. A hel
 ## Evidence
 
 - `test/unit/payment-holds.test.mjs`: 25 cases. Eleven run against both PayPal adapters: a hold credits nothing; full and partial release credit once; a return never credits; a child, another household, an over-large or over-goal release and a stray capture are refused; an unanswered release is reconciled once or reopened; a definite refusal leaves the hold open; hold webhooks. Three more cover the simulated hold, reconciliation wording and the schema-17 upgrade.
-- `test/e2e/payment-holds.spec.mjs`: the page in example mode. Hold $40, release $25, hold and return $15, and a child is offered neither.
-- The whole unit suite passes with the feature present, so the existing checkout tests are unaffected.
+- `test/e2e/payment-holds.spec.mjs`: the page in example mode. Hold $40, release $25, hold and return $15, and a child is offered neither. Not yet seen fully green on the loaded development Mac; the hosted run on the hold pull request is the result to trust.
+- Every existing checkout, refund, webhook and access case still passes with the feature present. [The exact local counts and the one unrelated failure under load](VALIDATION.md#hold-first-then-release-or-return--november-10-2026).
 
 ## What only the owner can establish
 

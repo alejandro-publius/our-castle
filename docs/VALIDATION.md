@@ -1,5 +1,19 @@
 # Validation
 
+## Hold first, then release or return — November 10, 2026
+
+One branch, `claude/payment-holds-20261110`, built on the combined village and loading release below. [What it does and the rules it keeps](PAYMENT-HOLDS.md). It is opt-in: the existing checkout is unchanged and is still the default.
+
+**Every check here uses the fake PayPal sandbox or example mode.** No real sandbox order was held, captured or voided, and none of this is live PayPal evidence.
+
+- `test/unit/payment-holds.test.mjs`: **25 of 25 passed** on Node 26.0.0. Eleven cases run against both PayPal adapters (REST and the pinned Server SDK 2.5.0 with its transport replaced); three more cover the simulated hold, reconciliation wording and the upgrade from schema 17.
+- The last full local unit run with the feature present: 750 results, **747 passed, two existing skips, one failure**. Every existing checkout, refund, webhook and access-rule case passed. The one failure is an existing kit-solver case about bridge timeouts; it failed in both full runs on a heavily loaded Mac and passed when run on its own. The hosted unit jobs on the hold pull request decide whether that is only load.
+- The access guard that requires exactly one rule per route failed until both new routes had their adult rule.
+- Inventories were updated for schema 18 and 44 application tables in the six existing migration and access tests that list them.
+- `test/e2e/payment-holds.spec.mjs` (example mode, desktop): on one loaded Mac the journey reached the hold, the refused over-large release, the partial release and the second hold with every assertion passing, then ran out of its 150 s budget; a second attempt did not get past page start. **It has not been seen fully green locally.** Its hosted result is on the hold pull request and is the one to trust.
+
+Not established by any of this, and waiting on the owner: that the PayPal checkout button accepts an `AUTHORIZE` order, that a partial final capture returns the remainder to the payer, how long the sandbox honors a hold, and hold webhooks (which need a public endpoint). Schema 18 has been applied only to disposable fixtures; the saved apps are not on this source.
+
 ## Combined village and loading release — November 10, 2026
 
 One branch, `claude/village-loading-finish-20261110`: a normal merge of the first-use village path (PR #81, `9bda275`) and the dragon loading scene (PR #80, `84470b2`), both built on the shared-fund integration (PR #79, `1f76ba6`), plus the corrections below. [What it contains and what remains](RELEASE-READINESS.md#current-source-release-shared-village-and-loading).
