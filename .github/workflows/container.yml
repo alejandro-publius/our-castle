@@ -1,0 +1,47 @@
+# Builds the keyless example demo's container image (see Dockerfile) and checks that it starts and serves the example.
+# Nothing is pushed, published or deployed, and no repository or provider secret is used.
+name: Container demo
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: container-demo-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  image:
+    name: Build the image and start the demo
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Build the image
+        run: docker build -t our-castle-demo .
+      - name: Start it as the Dockerfile's usage line does
+        run: docker run -d --name demo -p 127.0.0.1:8080:8080 our-castle-demo
+      - name: The example answers through the published port
+        run: |
+          for attempt in $(seq 1 30); do
+            if curl -fsS http://localhost:8080/api/status > status.json; then break; fi
+            sleep 1
+          done
+          grep -q '"mode":"example"' status.json
+          curl -fsS http://localhost:8080/ | grep -q '<title>Our Castle</title>'
+          curl -fsS http://localhost:8080/api/state | grep -q '"village-fund"'
+          # The browser libraries served out of node_modules, and the page's own code and art, are all in the image.
+          for path in vendor/ag-grid/ag-grid-community.min.js vendor/ag-studio/ag-studio.min.js vendor/three/three.module.js src/app/main.js app.css; do
+            curl -fsS -o /dev/null "http://localhost:8080/$path"
+          done
+          # Publishing the port does not publish the app: a request that names another host is refused.
+          test "$(curl -s -o /dev/null -w '%{http_code}' -H 'Host: demo.example.test:8080' http://localhost:8080/api/status)" = 403
+      - name: The demo's own log
+        if: always()
+        run: docker logs demo

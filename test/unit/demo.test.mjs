@@ -1,7 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { spawn } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { once } from 'node:events';
+import http from 'node:http';
+import net from 'node:net';
 import { mkdtempSync, writeFileSync, readFileSync, readdirSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -68,4 +70,25 @@ test('two fresh demo sessions keep independent progress through refresh and clos
     await a.close(); await a.close();
     assert.equal((await get(b.url + '/api/state')).progress.progressCents, 6000);
   } finally { await a.close(); await b.close(); }
+});
+
+test('the demo listens elsewhere only when its own command line says so, and still answers only as this computer', { timeout: 30_000 }, async () => {
+  // A setting that cannot be used is refused before anything starts; so is an option the demo does not know.
+  for (const args of [['--port=abc'], ['--port=70000'], ['--port=-1'], ['--host='], ['--village-fund', '--nope']]) {
+    const run = spawnSync(process.execPath, [script, ...args], { encoding: 'utf8', timeout: 20_000 });
+    assert.equal(run.status, 2, args.join(' '));
+    assert.equal(run.stdout, '', args.join(' '));
+  }
+  // A container gives the demo a fixed port (and, there, all of the container's interfaces). Here: a free port, loopback.
+  const port = await new Promise((resolve) => { const probe = net.createServer().listen(0, '127.0.0.1', () => { const { port: free } = probe.address(); probe.close(() => resolve(free)); }); });
+  const demo = await startDemo({ port });
+  try {
+    assert.equal(demo.url, `http://127.0.0.1:${port}`);
+    assert.equal((await get(demo.url + '/api/status')).payments.mode, 'example');
+    // Wherever it listens, a request that names another host is refused: publishing the port does not publish the app.
+    const status = await new Promise((resolve, reject) => {
+      http.get({ host: '127.0.0.1', port, path: '/api/status', headers: { Host: `demo.example.test:${port}` } }, (res) => { res.resume(); resolve(res.statusCode); }).on('error', reject);
+    });
+    assert.equal(status, 403);
+  } finally { await demo.close(); }
 });
