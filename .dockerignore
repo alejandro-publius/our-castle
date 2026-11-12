@@ -1,0 +1,30 @@
+# The image holds what `npm run demo` serves and runs: server/, scripts/, src/, assets/, vendor/, references/ and the page.
+.git
+.github
+.claude
+node_modules
+docs
+test
+solver
+test-results
+playwright-report
+artifacts
+data
+*.sqlite
+*.sqlite-*
+*.log
+.env
+.env.*
+.DS_Store
+Dockerfile
+.dockerignore
+# Notes for people and tools working on the repository, not for the running demo. LICENSE and NOTICE.md stay with the art.
+AGENTS.md
+CLAUDE.md
+CLAUDE-START.md
+START-HERE-RACHEL.md
+README.md
+*.command
+playwright.config.mjs
+postman
+render.yaml

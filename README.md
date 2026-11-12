@@ -16,7 +16,7 @@ The illustrated journal has four chaptersâ€”House, Plan, Contribute and Ledgerâ€
 
 | | |
 | --- | --- |
-| **Run it** | One command, no keys and no account: [`npm run demo -- --village-fund`](#try-it-locally) on Node.js 22.16+. The families, shops and prices are invented and the payments are simulated. |
+| **Run it** | One command, no keys and no account: [`npm run demo -- --village-fund`](#try-it-locally) on Node.js 22.16+, or the same demo [in a container](#try-it-locally). The families, shops and prices are invented and the payments are simulated. |
 | **Checked on every change** | [Ten hosted jobs](.github/workflows/release-checks.yml): 791 unit tests on Node 22.16, 24 and 26, the Rust solver's own tests, and 126 browser tests across desktop and a 390 px phone, from a suite of 428. |
 | **Money rules tested past the cases anyone wrote down** | Every run plays 260 [seeded random histories](docs/PAYMENT-HOLDS.md#random-histories): holds, releases in steps, returns, lost answers, repeated deliveries, and [five families sharing one fund](docs/VILLAGE-FUNDS.md#random-histories). After every step the ledger must equal what the fake PayPal really took, and no family may be shown another's private amounts. They found two gaps in the hold path; both are closed. |
 | **PayPal** | Orders v2 and Payments v2 through the pinned Server SDK: pay at once, or hold first (authorize, capture in up to three steps, void, reauthorize). Sandbox only: the code has no path to live endpoints. |
@@ -45,6 +45,16 @@ npm ci
 npm run demo -- --village-fund
 # Open the local URL printed in the terminal.
 ```
+
+No Node.js 22.16? The same demo runs in a container, with nothing else to install:
+
+```sh
+docker build -t our-castle .
+docker run --rm -p 127.0.0.1:8080:8080 our-castle     # add --family-trip for the planning example
+# Open http://localhost:8080
+```
+
+It is the same keyless, in-memory demo, and it answers only as `localhost`: publishing the port does not publish the app. [A hosted job](.github/workflows/container.yml) builds the image and starts it on every change.
 
 Five invented families have contributed **$200 toward a $400 class trip**. In the parchment fund sheet, approve **$40**, see the shared schoolhouse advance, then inspect the contribution in Records. Each family's private savings stay separate. Visit the square to see opted-in castle appearances; people appear only after joining. Everything in this runner is simulated, with no credentials or provider traffic. [One-minute route, implementation and remaining setup](docs/VILLAGE-DEMO.md).
 
