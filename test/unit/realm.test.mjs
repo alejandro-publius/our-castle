@@ -121,3 +121,25 @@ test('the folklore towers use existing milestones; the hidden discoveries have n
   for(const d of REALM_LEGENDS)assert.ok(riverAt(d.x,d.z).depth < -3,'hidden discoveries stay on dry ground');
   assert.deepEqual(REALM_ROUTE[20],{x:47,z:-16.3});
 });
+
+test('riverAt agrees exactly with a plain scan of every segment, across the board and beyond its edges', async () => {
+  const { riverAt, RIVER_PATHS, REALM_BOUNDS } = await import('../../src/core/realm.js');
+  // The straightforward version the fast one replaced: every segment, first deepest wins.
+  const plain = (x, z) => {
+    let best = { distance: Infinity, halfWidth: 0, river: null, depth: -Infinity };
+    for (const river of RIVER_PATHS) for (let i = 1; i < river.path.length; i++) {
+      const [ax, az] = river.path[i - 1], [bx, bz] = river.path[i], dx = bx - ax, dz = bz - az;
+      const t = Math.max(0, Math.min(1, ((x - ax) * dx + (z - az) * dz) / (dx * dx + dz * dz || 1)));
+      const distance = Math.hypot(x - ax - dx * t, z - az - dz * t);
+      if (river.halfWidth - distance > best.depth) best = { distance, halfWidth: river.halfWidth, river: river.id, depth: river.halfWidth - distance };
+    }
+    return best;
+  };
+  let checked = 0;
+  for (let x = REALM_BOUNDS.minX - 30; x <= REALM_BOUNDS.maxX + 30; x += 1.7) for (let z = REALM_BOUNDS.minZ - 30; z <= REALM_BOUNDS.maxZ + 30; z += 1.3) {
+    assert.deepEqual(riverAt(x, z), plain(x, z), `at ${x}, ${z}`); checked++;
+  }
+  // On the centre lines and at the confluences, where the wider river must win.
+  for (const river of RIVER_PATHS) for (const [x, z] of river.path) { assert.deepEqual(riverAt(x, z), plain(x, z)); checked++; }
+  assert.ok(checked > 60000);
+});
