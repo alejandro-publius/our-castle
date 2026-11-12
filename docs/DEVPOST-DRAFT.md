@@ -33,8 +33,8 @@ Our Castle records goal progress. It is not a bank account or a savings product.
 - **The server owns the amounts.** Every adult decision is recorded before PayPal is asked. A capture counts only if it matches that decision in amount, currency and reference, and it counts once. The database itself refuses a release larger than what is still held.
 - **A Rust kit solver.** A bounded native solver searches complete kits in exact integer cents and weights. The server checks every answer, and a JavaScript reference gives the same results where Rust is not built. We make no speed claim.
 - **Cohere, optional.** Rerank can order kits that already fit by one fixed preference, from public listing titles and shop names only. Budget, quantities and kept choices stay deterministic.
-- **AG Grid and AG Studio.** They power the Treasury: searchable records, the next-area widget and the weekly plan.
-- **Also:** Channel3 for product listings, Anthropic Claude for schedules and a read-only steward that cannot move money, an optional OpenAI photo reader for a kit list, APIMatic context for the PayPal SDK work, and Node.js, SQLite, Three.js and original pixel art underneath.
+- **AG Grid and AG Studio.** They power the Treasury: searchable records, the next-area widget, the weekly plan and every open PayPal hold on a guarantee timeline, totalled by Studio's data engine. Studio's Agent Framework runs the steward, which can say which holds end soonest.
+- **Also:** Channel3 for product listings, including a one-step draft of a whole kit's listings, Anthropic Claude for schedules and a read-only steward that cannot move money, an optional OpenAI photo reader for a kit list, APIMatic context for the PayPal SDK work, and Node.js, SQLite, Three.js and original pixel art underneath.
 
 No AI moves money or approves anything, and an AI-proposed schedule is stored only if it equals the server's own arithmetic. Adults decide. Each money rule is listed with the test that fails if it is broken, in the repository's review guide (`docs/JUDGE-HANDOFF.md`).
 
