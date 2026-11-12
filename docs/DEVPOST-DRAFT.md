@@ -1,6 +1,6 @@
 # Devpost entry: ready-to-paste skeleton — not submitted
 
-Written November 10, 2026 (Pacific) against `main` at `97c084a`. Nothing has been submitted and no form has been filled.
+Written November 10, 2026 (Pacific) and brought up to date on November 12 against `main` at `fc30cb8`. Nothing has been submitted and no form has been filled.
 
 This is the short form, one block per Devpost field. The longer copy, with every claim linked to its evidence, is [SUBMISSION-DRAFT.md](SUBMISSION-DRAFT.md). If the two disagree, that file and [PAYMENT-HOLDS.md](PAYMENT-HOLDS.md) are right and this one is out of date.
 
