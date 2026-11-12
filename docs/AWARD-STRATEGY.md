@@ -71,4 +71,4 @@ Ignored source snapshots, links, retrieval timestamps and hashes are in `test-re
 
 The older clean-install audit reported 12 advisory entries in the toolkit graph. That is not an exploit finding; assess compatible upstream fixes before deployment without force-downgrading the pinned toolkit. Historical audit files remain ignored at `test-results/main-sync/`.
 
-The Render Blueprint uses blank provider keys, disposable example data and no automatic deployment. Do not upload the owner's `.env`, household or rehearsal data.
+The Render Blueprint starts the keyless family-trip demo under the service's own public name (`--public-host`), names no provider key, uses disposable invented data and has automatic deployment off. It has not been deployed. Do not upload the owner's `.env`, household or rehearsal data.
