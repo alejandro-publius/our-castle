@@ -196,6 +196,8 @@
           <p class="chapter-kicker">A shared adventure</p>
           <h3 id="plan-heading" tabindex="-1">Plan the journey</h3>
           <p class="lede" id="planner-lede"></p>
+          <!-- Who does this chapter's work in this session, and where that maker's mark stands in the woodland. -->
+          <p class="maker-mark" id="maker-plan" hidden></p>
           <!-- The family project's current stage and the one way to it from the journal. Camera only; it writes nothing. -->
           <p class="plan-project" id="plan-project"><span id="plan-project-stage"></span><button type="button" class="link-button" id="visit-campsite">Visit campsite</button></p>
           <!-- An authored example only (npm run demo -- --family-trip): what is invented, and one way to the planning below.
@@ -380,6 +382,7 @@
         <section class="panel parchment" id="panel-give" role="tabpanel" aria-labelledby="tab-give" hidden>
           <p class="chapter-kicker">One step closer</p>
           <h3 id="give-heading" tabindex="-1">Contribute</h3>
+          <p class="maker-mark" id="maker-give" hidden></p>
           <div id="village-story-intro" hidden>
             <p>Alder is gathering books and shelves for a shared village reading room. Help move the project one step closer.</p>
             <p class="fine">Invented families · simulated contributions. No money is sent or held.</p>
@@ -408,6 +411,7 @@
         <section class="panel parchment" id="panel-ledger" role="tabpanel" aria-labelledby="tab-ledger" hidden>
           <p class="chapter-kicker">The family record</p>
           <h3>Treasury</h3>
+          <p class="maker-mark" id="maker-ledger" hidden></p>
 
           <!-- One next-area milestone, from the server's own progression (an AG Studio custom widget; plain fallback). -->
           <section class="ledger-block treasury-next-block" aria-labelledby="next-area-title">

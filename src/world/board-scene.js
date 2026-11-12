@@ -15,7 +15,7 @@ import { createWinterSleigh } from './winter-sleigh.js';
 import { FAMILY_PROJECT_SITE, projectSite } from '../core/family-project.js';
 import { PLAN_GROUND } from '../core/kit-preview.js';
 import { REALM_SIZE, REALM_BOUNDS, REALM_DISTRICTS, REALM_LEGENDS, REALM_BRIDGES, REALM_ROUTE, homeDistrict, districtById, legendById, viewLocation, journeyLeg, journeyPosition } from '../core/realm.js';
-import { MOUNTAIN_PEAKS } from '../core/realm-terrain.js';
+import { MOUNTAIN_PEAKS, PAYPAL_HILLSIDE } from '../core/realm-terrain.js';
 import { createVillageSquare, VILLAGE_FRAME } from './village-square.js';
 
 // The playable woodland board. It extends the original art-preview vocabulary (MiniBuilder,
@@ -105,9 +105,9 @@ export function createBoardScene(container, { reducedMotion = false, isOccluded 
   const grazers = [];
   const rotators = [];
   // `free` is an explorer's own frame (look target and scale) once the compass is used; `exploring` makes drags pan.
-  const view = { angle: 0.66, zoom: 1, panX: 0, panY: 0, worldPerPixel: null, focus: null, crossing: null, free: null, exploring: false };
+  const view = { angle: 0.66, zoom: 1, panX: 0, panY: 0, worldPerPixel: null, focus: null, crossing: null, free: null, exploring: false, close: null };
   // Explicit navigation (an area, a legend, Visit, Whole realm, Reset view, an unlock crossing) reframes and ends exploring.
-  const framed = { free: null, exploring: false };
+  const framed = { free: null, exploring: false, close: null };
   let viewRevision = 0;
   let shownFrame = null; // the last frame drawn: the middle of the canvas in camera space, and its height at zoom 1
   const pointers = new Map();
@@ -524,7 +524,8 @@ export function createBoardScene(container, { reducedMotion = false, isOccluded 
       viewHeight = view.free.height / view.zoom; cx = 0; cy = 0;
     } else {
       let minX = Infinity; let maxX = -Infinity; let minY = Infinity; let maxY = -Infinity;
-      const focused = focusLocation(), bridge = REALM_BRIDGES.find((b) => b.id === view.crossing);
+      // `close` frames a small spot inside the focused district (a maker's sign) instead of the whole district.
+      const focused = view.close ?? focusLocation(), bridge = REALM_BRIDGES.find((b) => b.id === view.crossing);
       const places = bridge ? [districtById(bridge.from), districtById(bridge.to)] : focused ? [focused] : [];
       const frame = places.length ? places.flatMap((d) => [-1,1].flatMap(x=>[-1,1].flatMap(z=>[-2,d.height].map(y=>new THREE.Vector3(d.x+x*(d.width/2+2),y,d.z+z*(d.depth/2+2)))))) : FRAME_POINTS;
       for (const point of frame) {
@@ -738,6 +739,16 @@ export function createBoardScene(container, { reducedMotion = false, isOccluded 
     focusDistrict(id) {
       if(!districtById(id))return;
       viewRevision++; Object.assign(view,framed,{focus:id,crossing:null,zoom:1,panX:0,panY:0});updateCamera();resize();
+    },
+    /**
+     * Camera only: a maker's sign, framed closely enough to read. The three boards stand in districts, which stay the
+     * focused place; PayPal's wordmark stands alone on a hillside, outside every district.
+     */
+    focusSign(id) {
+      const sign = id === 'paypal' ? { district: null, x: PAYPAL_HILLSIDE.x, z: PAYPAL_HILLSIDE.z, width: PAYPAL_HILLSIDE.width * .55 } : sponsors?.debug().find((s) => s.id === id);
+      if (!sign) return;
+      viewRevision++; Object.assign(view, framed, { focus: sign.district, crossing: null, zoom: 1, panX: 0, panY: 0,
+        close: { x: sign.x, z: sign.z, width: sign.width * 2.4, depth: sign.width * 1.6, height: 7 } }); updateCamera(); resize();
     },
     focusLegend(id) {
       if(!legendById(id)&&id!==FAMILY_PROJECT_SITE.id)return;

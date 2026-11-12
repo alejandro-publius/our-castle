@@ -57,6 +57,12 @@ test('a held contribution counts nothing until an adult releases it, here in two
   const trail = record.locator('.hold-trail');
   await expect(trail).toHaveText('Held $40.00');
   await expect(record.locator('.hold-note')).toContainText('The simulated three-day guarantee lasts until');
+  // The Treasury lists it too, apart from this week's recorded money: what is still held, and its guarantee.
+  const heldPanel = page.locator('#treasury-next .treasury-holds');
+  await expect(heldPanel).toContainText('Held, not counted$40.00 in 1 hold');
+  await expect(heldPanel).toContainText('$40.00 of $40.00 still held · simulated');
+  await expect(heldPanel).toContainText('The simulated guarantee lasts 3 more days');
+  await expect(page.locator('#treasury-next .treasury-week-row.recorded')).toContainText('$0.00');
   await record.locator('[data-hold="release"]').click();
   const releaseAmount = record.locator('.hold-amount'), confirmRelease = record.locator('[data-hold="confirm-release"]');
   await expect(releaseAmount).toHaveValue('40.00');
@@ -72,6 +78,18 @@ test('a held contribution counts nothing until an adult releases it, here in two
   await expect(page.locator('#progress-amount')).toHaveText('$70.00');
   await expect(record).toContainText('Partly released — part counted');
   await expect(trail).toHaveText('Held $40.00 → Released $10.00 → $30.00 still held');
+  await expect(heldPanel).toContainText('$30.00 in 1 hold'); // the Treasury follows the release without a reload
+  await expect(heldPanel).toContainText('$30.00 of $40.00 still held');
+  // The steward answers about what is still held from the same saved records: one read-only request, no decision.
+  await page.locator('#steward-block > summary').click();
+  await page.getByRole('button', { name: 'Open holds?', exact: true }).click();
+  const answer = page.locator('#steward-answer');
+  await expect(answer.locator('.verification-title')).toHaveText('Open holds');
+  await expect(answer.locator('.steward-text')).toContainText('1 hold is open, with $30.00 still held. None of it counts toward the goal until an adult releases it. $30.00 of $40.00 (simulated): The simulated guarantee lasts 3 more days');
+  await expect(answer.locator('.steward-text')).toContainText('This reads saved records only; no provider was contacted.');
+  await expect(answer.locator('[data-open-receipt]')).toHaveText(['Open receipt · $30.00 · Held, guaranteed']);
+  await expect.poll(() => page.evaluate(() => window.__ourCastle.treasury().agent)).toMatchObject({ state: 'idle', completed: 1 });
+  expect((await read(request)).progress.progressCents).toBe(7000);
 
   // ---- Then a final release of part of the rest: what it does not take goes back ----
   await record.locator('[data-hold="release"]').click();
@@ -83,6 +101,7 @@ test('a held contribution counts nothing until an adult releases it, here in two
   await expect(page.locator('#progress-amount')).toHaveText('$85.00');
   await expect(record).toContainText('Completed — counted');
   await expect(trail).toHaveText('Held $40.00 → Released $10.00 → Released $15.00 → Returned $15.00');
+  await expect(heldPanel).toBeHidden(); // nothing is held any more, so the Treasury says nothing about holds
   await expect(record.locator('[data-hold]')).toHaveCount(0);
   now = await read(request);
   expect(holds(now)).toEqual([[4000, 'completed', 'released', 1500]]);
@@ -118,7 +137,7 @@ test('a held contribution counts nothing until an adult releases it, here in two
   expect(holds(now).sort()).toEqual([[1000, 'held', 'held', null], [1500, 'returned', 'returned', null], [4000, 'completed', 'released', 1500]]);
   expect(now.progress.progressCents).toBe(8500);
   expect(now.ledger.goalEntries.length).toBe(before.ledger.goalEntries.length + 2); // one credit per release: $10.00, then $15.00
-  expect(writes).toEqual(['/api/example/contributions', '/api/contributions/ID/release', '/api/contributions/ID/release', '/api/example/contributions', '/api/contributions/ID/return', '/api/example/contributions']);
+  expect(writes).toEqual(['/api/example/contributions', '/api/contributions/ID/release', '/api/steward', '/api/contributions/ID/release', '/api/example/contributions', '/api/contributions/ID/return', '/api/example/contributions']);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   expect(errors).toEqual([]); expect(outside).toEqual([]);
 });

@@ -38,7 +38,43 @@ export function treasuryFor(state, now = new Date().toISOString(), acceptedPlan 
     thresholdCents: group[0].thresholdCents, progressCents: group[0].progressCents, remainingCents: group[0].remainingCents,
     currency: goal.currency,
   } : null;
-  return { areas, nextArea, week: treasuryWeek(state, now, acceptedPlan) };
+  return { areas, nextArea, week: treasuryWeek(state, now, acceptedPlan), holds: treasuryHolds(state, now) };
+}
+
+const DAY_MS = 86_400_000;
+/** Held and not ended: money an adult can still release or return. A hold not placed yet, or one that is over, is not listed. */
+const OPEN_HOLD = new Set(['held', 'releasing', 'returning']);
+/** The Treasury's rows: each open hold with the Ledger record that opens it. */
+export function treasuryHolds(state, now = new Date().toISOString()) {
+  const trail = ledgerTrail(state);
+  return openHolds(state.contributions, now).map((h) => ({ ...h, recordId: trail.find((r) => r.contribution?.id === h.id)?.id ?? null }));
+}
+
+/**
+ * One row per open hold, soonest to expire first, from the server's own records of it: what is still held, and where
+ * `now` falls between the day it was placed and the day PayPal lets it go. Shares are fractions of that span, for a
+ * timeline. Nothing here is counted as progress.
+ * @param contributions the contribution views of one goal
+ */
+export function openHolds(contributions, now = new Date().toISOString()) {
+  const at = Date.parse(now);
+  const wholeDays = (until) => (Number.isFinite(until) ? Math.max(0, Math.ceil((until - at) / DAY_MS)) : null);
+  return contributions.filter((c) => c.hold && OPEN_HOLD.has(c.hold.status)).map((c) => {
+    const h = c.hold, placed = Date.parse(c.createdAt), honor = Date.parse(h.honorUntil ?? ''), expires = Date.parse(h.expiresAt ?? '');
+    const span = expires - placed, share = (t) => Math.min(1, Math.max(0, (t - placed) / span));
+    const timed = Number.isFinite(span) && span > 0;
+    return {
+      id: c.id, simulated: Boolean(c.simulated),
+      heldCents: h.heldCents, releasedCents: h.releasedCents, remainingCents: h.remainingCents, currency: c.currency,
+      phase: h.phase, pending: h.pending ?? null, extended: Boolean(h.extendedAt), canExtend: Boolean(h.canExtend),
+      honorUntil: h.honorUntil ?? null, expiresAt: h.expiresAt ?? null,
+      guaranteedDays: wholeDays(honor), daysLeft: wholeDays(expires),
+      // The three-day guarantee as a stretch of the timeline (after an extension, the new one), and how far along today is.
+      elapsedShare: timed ? share(at) : null,
+      guaranteeFromShare: timed && Number.isFinite(honor) ? share(honor - 3 * DAY_MS) : null,
+      guaranteeToShare: timed && Number.isFinite(honor) ? share(honor) : null,
+    };
+  }).sort((a, b) => (a.expiresAt ?? '9999').localeCompare(b.expiresAt ?? '9999') || a.id.localeCompare(b.id));
 }
 
 /** Calendar week, Monday–Sunday UTC, matching the planner's date-only fields. Starting reports are never deposits. */

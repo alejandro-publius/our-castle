@@ -6,6 +6,7 @@
 // The existing steward can explicitly start a scoped, headless Agent Framework run through askSteward.
 import { createTreasuryAgent } from './treasury-agent.js';
 import { rowChanges, hasChanges } from '../core/row-updates.js';
+import { days, holdLine } from '../core/hold-line.js';
 
 const START_WAIT_MS = 6000;
 let loading = null;
@@ -30,7 +31,7 @@ const el = (tag, cls, text) => { const n = document.createElement(tag); if (cls)
 export function drawNextArea(root, next, context) {
   const { formatMoney, onVisit } = context;
   const focused = root.contains(document.activeElement) ? document.activeElement?.dataset.action : null;
-  const signature = JSON.stringify([next, context.week?.(), context.weekValues]);
+  const signature = JSON.stringify([next, context.week?.(), context.weekValues, context.holds?.(), context.holdValues]);
   if (root.dataset.renderKey === signature) return;
   root.dataset.renderKey = signature;
   const openDetails = root.querySelector('.treasury-week details')?.open;
@@ -40,7 +41,7 @@ export function drawNextArea(root, next, context) {
   };
   if (!next) {
     const done = el('p', 'next-area-done', 'Every milestone area is open.');
-    root.replaceChildren(done, drawWeek(context));
+    root.replaceChildren(done, drawWeek(context), drawHolds(context));
     restore();
     return;
   }
@@ -70,8 +71,47 @@ export function drawNextArea(root, next, context) {
   picture.src = `assets/area-cards/${next.id}.png`; picture.alt = ''; picture.width = 88; picture.height = 64;
   const main = el('div', 'next-area-main');
   main.append(picture, text, visit);
-  root.replaceChildren(main, drawWeek(context));
+  root.replaceChildren(main, drawWeek(context), drawHolds(context));
   restore();
+}
+
+/**
+ * Open holds, under the week: money an adult has held and not yet released or returned. Each has a timeline from the
+ * day it was placed to the day it must end, with the three-day guarantee marked and a tick for today. Used by the Studio
+ * widget, whose data engine supplies the totals, and by the plain fallback, which adds up the same server rows.
+ */
+function drawHolds({ holds, holdValues, formatMoney, onRecord }) {
+  const rows = holds?.() ?? [];
+  const root = el('section', 'treasury-holds'); root.setAttribute('aria-label', 'Held, not counted');
+  if (!rows.length) { root.hidden = true; return root; }
+  const known = rows.map((r) => r.guaranteedDays).filter((n) => n !== null);
+  const totals = holdValues?.count ? holdValues : { count: rows.length, heldCents: rows.reduce((sum, r) => sum + r.remainingCents, 0), guaranteedDays: known.length ? Math.min(...known) : null };
+  const heading = el('div', 'treasury-week-head');
+  heading.append(el('strong', '', 'Held, not counted'), el('span', '', `${formatMoney(totals.heldCents)} in ${totals.count} ${totals.count === 1 ? 'hold' : 'holds'}`));
+  root.append(heading);
+  if (totals.count > 1 && totals.guaranteedDays !== null && totals.guaranteedDays !== undefined) {
+    root.append(el('p', 'fine', totals.guaranteedDays > 0 ? `Every one is guaranteed for at least ${days(totals.guaranteedDays)}.` : 'At least one is past its guarantee.'));
+  }
+  for (const h of rows.slice(0, 3)) {
+    const item = el('div', 'treasury-hold');
+    const amount = el('p'); amount.append(el('strong', '', formatMoney(h.remainingCents)), ` of ${formatMoney(h.heldCents)} still held${h.simulated ? ' · simulated' : ''}`);
+    item.append(amount);
+    if (h.elapsedShare !== null) {
+      const track = el('div', 'treasury-hold-track'); track.setAttribute('aria-hidden', 'true'); // the sentence below says the same
+      if (h.guaranteeToShare !== null) { const g = el('span', 'guarantee'); g.style.left = `${h.guaranteeFromShare * 100}%`; g.style.width = `${(h.guaranteeToShare - h.guaranteeFromShare) * 100}%`; track.append(g); }
+      const today = el('span', 'today'); today.style.left = `${h.elapsedShare * 100}%`; track.append(today);
+      item.append(track);
+    }
+    item.append(el('p', 'fine', holdLine(h)));
+    if (h.recordId) {
+      const open = el('button', 'link-button', 'Open this hold'); open.type = 'button'; open.dataset.action = `hold-${h.id}`;
+      open.addEventListener('click', () => onRecord?.(h.recordId));
+      item.append(open);
+    }
+    root.append(item);
+  }
+  if (rows.length > 3) root.append(el('p', 'fine', `The 3 that end soonest; all ${rows.length} are in the ledger.`));
+  return root;
 }
 
 function drawWeek({ week, weekValues, formatMoney, onRecord }) {
@@ -120,6 +160,12 @@ export const NEXT_AREA_QUERY = Object.freeze({
   filter: [{ field: { fieldId: 'areas.next', key: 'areas.next' }, operator: 'isTrue', value: null }],
 });
 
+// Open holds, totalled by Studio's data engine: how many, how much is still held, and the shortest guarantee left.
+const holdField = (name, aggregation, key = name) => ({ fieldId: `holds.${name}`, key, aggregation });
+export const HOLDS_QUERY = Object.freeze({
+  fields: [holdField('id', 'count', 'count'), holdField('remainingCents', 'sum', 'heldCents'), holdField('guaranteedDays', 'min'), holdField('daysLeft', 'min'), holdField('stamp', 'first')],
+});
+
 class NextAreaWidget {
   init(params) { this.params = params; this.root = el('div', 'next-area'); return this.render(); }
   getGui() { return this.root; }
@@ -128,17 +174,20 @@ class NextAreaWidget {
   async render() {
     const generation = this.generation = (this.generation ?? 0) + 1;
     const { widgetApi, context } = this.params;
-    const [response, weekly] = await Promise.all([
+    const [response, weekly, held] = await Promise.all([
       widgetApi.getData(NEXT_AREA_QUERY, { queryId: 'next-area' }),
       widgetApi.getData({ fields: ['plannedCents', 'netCents', 'stamp'].map((name) => ({ fieldId: `week.${name}`, key: name, aggregation: 'first' })) }, { queryId: 'this-week' }),
+      // If the engine cannot total the holds, the plaque still draws them and adds them up itself.
+      widgetApi.getData(HOLDS_QUERY, { queryId: 'holds' }).catch(() => ({ results: null })),
     ]);
-    if (response.replaced || weekly.replaced || generation !== this.generation) return;
+    if (response.replaced || weekly.replaced || held.replaced || generation !== this.generation) return;
     const row = response.results?.rows?.[0];
     const next = row && row.count > 0 ? {
       id: row.id, label: row.groupLabel, percent: row.percent, thresholdCents: row.thresholdCents,
       progressCents: row.progressCents, remainingCents: row.remainingCents, share: row.share,
     } : null;
-    drawNextArea(this.root, next, { ...context, weekValues: weekly.results?.rows?.[0] });
+    drawNextArea(this.root, next, { ...context, weekValues: weekly.results?.rows?.[0], holdValues: held.results?.rows?.[0] });
+    this.root.dataset.holdTotals = held.results?.rows?.[0]?.count ? 'ag-studio' : 'none';
     this.root.dataset.source = 'ag-studio';
     widgetApi.setDisplayState('displayed');
     context.rendered?.(next, this.root);
@@ -175,6 +224,24 @@ export const AREA_FIELDS = Object.freeze([
   { id: 'open', name: 'Open', format: 'booleanFormat', description: 'Opened by an earned server achievement.' },
   { id: 'next', name: 'Next', format: 'booleanFormat', description: 'Part of the lowest locked milestone group.' },
 ]);
+// Open holds as a third typed table. The descriptions are what Studio's framework reads about each column.
+export const HOLD_FIELDS = Object.freeze([
+  { id: 'id', name: 'Contribution', format: 'textFormat', description: 'The held contribution’s own reference on this server.' },
+  cents('heldCents', 'Held (cents)', 'The amount an adult approved holding. Held money is not goal progress.'),
+  cents('releasedCents', 'Released (cents)', 'The part an adult has released so far; only this part counts toward the goal.'),
+  cents('remainingCents', 'Still held (cents)', 'Held and neither released nor returned. An adult may release or return it.'),
+  { id: 'phase', name: 'Guarantee', format: 'textFormat', description: 'guaranteed, ending (its last day), unguaranteed (PayPal may still capture but no longer promises), expired or unknown.' },
+  { id: 'guaranteedDays', name: 'Guaranteed days left', format: 'integerFormat', description: 'Whole days left of the three-day guarantee; zero once it has ended.' },
+  { id: 'daysLeft', name: 'Days left', format: 'integerFormat', description: 'Whole days until the hold must end, 29 days after it was placed.' },
+  { id: 'extended', name: 'Extended', format: 'booleanFormat', description: 'An adult has extended this hold once, the most allowed.' },
+  { id: 'simulated', name: 'Simulated', format: 'booleanFormat', description: 'An example-mode hold; no PayPal authorization exists.' },
+  { id: 'stamp', name: 'Revision', format: 'textFormat', description: 'Local revision of all open holds; refreshes the plaque when totals happen to stay equal.' },
+]);
+const holdRows = (state) => {
+  const holds = state.treasury.holds ?? [], stamp = JSON.stringify(holds);
+  return holds.map((h) => ({ id: h.id, heldCents: h.heldCents, releasedCents: h.releasedCents, remainingCents: h.remainingCents, phase: h.phase,
+    guaranteedDays: h.guaranteedDays, daysLeft: h.daysLeft, extended: h.extended, simulated: h.simulated, stamp }));
+};
 export const AREA_EXPRESSIONS = Object.freeze([{
   id: 'shareOfThreshold', name: 'Share of threshold', format: 'percentageFormat', isMeasure: false,
   description: 'Progress divided by the threshold for each area (1 = threshold reached). Access comes from the server open flag; keepsakes can remain open after a refund.',
@@ -188,6 +255,8 @@ const dataFor = (state) => ({
       { id: 'id', format: 'textFormat' }, { id: 'stamp', format: 'textFormat', description: 'Local week record revision; refreshes drill-in links when totals happen to stay equal.' }, cents('plannedCents', 'Planned', 'Accepted plan amounts due this calendar week, or null when no accepted plan.'),
       cents('netCents', 'Recorded', 'Contributions minus refunds recorded this UTC week; excludes starting reports, bills, gifts and uncredited attempts.'),
     ] },
+    { id: 'holds', name: 'Open holds', description: 'Contributions held first and not yet fully released or returned. None of this money counts toward the goal.',
+      data: holdRows(state), fields: HOLD_FIELDS, transactions: 'all', primaryKeyField: 'id' },
   ],
   expressions: AREA_EXPRESSIONS,
 });
@@ -211,7 +280,7 @@ export function createTreasury(container, { formatMoney, onVisit, onRecord, getL
   const status = { source: 'pending', licensed: false, error: null, next: undefined, transactions: 0 };
   // Size the Ledger's container to the drawn milestone (names wrap on phones). Studio itself is not re-laid out.
   const fit = (root) => { const height = root.offsetHeight; if (height > 0 && container.style.height !== `${height}px`) container.style.height = `${height}px`; };
-  const context = { formatMoney, onVisit, onRecord, week: () => latest?.treasury.week, rendered: (next, root) => { status.next = next; requestAnimationFrame(() => fit(root)); } };
+  const context = { formatMoney, onVisit, onRecord, week: () => latest?.treasury.week, holds: () => latest?.treasury.holds ?? [], rendered: (next, root) => { status.next = next; requestAnimationFrame(() => fit(root)); } };
   const resize = new ResizeObserver(() => { const root = container.querySelector('.next-area'); if (root && studio) fit(root); });
   resize.observe(container);
   container.addEventListener('toggle', () => { const root = container.querySelector('.next-area'); if (root) requestAnimationFrame(() => fit(root)); }, true);
@@ -238,7 +307,7 @@ export function createTreasury(container, { formatMoney, onVisit, onRecord, getL
       container.dataset.source = 'ag-studio';
       container.style.height = '84px'; // until the first draw measures the real height
       const initial = latest;
-      applied = { areas: rowsFor(initial), week: weekRows(initial) };
+      applied = { areas: rowsFor(initial), week: weekRows(initial), holds: holdRows(initial) };
       studio = lib.createStudio(container, {
         mode: 'view',
         panels: { view: { left: [], right: [] } },
@@ -275,7 +344,7 @@ export function createTreasury(container, { formatMoney, onVisit, onRecord, getL
     flushing = (async () => {
       while (studio && !failed) {
         const target = latest;
-        const next = { areas: rowsFor(target), week: weekRows(target) };
+        const next = { areas: rowsFor(target), week: weekRows(target), holds: holdRows(target) };
         const changes = Object.keys(next).map((tableId) => ({ tableId, ...rowChanges(applied[tableId], next[tableId]) })).filter(hasChanges);
         if (!changes.length) break;
         await studio.getDataEngine().applyTransaction(changes);

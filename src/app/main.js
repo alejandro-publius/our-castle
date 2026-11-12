@@ -28,9 +28,10 @@ import { createVillageFund, villageMoney, villageRailLabel } from './village-fun
 import { scheduleLines } from '../core/family-choices.js';
 import { needSummary } from '../core/family-fit.js';
 import { catalogueOf } from '../core/catalogue.js';
+import { makerMarks } from '../core/makers.js';
 import { createTreasury } from './treasury.js';
 import { FAMILY_PROJECT_SITE, PROJECT_KINDS, projectKind, projectLabel, projectStage } from '../core/family-project.js';
-import { CONFIRMATION_HISTORY_QUESTION, NEEDS_CHECK_QUESTION, isLocalQuestion, isNeedsCheckQuestion } from '../core/steward-questions.js';
+import { CONFIRMATION_HISTORY_QUESTION, HOLDS_QUESTION, NEEDS_CHECK_QUESTION, isHoldsQuestion, isLocalQuestion, isNeedsCheckQuestion } from '../core/steward-questions.js';
 import { checkStatus } from '../core/check-status.js';
 import { createPlanCheck } from './plan-check.js';
 import { createKeeper } from './keeper.js';
@@ -561,10 +562,35 @@ function drawState(next, { animate = true, result = null } = {}) {
   renderPlan();
   renderGive();
   renderLedger();
+  renderMakers();
   renderTabs();
   renderFooter();
   villageFund?.render();
   bus.emit('state:applied', { result, added: added.map((r) => r.id) });
+}
+
+// ---------- who does the work ----------
+// One line under each chapter heading (src/core/makers.js), with a link to each maker's sign in the woodland. A link is
+// camera only. The line is rebuilt only when its words change, so a link keeps focus across refreshes.
+function renderMakers() {
+  if (!state) return;
+  const marks = makerMarks(state, { grid: $('#ledger-goal').dataset.grid, studio: Boolean($('.treasury-next-block [data-source="ag-studio"]')) });
+  for (const [chapter, mark] of Object.entries(marks)) {
+    const line = $(`#maker-${chapter}`);
+    line.hidden = !mark;
+    if (!mark) continue;
+    const key = JSON.stringify(mark);
+    if (line.dataset.key === key) continue;
+    line.dataset.key = key;
+    line.replaceChildren(`${mark.text} See `, ...mark.signs.flatMap((sign, i) => [i ? ' or ' : '',
+      h('button', { type: 'button', class: 'link-button', 'data-sign': sign.id, onclick: (e) => visitSign(sign, e) }, sign.label)]), '.');
+  }
+}
+// The district where the sign stands, then close enough to read it. PayPal's sign stands outside every district.
+function visitSign(sign, e) {
+  if (sign.district) visitDistrict(sign.district, e);
+  else { setJournalOpen(false, { focus: true }); $('.realm-map').dataset.focused = 'true'; revealRealm(null, { instant: e?.detail === 0 }); }
+  scene?.focusSign(sign.id);
 }
 
 // ---------- the family's next step ----------
@@ -2108,6 +2134,7 @@ function renderSteward() {
     suggestions.append(h('button', { type: 'button', 'data-question': STEWARD_SUGGESTIONS[0], 'aria-label': STEWARD_SUGGESTIONS[0] }, h('span', {}, 'Check last payment')));
     suggestions.append(h('button', { type: 'button', 'data-question': CONFIRMATION_HISTORY_QUESTION }, 'Last confirmation'));
     suggestions.append(h('button', { type: 'button', 'data-question': NEEDS_CHECK_QUESTION }, 'Needs a check?'));
+    suggestions.append(h('button', { type: 'button', 'data-question': HOLDS_QUESTION }, 'Open holds?'));
   }
   const disabled = !steward.available || ui.stewardBusy;
   for (const el of [$('#steward-form input'), $('#steward-ask')]) el.disabled = disabled;
@@ -2157,7 +2184,7 @@ function renderStewardAnswer(res) {
   box.hidden = false;
   box.replaceChildren(
     h('strong', { class: `verification-title ${matched ? 'verified' : ''}` },
-      local ? (res.kind === 'needs-check' ? 'PayPal checks' : 'Saved confirmation') : matched ? 'PayPal and ledger match' : focus ? 'Payment not yet verified' : 'House steward'),
+      local ? ({ 'needs-check': 'PayPal checks', holds: 'Open holds' }[res.kind] ?? 'Saved confirmation') : matched ? 'PayPal and ledger match' : focus ? 'Payment not yet verified' : 'House steward'),
     h('p', { class: 'steward-text' }, res.answer),
     // Receipts the local answer names: opening one only selects that record. The check itself stays a separate button.
     res.receipts?.length ? h('div', { class: 'actions receipt-links' }, ...res.receipts.map((r) =>
@@ -2356,6 +2383,8 @@ function renderFooter() {
 
 function bindEvents() {
   $('#journal-toggle').addEventListener('click', () => setJournalOpen($('#journey').hidden, { focus: true }));
+  // The ledger's grid and the Studio plaque load after the page is ready: say so once they have.
+  new MutationObserver(renderMakers).observe($('#panel-ledger'), { attributes: true, subtree: true, attributeFilter: ['data-grid', 'data-source'] });
   $('#close-journal').addEventListener('click', () => setJournalOpen(false, { focus: true }));
   $('#journey').addEventListener('keydown', (e) => { if (e.key === 'Escape' && !e.defaultPrevented) { e.preventDefault(); setJournalOpen(false, { focus: true }); } });
   $('.skip-link').addEventListener('click', (e) => { e.preventDefault(); setJournalOpen(true); $('#journey').focus(); });
@@ -2533,7 +2562,7 @@ function bindEvents() {
   $('#steward-suggestions').addEventListener('click', (e) => {
     const b = e.target.closest('[data-question]');
     // The "needs a check" question covers every record of this goal, so it is never focused on one order.
-    if (b) askSteward(b.dataset.question, isNeedsCheckQuestion(b.dataset.question) ? null : state.contributions.find((c) => !c.simulated && c.providerOrderId)?.providerOrderId ?? null);
+    if (b) askSteward(b.dataset.question, isNeedsCheckQuestion(b.dataset.question) || isHoldsQuestion(b.dataset.question) ? null : state.contributions.find((c) => !c.simulated && c.providerOrderId)?.providerOrderId ?? null);
   });
   $('#steward-form').addEventListener('submit', (e) => {
     e.preventDefault();
