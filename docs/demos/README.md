@@ -1,5 +1,18 @@
 # Demo clip provenance
 
+## Scripted capture of the locked shot list — November 11, 2026
+
+[`final-capture/record-demo.mjs`](final-capture/record-demo.mjs) drives the [locked shot list](../SUBMISSION-SHOTLIST.md) end to end in a hidden browser and writes one silent, captioned MP4 of about 2:10 at 1920×1080: the family-trip example (kit chosen, repaired, plan put in use, a $40 hold with $30 released), then the village fund ($200 to $240 of $400, the square, the records), then an end card with the repository address and the commit.
+
+```sh
+node docs/demos/final-capture/record-demo.mjs   # writes test-results/final-video/our-castle-demo-captioned.mp4
+```
+
+- **What is real:** every press, tick and typed amount goes through the page's own controls, in the two keyless examples. The families and prices are invented and the payments are simulated, as the page and the captions say.
+- **What the script adds:** the captions, the pointer ring and the end card. They are drawn over the page for the recording and are not part of the app. There is no narration.
+- **Where it goes:** `test-results/final-video/`, which Git ignores. No video file is committed and nothing is uploaded. Joining the two sessions needs `ffmpeg`; without it the raw recordings and their cut points are kept.
+- **First run:** recorded at the owner's request from `main` at `2fdce16`, 2:11 long. This is not the submitted video; the owner decides whether to use it, narrate over it or record their own.
+
 ## Recorded gameplay demo
 
 [17.60-second gameplay demo](gameplay/README.md), recorded from the actual game at `78033cc`. It shows Explore Royal Citadel, its court, night/rain and Return to your realm. Named destinations and unlock conditions replace the former art-tool wording. The existing example household, financial state and older clips are preserved. This source-pinned recording predates the later removal of the Rewards catalogue and future-tier tour.
