@@ -91,6 +91,7 @@ export const ROUTE_POLICIES = Object.freeze([
   ['POST', '/api/kit/listings', 'adult'],
   ['POST', '/api/kit/listings/remove', 'adult'],
   ['POST', '/api/kit/listings/refresh', 'adult'],
+  ['POST', '/api/kit/draft', 'adult'],
   ['POST', '/api/kit/compare', 'adult'],
   ['POST', '/api/kit/prefer', 'adult'],
   ['PUT', '/api/kit/choice', 'adult'],
