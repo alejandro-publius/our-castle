@@ -1,6 +1,6 @@
 {
-  "capturedAt": "2026-11-11T05:28:42Z",
-  "sourceCommit": "51865ee6e48f9bdaf7a2746820fa18f53a16c7f1",
+  "capturedAt": "2026-11-12T07:34:44Z",
+  "sourceCommit": "2fdce160856b79965b23854656616533ad7f1dec",
   "whatThisIs": "Five captures of two real running examples, taken by docs/screenshots/readme-demos-capture.mjs. village-fund-desktop-sheet.jpg and village-fund-desktop-square.png: npm run demo -- --village-fund after one simulated $40 contribution. payment-holds-1-hold-it-first.jpg, payment-holds-2-partly-released.jpg and payment-holds-3-trail.jpg: npm run demo with a simulated $40 hold, $10 released keeping the rest, then $15 released as the final release. The hold captures are crops of the journal; the third ends at the money trail.",
   "invented": "Every family, name, crest, amount and contribution shown. The five village families (Alder, Birch, Maple, Oak, Willow), their $200 of starting contributions and the class trip are the authored example. \"House of Fernhill\" was created for this capture.",
   "notShown": "No PayPal request of any kind: the contributions, the hold, both releases and the returned remainder are simulated by this server in example mode. No model, catalogue or ranking request. No human playtest and no physical device.",
