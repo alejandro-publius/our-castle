@@ -27,6 +27,14 @@
 .steps button:hover:not([aria-selected='true']) { background:#ebcd91; color:#332516; }
 .journey .panel { background:transparent; padding:22px 14px 26px; scrollbar-color:#927143 #e8ce98; }
 .journey .panel h3 { font-size:25px; text-wrap:balance; color:#3f2b17; }
+/* Founding the house is one press. Where the journal scrolls beside the map, its row stays at the foot of the journal
+   while the long form above it scrolls; the negative margins carry it across the panel's own padding, in the scrollbar
+   track's parchment tone. On a narrow screen the page itself scrolls and the row stays where it always was. */
+@media(min-width:801px) {
+  .house-submit { position:sticky; bottom:-26px; z-index:1; margin:16px -14px -26px; padding:10px 14px 14px; background:#e8ce98; border-top:1px solid #927143; }
+  .house-submit .actions { margin-top:0; }
+  .house-submit .form-status:empty { display:none; }
+}
 .journey .chapter-kicker { color:#785025; }
 .journey .chapter-intro,.journey .fine { color:#60482d; }
 .journey .journal-frontispiece,.journey .family-choices,.journey .kit-list,.journey .commitments,.journey .treasury-next,.journey .check { border-color:#a58049; }
