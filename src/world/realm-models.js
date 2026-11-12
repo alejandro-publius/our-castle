@@ -234,12 +234,15 @@ export function createRealmModels({ builder, part: addPart, models, colours: C }
   }
   function highlandPines(group){
     let count=0;
-    for(const [i,p] of MOUNTAIN_PEAKS.entries())for(let k=0;k<5;k++){
+    for(const [i,p] of MOUNTAIN_PEAKS.entries())for(let k=0;k<13;k++){
       const x=p.x+Math.sin(i*1.7+k*2.4)*p.rx*.72,z=p.z+Math.cos(i*2.1+k*1.8)*p.rz*.78;
       if(x<REALM_BOUNDS.minX+1||x>REALM_BOUNDS.maxX-1||z<REALM_BOUNDS.minZ+1||z>REALM_BOUNDS.maxZ-1)continue;
       const h=terrainElevation(x,z);
       if(h<1||h>p.height*.7||deepestClearing(x,z)>-2)continue;
-      forestTree(group,x,z,.75+hash(i,k)*.4,'pine',i+k,h);count++;
+      // The first five keep their places; the rest fill the bare slopes, every third as a grey outcrop instead of a pine.
+      if(k>4&&k%3===2){const s=1.6+hash(i,k)*1.6;rock(group,x,h+s*.3,z,s*1.5,s,s*1.1,C.stone);rock(group,x+s*.7,h+s*.2,z+s*.4,s*.8,s*.55,s*.7,F.course??C.stone);}
+      else forestTree(group,x,z,.75+hash(i,k)*.4,'pine',i+k,h);
+      count++;
     }
     return count;
   }

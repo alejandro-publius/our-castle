@@ -1,5 +1,23 @@
 # Validation
 
+## One real sandbox hold — November 12, 2026
+
+On November 12, 2026 one real PayPal sandbox hold of $25.00 was placed on `main` at `297abce`: $15.00 was released (one capture, not final) while the rest stayed held, and the remaining $10.00 was returned (a void, not a refund). The app's read of the same PayPal order answered that PayPal and the ledger agree, and goal progress moved from $60.00 to $75.00.
+
+**How it was done.** A new process on port 3030 ran `main` at `297abce` in sandbox mode with its own empty data folder; the saved apps on 3010 and 3021 were not touched. The order was created at 17:52 UTC. The owner approved the order as the buyer in the PayPal sandbox. The approval tab did not hand back to the page, so an assistant, at the owner's direction, sent the authorize, release and return requests to the app's own API rather than pressing the page's controls. PayPal authorized the $25.00 at 18:07 UTC, the $15.00 capture followed at 18:07, the void of the remaining $10.00 at 18:08, and the final read of the order at 18:08 returned `COMPLETED` with one completed $15.00 capture and no refund.
+
+**What the page then showed**, read from the running app: the record's trail **Held $25.00 → Released $15.00 → Returned $10.00**, the hold marked returned, the last check **PayPal and the ledger agree**, and progress of $75.00 toward $300.00 (25%).
+
+**What this establishes.** With the real sandbox, the server's hold path produced the three PayPal answers it had only seen from a fake: an authorization, a capture that is not final, and a void of the rest. The ledger counted $15.00 once and nothing before the release.
+
+**What it does not establish.**
+
+- **The page's own flow.** The PayPal approval tab did not return to the page (the cause was not investigated), so the PayPal button completing a hold, the two approval ticks and the release and return buttons were not pressed by a person in this run. They remain checked against a fake PayPal only ([#95](https://github.com/alejandro-publius/our-castle/pull/95)). This is a finding, not a pass.
+- An extension (reauthorization), a second or third release, an expired hold, a declined capture, or hold webhooks.
+- PayPal's own view of the order from the business account: no dashboard screenshot was taken. No screen recording was made.
+
+The raw answers and identifiers stay in a private folder outside Git. This entry was written from that run's summary and from the running app's state, not from a re-run.
+
 ## Sponsor tools used further, and a hostable example — November 12, 2026
 
 Seven pull requests, [#108](https://github.com/alejandro-publius/our-castle/pull/108) to [#114](https://github.com/alejandro-publius/our-castle/pull/114), merged at the owner's request. **Every check here uses example mode, invented listings or a fake PayPal.** No provider was called, nothing was deployed and no real sandbox hold has been made.

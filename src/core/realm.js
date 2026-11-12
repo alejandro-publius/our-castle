@@ -65,20 +65,56 @@ function sampleRiver(points, steps = 10) {
   return out;
 }
 export const RIVER_PATHS = Object.freeze(REALM_RIVERS.map((r) => Object.freeze({ id: r.id, halfWidth: r.halfWidth, path: Object.freeze(sampleRiver(r.points)) })));
+// Every segment of every river, flattened once: start, direction and 1 / length². The ground asks riverAt about each of
+// its vertices while the realm opens, so the loop below allocates nothing and takes a square root only for a segment
+// that could actually win.
+const RIVER_SEGMENTS = RIVER_PATHS.map((river) => {
+  const n = river.path.length - 1, data = new Float64Array(n * 5);
+  for (let i = 0; i < n; i++) {
+    const [ax, az] = river.path[i], [bx, bz] = river.path[i + 1], dx = bx - ax, dz = bz - az;
+    data.set([ax, az, dx, dz, dx * dx + dz * dz || 1], i * 5);
+  }
+  // Runs of sixteen segments with the box that holds them, so a far stretch of river is dismissed in one step.
+  const boxes = [];
+  for (let start = 0; start < n; start += 16) {
+    const end = Math.min(n, start + 16), xs = [], zs = [];
+    for (let i = start; i <= end; i++) { xs.push(river.path[i][0]); zs.push(river.path[i][1]); }
+    boxes.push(Math.min(...xs), Math.min(...zs), Math.max(...xs), Math.max(...zs), start * 5, end * 5);
+  }
+  return { id: river.id, halfWidth: river.halfWidth, data, boxes: Float64Array.from(boxes) };
+});
 /** Distance from (x, z) to the nearest river centre line, that river's half width, and how far inside the water the point is. */
 export function riverAt(x, z) {
-  let best = { distance: Infinity, halfWidth: 0, river: null, depth: -Infinity };
-  for (const river of RIVER_PATHS) {
-    const path = river.path;
-    for (let i = 1; i < path.length; i++) {
-      const [ax, az] = path[i - 1], [bx, bz] = path[i], dx = bx - ax, dz = bz - az;
-      const t = Math.max(0, Math.min(1, ((x - ax) * dx + (z - az) * dz) / (dx * dx + dz * dz || 1)));
-      const distance = Math.hypot(x - ax - dx * t, z - az - dz * t);
-      // Wider rivers win where channels meet, so confluences stay open water.
-      if (river.halfWidth - distance > best.depth) best = { distance, halfWidth: river.halfWidth, river: river.id, depth: river.halfWidth - distance };
+  // First, from the boxes alone: the answer is at least this deep, because some segment lies within its box's far corner.
+  let floor = -Infinity;
+  for (const river of RIVER_SEGMENTS) {
+    const b = river.boxes;
+    for (let k = 0; k < b.length; k += 6) {
+      const fx = Math.max(Math.abs(x - b[k]), Math.abs(x - b[k + 2])), fz = Math.max(Math.abs(z - b[k + 1]), Math.abs(z - b[k + 3]));
+      floor = Math.max(floor, river.halfWidth - Math.sqrt(fx * fx + fz * fz) * 1.000001 - 1e-9);
     }
   }
-  return best;
+  let distance = Infinity, halfWidth = 0, id = null, depth = -Infinity;
+  for (const river of RIVER_SEGMENTS) {
+    const data = river.data, width = river.halfWidth, b = river.boxes;
+    for (let k = 0; k < b.length; k += 6) {
+      // A box whose nearest edge is already too far cannot hold the answer, nor tie with it.
+      const gx = Math.max(b[k] - x, 0, x - b[k + 2]), gz = Math.max(b[k + 1] - z, 0, z - b[k + 3]);
+      if (width - Math.sqrt(gx * gx + gz * gz) * .999999 + 1e-9 < floor) continue;
+      for (let i = b[k + 4]; i < b[k + 5]; i += 5) {
+        const px = x - data[i], pz = z - data[i + 1], dx = data[i + 2], dz = data[i + 3];
+        const t = Math.max(0, Math.min(1, (px * dx + pz * dz) / data[i + 4]));
+        const ex = px - dx * t, ez = pz - dz * t, reach = width - depth;
+        // A segment wins only if it is nearer than `reach`. The squared test rejects the rest (with a margin far wider
+        // than rounding); the exact comparison below is the one that decides.
+        if (reach <= 0 || ex * ex + ez * ez > reach * reach * 1.000001) continue;
+        const d = Math.hypot(ex, ez);
+        // Wider rivers win where channels meet, so confluences stay open water.
+        if (width - d > depth) { distance = d; halfWidth = width; id = river.id; depth = width - d; }
+      }
+    }
+  }
+  return { distance, halfWidth, river: id, depth };
 }
 export const inRiver = (x, z, margin = 0) => riverAt(x, z).depth > -margin;
 

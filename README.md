@@ -8,7 +8,7 @@
 
 Decide what the family can afford together, compare complete kits and adjust the plan when an expense changes. A living pixel woodland turns shared progress into new places to explore. Keep the village, open the Manor, cross the rivers to the Keep, and reach the Royal Citadel, Rosewind Palace and two storybook towers. Nine districts, a campsite that grows with the shared goal, short deed cards, family avatars, roaming guests and changing light sit beside one compact household journal.
 
-![Our Castle: expanded pixel woodland, rivers and compact property arrows](docs/screenshots/woodland-expanded-desktop.png)
+![Our Castle in clear weather: nine districts among rivers and woodland, the PayPal hillside sign, and outer meadows with a sheep fold, a pond, an archery range, a ruined chapel and standing stones](docs/screenshots/realm-clear-desktop.png)
 
 The illustrated journal has four chapters—House, Plan, Contribute and Ledger—with an original pixel crest and castle illustration. Family heraldry stays personal. [See the journal and brand design](docs/JOURNAL-DESIGN.md).
 
@@ -76,7 +76,7 @@ An invented family (Rowan, Ash and Wren), a kit list and six sample listings are
 
 [Selected product scope and evidence limits](docs/PRODUCT-COMPLETION.md) collects the completed features in one place. The picture below is the running example: a temporary $150 proposal beside the funded project, while the chosen $180 kit stays unchanged.
 
-![Invented family-trip example: the map previews a $150 repair, switches only the tent and keeps the stove; the chosen $180 kit remains unchanged](docs/screenshots/kit-preview-desktop-repair.png)
+![Invented family-trip example: the map previews a $150 repair, switches only the tent and keeps the stove; the chosen $180 kit remains unchanged](docs/screenshots/kit-preview-current.png)
 
 The example starts an in-memory household on an unused localhost port. It ignores `.env`, configured keys and saved records, and makes no provider call. Progress survives refresh while that process runs; closing it ends the session. Payments are simulated, plans use built-in rules, and photo reading and Cohere ordering stay off. Approval and saving a goal remain explicit.
 
@@ -92,7 +92,7 @@ Contributing with Rachel? [Start here](START-HERE-RACHEL.md) for one small task,
 
 Run **`npm run demo -- --village-exchange`** to try it in a fresh, keyless session. Open **Plan → Village Exchange**, accept Willow's offer, confirm receipt and compare what remains to buy. The same controls work between separate passkey households in the family runner. [Walkthrough, boundaries and implementation](docs/VILLAGE-EXCHANGE.md).
 
-![A received tent from an invented neighbor covers the kit item without adding a payment](docs/screenshots/village-exchange-desktop-received.png)
+![The Village Exchange request for a 4-person tent: a loan from the invented neighbor Willow is marked received, with a link to compare what is left to buy](docs/screenshots/village-exchange-current.png)
 
 ## A connected family journey
 
@@ -103,15 +103,19 @@ Run **`npm run demo -- --village-exchange`** to try it in a fresh, keyless sessi
 
 Searching does not buy an item. This is goal progress, not a bank balance. Reported savings, bills, gifts, simulated contributions and PayPal sandbox receipts retain their sources. Verified utility-bill rewards require a provider connection that is not present.
 
-Small **arrow markers** reveal property names when selected or reached by keyboard. The map has another 32-unit square of land on every side, two animated waterfalls feeding the rivers, and a hidden camp with two resting knights. Four of its outer meadows hold small miniatures: a tourney field, a hay meadow, standing stones and a border watchtower. The **compass beside View** lets you drag between homes at your current close-up scale; switch it off to turn the map again. The **Sound button at the top right** enables quiet retro RPG music and board effects. Every page starts muted; the music loads only when enabled. [Soundtrack sources and licences](assets/music/README.md). After contributing, **Review the receipt** opens that contribution in Treasury, with its saved-check status and the single steward note. [Receipt walkthrough and desktop/phone captures](docs/RECEIPT-HANDOFF.md).
+Small **arrow markers** reveal property names when selected or reached by keyboard. The map has another 32-unit square of land on every side, two animated waterfalls feeding the rivers, and a hidden camp with two resting knights. Ten of its outer meadows hold small miniatures: a tourney field, a hay meadow, standing stones, a border watchtower, a sheep fold, an apple orchard, an archery range, a ruined chapel, a pond and a windmill. Pines and rock outcrops dot the mountain slopes between them. They are scenery only: none is a district, a reward or a payment target. The **compass beside View** lets you drag between homes at your current close-up scale; switch it off to turn the map again. The **Sound button at the top right** enables quiet retro RPG music and board effects. Every page starts muted; the music loads only when enabled. [Soundtrack sources and licences](assets/music/README.md). After contributing, **Review the receipt** opens that contribution in Treasury, with its saved-check status and the single steward note. [Receipt walkthrough and desktop/phone captures](docs/RECEIPT-HANDOFF.md).
 
 The walkthrough captures use isolated test households and simulated contributions:
 
 | An area opens for the family | Treasury keeps the records |
 | --- | --- |
-| ![Manor deed arriving on another family member's page](docs/screenshots/shared-live-owner-manor.png) | ![Illustrated Treasury milestone, weekly plan and contribution records](docs/screenshots/sponsor-treasury-desktop.png) |
+| ![The Manor Gardens deed: unlocked at the 25% milestone, with Visit, Next and Close](docs/screenshots/deed-manor-current.png) | ![Treasury in the journal: the next-area plaque, this week's plan, and $40.00 held and not counted in one open hold](docs/screenshots/treasury-current-desktop.png) |
 
 **World settings** change only how the map looks. Time of day follows the device clock or a chosen Day, Afternoon or Night; Weather starts in Snow and can be changed to Clear, Rain or an opt-in local report. Snow turns the ground white and the rivers icy, and brings out a sleigh that circles the realm and a decorated tree with a snowman. None of it touches a district, reward, payment or record. [Light and weather](docs/ART-DIRECTION.md) · [Wayside and meadow scenery](docs/WOODLAND-WAYSIDES.md)
+
+| Sheep fold, pond and orchard below the PayPal sign | Windmill and standing stones on the border |
+| --- | --- |
+| ![North meadows in clear weather: a dry-stone sheep fold and a shepherd's hut, a pond with a jetty, and an orchard below the PayPal hillside sign](docs/screenshots/meadow-north.png) | ![East border in clear weather: a red-capped windmill beside the standing stones, with pines and grey outcrops on the slopes](docs/screenshots/meadow-windmill.png) |
 
 | Snow: the sleigh over Rosewind Palace | A tourney field in an outer meadow |
 | --- | --- |
@@ -164,7 +168,7 @@ The server keeps these rules:
 
 To try it, run `npm run demo`, set up a house, tick **Hold it first** on Contribute and choose **Simulate approved hold**, then open the record in the Ledger. Extending is offered only after the three days have passed, so a short session will not reach it.
 
-In sandbox mode the same steps use PayPal Orders v2 with intent `AUTHORIZE` and Payments v2 capture, reauthorize and void through the pinned Server SDK. **Every check of this path so far uses a fake PayPal or example mode. No real sandbox hold, extension, capture or void has been made.** [Rules, timing and evidence](docs/PAYMENT-HOLDS.md)
+In sandbox mode the same steps use PayPal Orders v2 with intent `AUTHORIZE` and Payments v2 capture, reauthorize and void through the pinned Server SDK. **One real sandbox hold has been made.** On November 12, 2026 one real PayPal sandbox hold of $25.00 was placed on `main` at `297abce`: $15.00 was released (one capture, not final) while the rest stayed held, and the remaining $10.00 was returned (a void, not a refund). The app's read of the same PayPal order answered that PayPal and the ledger agree, and goal progress moved from $60.00 to $75.00. The owner approved the order as the buyer in the PayPal sandbox. The approval tab did not hand back to the page, so an assistant, at the owner's direction, sent the authorize, release and return requests to the app's own API rather than pressing the page's controls. Still shown only against a fake PayPal: an extension (reauthorization), a second or third release, hold webhooks, and the page's own PayPal button completing a hold. Every other check of this path uses a fake PayPal or example mode. [What the run does and does not show](docs/VALIDATION.md#one-real-sandbox-hold--november-12-2026). [Rules, timing and evidence](docs/PAYMENT-HOLDS.md)
 
 ## Decide on a purchase together
 
@@ -186,23 +190,31 @@ These features are in the source and the saved Mac apps. Adding live catalogue i
 
 [How it works and its limits](docs/KIT-PLANNER.md).
 
-| 1. Type the list and check it (phone) | 2. Add listings for each item still to get (phone) |
+| 1. The saved kit list (phone) | 2. Listings for each item, then compare (phone) |
 | --- | --- |
-| ![A typed kit list after Check this list: Need, Have and To get for a tent, sleeping bags, torches already at home and a stove](docs/screenshots/kit-list-phone-typed-draft.png) | ![Two invented test listings for each of the tent, sleeping bags and stove, each with the adult's count per listing](docs/screenshots/kit-planner-phone-listings.png) |
+| ![Phone: the saved kit list with Need, Have and To get for a 4-person tent, sleeping bags, a torch already at home and a stove](docs/screenshots/kit-list-phone-current.png) | ![Phone: a sample listing for the stove with the adult's count, Compare complete kits, and the $150 kit with the lowest listed total](docs/screenshots/kit-planner-phone-current.png) |
 
 | 3. Compare complete kits that fit (desktop) | 4. The smallest change after a larger one-off (desktop) |
 | --- | --- |
-| ![Two kits fit by Dec 27 after a $90 one-off: $150 with the lowest listed total, and $180 with the lower listed weight](docs/screenshots/kit-planner-desktop-kits-compared.png) | ![After a $120 one-off, one kit fits: $150, switching only the tent from the chosen kit, with the kept stove](docs/screenshots/kit-planner-desktop-smallest-change.png) |
+| ![After a $90 one-off, two complete kits fit by Dec 31; the first, $150, has the lowest listed total and the fewest shops](docs/screenshots/kit-compare-current.png) | ![After a $120 one-off, one kit fits: $150, switching only the tent from the chosen kit, with the kept stove; the map previews it as a proposal, not bought](docs/screenshots/kit-smallest-change-current.png) |
 
-These are test captures. The family (Rowan, Ash and Wren) is invented, and the "Test fixture" listings come from two invented shops through a fake catalog; the Cohere order comes from a fake transport. They are not live catalog results, and the default demo installs no catalog. `npm run demo -- --family-trip` runs the same decision in the page with its own invented listings: [playable family-trip example](docs/FAMILY-TRIP-EXAMPLE.md).
+All four captures are from `npm run demo -- --family-trip`. The family (Rowan, Ash and Wren) is invented and its listings, labelled "Sample", come from two invented shops. They are not live catalog results, no Cohere order is involved, and the default demo installs no catalog. The example runs the whole decision in the page: [playable family-trip example](docs/FAMILY-TRIP-EXAMPLE.md).
 
 ## Three sponsor integrations
 
+The deepest of the three is **AG Studio**: it is the family's Treasury, and all of it runs in the keyless example. A custom parchment widget, three typed live tables totalled by Studio's data engine, and the Agent Framework running the read-only steward.
+
 | Tool | In the game | Implementation and evidence |
 | --- | --- | --- |
-| **Channel3** | Market Town merchant (up to three results, refresh, cheaper choices, explicit goal draft) and the listings an adult adds to the kit list, one search at a time or drafted for every unlisted item in one step | Server-side API and budget checks; changed offers expire stale drafts. The listings feed the complete-kit planner: the solver compares whole kits within the family's limit on Channel3's listed price and weight, and a kit can be saved only while every chosen listing was confirmed in the last half hour. One real desktop search is separate from the fake-catalogue freshness, journey and kit-planner checks. [Merchant](docs/CHANNEL3-MERCHANT.md) · [Kit planner](docs/KIT-PLANNER.md) |
 | **AG Grid / AG Studio** | Illustrated Treasury milestone, weekly plan, records and receipts in parchment | Studio 3.1 live data preserves the report; Grid 36.3 keeps selection and filters. Open PayPal holds are a third live Studio table: its data engine totals what is still held, and each hold has a guarantee timeline. The Agent Framework manages the existing steward through a scoped custom runner, with cancellation and cleanup, including its saved-records answer to "Which holds end soonest?". [Details](docs/TREASURY.md) |
+| **Channel3** | Market Town merchant (up to three results, refresh, cheaper choices, explicit goal draft) and the listings an adult adds to the kit list, one search at a time or drafted for every unlisted item in one step | Server-side API and budget checks; changed offers expire stale drafts. The listings feed the complete-kit planner: the solver compares whole kits within the family's limit on Channel3's listed price and weight, and a kit can be saved only while every chosen listing was confirmed in the last half hour. One real desktop search is separate from the fake-catalogue freshness, journey and kit-planner checks. [Merchant](docs/CHANNEL3-MERCHANT.md) · [Kit planner](docs/KIT-PLANNER.md) |
 | **APIMatic** | Behind the scenes | Official generated PayPal Server SDK 2.5.0 and eight installed, discovery-verified Codex context skills; real SDK serialization/auth/retry tests with fake transport, plus documented capture-recovery/read fixes. [Details](docs/APIMATIC-CODEX.md) |
+
+| Open holds in the Treasury (AG Studio) | The steward on open holds (Studio Agent Framework) |
+| --- | --- |
+| ![The Treasury's Held, not counted panel: $40.00 of $40.00 still held (simulated), the guarantee timeline, and a link to open the hold](docs/screenshots/treasury-holds-current.png) | ![The house steward answering Open holds?: one hold is open with $40.00 still held, none of it counts until an adult releases it, read from saved records with no provider contacted](docs/screenshots/steward-holds-current.png) |
+
+Both are from the keyless family-trip example: the hold is simulated and no provider is contacted.
 
 In the game itself, each journal chapter says in one line which of these tools does its work in that session (or what stands in for it in a keyless example), with a link that takes the map to that maker's sign in the woodland.
 
@@ -240,7 +252,7 @@ The family reviews a plan before saving it and approves each contribution explic
 - **Current release:** the shared village and loading scene ([#82](https://github.com/alejandro-publius/our-castle/pull/82)), hold-first contributions ([#83](https://github.com/alejandro-publius/our-castle/pull/83)), the entry copy ([#84](https://github.com/alejandro-publius/our-castle/pull/84)) and the hold extension with stepped releases ([#85](https://github.com/alejandro-publius/our-castle/pull/85)) each passed all ten jobs on their reviewed head before merging, and `main` passed all ten again after each merge. For #85 those are [run 42961844750](https://github.com/alejandro-publius/our-castle/actions/runs/42961844750) (777 unit results on Node 26 with 776 passes and one existing skip) and [run 42964411136](https://github.com/alejandro-publius/our-castle/actions/runs/42964411136) on `main` at `fb65357`. These are fake-provider checks.
 - **Since then (November 11–12):** a pre-flight of the hold path against the PayPal SDK and PayPal's published rules, which found and fixed two gaps ([#92](https://github.com/alejandro-publius/our-castle/pull/92)); seeded random histories of holds and of the village fund ([#93](https://github.com/alejandro-publius/our-castle/pull/93), [#96](https://github.com/alejandro-publius/our-castle/pull/96), [#97](https://github.com/alejandro-publius/our-castle/pull/97)); a browser walk of the owner's sandbox runbook against a fake PayPal ([#95](https://github.com/alejandro-publius/our-castle/pull/95)); first-run polish; and the container and CodeQL workflows. `main` passed all ten release jobs after them at `e5fa792` ([run 43115840077](https://github.com/alejandro-publius/our-castle/actions/runs/43115840077)) and `1d670e4` ([run 43166313398](https://github.com/alejandro-publius/our-castle/actions/runs/43166313398)). [What each change established](docs/VALIDATION.md#pre-flight-random-histories-and-first-run-polish--november-1112-2026). These are fake-provider checks too.
 - **November 12, sponsor tools used further:** open PayPal holds as a live AG Studio table with a guarantee timeline ([#110](https://github.com/alejandro-publius/our-castle/pull/110)); the steward's answer to "Which holds end soonest?" through Studio's Agent Framework ([#111](https://github.com/alejandro-publius/our-castle/pull/111)); a one-step draft of a whole kit's listings from the catalogue ([#112](https://github.com/alejandro-publius/our-castle/pull/112)); one line in each journal chapter naming the tool at work ([#109](https://github.com/alejandro-publius/our-castle/pull/109)); and a keyless example that can be hosted under one public name ([#113](https://github.com/alejandro-publius/our-castle/pull/113)). All checked in example mode or against fakes, and `main` passed all ten release jobs with them at `f476a9f` ([run 43248538288](https://github.com/alejandro-publius/our-castle/actions/runs/43248538288)); [what was and was not checked](docs/VALIDATION.md).
-- **Hold first:** 60 unit cases (27 scenarios, each run against both PayPal adapters with the transport replaced, and six more), [seeded random histories](docs/PAYMENT-HOLDS.md#random-histories) against the fake PayPal, a browser walk of the owner's sandbox runbook against that fake, and one example-mode browser journey. Deliberate breaks of each server rule were caught by those cases. No real sandbox hold exists yet. [Details](docs/VALIDATION.md#hold-extension-and-stepped-releases--november-10-2026)
+- **Hold first:** 60 unit cases (27 scenarios, each run against both PayPal adapters with the transport replaced, and six more), [seeded random histories](docs/PAYMENT-HOLDS.md#random-histories) against the fake PayPal, a browser walk of the owner's sandbox runbook against that fake, and one example-mode browser journey. Deliberate breaks of each server rule were caught by those cases. One real sandbox hold was made on November 12 ($25.00 held, $15.00 released, $10.00 returned), through the app's API after the owner's approval in PayPal; [what it shows](docs/VALIDATION.md#one-real-sandbox-hold--november-12-2026). [Details](docs/VALIDATION.md#hold-extension-and-stepped-releases--november-10-2026)
 - **Earlier integrated release:** [PR #60 run 42696659169](https://github.com/alejandro-publius/our-castle/actions/runs/42696659169) passed all five jobs: 556 unit passes and one existing skip per Node version, nine Rust tests per build, 45 release-browser passes with three designed skips, and two native-kit journey passes. These are fake-provider checks of that earlier head, separate from live evidence below.
 - **Feature checks:** each change's unit and browser checks are recorded in [VALIDATION.md](docs/VALIDATION.md). The development feature suites use fake transports. The separate live synthetic OpenAI check is listed below.
 - **Historical live sandbox:** hosted buyer approval, $15 capture, single credit, replay/mismatch checks, matching PayPal order and refund. [Original report](docs/LIVE-VERIFICATION.md)
