@@ -6,6 +6,7 @@
 // The existing steward can explicitly start a scoped, headless Agent Framework run through askSteward.
 import { createTreasuryAgent } from './treasury-agent.js';
 import { rowChanges, hasChanges } from '../core/row-updates.js';
+import { days, holdLine } from '../core/hold-line.js';
 
 const START_WAIT_MS = 6000;
 let loading = null;
@@ -72,19 +73,6 @@ export function drawNextArea(root, next, context) {
   main.append(picture, text, visit);
   root.replaceChildren(main, drawWeek(context), drawHolds(context));
   restore();
-}
-
-const shortDay = (iso) => new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
-const days = (n) => `${n} more ${n === 1 ? 'day' : 'days'}`;
-/** Where one open hold stands, in a sentence, from the server's own dates for it. */
-export function holdLine(h) {
-  const guarantee = h.simulated ? 'The simulated guarantee' : 'PayPal’s guarantee';
-  const standing = h.phase === 'expired' ? `It has reached its ${h.simulated ? 'simulated ' : ''}expiry.${h.simulated ? '' : ' Check it with PayPal.'}`
-    : !h.honorUntil ? 'Its guarantee dates are not known yet.'
-      : h.phase === 'unguaranteed' ? `${guarantee} ended ${shortDay(h.honorUntil)}.${h.canExtend ? ' An adult can extend it once.' : ''}`
-        : `${guarantee} lasts ${days(h.guaranteedDays)}, until ${shortDay(h.honorUntil)}.`;
-  const latest = h.expiresAt && h.phase !== 'expired' ? ` It can be held until ${shortDay(h.expiresAt)} at the latest.` : '';
-  return `${standing}${latest}${h.pending ? ' A decision on it is still being confirmed.' : ''}`;
 }
 
 /**

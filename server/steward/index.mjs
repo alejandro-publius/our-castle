@@ -3,7 +3,8 @@ import { decimalStringToCents, formatCents, milestoneTargets, nextMilestone } fr
 import { DomainError, getActiveGoal, getHousehold, getMember, progressFor } from '../household.mjs';
 import { PlannerProviderError, mapAnthropicError } from '../planner/anthropic-provider.mjs';
 import { dollarFigures } from '../planner/validate.mjs';
-import { isConfirmationHistoryQuestion, isNeedsCheckQuestion } from '../../src/core/steward-questions.js';
+import { isConfirmationHistoryQuestion, isHoldsQuestion, isNeedsCheckQuestion } from '../../src/core/steward-questions.js';
+import { holdsAnswer } from './holds.mjs';
 import { confirmationHistoryAnswer } from './confirmation-history.mjs';
 import { needsCheckAnswer } from './needs-check.mjs';
 
@@ -254,6 +255,7 @@ export function createSteward({ db, contributions, householdId, ai = null, paypa
         throw new DomainError(404, 'order_not_found', 'That order is not a PayPal contribution for this household and goal.');
       const focus = focusOrderId;
       if (isNeedsCheckQuestion(text)) return needsCheckAnswer(list);
+      if (isHoldsQuestion(text)) return holdsAnswer(list, clock.iso());
       if (isConfirmationHistoryQuestion(text)) return confirmationHistoryAnswer(list, focus);
       if (!client) throw new DomainError(409, 'steward_unavailable', 'The house steward needs an AI key (AI_API_KEY) in the server’s .env file.');
       if (focus && !paypalTools) throw new DomainError(409, 'paypal_tools_unavailable', 'PayPal verification is not available on this server.');
