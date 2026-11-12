@@ -766,7 +766,7 @@ button { font: inherit; }
 .merchant-item-actions button, .merchant-item-more button { min-height: 44px; text-align: left; }
 .next-area-text { flex: 1; min-width: 0; }
 .next-area-name { margin: 0; overflow-wrap: anywhere; }
-.next-area-label { display: block; font-size: 13px; text-transform: uppercase; letter-spacing: .6px; color: var(--brass-dark); }
+.next-area-label { display: block; font-size: 13px; text-transform: uppercase; letter-spacing: .6px; color: var(--ink-muted); } /* 6.6:1 on its plaque; brass-dark was 3.9:1 */
 .next-area-name strong { display: block; font-size: 16px; }
 .next-area-bar { height: 6px; margin: 6px 0 4px; background: var(--paper-2); border: 1px solid var(--ink-line); }
 .next-area-bar span { display: block; height: 100%; background: var(--brass); }
@@ -880,7 +880,7 @@ body[data-signed-in='false'] .shell { visibility:hidden; }
 .journal-heading button:hover { background:#3d5344; }
 .steps { padding:0 12px; gap:3px; background:#263d32; border:0; }
 .steps button { position:relative; padding:10px 6px 11px; min-height:58px; color:#d4d7c5; border:0; border-top:3px solid transparent; border-radius:4px 4px 0 0; font-size:15px; line-height:1.2; }
-.steps button .chapter-number { display:block; font-size:10px; letter-spacing:.12em; margin-bottom:4px; opacity:.75; }
+.steps button .chapter-number { display:block; font-size:10px; letter-spacing:.12em; margin-bottom:4px; opacity:.85; } /* 5.8:1 on an unselected tab; .75 was 4.5:1 */
 .steps button[aria-selected='true'] { color:var(--ink); background:var(--paper); border-top-color:var(--gold); font-weight:700; }
 .steps button:hover:not([aria-selected='true']) { background:#344b3c; color:var(--ivory); }
 .steps button:focus-visible { outline-offset:-5px; }
