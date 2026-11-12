@@ -49,7 +49,8 @@ Keeping an inviting world honest: reported savings, simulated payments and sandb
 - **A sandbox prototype.** PayPal is sandbox only; the code has no path to live endpoints. Nothing is hosted.
 - **No real-family study.** No family playtest, physical-device or screen-reader check has been done.
 - **Ordinary checkout:** one owner-completed $15 sandbox capture and a same-order check, on an earlier build.
-- **[swap] The hold path.** Today: *Holding, releasing, returning and extending are tested against a fake PayPal and in example mode only. No real sandbox hold has been made.*
+- **The hold path (updated November 12).** *One real PayPal sandbox hold was made: $25 held, $15 released while the rest stayed held, and the remaining $10 returned; PayPal's record of the order and the app's ledger agreed. The owner approved it in PayPal, and the requests then went through the app's API because the approval tab did not return to the page. Extending a hold, releasing in three steps and the page's own PayPal button completing a hold are still tested against a fake PayPal only.*
+  Earlier wording, kept for reference: *Holding, releasing, returning and extending are tested against a fake PayPal and in example mode only. No real sandbox hold has been made.*
   After the owner's [sandbox run](SANDBOX-HOLD-PROOF.md) succeeds, and only then: *On November __ the owner placed one real PayPal sandbox hold of $25, released $15 while keeping the rest held, and returned the remaining $10. Extending a hold and releasing in three steps are still tested against a fake PayPal only.*
 - **[swap] Cohere.** Today: *One live request returned an ordering, which shows the connection works. Ranking quality has not been evaluated.*
   After the [measurement](COHERE-MEASUREMENT.md) is run: add its one sentence, whichever way it came out. The second sentence above stays.

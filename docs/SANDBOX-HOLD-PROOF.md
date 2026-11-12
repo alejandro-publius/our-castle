@@ -1,6 +1,6 @@
 # One real sandbox hold: owner runbook
 
-Written November 10, 2026 (Pacific) against `main` at `97c084a`. **Not run.** Nothing here has been done; it is the order of clicks for the owner, who is the only person who may make a PayPal sandbox call. It takes about 15 minutes.
+Written November 10, 2026 (Pacific) against `main` at `97c084a`. **Run once, on November 12, but not as written:** the PayPal approval tab did not return to the page, so the hold, release and return went through the app's API instead of these clicks ([what happened](VALIDATION.md#one-real-sandbox-hold--november-12-2026)). The clicks below have still only been pressed against a fake. It is the order of clicks for the owner, who is the only person who may make a PayPal sandbox call. It takes about 15 minutes.
 
 It places one $25.00 hold, releases $15.00 while keeping the rest held, then returns the remaining $10.00. That is one authorization, one capture that is not final, and one void: the three PayPal answers the [hold path](PAYMENT-HOLDS.md) has only ever seen from a fake.
 
