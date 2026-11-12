@@ -142,6 +142,32 @@ All footage shows its recorded version. No missing checkout or tool outcome has 
 
 ## 6. For source reviewers
 
+### Money rules, and the tests that hold them
+
+Money is held first and counts only when an adult releases it. Each rule below names where the server keeps it and a test that fails if it is broken. The tests run against a fake PayPal: they are evidence about this server's rules, not about the PayPal sandbox. The full list of twelve is in [PAYMENT-HOLDS.md](PAYMENT-HOLDS.md#rules-the-server-keeps).
+
+| Rule | Where it is kept | A test that fails without it |
+| --- | --- | --- |
+| A hold is not progress. | `applyAuthorization` in `server/payments/contributions.mjs` records a hold and never credits one. | "a held contribution asks PayPal to authorize, places the hold and credits nothing" |
+| Every decision is written down before PayPal is asked. | `holdDecision` saves a row in `payment_hold_steps` (who, what, how much, which request) in one transaction, then the provider is called. Only one decision at a time can wait. | "an unanswered release is never guessed: it stays recheckable, and PayPal's own record settles it once" |
+| Only a capture that matches that decision counts, and it counts once. | `applyCapture` compares amount, currency and reference; `credit` is one transaction per capture ID. | "a capture that does not match the adult's release, or that no adult released, is never credited" |
+| A release can never take more than is still held. | Checked in `holdDecision`, and again by a `CHECK` constraint in the database. | "the database itself refuses a release larger than what is still held, and a released total larger than the hold" |
+| An unknown outcome is never guessed. | A timeout, a server error or a success answer the SDK cannot read leaves the decision waiting; **Check with PayPal** settles it from PayPal's own order. | "a successful answer the SDK cannot read is an unknown outcome, never a refusal: PayPal has already acted" |
+| A retry can never capture twice. | The same decision reaches PayPal with the same `PayPal-Request-Id`. | "a release decided again after an unanswered attempt is the same PayPal request, so it can never capture twice" |
+| Only an adult of that household decides. | `holdDecision` and the route table in `server/access/policy.mjs`. | "only an adult of the owning household decides, for a valid amount, after explicit confirmation" |
+| No AI is in the payment path. | Nothing under `server/payments/` loads a model library. An AI-proposed schedule is stored only if `validateAiPlan` in `server/planner/validate.mjs` finds it equal to the server's own arithmetic. | "an AI plan that claims an impossible goal is reachable is rejected" |
+| The ledger equals what PayPal took, in orders nobody wrote down. | All of the above together. | The 200 [seeded random hold histories](PAYMENT-HOLDS.md#random-histories) |
+
+The tests are in `test/unit/payment-holds.test.mjs`, `paypal-sdk-transport.test.mjs`, `planner.test.mjs` and `payment-holds-random.test.mjs`.
+
+**Try breaking one.** In `server/payments/contributions.mjs`, change `const released = hold.released_cents + amountCents;` to `const released = amountCents;`, so a later release forgets the earlier ones. Then run:
+
+```sh
+node --test test/unit/payment-holds-random.test.mjs
+```
+
+It fails with "the released total is the counted captures", and prints the seed and every step of the history that exposed it.
+
 ### Built features and release evidence
 
 Review [current main](https://github.com/alejandro-publius/our-castle/tree/main) and state the commit you inspected. Nine woodland districts, a chosen campsite/garden/schoolhouse that develops with the goal, one household journal, Merchant, Treasury, APIMatic context, the Studio Agent Framework and saved explicit receipt checks are implemented. Opt-in [shared families](FAMILY-ACCESS.md) add passkeys, invitations, server-enforced adult/child permissions and live page updates. [Family-planning integration](FAMILY-PLAN-REVIEW.md) adds read-only amount/date checks and protection against using stale plans.
