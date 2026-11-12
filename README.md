@@ -58,6 +58,8 @@ docker run --rm -p 127.0.0.1:8080:8080 our-castle     # add --family-trip for th
 
 It is the same keyless, in-memory demo, and it answers only as `localhost`: publishing the port does not publish the app. [A hosted job](.github/workflows/container.yml) builds the image and starts it on every change.
 
+To host that example for visitors, [`render.yaml`](render.yaml) starts the family-trip demo on Render with `--public-host`, the one public name it then answers to. It is still keyless and invented, everyone who opens it shares one household, and deploying it is the owner's step.
+
 Five invented families have contributed **$200 toward a $400 class trip**. In the parchment fund sheet, approve **$40**, see the shared schoolhouse advance, then inspect the contribution in Records. Each family's private savings stay separate. Visit the square to see opted-in castle appearances; people appear only after joining. Everything in this runner is simulated, with no credentials or provider traffic. [One-minute route, implementation and remaining setup](docs/VILLAGE-DEMO.md).
 
 | The fund sheet after one simulated $40 contribution | The shared square: the schoolhouse and five castles |

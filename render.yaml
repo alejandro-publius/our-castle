@@ -1,28 +1,20 @@
-# Optional, undeployed example service. Import only after the owner approves publication.
-# No credentials or real household data. Example state is disposable on this free plan.
+# The keyless family-trip example as a hosted page. Nothing here deploys by itself: the owner imports this file in Render
+# (New > Blueprint) when they choose to publish, and auto-deploy stays off.
+# - It runs `scripts/demo.mjs`, the same demo as `npm run demo -- --family-trip`: an in-memory invented household,
+#   invented shops and simulated payments. It reads no key, no .env and no saved record, and contacts no provider.
+# - The demo answers only as this service's own Render address (and as localhost inside the instance). A custom domain
+#   needs its name in --public-host instead.
+# - Everyone who opens it shares the one invented household; it starts again whenever the instance restarts.
+# - No health-check path: Render's probe does not use the public name, so it would be refused. Render then waits for
+#   the port instead.
 services:
   - type: web
     name: our-castle-example
     runtime: node
     plan: free
     autoDeployTrigger: "off"
-    buildCommand: npm ci --omit=dev
-    startCommand: npm start
-    healthCheckPath: /api/status
+    buildCommand: npm ci --omit=dev --ignore-scripts --no-audit --no-fund
+    startCommand: node scripts/demo.mjs --family-trip --host=0.0.0.0 --port=$PORT --public-host=$RENDER_EXTERNAL_HOSTNAME
     envVars:
       - key: NODE_VERSION
         value: "26.0.0"
-      - key: HOST
-        value: "0.0.0.0"
-      - key: OUR_CASTLE_ENV_FILE
-        value: none
-      - key: OUR_CASTLE_DATA_DIR
-        value: /tmp/our-castle-example
-      - key: PAYPAL_ENV
-        value: sandbox
-      - key: PAYPAL_CLIENT_ID
-        value: ""
-      - key: PAYPAL_CLIENT_SECRET
-        value: ""
-      - key: AI_API_KEY
-        value: ""
