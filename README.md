@@ -92,7 +92,7 @@ Contributing with Rachel? [Start here](START-HERE-RACHEL.md) for one small task,
 
 Run **`npm run demo -- --village-exchange`** to try it in a fresh, keyless session. Open **Plan → Village Exchange**, accept Willow's offer, confirm receipt and compare what remains to buy. The same controls work between separate passkey households in the family runner. [Walkthrough, boundaries and implementation](docs/VILLAGE-EXCHANGE.md).
 
-![A received tent from an invented neighbor covers the kit item without adding a payment](docs/screenshots/village-exchange-desktop-received.png)
+![The Village Exchange request for a 4-person tent: a loan from the invented neighbor Willow is marked received, with a link to compare what is left to buy](docs/screenshots/village-exchange-current.png)
 
 ## A connected family journey
 
@@ -190,15 +190,15 @@ These features are in the source and the saved Mac apps. Adding live catalogue i
 
 [How it works and its limits](docs/KIT-PLANNER.md).
 
-| 1. Type the list and check it (phone) | 2. Add listings for each item still to get (phone) |
+| 1. The saved kit list (phone) | 2. Listings for each item, then compare (phone) |
 | --- | --- |
-| ![A typed kit list after Check this list: Need, Have and To get for a tent, sleeping bags, torches already at home and a stove](docs/screenshots/kit-list-phone-typed-draft.png) | ![Two invented test listings for each of the tent, sleeping bags and stove, each with the adult's count per listing](docs/screenshots/kit-planner-phone-listings.png) |
+| ![Phone: the saved kit list with Need, Have and To get for a 4-person tent, sleeping bags, a torch already at home and a stove](docs/screenshots/kit-list-phone-current.png) | ![Phone: a sample listing for the stove with the adult's count, Compare complete kits, and the $150 kit with the lowest listed total](docs/screenshots/kit-planner-phone-current.png) |
 
 | 3. Compare complete kits that fit (desktop) | 4. The smallest change after a larger one-off (desktop) |
 | --- | --- |
 | ![After a $90 one-off, two complete kits fit by Dec 31; the first, $150, has the lowest listed total and the fewest shops](docs/screenshots/kit-compare-current.png) | ![After a $120 one-off, one kit fits: $150, switching only the tent from the chosen kit, with the kept stove; the map previews it as a proposal, not bought](docs/screenshots/kit-smallest-change-current.png) |
 
-Captures 3 and 4 are from `npm run demo -- --family-trip`, whose invented listings are labelled "Sample". Captures 1 and 2 are older test captures. The family (Rowan, Ash and Wren) is invented, and the "Test fixture" listings come from two invented shops through a fake catalog; the Cohere order comes from a fake transport. They are not live catalog results, and the default demo installs no catalog. `npm run demo -- --family-trip` runs the same decision in the page with its own invented listings: [playable family-trip example](docs/FAMILY-TRIP-EXAMPLE.md).
+All four captures are from `npm run demo -- --family-trip`. The family (Rowan, Ash and Wren) is invented and its listings, labelled "Sample", come from two invented shops. They are not live catalog results, no Cohere order is involved, and the default demo installs no catalog. The example runs the whole decision in the page: [playable family-trip example](docs/FAMILY-TRIP-EXAMPLE.md).
 
 ## Three sponsor integrations
 
