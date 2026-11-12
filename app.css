@@ -764,6 +764,15 @@ button { font: inherit; }
 .treasury-week summary { cursor: pointer; color: var(--ink-muted); min-height: 36px; line-height: 36px; font-size: 14px; }
 .treasury-week-records { margin: 0; padding: 0; list-style: none; }
 .treasury-week-records button { min-height: 44px; text-align: left; }
+/* Open holds, under the week: what is still held, and a timeline from the day it was placed to the day it must end. */
+.treasury-holds { width: 100%; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--ink-line); }
+.treasury-holds[hidden] { display: none; }
+.treasury-holds p { margin: 0 0 4px; }
+.treasury-hold { margin-top: 8px; font-size: 14px; }
+.treasury-hold-track { position: relative; height: 9px; margin: 7px 0; background: var(--paper-2); }
+.treasury-hold-track .guarantee { position: absolute; top: 0; bottom: 0; background: #557454; }
+.treasury-hold-track .today { position: absolute; top: -3px; bottom: -3px; width: 2px; margin-left: -1px; background: var(--ink); }
+.treasury-hold button { min-height: 44px; text-align: left; }
 .merchant-item-actions { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 0 16px; }
 .merchant-item-actions button, .merchant-item-more button { min-height: 44px; text-align: left; }
 .next-area-text { flex: 1; min-width: 0; }

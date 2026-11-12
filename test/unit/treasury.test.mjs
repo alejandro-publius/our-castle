@@ -6,7 +6,7 @@ import { createApp } from '../../server/app.mjs';
 import { loadConfig } from '../../server/config.mjs';
 import { openDatabase } from '../../server/db.mjs';
 import { createClock } from '../../server/household.mjs';
-import { treasuryFor, treasuryWeek } from '../../server/treasury.mjs';
+import { treasuryFor, treasuryHolds, treasuryWeek } from '../../server/treasury.mjs';
 import { FIXED_NOW } from '../helpers/setup.mjs';
 
 // The Treasury's next-area milestone, derived from real example-mode server states produced by the same API the browser
@@ -132,5 +132,46 @@ test('only the AG Studio licence is readable by the page, only on its own route,
     assert.match(bundle.type, /text\/javascript/);
     assert.match(bundle.text.slice(0, 400), /agStudio/);
     for (const path of ['/node_modules/ag-studio/package.json', '/vendor/ag-studio/main.cjs.js', '/vendor/ag-studio/../ag-grid/x.js']) assert.equal((await s.call('GET', path)).status, 404, path);
+  } finally { await s.close(); }
+});
+
+test('open holds are listed for the Treasury with their guarantee and their 29 days; a hold that is over is not', async () => {
+  const s = await server();
+  try {
+    let state = (await s.call('POST', '/api/setup', { playMode: 'family', name: 'House of Alder', crest: { field: 'cobalt', charge: 'stag' } })).json.state;
+    assert.deepEqual(state.treasury.holds, []);
+    const owner = { householdId: state.household.id, goalId: state.goal.id, approverId: 'm_rowan', approvalConfirmed: true };
+    const act = async (path, body) => { const res = await s.call('POST', path, { ...owner, requestId: `treasury-hold-${String(++n).padStart(6, '0')}`, ...body }); assert.equal(res.status, 200, res.text); return res.json; };
+    const held = await act('/api/example/contributions', { amountCents: 4000, hold: true });
+    const id = held.contribution.id;
+    state = (await s.call('GET', '/api/state')).json;
+    // Placed just now: all of it held, three guaranteed days of twenty-nine, and nothing counted.
+    assert.equal(state.treasury.holds.length, 1);
+    const [row] = state.treasury.holds;
+    assert.deepEqual({ ...row, honorUntil: null, expiresAt: null, recordId: null }, {
+      id, recordId: null, simulated: true, heldCents: 4000, releasedCents: 0, remainingCents: 4000, currency: 'USD', phase: 'guaranteed', pending: null,
+      extended: false, canExtend: false, honorUntil: null, expiresAt: null, guaranteedDays: 3, daysLeft: 29, elapsedShare: 0, guaranteeFromShare: 0, guaranteeToShare: 3 / 29,
+    });
+    assert.equal(Date.parse(row.expiresAt) - Date.parse(row.honorUntil), 26 * 86_400_000);
+    assert.equal(row.recordId, `order:${id}`, 'the row opens this hold’s own ledger record');
+    assert.equal(state.progress.progressCents, 6000);
+    assert.equal(state.treasury.week.netCents, 0, 'a hold is not a contribution recorded this week');
+    // The same records read on later days: the guarantee runs out, the days count down, and today moves along.
+    const placed = Date.parse(row.expiresAt) - 29 * 86_400_000, on = (day) => treasuryHolds(state, new Date(placed + day * 86_400_000).toISOString())[0];
+    assert.deepEqual([on(2.5).guaranteedDays, on(2.5).daysLeft, on(2.5).elapsedShare], [1, 27, 2.5 / 29]);
+    assert.deepEqual([on(4).guaranteedDays, on(4).daysLeft, on(4).elapsedShare], [0, 25, 4 / 29]);
+    assert.deepEqual([on(40).guaranteedDays, on(40).daysLeft, on(40).elapsedShare], [0, 0, 1]);
+    // A release that keeps the rest held leaves the row, with less held; the released part alone is progress.
+    await act(`/api/contributions/${id}/release`, { amountCents: 1000, keepRest: true });
+    state = (await s.call('GET', '/api/state')).json;
+    assert.deepEqual(state.treasury.holds.map((h) => [h.id, h.heldCents, h.releasedCents, h.remainingCents]), [[id, 4000, 1000, 3000]]);
+    assert.equal(state.progress.progressCents, 7000);
+    assert.notEqual(state.treasury.holds[0].recordId, `order:${id}`, 'once part is counted, the row opens that counted record');
+    // A second hold is listed after the first, which was placed no later. Returning the first ends its row only.
+    const second = (await act('/api/example/contributions', { amountCents: 1500, hold: true })).contribution.id;
+    await act(`/api/contributions/${id}/return`, {});
+    state = (await s.call('GET', '/api/state')).json;
+    assert.deepEqual(state.treasury.holds.map((h) => [h.id, h.remainingCents]), [[second, 1500]]);
+    assert.equal(state.progress.progressCents, 7000);
   } finally { await s.close(); }
 });
