@@ -1,6 +1,8 @@
 # Our Castle
 
 [![Release checks](https://github.com/alejandro-publius/our-castle/actions/workflows/release-checks.yml/badge.svg?branch=main)](https://github.com/alejandro-publius/our-castle/actions/workflows/release-checks.yml?query=branch%3Amain)
+[![CodeQL](https://github.com/alejandro-publius/our-castle/actions/workflows/codeql.yml/badge.svg?branch=main)](https://github.com/alejandro-publius/our-castle/actions/workflows/codeql.yml?query=branch%3Amain)
+[![Container demo](https://github.com/alejandro-publius/our-castle/actions/workflows/container.yml/badge.svg?branch=main)](https://github.com/alejandro-publius/our-castle/actions/workflows/container.yml?query=branch%3Amain)
 
 **Families build castles. Neighbors build something together.**
 
