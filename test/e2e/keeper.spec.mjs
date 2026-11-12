@@ -128,7 +128,7 @@ test('keys: Back and Skip, Escape from inside the keeper, focus returned, and no
   expect(seen.outside).toEqual([]);
 });
 
-test('?tour=1 opens the keeper on a fresh demo; Skip closes it and House replays it', { tag: '@release' }, async ({ page, baseURL }) => {
+test('?tour=1 opens the keeper on a fresh demo; Skip closes it and House replays it', { tag: '@release' }, async ({ page, baseURL }, info) => {
   const seen = watch(page, baseURL);
   await ready(page, '/?tour=1');
   await expect(keeper(page)).toBeVisible();
@@ -137,6 +137,11 @@ test('?tour=1 opens the keeper on a fresh demo; Skip closes it and House replays
   await page.getByRole('button', { name: 'Skip' }).click();
   await expect(keeper(page)).toHaveCount(0);
   await expect(page.locator('#keeper-open')).toBeFocused();
+  // A house not founded yet: beside the map, the one press that founds it is on screen before anything is scrolled.
+  if (info.project.name === 'desktop') {
+    await expect(page.getByRole('button', { name: 'Raise our banner' })).toBeInViewport({ ratio: 1 });
+    expect(await page.locator('#panel-house').evaluate((panel) => panel.scrollTop)).toBe(0);
+  }
   await page.locator('#keeper-open').click();
   await expect(step(page)).toHaveText('1 of 8');
   await expect(page.locator('#keeper-text')).toContainText('Welcome, traveler');
