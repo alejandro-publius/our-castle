@@ -22,6 +22,12 @@ export const WAYSIDE_SITES = Object.freeze([
   Object.freeze({id:'hay-meadow',kind:'hay',x:-10,z:80,radius:10}),
   Object.freeze({id:'standing-stones',kind:'stones',x:131,z:80,radius:8.5}),
   Object.freeze({id:'border-watchtower',kind:'watchtower',x:162,z:-28,radius:6}),
+  Object.freeze({id:'shepherds-fold',kind:'fold',x:-60,z:-80,radius:9}),
+  Object.freeze({id:'apple-orchard',kind:'orchard',x:-10,z:-80,radius:9}),
+  Object.freeze({id:'archery-butts',kind:'butts',x:47,z:-80,radius:9}),
+  Object.freeze({id:'ruined-chapel',kind:'ruin',x:119,z:-80,radius:8}),
+  Object.freeze({id:'mill-pond',kind:'pond',x:-98,z:-28,radius:8}),
+  Object.freeze({id:'border-windmill',kind:'windmill',x:162,z:28,radius:7}),
 ]);
 export const inDiscoveryClearing = (x,z) => Math.hypot(x-WOODLAND_CAMP.x,z-WOODLAND_CAMP.z)<9
   || Math.hypot(x-WOODLAND_GLADE.x,z-WOODLAND_GLADE.z)<10

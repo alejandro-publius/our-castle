@@ -170,7 +170,99 @@ export function createWaysideDetails({group,builder,part,models,colours:C,ground
     models.tower(g,0,0,6.5,C.blue,true,{banner:true});
     for(let i=0;i<7;i++){const a=.9+i*.55;part(g,'cone',Math.cos(a)*3.6,.8,Math.sin(a)*3.6,.4,1.6,.4,C.wood);}
   }
-  const meadows={tourney,hay,stones,watchtower};
+  function sheep(g,x,z,a=0) {
+    const s=new THREE.Group();s.position.set(x,0,z);s.rotation.y=a;g.add(s);
+    rock(s,0,.72,0,1.3,.8,.85,C.cream);rock(s,.72,.95,0,.45,.42,.4,C.dark);
+    for(const lx of [-.38,.38])for(const lz of [-.24,.24])box(s,lx,.2,lz,.13,.4,.13,C.dark);
+  }
+  function fold(g) {
+    rock(g,0,.02,0,14,.1,10,C.leaf);
+    // A dry-stone fold with a hurdle gate, a shepherd's hut, a trough and a small flock, two of them out grazing.
+    for(let i=0;i<16;i++) {
+      const a=i*Math.PI/8,x=-2.4+Math.cos(a)*4,z=Math.sin(a)*3.6;
+      if(i===4){for(const y of [.55,.95])box(g,x,y,z,1.7,.1,.1,C.wood);continue;}
+      part(g,'rock',x,.5,z,1.75,1+(i%3)*.14,.8,i%2?C.stone:stone,Math.PI/2-a);
+    }
+    [[-3.6,-.8,.4],[-2.2,1.2,2.2],[-1.2,-1.4,-1],[-3.2,1.6,3.6],[2.6,3.3,.7],[4.6,2.4,-2.4]].forEach(([x,z,a])=>sheep(g,x,z,a));
+    box(g,4.6,1,-1.8,3,2,2.6,C.cream);box(g,4.6,.75,-.46,.7,1.5,.08,C.soil);
+    models.roof(g,4.6,2.6,-1.8,3.6,1.3,3.1,0x3f6388);
+    box(g,2.2,.3,-3.4,.9,.6,2,stone);box(g,2.2,.62,-3.4,.7,.04,1.8,C.water);
+  }
+  function orchard(g) {
+    rock(g,0,.02,0,14,.1,9.5,C.leaf);
+    // Two rows of apple trees, a picking ladder, two full baskets and three straw skeps on a bench.
+    for(let row=0;row<2;row++)for(let i=0;i<4;i++) {
+      const x=-5.2+i*3+row*.7,z=-2.6+row*3.4;
+      part(g,'trunk',x,.8,z,.4,1.6,.4,C.wood);rock(g,x,2.4,z,2.4,1.9,2.4,(row+i)%2?C.leaf:C.pine);
+      for(const [ax,ay,az] of [[.8,-.2,.75],[-.7,.25,.8],[.15,-.5,1.05],[-.95,-.3,-.4],[.5,.5,.6]])rock(g,x+ax,2.4+ay,z+az,.3,.3,.3,C.red);
+    }
+    for(const z of [-.5,0])box(g,5.4,1.25,z+3.4,.1,2.7,.1,C.wood,0,.25);
+    for(let k=0;k<4;k++)box(g,5.6-k*.14,.45+k*.55,3.15,.08,.08,.5,C.wood);
+    for(const x of [-4.4,-3.2]){round(g,x,.3,3.6,.85,.6,.85,C.road);for(let k=0;k<3;k++)rock(g,x-.2+k*.2,.66,3.6+(k%2)*.15,.28,.28,.28,C.red);}
+    box(g,1.2,.5,4,3.6,.12,1,C.wood);for(const x of [-.4,2.8])box(g,x,.25,4,.14,.5,.9,C.wood);
+    for(const x of [.1,1.2,2.3]){round(g,x,.82,4,.85,.5,.85,wheat);round(g,x,1.2,4,.65,.32,.65,wheat);rock(g,x,1.44,4,.4,.26,.4,wheat);box(g,x,.72,4.43,.16,.14,.03,C.dark);}
+  }
+  function butts(g) {
+    rock(g,0,.02,0,15,.1,7.5,C.road);
+    // Three straw targets on trestles, a chalk shooting line, a bow rack, a quiver barrel and spare bales.
+    for(const x of [-4,0,4]) {
+      for(const s of [-1,1])box(g,x+s*.6,.85,-2.7,.12,1.8,.12,C.wood,0,s*.2);
+      [[1.9,wheat],[1.5,C.cream],[1.1,C.blue],[.7,C.red],[.3,C.gold]].forEach(([w,c],k)=>round(g,x,1.65,-2.55+k*.035,w,k?.06:.32,w,c,Math.PI/2,Math.PI/2));
+    }
+    box(g,0,.07,3,12,.04,.2,C.cream);
+    for(const x of [-6,-4])box(g,x,.7,3.3,.14,1.4,.14,C.wood);box(g,-5,1.35,3.3,2.3,.12,.12,C.wood);
+    for(let k=0;k<3;k++){box(g,-5.6+k*.6,.85,3.42,.07,1.5,.07,C.soil,0,.12);box(g,-5.55+k*.6,.85,3.46,.03,1.3,.03,C.cream);}
+    round(g,5,.45,3.2,.8,.9,.8,C.wood);for(const y of [.2,.7])round(g,5,y,3.2,.84,.07,.84,stone);
+    for(let k=0;k<4;k++)box(g,4.85+k*.1,1.15,3.1+(k%2)*.16,.05,.7,.05,k%2?C.red:C.cream);
+    for(const [x,y,z] of [[6.4,.35,-.6],[6.4,.35,.6],[6.4,1.05,0]])box(g,x,y,z,1.5,.7,1,wheat);
+  }
+  function ruin(g) {
+    rock(g,0,.02,0,11,.1,9,C.dustStone);
+    // A roofless chapel: the gable still stands with its window, the side walls step down, one column has fallen.
+    box(g,0,2.4,-3,5,4.8,.8,C.stone);part(g,'gable',0,5.55,-3,5,1.5,.8,C.stone);
+    box(g,0,3,-2.58,1,2.2,.06,C.dark);box(g,0,4.25,-2.58,.6,.5,.06,C.dark);
+    [[3.6,2.8,1.7,.8],[2.5,3.1,1.2,.5]].forEach((heights,side)=>heights.forEach((h,i)=>
+      box(g,side?2.5:-2.5,h/2,-1.85+i*1.5,.8,h,1.5,(i+side)%2?C.stone:stone)));
+    for(const [x,z,h] of [[-1.2,1.2,2.6],[1.2,1.2,1.1]]){round(g,x,h/2,z,.7,h,.7,C.cream);round(g,x,.12,z,1,.24,1,stone);}
+    round(g,-1.2,2.7,1.2,.95,.2,.95,stone);round(g,1.9,.36,3,.7,2.2,.7,C.cream,.5,Math.PI/2);
+    box(g,0,.45,-1.6,1.8,.9,1,stone);rock(g,0,.98,-1.6,.3,.16,.3,C.gold);
+    for(const [x,y,z,w] of [[-2.5,3.7,-1.8,1.3],[-2.1,2,-2.9,1.5],[2.5,3.2,-.3,1.2],[1.6,4.9,-2.9,1.4],[2.6,.7,2.7,1]])rock(g,x,y,z,w,w*.6,w*.8,C.leaf);
+    for(const [x,z] of [[-3.6,2.6],[-.4,3.4],[3.4,1]])rock(g,x,.2,z,.3,.3,.3,C.red);
+  }
+  function pond(g) {
+    // A still pond with a stone rim, a short jetty and moored skiff, reeds, lily pads, two ducks and a shade tree.
+    round(g,0,.06,0,11.4,.12,8.8,stone);round(g,0,.1,0,10.6,.12,8,C.water);
+    box(g,3.6,.45,1.4,3.8,.14,1.2,C.wood);for(const x of [2.2,4.8])for(const z of [.9,1.9])box(g,x,.25,z,.16,.6,.16,C.soil);
+    box(g,.6,.3,2.2,2.3,.4,.9,C.wood);box(g,.6,.44,2.2,1.9,.16,.6,C.soil);box(g,.6,.56,2.2,.12,.08,1.1,C.wood);
+    box(g,1.2,.62,1.9,2.2,.06,.1,C.cream,.5);
+    for(const [x,z] of [[-4.6,-1.2],[-4.2,1.6],[-1.6,-3.4],[2.4,-3.2]])for(let k=0;k<4;k++) {
+      part(g,'cone',x+k*.28,.8,z+(k%2)*.3,.2,1.5+(k%3)*.3,.2,C.pine);rock(g,x+k*.28,1.55+(k%3)*.3,z+(k%2)*.3,.16,.4,.16,C.soil);
+    }
+    for(const [x,z,f] of [[-2,.6,1],[-1,-1.4,0],[.8,-.6,1],[-2.8,-1,0],[1.8,-1.8,0]]){round(g,x,.18,z,.75,.04,.75,C.leaf);if(f)rock(g,x,.28,z,.26,.18,.26,C.cream);}
+    for(const [x,z,a] of [[-.4,.9,.3],[.5,1.3,.9]]) {
+      const d=new THREE.Group();d.position.set(x,.2,z);d.rotation.y=a;g.add(d);
+      rock(d,0,.16,0,.6,.32,.4,C.cream);rock(d,.3,.4,0,.26,.26,.24,C.pine);box(d,.48,.38,0,.16,.07,.12,C.gold);
+    }
+    part(g,'trunk',-4.4,1.4,3.4,.55,2.8,.55,C.wood);rock(g,-4.4,3.5,3.4,3.4,2,3.4,C.leaf);
+    box(g,4.6,.5,-3.6,1.8,.12,.6,C.wood);for(const x of [3.9,5.3])box(g,x,.25,-3.6,.12,.5,.5,C.wood);
+  }
+  function windmill(g) {
+    rock(g,0,.02,0,9.5,.12,8.5,C.soil);
+    // A stone tower mill with a timber cap and four lattice sails, a leaning millstone and sacks of grain.
+    round(g,0,1.2,0,4.4,2.4,4.4,C.stone);round(g,0,3.4,0,3.9,2,3.9,C.cream);round(g,0,5.3,0,3.4,1.8,3.4,C.cream);
+    round(g,0,2.4,0,4.5,.14,4.5,stone);part(g,'cone',0,7.1,0,4,1.8,4,C.red);
+    box(g,0,.9,2.2,.9,1.8,.12,C.soil);for(const y of [3.4,5.2])box(g,0,y,y<4?1.95:1.7,.5,.7,.1,C.dark);
+    const sails=new THREE.Group();sails.name='windmill-sails';sails.position.set(0,6.1,2.1);sails.rotation.z=.4;g.add(sails);
+    round(sails,0,0,-.3,.5,.9,.5,C.soil,Math.PI/2,Math.PI/2);
+    for(let k=0;k<4;k++) {
+      const arm=new THREE.Group();arm.rotation.z=k*Math.PI/2;sails.add(arm);
+      box(arm,0,2.4,0,.16,4.8,.12,C.wood);box(arm,.52,2.9,0,.9,3.4,.05,C.cream);
+      for(let r=0;r<4;r++)box(arm,.52,1.5+r*.95,.02,.9,.07,.06,C.wood);
+    }
+    round(g,3,.75,2.2,1.5,.28,1.5,stone,.4,1.2);round(g,3.05,.76,2.25,.3,.32,.3,C.dark,.4,1.2);
+    for(const [x,z,y] of [[-2.8,2.4,.4],[-3.5,1.6,.4],[-3.1,2,1.05],[-2.4,-2.6,.4]]){rock(g,x,y,z,.8,.8,.7,C.cream);rock(g,x,y+.42,z,.3,.2,.3,C.road);}
+  }
+  const meadows={tourney,hay,stones,watchtower,fold,orchard,butts,ruin,pond,windmill};
   for(const site of WAYSIDE_SITES) {
     const g=new THREE.Group();g.name=site.id;g.position.set(site.x,groundLevel,site.z);root.add(g);
     if(site.kind==='shelter')shelter(g);

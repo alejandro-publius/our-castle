@@ -8,7 +8,7 @@
 
 Decide what the family can afford together, compare complete kits and adjust the plan when an expense changes. A living pixel woodland turns shared progress into new places to explore. Keep the village, open the Manor, cross the rivers to the Keep, and reach the Royal Citadel, Rosewind Palace and two storybook towers. Nine districts, a campsite that grows with the shared goal, short deed cards, family avatars, roaming guests and changing light sit beside one compact household journal.
 
-![Our Castle: expanded pixel woodland, rivers and compact property arrows](docs/screenshots/woodland-expanded-desktop.png)
+![Our Castle in clear weather: nine districts among rivers and woodland, the PayPal hillside sign, and outer meadows with a sheep fold, a pond, an archery range, a ruined chapel and standing stones](docs/screenshots/realm-clear-desktop.png)
 
 The illustrated journal has four chapters—House, Plan, Contribute and Ledger—with an original pixel crest and castle illustration. Family heraldry stays personal. [See the journal and brand design](docs/JOURNAL-DESIGN.md).
 
@@ -103,7 +103,7 @@ Run **`npm run demo -- --village-exchange`** to try it in a fresh, keyless sessi
 
 Searching does not buy an item. This is goal progress, not a bank balance. Reported savings, bills, gifts, simulated contributions and PayPal sandbox receipts retain their sources. Verified utility-bill rewards require a provider connection that is not present.
 
-Small **arrow markers** reveal property names when selected or reached by keyboard. The map has another 32-unit square of land on every side, two animated waterfalls feeding the rivers, and a hidden camp with two resting knights. Four of its outer meadows hold small miniatures: a tourney field, a hay meadow, standing stones and a border watchtower. The **compass beside View** lets you drag between homes at your current close-up scale; switch it off to turn the map again. The **Sound button at the top right** enables quiet retro RPG music and board effects. Every page starts muted; the music loads only when enabled. [Soundtrack sources and licences](assets/music/README.md). After contributing, **Review the receipt** opens that contribution in Treasury, with its saved-check status and the single steward note. [Receipt walkthrough and desktop/phone captures](docs/RECEIPT-HANDOFF.md).
+Small **arrow markers** reveal property names when selected or reached by keyboard. The map has another 32-unit square of land on every side, two animated waterfalls feeding the rivers, and a hidden camp with two resting knights. Ten of its outer meadows hold small miniatures: a tourney field, a hay meadow, standing stones, a border watchtower, a sheep fold, an apple orchard, an archery range, a ruined chapel, a pond and a windmill. Pines and rock outcrops dot the mountain slopes between them. They are scenery only: none is a district, a reward or a payment target. The **compass beside View** lets you drag between homes at your current close-up scale; switch it off to turn the map again. The **Sound button at the top right** enables quiet retro RPG music and board effects. Every page starts muted; the music loads only when enabled. [Soundtrack sources and licences](assets/music/README.md). After contributing, **Review the receipt** opens that contribution in Treasury, with its saved-check status and the single steward note. [Receipt walkthrough and desktop/phone captures](docs/RECEIPT-HANDOFF.md).
 
 The walkthrough captures use isolated test households and simulated contributions:
 
@@ -112,6 +112,10 @@ The walkthrough captures use isolated test households and simulated contribution
 | ![Manor deed arriving on another family member's page](docs/screenshots/shared-live-owner-manor.png) | ![Illustrated Treasury milestone, weekly plan and contribution records](docs/screenshots/sponsor-treasury-desktop.png) |
 
 **World settings** change only how the map looks. Time of day follows the device clock or a chosen Day, Afternoon or Night; Weather starts in Snow and can be changed to Clear, Rain or an opt-in local report. Snow turns the ground white and the rivers icy, and brings out a sleigh that circles the realm and a decorated tree with a snowman. None of it touches a district, reward, payment or record. [Light and weather](docs/ART-DIRECTION.md) · [Wayside and meadow scenery](docs/WOODLAND-WAYSIDES.md)
+
+| Sheep fold, pond and orchard below the PayPal sign | Windmill and standing stones on the border |
+| --- | --- |
+| ![North meadows in clear weather: a dry-stone sheep fold and a shepherd's hut, a pond with a jetty, and an orchard below the PayPal hillside sign](docs/screenshots/meadow-north.png) | ![East border in clear weather: a red-capped windmill beside the standing stones, with pines and grey outcrops on the slopes](docs/screenshots/meadow-windmill.png) |
 
 | Snow: the sleigh over Rosewind Palace | A tourney field in an outer meadow |
 | --- | --- |
