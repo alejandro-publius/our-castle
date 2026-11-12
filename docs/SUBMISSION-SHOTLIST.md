@@ -28,6 +28,15 @@ Both example sessions run current `main`. Do not record the saved apps on 3010 o
 
 **For the sponsor judges:** in beat 5 the Ledger is already open. Keep its records table and its next-area plaque in frame for two seconds and name them: the table is AG Grid and the plaque is AG Studio. Channel3 cannot be shown in a keyless example, whose listings are invented and say so; it is described in the entry text.
 
+Four things added on November 12 are on screen in these same beats, at no extra length. Name them where the take allows:
+
+- **Beat 3, AG Studio.** After the partial release, the next-area plaque gains **Held, not counted · $10.00 in 1 hold**, with that hold's guarantee timeline. It is a live AG Studio table, totalled by Studio's data engine. Scroll the Ledger so it is in frame for two seconds.
+- **Beat 3 or 5, AG Studio's Agent Framework (optional, about five seconds).** Open **House steward** and press **Open holds?**. The answer lists what is still held and until when. It reads saved records only and says so.
+- **Every beat, all sponsors.** Under each journal chapter's heading, one line says which tool does that chapter's work. In a keyless example it says what stands in for it, for example “an invented catalogue stands in for Channel3”. Do not read it as a claim that Channel3 or PayPal was called.
+- **Not in this cut, Channel3.** **Draft listings** appears in the kit plan when an item has no listing. Showing it needs four **Remove** presses first, which the cut has no room for; it is described in the entry text.
+
+If the example is hosted (see [`render.yaml`](../render.yaml)), the end card may show that address beside the repository's.
+
 The time ranges are editing targets, not a measured walkthrough. Hard stop at 2:55. If a take runs long, shorten the square visit in beat 4 before cutting an approval, a confirm press or a label.
 
 ### Beat 3, the sandbox variant
