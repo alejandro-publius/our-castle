@@ -1,5 +1,7 @@
 # Our Castle
 
+[![Release checks](https://github.com/alejandro-publius/our-castle/actions/workflows/release-checks.yml/badge.svg?branch=main)](https://github.com/alejandro-publius/our-castle/actions/workflows/release-checks.yml?query=branch%3Amain)
+
 **Families build castles. Neighbors build something together.**
 
 Decide what the family can afford together, compare complete kits and adjust the plan when an expense changes. A living pixel woodland turns shared progress into new places to explore. Keep the village, open the Manor, cross the rivers to the Keep, and reach the Royal Citadel, Rosewind Palace and two storybook towers. Nine districts, a campsite that grows with the shared goal, short deed cards, family avatars, roaming guests and changing light sit beside one compact household journal.
@@ -10,6 +12,18 @@ The illustrated journal has four chapters—House, Plan, Contribute and Ledger�
 
 [Architecture diagram](#architecture-at-a-glance) · [Payment sequence](docs/ARCHITECTURE.md#payment-states) · [Life of a held contribution](#hold-first-then-release-in-steps)
 
+## At a glance
+
+| | |
+| --- | --- |
+| **Run it** | One command, no keys and no account: [`npm run demo -- --village-fund`](#try-it-locally) on Node.js 22.16+. The families, shops and prices are invented and the payments are simulated. |
+| **Checked on every change** | [Ten hosted jobs](.github/workflows/release-checks.yml): 791 unit tests on Node 22.16, 24 and 26, the Rust solver's own tests, and 126 browser tests across desktop and a 390 px phone, from a suite of 428. |
+| **Money rules tested past the cases anyone wrote down** | Every run plays 260 [seeded random histories](docs/PAYMENT-HOLDS.md#random-histories): holds, releases in steps, returns, lost answers, repeated deliveries, and [five families sharing one fund](docs/VILLAGE-FUNDS.md#random-histories). After every step the ledger must equal what the fake PayPal really took, and no family may be shown another's private amounts. They found two gaps in the hold path; both are closed. |
+| **PayPal** | Orders v2 and Payments v2 through the pinned Server SDK: pay at once, or hold first (authorize, capture in up to three steps, void, reauthorize). Sandbox only: the code has no path to live endpoints. |
+| **Adults decide; AI never moves money** | The server records each adult decision before PayPal is asked, counts a capture only if it matches that decision, and counts it once. The planner, the photo reader and the steward can read and propose; none can pay or approve. |
+| **A solver in Rust** | Complete kits are searched in exact integer cents by a bounded native solver, which the server checks against a JavaScript reference: equal on [403 cases](docs/VALIDATION.md). |
+| **What is real and what is not** | [What is verified](#what-is-verified) separates the hosted checks, the fake-provider evidence and the few live sandbox results. |
+
 The source is **public on GitHub**. It includes:
 - family choices, schedules and shopping within the family's limits;
 - a kit list from typed text or a photo, complete-kit planning and a playable family-trip example with an invented catalogue;
@@ -18,11 +32,11 @@ The source is **public on GitHub**. It includes:
 - adult-approved PayPal sandbox contributions with recovery and safety checks, and an opt-in **hold first** path: hold an amount, extend it once, release it in up to three steps, or return it;
 - an original knight-and-dragon loading scene, time of day and weather (including Snow), opt-in music and Moss's optional tour.
 
-The owner's saved Mac apps at http://localhost:3010 and http://localhost:3021 were upgraded on November 10 to `a56170a` (database schema 18) with their original records preserved. They stay on that runtime until the owner asks for another upgrade, so they do not yet run the hold extension, stepped releases, meadow scenery or Snow. Every example below starts its own fresh session. [Release status and remaining video/submission steps](docs/RELEASE-READINESS.md). For an independent code review, use the [source map and evidence guide](docs/JUDGE-HANDOFF.md#6-for-source-reviewers).
+Every example below starts its own fresh session. [Release status and remaining video/submission steps](docs/RELEASE-READINESS.md). For an independent code review, use the [source map and evidence guide](docs/JUDGE-HANDOFF.md#6-for-source-reviewers).
 
 ## Try it locally
 
-Use **Node.js 22.16+**. For the focused shared-fund example:
+Use **Node.js 22.16+**; on an older version `npm ci` stops and says which one it needs. For the focused shared-fund example:
 
 ```sh
 git clone https://github.com/alejandro-publius/our-castle.git
@@ -215,6 +229,7 @@ The family reviews a plan before saving it and approves each contribution explic
 - **Historical live AI:** feasible and impossible plans, ledger reading and PayPal transaction listing. [Original report](docs/LIVE-VERIFICATION-AI.md)
 - **One live OpenAI check:** the production photo adapter read one synthetic packing-list image correctly. This is a single adapter check, not a real-photo accuracy benchmark or a human usability test. [Image, result and limits](docs/VALIDATION.md#one-live-openai-synthetic-photo--november-9-2026).
 - **One live Cohere check:** on November 10 one request through the ordering adapter returned an ordering. That shows the connection works; whether the ordering is good has not been evaluated. [Release readiness](docs/RELEASE-READINESS.md)
+- **The owner's saved Mac apps** at http://localhost:3010 and http://localhost:3021 were upgraded on November 10 to `a56170a` (database schema 18) with their original records preserved. They stay on that runtime until the owner asks for another upgrade, so they do not yet run the hold extension, stepped releases, meadow scenery or Snow.
 - **Earlier public clone:** an anonymous clone, install, source guard and ten journey/phone checks passed for an earlier build, using the actual isolated `npm run demo` command. [Recording and scope](docs/demos/current-review/sources/public-demo-capture.json)
 - **Historical in-app sandbox result** (preserved 3021 rehearsal, release `4082df5`): an owner-completed $15 contribution, one credit from $60 reported to $75, village/Manor open, and an actual same-order `get_order` with server reconciliation `match`. A model compatibility fix passed 10 focused tests. It predates this source and does not validate the newer features. [Evidence and recording limits](docs/IN-APP-SANDBOX-VERIFICATION.md)
 
