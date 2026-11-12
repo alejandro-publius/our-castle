@@ -76,7 +76,7 @@ An invented family (Rowan, Ash and Wren), a kit list and six sample listings are
 
 [Selected product scope and evidence limits](docs/PRODUCT-COMPLETION.md) collects the completed features in one place. The picture below is the running example: a temporary $150 proposal beside the funded project, while the chosen $180 kit stays unchanged.
 
-![Invented family-trip example: the map previews a $150 repair, switches only the tent and keeps the stove; the chosen $180 kit remains unchanged](docs/screenshots/kit-preview-desktop-repair.png)
+![Invented family-trip example: the map previews a $150 repair, switches only the tent and keeps the stove; the chosen $180 kit remains unchanged](docs/screenshots/kit-preview-current.png)
 
 The example starts an in-memory household on an unused localhost port. It ignores `.env`, configured keys and saved records, and makes no provider call. Progress survives refresh while that process runs; closing it ends the session. Payments are simulated, plans use built-in rules, and photo reading and Cohere ordering stay off. Approval and saving a goal remain explicit.
 
@@ -109,7 +109,7 @@ The walkthrough captures use isolated test households and simulated contribution
 
 | An area opens for the family | Treasury keeps the records |
 | --- | --- |
-| ![Manor deed arriving on another family member's page](docs/screenshots/shared-live-owner-manor.png) | ![Illustrated Treasury milestone, weekly plan and contribution records](docs/screenshots/sponsor-treasury-desktop.png) |
+| ![The Manor Gardens deed: unlocked at the 25% milestone, with Visit, Next and Close](docs/screenshots/deed-manor-current.png) | ![Treasury in the journal: the next-area plaque, this week's plan, and $40.00 held and not counted in one open hold](docs/screenshots/treasury-current-desktop.png) |
 
 **World settings** change only how the map looks. Time of day follows the device clock or a chosen Day, Afternoon or Night; Weather starts in Snow and can be changed to Clear, Rain or an opt-in local report. Snow turns the ground white and the rivers icy, and brings out a sleigh that circles the realm and a decorated tree with a snowman. None of it touches a district, reward, payment or record. [Light and weather](docs/ART-DIRECTION.md) · [Wayside and meadow scenery](docs/WOODLAND-WAYSIDES.md)
 
@@ -196,17 +196,25 @@ These features are in the source and the saved Mac apps. Adding live catalogue i
 
 | 3. Compare complete kits that fit (desktop) | 4. The smallest change after a larger one-off (desktop) |
 | --- | --- |
-| ![Two kits fit by Dec 27 after a $90 one-off: $150 with the lowest listed total, and $180 with the lower listed weight](docs/screenshots/kit-planner-desktop-kits-compared.png) | ![After a $120 one-off, one kit fits: $150, switching only the tent from the chosen kit, with the kept stove](docs/screenshots/kit-planner-desktop-smallest-change.png) |
+| ![After a $90 one-off, two complete kits fit by Dec 31; the first, $150, has the lowest listed total and the fewest shops](docs/screenshots/kit-compare-current.png) | ![After a $120 one-off, one kit fits: $150, switching only the tent from the chosen kit, with the kept stove; the map previews it as a proposal, not bought](docs/screenshots/kit-smallest-change-current.png) |
 
-These are test captures. The family (Rowan, Ash and Wren) is invented, and the "Test fixture" listings come from two invented shops through a fake catalog; the Cohere order comes from a fake transport. They are not live catalog results, and the default demo installs no catalog. `npm run demo -- --family-trip` runs the same decision in the page with its own invented listings: [playable family-trip example](docs/FAMILY-TRIP-EXAMPLE.md).
+Captures 3 and 4 are from `npm run demo -- --family-trip`, whose invented listings are labelled "Sample". Captures 1 and 2 are older test captures. The family (Rowan, Ash and Wren) is invented, and the "Test fixture" listings come from two invented shops through a fake catalog; the Cohere order comes from a fake transport. They are not live catalog results, and the default demo installs no catalog. `npm run demo -- --family-trip` runs the same decision in the page with its own invented listings: [playable family-trip example](docs/FAMILY-TRIP-EXAMPLE.md).
 
 ## Three sponsor integrations
 
+The deepest of the three is **AG Studio**: it is the family's Treasury, and all of it runs in the keyless example. A custom parchment widget, three typed live tables totalled by Studio's data engine, and the Agent Framework running the read-only steward.
+
 | Tool | In the game | Implementation and evidence |
 | --- | --- | --- |
-| **Channel3** | Market Town merchant (up to three results, refresh, cheaper choices, explicit goal draft) and the listings an adult adds to the kit list, one search at a time or drafted for every unlisted item in one step | Server-side API and budget checks; changed offers expire stale drafts. The listings feed the complete-kit planner: the solver compares whole kits within the family's limit on Channel3's listed price and weight, and a kit can be saved only while every chosen listing was confirmed in the last half hour. One real desktop search is separate from the fake-catalogue freshness, journey and kit-planner checks. [Merchant](docs/CHANNEL3-MERCHANT.md) · [Kit planner](docs/KIT-PLANNER.md) |
 | **AG Grid / AG Studio** | Illustrated Treasury milestone, weekly plan, records and receipts in parchment | Studio 3.1 live data preserves the report; Grid 36.3 keeps selection and filters. Open PayPal holds are a third live Studio table: its data engine totals what is still held, and each hold has a guarantee timeline. The Agent Framework manages the existing steward through a scoped custom runner, with cancellation and cleanup, including its saved-records answer to "Which holds end soonest?". [Details](docs/TREASURY.md) |
+| **Channel3** | Market Town merchant (up to three results, refresh, cheaper choices, explicit goal draft) and the listings an adult adds to the kit list, one search at a time or drafted for every unlisted item in one step | Server-side API and budget checks; changed offers expire stale drafts. The listings feed the complete-kit planner: the solver compares whole kits within the family's limit on Channel3's listed price and weight, and a kit can be saved only while every chosen listing was confirmed in the last half hour. One real desktop search is separate from the fake-catalogue freshness, journey and kit-planner checks. [Merchant](docs/CHANNEL3-MERCHANT.md) · [Kit planner](docs/KIT-PLANNER.md) |
 | **APIMatic** | Behind the scenes | Official generated PayPal Server SDK 2.5.0 and eight installed, discovery-verified Codex context skills; real SDK serialization/auth/retry tests with fake transport, plus documented capture-recovery/read fixes. [Details](docs/APIMATIC-CODEX.md) |
+
+| Open holds in the Treasury (AG Studio) | The steward on open holds (Studio Agent Framework) |
+| --- | --- |
+| ![The Treasury's Held, not counted panel: $40.00 of $40.00 still held (simulated), the guarantee timeline, and a link to open the hold](docs/screenshots/treasury-holds-current.png) | ![The house steward answering Open holds?: one hold is open with $40.00 still held, none of it counts until an adult releases it, read from saved records with no provider contacted](docs/screenshots/steward-holds-current.png) |
+
+Both are from the keyless family-trip example: the hold is simulated and no provider is contacted.
 
 In the game itself, each journal chapter says in one line which of these tools does its work in that session (or what stands in for it in a keyless example), with a link that takes the map to that maker's sign in the woodland.
 
