@@ -33,7 +33,8 @@ async function withDemo(browser, info, run) {
   mkdirSync(evidence, { recursive: true });
   try {
     await page.goto(demo.url);
-    await expect(page.locator('body')).toHaveAttribute('data-ready', 'true');
+    // The realm starts on an emulated GPU: like the other first waits in this suite, readiness gets 30 seconds.
+    await expect(page.locator('body')).toHaveAttribute('data-ready', 'true', { timeout: 30_000 });
     await page.getByRole('button', { name: 'Try a one-off expense' }).click();
     await page.getByLabel('One-off amount').fill('90');
     await page.getByRole('button', { name: 'Compare complete kits' }).click();
