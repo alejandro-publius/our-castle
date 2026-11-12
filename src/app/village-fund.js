@@ -1,4 +1,6 @@
 import { api, newRequestId } from './api.js';
+import { nextMilestone } from '../core/rules.js';
+import { projectStage } from '../core/family-project.js';
 
 const $ = id => document.getElementById(id);
 const RAILS = Object.freeze({ simulated: 'Simulated contribution · no money moves', 'paypal-sandbox': 'PayPal sandbox · test payment', 'pyusd-devnet': 'PYUSD devnet · test tokens with no monetary value' });
@@ -15,6 +17,15 @@ export function villageMoney(minor, fund) {
   const whole = (magnitude / scale).toLocaleString('en-US'), fraction = String(magnitude % scale).padStart(decimals, '0'), sign = value < 0 ? '−' : '';
   if (fund?.rail === 'pyusd-devnet') { const tail = fraction.replace(/0+$/, ''); return `${sign}${whole}${tail ? `.${tail}` : ''} test PYUSD`; }
   return `${sign}$${whole}.${fraction}`;
+}
+/**
+ * What an open fund's shared project needs to reach its next stage, by the same milestone rule the server uses for the
+ * stage it reports. Null when the fund is closed or its project already stands complete.
+ */
+export function villageNextStage(fund) {
+  const target = fund?.targetMinor;
+  const next = fund?.status === 'open' && Number.isSafeInteger(target) && target > 0 ? nextMilestone(Math.max(0, fund.progress?.netMinor ?? 0), target) : null;
+  return next ? { name: projectStage(next.targetCents, target, fund.projectKind).name, awayMinor: next.awayCents } : null;
 }
 const h = (tag, attrs = {}, ...children) => {
   const el = document.createElement(tag);
@@ -53,6 +64,8 @@ export function createVillageFund({ getState, actor, applyState, getScene, onSqu
   const rail = h('p', { class: 'village-rail' });
   const progress = h('progress', { id: 'village-progress', max: 10000, value: 0, 'aria-label': 'Shared project progress' });
   const summary = h('p', { class: 'village-progress-copy' }), remaining = h('p', { class: 'fine' });
+  // Tells a first-time visitor which amount changes what they see, as the header's "Next:" line does for a family's own goal.
+  const nextStage = h('p', { id: 'village-next-stage', class: 'fine', hidden: true });
   const empty = h('p', { id: 'village-empty' }, 'A shared project begins with a purpose, an amount and a date.');
   // First use. A fund needs a neighborhood and a neighborhood needs a second family; both already have their own reviewed
   // forms in Village Exchange. These only open that form over this paper. They create, join and send nothing themselves.
@@ -87,7 +100,7 @@ export function createVillageFund({ getState, actor, applyState, getScene, onSqu
   const shareForm = h('form', { id: 'village-share-form' }, field('Our family’s voluntary share', shareAmount), h('label', { class: 'check' }, shareApproved, ' We reviewed this share. It is a commitment, not a payment or debt.'), h('button', { type: 'submit' }, 'Save our share'));
   shareForm.addEventListener('submit', e => { e.preventDefault(); const f = fund(), n = parseVillageMinor(shareAmount.value, f?.decimals, true); if (!f || n === null || !shareApproved.checked) return say('Enter a valid share and review it first.'); act('/api/village', { action: 'share', fundId: f.id, committedMinor: n, expectedRevision: f.revision, confirmed: true }); });
   const shareDetails = h('details', {}, h('summary', {}, 'Our family’s share'), shareForm);
-  pages.project.append(title, rail, progress, summary, remaining,
+  pages.project.append(title, rail, progress, summary, remaining, nextStage,
     button('Visit the shared square', showSquare, { id: 'village-visit' }), paymentNote, paymentForm, vault, shareDetails);
   const families = h('ul', { class: 'village-family-list' });
   const shareCastle = button('Share our castle’s appearance', () => act('/api/village', { action: 'share-castle', shared: !village.members?.find(m => m.mine)?.shared, confirmed: true }), { class: 'village-action' });
@@ -236,6 +249,10 @@ export function createVillageFund({ getState, actor, applyState, getScene, onSqu
     progress.value = Math.max(0, Math.min(10000, f.progress?.basisPoints ?? 0));
     summary.textContent = `${villageMoney(f.progress?.netMinor ?? 0, f)} of ${villageMoney(f.targetMinor, f)} recorded`;
     remaining.textContent = `${villageMoney(f.progress?.remainingMinor ?? f.targetMinor, f)} to go · by ${day(f.deadline)}${f.status === 'closed' ? ' · Closed' : ''}`;
+    // The last stage is the goal itself: the line above already says what that needs.
+    const next = villageNextStage(f);
+    nextStage.hidden = !next || next.awayMinor === f.progress?.remainingMinor;
+    if (next) nextStage.textContent = `Next: ${next.name} · ${villageMoney(next.awayMinor, f)} to go`;
     paymentForm.hidden = !adult() || f.rail === 'pyusd-devnet' || f.status !== 'open'; vault.hidden = f.rail !== 'pyusd-devnet';
     paymentNote.textContent = f.rail === 'simulated' ? 'Practice together with simulated contributions. No money moves.' : f.rail === 'paypal-sandbox' ? 'The recipient is fixed on this fund. Continue only after reviewing the amount and organizer.' : 'Test-token progress is separate from money. These tokens cannot buy the project.';
     vaultAddress.textContent = f.recipient?.address ?? '';
@@ -289,7 +306,12 @@ export function createVillageFund({ getState, actor, applyState, getScene, onSqu
     paymentRequest ??= newRequestId();
     const response = await act('/api/village/payments', { fundId: f.id, amountMinor: n, expectedRevision: f.revision, approvalConfirmed: true, requestId: paymentRequest }, res => {
       approved.checked = false;
-      if (f.rail === 'simulated') { say('Simulated contribution recorded. The shared project now reflects the latest records.'); paymentRequest = null; return; }
+      if (f.rail === 'simulated') {
+        // Say what this contribution did, from the server's own answer: the amount, and a stage the project reached.
+        const now = fund(), rose = (now?.progress?.stage ?? 0) > (f.progress?.stage ?? 0);
+        say(`Simulated contribution recorded: ${villageMoney(n, f)}.${rose ? ` The shared project reached its next stage: ${projectStage(now.progress.netMinor, now.targetMinor, now.projectKind).name}.${outside() ? '' : ' Visit the shared square to see it.'}` : ''}`);
+        paymentRequest = null; return;
+      }
       receivePayment(res, f.id);
       say('Order created. Progress changes only after the server confirms the payment.');
     });

@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { parseVillageMinor, villageMoney, villageRailLabel } from '../../src/app/village-fund.js';
+import { parseVillageMinor, villageMoney, villageNextStage, villageRailLabel } from '../../src/app/village-fund.js';
+import { projectStage } from '../../src/core/family-project.js';
 
 test('fund input preserves whole minor units and rejects ambiguous or unsafe money', () => {
   assert.equal(parseVillageMinor('40.01'), 4001);
@@ -23,4 +24,24 @@ test('the presentation never calls valueless devnet units dollars or combines ra
   assert.match(villageRailLabel('paypal-sandbox'), /test payment/);
   assert.match(villageRailLabel('simulated'), /no money moves/);
   assert.equal(villageMoney(NaN, {}), '—');
+});
+
+test('the next-stage hint names the stage and the exact amount that reaches it, by the rule the server uses for the stage', () => {
+  const fund = (netMinor, extra = {}) => ({ status: 'open', projectKind: 'schoolhouse', targetMinor: 40000, progress: { netMinor }, ...extra });
+  assert.deepEqual(villageNextStage(fund(0)), { name: 'Under construction', awayMinor: 10000 });
+  assert.deepEqual(villageNextStage(fund(20000)), { name: 'Finished schoolhouse', awayMinor: 4000 });
+  assert.deepEqual(villageNextStage(fund(24000)), { name: 'Gathering place', awayMinor: 16000 });
+  assert.equal(villageNextStage(fund(40000)), null, 'a complete project has no next stage');
+  assert.equal(villageNextStage(fund(45000)), null, 'nor one funded past its target');
+  assert.equal(villageNextStage(fund(20000, { status: 'closed' })), null, 'a closed fund takes no more contributions');
+  for (const broken of [null, {}, fund(100, { targetMinor: 0 }), fund(100, { targetMinor: 1.5 })]) assert.equal(villageNextStage(broken), null);
+  // Paying exactly the amount named moves the stage the server reports, and one unit less does not, at any target.
+  for (const targetMinor of [1, 3, 999, 40000, 123457, 6_000_000_000]) {
+    for (const netMinor of [0, Math.floor(targetMinor / 4), Math.floor(targetMinor / 2), Math.floor(targetMinor * 0.6), targetMinor - 1].filter((n) => n >= 0 && n < targetMinor)) {
+      const next = villageNextStage(fund(netMinor, { targetMinor })), stage = (n) => projectStage(n, targetMinor, 'schoolhouse');
+      assert.ok(stage(netMinor + next.awayMinor).index > stage(netMinor).index, `${netMinor} of ${targetMinor}`); // a tiny target can pass two stages at once
+      assert.equal(stage(netMinor + next.awayMinor - 1).index, stage(netMinor).index, `${netMinor} of ${targetMinor}, one unit short`);
+      assert.equal(stage(netMinor + next.awayMinor).name, next.name);
+    }
+  }
 });

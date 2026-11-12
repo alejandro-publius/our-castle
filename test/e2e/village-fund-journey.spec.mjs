@@ -37,6 +37,7 @@ test('five families contribute to the shared class trip, visit its square and ke
     await expect(page.locator('#village-fund-dialog')).toBeVisible();
     await expect(page.locator('#village-project-title')).toHaveText('Class trip together');
     await expect(page.locator('.village-progress-copy')).toHaveText('$200.00 of $400.00 recorded');
+    await expect(page.locator('#village-next-stage')).toHaveText('Next: Finished schoolhouse · $40.00 to go'); // which amount changes what a visitor sees
     const before = await read(), fundId = before.village.selectedFundId;
     const initial = before.village.funds.find(f => f.id === fundId);
     expect(before.example.id).toBe('village-fund');
@@ -75,7 +76,10 @@ test('five families contribute to the shared class trip, visit its square and ke
     await contribute.click();
     expect((await posted).status()).toBe(200);
     await expect(page.locator('.village-progress-copy')).toHaveText('$240.00 of $400.00 recorded');
-    await expect(page.locator('#village-status')).toContainText('Simulated contribution recorded');
+    // One result line: the amount, the stage it reached, and where to see it. The stage after is the goal itself, which
+    // the "to go" line already names, so the hint is not repeated.
+    await expect(page.locator('#village-status')).toHaveText('Simulated contribution recorded: $40.00. The shared project reached its next stage: Finished schoolhouse. Visit the shared square to see it.');
+    await expect(page.locator('#village-next-stage')).toBeHidden();
     await expect(approval).not.toBeChecked();
     const after = await read(), paid = after.village.funds.find(f => f.id === fundId);
     expect(paid.progress.netMinor).toBe(24000);
