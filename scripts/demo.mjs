@@ -23,9 +23,11 @@ const root = fileURLToPath(new URL('../', import.meta.url));
  * - `clock` and `kitSolver` are for tests: a pinned day, and a solver whose use can be counted.
  * - `host` and `port` are for a container (`--host=0.0.0.0 --port=8080`), where the loopback address of the container
  *   is not reachable from the computer that runs it. Left alone, the demo listens on this computer only, on a free port.
+ * - `publicHost` is for hosting an authored example: the one name, besides this computer's own, that the demo answers
+ *   to (`--public-host=our-castle-example.onrender.com`). Everyone who opens it shares the same invented household.
  * Returns the address, `close`, and the authored example it runs (null for the ordinary demo).
  */
-export async function startDemo({ familyTrip = false, villageExchange = false, villageStory = false, villageFund = false, clock = createClock(), kitSolver = null, host = '127.0.0.1', port = 0 } = {}) {
+export async function startDemo({ familyTrip = false, villageExchange = false, villageStory = false, villageFund = false, clock = createClock(), kitSolver = null, host = '127.0.0.1', port = 0, publicHost = null } = {}) {
   if ([familyTrip, villageExchange, villageStory, villageFund].filter(Boolean).length > 1) throw new Error('Choose one demo story at a time.');
   const config = loadConfig({ PORT: '0' }, { root });
   const db = openDatabase(':memory:');
@@ -33,7 +35,7 @@ export async function startDemo({ familyTrip = false, villageExchange = false, v
   const example = villageFund ? createVillageFundExample({ clock }) : villageStory ? createVillageStory({ clock }) : villageExchange ? createVillageExample({ clock }) : familyTrip ? createFamilyTrip({ clock }) : null;
   let app;
   try {
-    app = createApp({ config, db, clock, root, kitSolver, ...(example ? { example, merchant: example.merchant } : {}) });
+    app = createApp({ config, db, clock, root, kitSolver, publicHost, ...(example ? { example, merchant: example.merchant } : {}) });
     if (example) await app.seedExample();
     server = http.createServer(app.handler);
     await new Promise((resolve, reject) => {
@@ -69,7 +71,13 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
     console.error('Use --host=<address> and --port=<0 to 65535>, for example --host=0.0.0.0 --port=8080 inside a container.');
     process.exit(2);
   }
-  const unknown = options.filter((option) => !['--family-trip','--village-exchange','--village-story','--village-fund'].includes(option) && !/^--(host|port)=/.test(option));
+  // `--public-host=` names the one address a hosted example answers to. It needs a story: only invented data is hosted.
+  const publicHost = setting('public-host')?.toLowerCase() ?? null;
+  if (publicHost !== null && (!/^[a-z0-9]([a-z0-9.-]*[a-z0-9])?$/.test(publicHost) || !options.some((option) => ['--family-trip', '--village-exchange', '--village-story', '--village-fund'].includes(option)))) {
+    console.error('Use --public-host=<name> with one demo story, for example --family-trip --public-host=our-castle-example.onrender.com.');
+    process.exit(2);
+  }
+  const unknown = options.filter((option) => !['--family-trip','--village-exchange','--village-story','--village-fund'].includes(option) && !/^--(host|port|public-host)=/.test(option));
   if (unknown.length) {
     console.error(`Unknown option: ${unknown.join(' ')}\nUse "npm run demo" for the fresh demo, "npm run demo -- --family-trip" for planning, "--village-exchange" for item sharing, "--village-story" for the earlier library opening, or "--village-fund" for the shared class trip.`);
     process.exit(2);
@@ -82,8 +90,9 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
     console.error('Choose one demo story at a time.');
     process.exit(2);
   }
-  const demo = await startDemo({ familyTrip, villageExchange, villageStory, villageFund, host, port });
-  if (!['127.0.0.1', 'localhost', '::1'].includes(host)) console.log(`Listening on ${host}:${port}, beyond this ${host === '0.0.0.0' ? 'container or ' : ''}computer's loopback address. Publish it to 127.0.0.1 only; this demo has no sign-in.`);
+  const demo = await startDemo({ familyTrip, villageExchange, villageStory, villageFund, host, port, publicHost });
+  if (publicHost) console.log(`Hosted example: answers as https://${publicHost}. Everyone who opens it shares one invented household; nothing real is read, paid or sent.`);
+  if (!publicHost && !['127.0.0.1', 'localhost', '::1'].includes(host)) console.log(`Listening on ${host}:${port}, beyond this ${host === '0.0.0.0' ? 'container or ' : ''}computer's loopback address. Publish it to 127.0.0.1 only; this demo has no sign-in.`);
   console.log(villageFund
     ? `Our Castle demo: ${demo.url}\nFive invented families · one $400 class trip · $200 in simulated starting contributions.\nShared village progress is separate from private savings. No real payments, subscriptions or devnet provider is connected.\nNo key or saved record is read. Progress lasts until you close this demo. Press Ctrl+C to finish.`
     : villageStory

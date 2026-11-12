@@ -92,3 +92,43 @@ test('the demo listens elsewhere only when its own command line says so, and sti
     assert.equal(status, 403);
   } finally { await demo.close(); }
 });
+
+test('a hosted example answers to its one public name over HTTPS, and to nothing else; only a keyless story can be hosted', { timeout: 30_000 }, async () => {
+  // The option needs a usable name and a story: the blank demo and a malformed name are refused before anything starts.
+  for (const args of [['--public-host=demo.example.test'], ['--family-trip', '--public-host='], ['--family-trip', '--public-host=bad host'], ['--family-trip', '--public-host=https://demo.example.test']]) {
+    const run = spawnSync(process.execPath, [script, ...args], { encoding: 'utf8', timeout: 20_000 });
+    assert.equal(run.status, 2, args.join(' '));
+    assert.equal(run.stdout, '', args.join(' '));
+  }
+  // The blank demo is refused in code too. (Were it to start, it is closed here so the failure is reported, not hung on.)
+  const blank = await startDemo({ publicHost: 'demo.example.test' }).then((started) => started.close().then(() => 'started'), (error) => error.message);
+  assert.match(blank, /only for a keyless example demo/);
+
+  const demo = await startDemo({ familyTrip: true, publicHost: 'demo.example.test' });
+  const port = Number(new URL(demo.url).port);
+  // A request as the host's proxy passes it on: the public name in Host, and the browser's HTTPS origin on a write.
+  const call = (method, path, headers, body) => new Promise((resolve, reject) => {
+    const req = http.request({ host: '127.0.0.1', port, method, path, headers: { ...(body ? { 'Content-Type': 'application/json' } : {}), ...headers } }, (res) => {
+      let text = ''; res.setEncoding('utf8'); res.on('data', (chunk) => { text += chunk; });
+      res.on('end', () => resolve({ status: res.statusCode, json: (() => { try { return JSON.parse(text); } catch { return null; } })() }));
+    }).on('error', reject);
+    req.end(body ? JSON.stringify(body) : undefined);
+  });
+  try {
+    assert.equal((await call('GET', '/', { Host: 'demo.example.test' })).status, 200);
+    const state = await call('GET', '/api/state', { Host: 'demo.example.test' });
+    assert.equal(state.status, 200);
+    assert.equal(state.json.modes.payments.mode, 'example');
+    const write = (headers) => call('POST', '/api/steward', headers, { memberId: 'm_rowan', question: 'Any contributions that need a PayPal check?' }); // answered from saved records
+    assert.equal((await write({ Host: 'demo.example.test', Origin: 'https://demo.example.test' })).status, 200);
+    // Not as plain HTTP, not from another site, and not under any other name.
+    assert.equal((await write({ Host: 'demo.example.test', Origin: 'http://demo.example.test' })).json.error.code, 'origin_not_allowed');
+    assert.equal((await write({ Host: 'demo.example.test', Origin: 'https://elsewhere.example.test' })).json.error.code, 'origin_not_allowed');
+    assert.equal((await write({ Host: 'demo.example.test', Origin: 'https://demo.example.test', 'Sec-Fetch-Site': 'cross-site' })).json.error.code, 'origin_not_allowed');
+    for (const host of ['elsewhere.example.test', 'demo.example.test.elsewhere.test', 'xdemo.example.test']) {
+      assert.equal((await call('GET', '/api/state', { Host: host })).json.error.code, 'host_not_allowed', host);
+    }
+    // It still answers as this computer, as every demo does.
+    assert.equal((await get(demo.url + '/api/status')).payments.mode, 'example');
+  } finally { await demo.close(); }
+});

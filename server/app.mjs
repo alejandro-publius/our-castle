@@ -115,15 +115,19 @@ async function readBody(req, limit = MAX_BODY) {
   return Buffer.concat(chunks).toString('utf8');
 }
 
-/** Same-machine checks: refuse rebinding hosts and cross-site writes. */
-function checkHostAndOrigin(req, { write }) {
+/**
+ * Same-machine checks: refuse rebinding hosts and cross-site writes. `publicHost` is the one other name a hosted keyless
+ * example answers to (createApp refuses it for anything else); there the page is served over HTTPS by the host's proxy.
+ */
+function checkHostAndOrigin(req, { write }, publicHost = null) {
   const host = req.headers.host ?? '';
   let hostname;
   try { hostname = new URL(`http://${host}`).hostname; } catch { hostname = ''; }
-  if (!LOCAL_HOSTS.has(hostname)) throw new HttpError(403, 'host_not_allowed', 'This local prototype only answers on localhost.');
+  const hosted = publicHost !== null && hostname === publicHost;
+  if (!LOCAL_HOSTS.has(hostname) && !hosted) throw new HttpError(403, 'host_not_allowed', 'This local prototype only answers on localhost.');
   if (!write) return;
   const origin = req.headers.origin;
-  if (origin && origin !== `http://${host}`) throw new HttpError(403, 'origin_not_allowed', 'Cross-site requests are not allowed.');
+  if (origin && origin !== `${hosted ? 'https' : 'http'}://${host}`) throw new HttpError(403, 'origin_not_allowed', 'Cross-site requests are not allowed.');
   if (req.headers['sec-fetch-site'] && !['same-origin', 'none'].includes(req.headers['sec-fetch-site'])) {
     throw new HttpError(403, 'origin_not_allowed', 'Cross-site requests are not allowed.');
   }
@@ -137,7 +141,11 @@ const UNCHANGING_WRITES = new Set(['/api/plans/preview', '/api/merchant/search',
   '/api/village/draft', '/api/village/treasurer', '/api/village/presence', '/api/mcp/grants', '/api/mcp/grants/revoke']);
 
 export function createApp({ config, db, clock, paypal = null, aiProvider = null, stewardAi = null, paypalTools = null, stewardFetch, merchant = null, kitReader = null,
-  kitSolver = null, kitReranker = null, villageDraftProvider = null, vaultRpc = null, subscriptionAdapter = null, example = null, root, live: liveLimits = {} }) {
+  kitSolver = null, kitReranker = null, villageDraftProvider = null, vaultRpc = null, subscriptionAdapter = null, example = null, root, live: liveLimits = {}, publicHost = null }) {
+  // Only an authored example with invented data and no keys may answer beyond this computer. A configured server never does.
+  if (publicHost !== null && (!example || config.access?.mode === 'family' || publicModes(config).payments.mode !== 'example')) {
+    throw new Error('A public host is only for a keyless example demo.');
+  }
   // Example mode is the single local example household. Family mode serves only households whose members enrolled their
   // own passkeys; it never creates, shows or falls back to the example household.
   const family = config.access?.mode === 'family';
@@ -847,7 +855,7 @@ export function createApp({ config, db, clock, paypal = null, aiProvider = null,
           res.writeHead(302, { Location: `${config.access.origin}${url.pathname}` });
           return res.end();
         }
-        if (family) checkFamilyHostAndOrigin(req, { write: false }); else checkHostAndOrigin(req, { write: false });
+        if (family) checkFamilyHostAndOrigin(req, { write: false }); else checkHostAndOrigin(req, { write: false }, publicHost);
         if (!['GET', 'HEAD'].includes(req.method)) throw new HttpError(405, 'method_not_allowed', 'Method not allowed.');
         return await serveStatic(req, res, url.pathname);
       }
@@ -856,7 +864,7 @@ export function createApp({ config, db, clock, paypal = null, aiProvider = null,
       if (webhook) {
         // PayPal calls this from the internet (through a tunnel); it is authenticated by signature, not origin.
       } else if (family) checkFamilyHostAndOrigin(req, { write });
-      else checkHostAndOrigin(req, { write });
+      else checkHostAndOrigin(req, { write }, publicHost);
       let match = null;
       const route = routes.find(([method, pattern]) => {
         if (method !== req.method) return false;
