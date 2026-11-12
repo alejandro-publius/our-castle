@@ -44,20 +44,27 @@ export function treasuryFor(state, now = new Date().toISOString(), acceptedPlan 
 const DAY_MS = 86_400_000;
 /** Held and not ended: money an adult can still release or return. A hold not placed yet, or one that is over, is not listed. */
 const OPEN_HOLD = new Set(['held', 'releasing', 'returning']);
+/** The Treasury's rows: each open hold with the Ledger record that opens it. */
+export function treasuryHolds(state, now = new Date().toISOString()) {
+  const trail = ledgerTrail(state);
+  return openHolds(state.contributions, now).map((h) => ({ ...h, recordId: trail.find((r) => r.contribution?.id === h.id)?.id ?? null }));
+}
+
 /**
  * One row per open hold, soonest to expire first, from the server's own records of it: what is still held, and where
  * `now` falls between the day it was placed and the day PayPal lets it go. Shares are fractions of that span, for a
  * timeline. Nothing here is counted as progress.
+ * @param contributions the contribution views of one goal
  */
-export function treasuryHolds(state, now = new Date().toISOString()) {
-  const at = Date.parse(now), trail = ledgerTrail(state);
+export function openHolds(contributions, now = new Date().toISOString()) {
+  const at = Date.parse(now);
   const wholeDays = (until) => (Number.isFinite(until) ? Math.max(0, Math.ceil((until - at) / DAY_MS)) : null);
-  return state.contributions.filter((c) => c.hold && OPEN_HOLD.has(c.hold.status)).map((c) => {
+  return contributions.filter((c) => c.hold && OPEN_HOLD.has(c.hold.status)).map((c) => {
     const h = c.hold, placed = Date.parse(c.createdAt), honor = Date.parse(h.honorUntil ?? ''), expires = Date.parse(h.expiresAt ?? '');
     const span = expires - placed, share = (t) => Math.min(1, Math.max(0, (t - placed) / span));
     const timed = Number.isFinite(span) && span > 0;
     return {
-      id: c.id, recordId: trail.find((r) => r.contribution?.id === c.id)?.id ?? null, simulated: Boolean(c.simulated),
+      id: c.id, simulated: Boolean(c.simulated),
       heldCents: h.heldCents, releasedCents: h.releasedCents, remainingCents: h.remainingCents, currency: c.currency,
       phase: h.phase, pending: h.pending ?? null, extended: Boolean(h.extendedAt), canExtend: Boolean(h.canExtend),
       honorUntil: h.honorUntil ?? null, expiresAt: h.expiresAt ?? null,

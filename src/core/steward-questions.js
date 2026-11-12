@@ -23,5 +23,15 @@ export function isNeedsCheckQuestion(question) {
   return typeof question === 'string' && NEEDS_CHECK_QUESTIONS.has(normalize(question));
 }
 
+// "What is held, and until when?" is answered from this household's saved records of its open holds.
+export const HOLDS_QUESTION = 'Which holds end soonest?';
+const HOLDS_QUESTIONS = new Set([
+  'which holds end soonest', 'which hold ends soonest', 'which holds are open', 'what holds are open', 'are there any open holds',
+  'any open holds', 'what is being held', 'what is held', 'is anything held', 'is anything still held', 'how long are our holds guaranteed',
+]);
+export function isHoldsQuestion(question) {
+  return typeof question === 'string' && HOLDS_QUESTIONS.has(normalize(question));
+}
+
 /** Questions the server answers from saved household records, with no model or provider call. */
-export const isLocalQuestion = (question) => isConfirmationHistoryQuestion(question) || isNeedsCheckQuestion(question);
+export const isLocalQuestion = (question) => isConfirmationHistoryQuestion(question) || isNeedsCheckQuestion(question) || isHoldsQuestion(question);
