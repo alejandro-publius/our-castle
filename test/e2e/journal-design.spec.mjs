@@ -49,6 +49,21 @@ test('the field journal keeps all chapters reachable and preserves a draft throu
     await expect(page.locator('#brand-crest img')).toBeVisible();
     expect(await page.locator('#brand-crest img').evaluate(i=>i.complete&&i.naturalWidth>0)).toBe(true);
     await expect(page.locator('#house-crest svg')).toHaveCount(1);
+    // Each chapter says who does its work in this session. In a keyless example that is what stands in for each sponsor.
+    await page.locator('#tab-plan').click();
+    await expect(page.locator('#maker-plan')).toHaveText('In this example an invented catalogue stands in for Channel3 at Market Town. Schedules here come from built-in rules. With a key, Claude proposes them and the server checks the arithmetic. See Channel3’s sign at Market Town.');
+    await page.locator('#tab-give').click();
+    await expect(page.locator('#maker-give')).toHaveText('Simulated in this example: no PayPal call is made. With keys, the same step goes to the PayPal sandbox through PayPal’s Server SDK, which APIMatic generates. See PayPal’s sign on the hillside or APIMatic’s sign at the Starfall Observatory.');
+    await page.locator('#tab-ledger').click();
+    await expect(page.locator('#maker-ledger')).toHaveText(/^These records are kept in AG Grid.* See AG Grid’s sign at the Stone Keep\.$/); // said once the grid has really loaded
+    // A link is camera only: it closes the journal and frames that maker's sign, closer than its district alone.
+    await page.locator('#maker-ledger [data-sign="ag-grid"]').click();
+    await expect(page.locator('#journey')).toBeHidden();
+    await expect.poll(()=>page.evaluate(()=>window.__ourCastle.scene().view.focus)).toBe('keep');
+    const atSign=await page.evaluate(()=>window.__ourCastle.scene().view);
+    await page.locator('#realm-districts [data-district="keep"]').evaluate(b=>b.click()); // the district's own view is wider
+    await expect.poll(()=>page.evaluate(()=>window.__ourCastle.scene().view.worldPerPixel)).toBeGreaterThan(atSign.worldPerPixel*1.3);
+    if(await page.locator('#journey').isHidden())await page.locator('#journal-toggle').click();
     await page.locator('#tab-house').click();
     expect(await page.locator('.journal-frontispiece img').evaluate(i=>i.complete&&i.naturalWidth>0)).toBe(true);
     expect(await page.evaluate(()=>JSON.stringify([window.__ourCastle.state.goal,window.__ourCastle.state.progress]))).toBe(before);

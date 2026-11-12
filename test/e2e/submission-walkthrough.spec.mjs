@@ -86,6 +86,7 @@ for (const ending of ['return', 'release']) {
       await expect(page.locator('#give-hold-row')).toHaveText('Hold it first. Nothing counts until an adult releases or returns it.');
       await page.locator('#give-hold').check();
       await expect(page.locator('#give-approve-text')).toHaveText('I approve holding $25.00 USD (test money).');
+      await expect(page.locator('#maker-give')).toContainText('Contributions go to the PayPal sandbox with test money, through PayPal’s Server SDK, which APIMatic generates.'); // the chapter says who does this work
       await expect(page.locator('#simulate-pay')).toHaveCount(0);
       await page.locator('#give-approve').check();
       await expect(page.locator('#paypal-button')).toHaveAttribute('aria-disabled', 'false');

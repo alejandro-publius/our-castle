@@ -198,13 +198,19 @@ test('a visitor tries a one-off expense, sees the real planner repair the kit, a
     await expect(dialog.getByRole('button', { name: 'Use as goal' })).toHaveCount(0);
     await page.keyboard.press('Escape');
     await expect(dialog).toBeHidden();
-    // Nothing on the page presents these as Channel3 results: the name appears only where the page says they are not.
+    // Nothing on the page presents these as Channel3 results: the name appears only where the page says they are not,
+    // in the Plan chapter's line (an invented catalogue stands in for it) and on the link to its sign in the woodland.
     const mentions = await page.evaluate(() => {
       const found = [], walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
       for (let node; (node = walker.nextNode());) if (/Channel3|Cohere|OpenAI/.test(node.textContent) && !node.parentElement.closest('script, style, [hidden]')) found.push(node.textContent.trim());
       return found;
     });
-    expect(mentions).toEqual([expect.stringMatching(/^Example catalogue, answered on this computer at .+ Not Channel3 results and not real offers\./)]);
+    expect(mentions).toHaveLength(3);
+    expect(mentions).toEqual(expect.arrayContaining([
+      expect.stringMatching(/^In this example an invented catalogue stands in for Channel3 at Market Town\. Schedules here come from built-in rules\./),
+      'Channel3’s sign at Market Town',
+      expect.stringMatching(/^Example catalogue, answered on this computer at .+ Not Channel3 results and not real offers\./),
+    ]));
 
     // 11. Wren, the example child, reads the chosen kit and can change nothing.
     await page.locator('#persona').selectOption({ label: 'Wren · Child' });

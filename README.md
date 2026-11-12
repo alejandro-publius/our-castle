@@ -202,6 +202,8 @@ These are test captures. The family (Rowan, Ash and Wren) is invented, and the "
 | **AG Grid / AG Studio** | Illustrated Treasury milestone, weekly plan, records and receipts in parchment | Studio 3.1 live data preserves the report; Grid 36.3 keeps selection and filters. The Agent Framework manages the existing steward through a scoped custom runner, with cancellation and cleanup. [Details](docs/TREASURY.md) |
 | **APIMatic** | Behind the scenes | Official generated PayPal Server SDK 2.5.0 and eight installed, discovery-verified Codex context skills; real SDK serialization/auth/retry tests with fake transport, plus documented capture-recovery/read fixes. [Details](docs/APIMATIC-CODEX.md) |
 
+In the game itself, each journal chapter says in one line which of these tools does its work in that session (or what stands in for it in a keyless example), with a link that takes the map to that maker's sign in the woodland.
+
 PayPal JavaScript SDK v6 handles the browser session; Server SDK Orders v2/Payments v2 handle sandbox operations, including the hold-first calls (authorize, reauthorize, capture and void). PayPal Agent Toolkit enables only scoped read tools. Anthropic Claude (`claude-opus-5-5`) supplies runtime planning/steward answers; it cannot authorize, capture or refund a payment. Postman provides guarded walkthroughs.
 
 ## Architecture at a glance
