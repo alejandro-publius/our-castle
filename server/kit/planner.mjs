@@ -145,6 +145,36 @@ export function addCandidate(db, { householdId, goalId, actor, revision, lineId,
   });
 }
 
+/**
+ * "Draft listings": for each line still to get that has no listing yet, one catalog search by the line's own name, and
+ * the lowest-priced usable result of that search (a search shows at most three). It writes nothing and infers no count:
+ * an adult adds each drafted listing with their own per-listing count (addCandidate). A line whose search fails or shows
+ * nothing usable says so and is left for "Find listings"; the other lines are still answered.
+ * @param search (query) => the merchant's search answer for this household
+ */
+export async function draftListings(db, { householdId, goalId, actor }, { search, now }) {
+  needAdult(actor);
+  const goal = goalOf(db, householdId, goalId);
+  const view = kitPlanView(db, { householdId, goal, now });
+  const lines = [];
+  for (const line of view.lines.filter((l) => l.remaining > 0 && !l.candidates.length)) {
+    const entry = { lineId: line.lineId, name: line.name, remaining: line.remaining, shown: 0, result: null, reason: null };
+    try {
+      const found = await search(line.name.slice(0, 80));
+      // Only what a comparison could use (issueOf): in stock, with a price in the goal currency.
+      const usable = found.results.filter((r) => r.usable && r.draftId && r.currency === goal.currency && Number.isSafeInteger(r.priceCents) && r.priceCents > 0 && r.availability === 'InStock');
+      entry.shown = found.results.length;
+      entry.result = usable.sort((a, b) => a.priceCents - b.priceCents)[0] ?? null;
+      if (!entry.result) entry.reason = found.results.length ? 'None of the results shown is in stock with a usable price in the goal currency.' : 'The search showed no results.';
+    } catch (error) {
+      if (!(error instanceof DomainError)) throw error;
+      entry.reason = error.message; // refused or unanswered (too many searches this minute, a name too short to search)
+    }
+    lines.push(entry);
+  }
+  return { status: 'ok', revision: view.revision, lines };
+}
+
 export function removeCandidate(db, { householdId, goalId, actor, candidateId }) {
   needAdult(actor);
   const id = needId(candidateId, CANDIDATE_ID, 'invalid_kit_listing', 'Choose one of the listings shown.');

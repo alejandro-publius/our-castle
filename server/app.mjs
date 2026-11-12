@@ -25,7 +25,7 @@ import { checkKitImage, kitView, saveKit } from './kit/list.mjs';
 import { createKitSolver } from './kit/solver.mjs';
 import { KIT_PREFERENCES } from './kit/rerank.mjs';
 import {
-  addCandidate, adoptKit, chooseKit, compareKits, goalKitFor, keepLine, kitDescription, kitPlanView, refreshCandidate, removeCandidate, reviewKit, withPreference,
+  addCandidate, draftListings, adoptKit, chooseKit, compareKits, goalKitFor, keepLine, kitDescription, kitPlanView, refreshCandidate, removeCandidate, reviewKit, withPreference,
 } from './kit/planner.mjs';
 import { transaction } from './db.mjs';
 import { exchangeView, exchangeAction, exchangeDirectory, exchangeRequest } from './exchange/index.mjs';
@@ -132,7 +132,7 @@ function checkHostAndOrigin(req, { write }) {
 const str = (v) => (typeof v === 'string' ? v : undefined);
 // Write-method routes that change no household record: calculations, provider look-ups, questions and ceremony steps.
 const UNCHANGING_WRITES = new Set(['/api/plans/preview', '/api/merchant/search', '/api/merchant/refresh', '/api/merchant/alternatives', '/api/merchant/categories', '/api/merchant/category',
-  '/api/family-choices/review', '/api/family-choices/fit', KIT_READ_ROUTE, '/api/kit/compare', '/api/kit/prefer', '/api/kit/review',
+  '/api/family-choices/review', '/api/family-choices/fit', KIT_READ_ROUTE, '/api/kit/draft', '/api/kit/compare', '/api/kit/prefer', '/api/kit/review',
   '/api/steward', '/api/paypal/client-token', '/api/auth/passkeys/options', '/api/auth/signout',
   '/api/village/draft', '/api/village/treasurer', '/api/village/presence', '/api/mcp/grants', '/api/mcp/grants/revoke']);
 
@@ -492,6 +492,18 @@ export function createApp({ config, db, clock, paypal = null, aiProvider = null,
       const added = addCandidate(db, { householdId: scope.householdId, goalId: scope.goalId, actor: choiceActor(body, scope), revision: str(body.revision) ?? null, lineId: body.lineId,
         item, draftId: body.draftId, perListing: body.perListing }, clock);
       return { ...added, state: state(scope) };
+    }],
+    // One search for each line without a listing, and the lowest-priced usable result of each. Nothing is added here.
+    ['POST', '/api/kit/draft', async ({ body, scope, assertAccess }) => {
+      refuseForeign(body, scope);
+      return draftListings(db, { householdId: scope.householdId, goalId: scope.goalId, actor: choiceActor(body, scope) }, {
+        now: clock.now().getTime(),
+        search: async (query) => {
+          const found = await shop.search({ query, budgetCents: null });
+          assertAccess();
+          if (family) rememberDrafts(found, scope);
+          return found;
+        } });
     }],
     ['POST', '/api/kit/listings/remove', ({ body, scope }) => {
       refuseForeign(body, scope);

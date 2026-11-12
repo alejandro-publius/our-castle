@@ -53,7 +53,8 @@ const RECOMPARE_MS = 350;
 export function createKitPlan({ getState, actor, applyState, openMerchant, reserve, onReview, listEditing, onPreview = () => {} }) {
   // `preview` is the kit the family asked to see on the map: { anchor (its picks), origin (the button that opened it),
   // shown (the picks of the card drawn now) }. `inflight` and `recomparing` say a fresh comparison is on its way.
-  const ui = { answer: null, asked: null, seq: 0, busy: false, scope: null, timer: null, preview: null, inflight: null, reviewing: false, recomparing: false };
+  // `draft` is the server's last draft of listings for the items without one, with the counts typed so far: { lines, counts }.
+  const ui = { answer: null, asked: null, seq: 0, busy: false, scope: null, timer: null, preview: null, inflight: null, reviewing: false, recomparing: false, draft: null };
   const currency = () => getState()?.goal?.currency ?? 'USD';
   const money = (cents) => formatCents(cents, currency());
   const date = (iso) => {
@@ -232,6 +233,105 @@ export function createKitPlan({ getState, actor, applyState, openMerchant, reser
     }
   }
 
+  // ---- Draft listings: one search for each item without a listing. Nothing is added until an adult says so. ----
+  const validCount = (text) => /^\d{1,3}$/.test(text ?? '') && Number(text) >= 1 && Number(text) <= 100;
+  // What is still draftable: a drafted line that has since gained a listing, or left the list, drops out.
+  const draftRows = () => { const plan = getState().kitPlan; return (ui.draft?.lines ?? []).filter((d) => plan.lines.some((l) => l.lineId === d.lineId && l.remaining > 0 && !l.candidates.length)); };
+  async function draft() {
+    if (ui.busy) return;
+    ui.busy = true;
+    const key = scopeKey();
+    say('working', `Searching ${catalogueOf(getState()).name} for each item without a listing…`);
+    render();
+    try {
+      const res = await api.post('/api/kit/draft', asActor({}));
+      if (scopeKey() !== key) return;
+      ui.draft = { lines: res.lines, counts: {} };
+      const found = res.lines.filter((l) => l.result).length;
+      say(found ? 'ok' : 'info', found ? `Drafted ${plural(found, 'listing')}. Nothing is added yet: enter how many items each listing gives, then add them.`
+        : 'No listing could be drafted. Use “Find listings” for each item instead.');
+    } catch (error) {
+      if (scopeKey() === key) say('error', error.message);
+    } finally {
+      ui.busy = false;
+      render();
+      $('kit-plan-draft').querySelector('input, button')?.focus({ preventScroll: true });
+    }
+  }
+  async function addDraft() {
+    if (ui.busy) return;
+    const rows = draftRows().filter((r) => r.result), bad = rows.find((r) => !validCount(ui.draft.counts[r.lineId]));
+    if (bad) {
+      say('error', `Enter how many ${bad.name} one listing gives, from 1 to 100. Check the listing itself: it is your count, not a catalog fact.`);
+      const input = $('kit-plan-draft').querySelector(`[data-draft-count="${CSS.escape(bad.lineId)}"]`);
+      input?.setAttribute('aria-invalid', 'true'); input?.focus();
+      ui.draft.asked = true; // the message asks for a count; it goes once one is typed
+      return;
+    }
+    ui.busy = true;
+    render();
+    const key = scopeKey();
+    let added = 0;
+    try {
+      // The existing route, once for each listing: the server copies its own shown result with the adult's count.
+      for (const r of rows) {
+        const res = await api.post('/api/kit/listings', asActor({ draftId: r.result.draftId, lineId: r.lineId, perListing: Number(ui.draft.counts[r.lineId]), revision: getState().kitPlan.revision }));
+        applyState(res.state);
+        added++;
+        if (scopeKey() !== key) return;
+      }
+      ui.draft = null;
+      say('ok', `Added ${plural(added, 'listing')}. Compare complete kits when you are ready.`);
+    } catch (error) {
+      if (scopeKey() === key) say('error', `${added ? `Added ${plural(added, 'listing')}, then stopped. ` : ''}${error.message}`);
+    } finally {
+      ui.busy = false;
+      render();
+    }
+  }
+  function draftTotal() {
+    const total = $('kit-plan-draft-total');
+    if (!total) return;
+    const rows = draftRows().filter((r) => r.result);
+    total.textContent = rows.length && rows.every((r) => validCount(ui.draft.counts[r.lineId]))
+      ? `With these counts: ${money(rows.reduce((sum, r) => sum + lineCost(r.remaining, { listingCents: r.result.priceCents, perListing: Number(ui.draft.counts[r.lineId]), weightMg: null }).cents, 0))} for ${plural(rows.length, 'item')} on the list, at the listed prices. Tax and shipping are not included.`
+      : '';
+  }
+  function renderDraft(isAdult, catalogue, needed) {
+    const box = $('kit-plan-draft');
+    const unlisted = needed.filter((l) => !l.candidates.length), rows = draftRows();
+    if (ui.draft && !rows.length) ui.draft = null;
+    const show = isAdult && catalogue.open && unlisted.length > 0;
+    box.hidden = !show;
+    // Rebuilt only when what it shows changes, so a count being typed keeps its field and focus.
+    const key = JSON.stringify([show, ui.busy, catalogue.name, unlisted.map((l) => l.lineId), rows.map((r) => [r.lineId, r.result?.draftId ?? r.reason])]);
+    if (box.dataset.key === key) return;
+    box.dataset.key = key;
+    if (!show) { box.replaceChildren(); return; }
+    if (!ui.draft) {
+      box.replaceChildren(
+        h('div', { class: 'actions' }, h('button', { type: 'button', id: 'kit-plan-draft-start', disabled: ui.busy, onclick: draft }, `Draft listings for the ${plural(unlisted.length, 'item')} without one`)),
+        h('p', { class: 'fine' }, `One search of ${catalogue.name} for each of those items, by its name on the list. The lowest-priced result in stock is drafted for each. Nothing is added until you say so.`));
+      return;
+    }
+    const found = rows.filter((r) => r.result);
+    box.replaceChildren(
+      h('strong', {}, `Draft from ${catalogue.name}`),
+      h('ul', { 'aria-label': 'Drafted listings' }, ...rows.map((r) => (r.result ? h('li', { 'data-draft-line': r.lineId },
+        h('span', { class: 'kit-plan-listing-name' }, `${r.name}: ${r.result.title}`),
+        h('span', { class: 'kit-plan-listing-facts' }, [r.result.merchant, `${money(r.result.priceCents)} a listing`, r.result.weightMg ? `listed ${weightText(r.result.weightMg)}` : 'weight not listed',
+          `lowest of ${plural(r.shown, 'result')} shown`].join(' · ')),
+        h('label', { class: 'merchant-kit-label' }, `How many ${r.name} one listing gives`,
+          h('input', { type: 'number', inputmode: 'numeric', min: 1, max: 100, step: 1, required: true, class: 'merchant-kit-count', 'data-draft-count': r.lineId, value: ui.draft.counts[r.lineId] ?? null, disabled: ui.busy,
+            oninput: (e) => { ui.draft.counts[r.lineId] = e.target.value.trim(); e.target.removeAttribute('aria-invalid'); if (ui.draft.asked) { ui.draft.asked = false; say('', ''); } draftTotal(); } })))
+        : h('li', { 'data-draft-line': r.lineId }, h('span', {}, `${r.name}: nothing drafted. ${r.reason} Use “Find listings for ${r.name}” above.`))))),
+      h('p', { class: 'fine', id: 'kit-plan-draft-total' }),
+      h('div', { class: 'actions' },
+        found.length ? h('button', { type: 'button', id: 'kit-plan-draft-add', disabled: ui.busy, onclick: addDraft }, `Add ${found.length === 1 ? 'this listing' : `these ${found.length} listings`}`) : null,
+        h('button', { type: 'button', class: 'link-button', id: 'kit-plan-draft-discard', disabled: ui.busy, onclick: () => { ui.draft = null; say('', ''); render(); $('kit-plan-draft-start')?.focus({ preventScroll: true }); } }, 'Discard draft')));
+    draftTotal();
+  }
+
   // ---- Drawing ----
   function finishText(f) {
     switch (f.status) {
@@ -383,7 +483,7 @@ export function createKitPlan({ getState, actor, applyState, openMerchant, reser
     if (!s?.kitPlan || !s.kit) return;
     if (ui.scope !== scopeKey()) { // another person, goal or household: a comparison, its message and its preview belonged to the old one
       if (ui.scope !== null) say('', '');
-      ui.scope = scopeKey(); ui.answer = null; ui.asked = null; ui.seq++; clearTimeout(ui.timer); ui.timer = null; ui.inflight = null; ui.reviewing = false; ui.recomparing = false;
+      ui.scope = scopeKey(); ui.draft = null; ui.answer = null; ui.asked = null; ui.seq++; clearTimeout(ui.timer); ui.timer = null; ui.inflight = null; ui.reviewing = false; ui.recomparing = false;
       dropPreview();
     }
     const plan = s.kitPlan, isAdult = adult(), catalogue = catalogueOf(s), merchantOn = catalogue.open;
@@ -400,6 +500,7 @@ export function createKitPlan({ getState, actor, applyState, openMerchant, reser
     const focusKey = lines.contains(document.activeElement) ? document.activeElement.dataset.focusKey : null;
     lines.replaceChildren(...plan.lines.map((line) => lineItem(line, plan, isAdult, merchantOn)));
     if (focusKey) lines.querySelector(`[data-focus-key="${CSS.escape(focusKey)}"]`)?.focus({ preventScroll: true });
+    renderDraft(isAdult, catalogue, needed);
     const fc = s.familyChoices;
     let preview = null;
     if (isAdult && needed.length && s.goal.currency === 'USD') {

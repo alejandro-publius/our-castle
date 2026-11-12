@@ -623,6 +623,12 @@ button { font: inherit; }
 .merchant-kit { display:flex; flex-wrap:wrap; align-items:center; gap:4px 10px; margin-top:6px; }
 .merchant-kit-label { display:inline-flex; align-items:center; gap:6px; font-size:14px; }
 .merchant-kit-count { width:4.5em; min-height:40px; }
+/* Draft listings: the lowest-priced result for each item without a listing, each with the adult's own count. */
+.kit-plan-draft { padding:8px 0; border-top:1px solid #d3bd8c; }
+.kit-plan-draft[hidden] { display:none; }
+.kit-plan-draft ul { list-style:none; margin:4px 0 0; padding:0; }
+.kit-plan-draft li { padding:6px 0; }
+.kit-plan-draft li > span { display:block; }
 /* Family fit: the planning limit line, the optional kind of item and must-haves, and why each option fits. */
 .family-fit { margin:12px 0 0; font-size:14px; }
 .family-fit .link-button { min-height:44px; }

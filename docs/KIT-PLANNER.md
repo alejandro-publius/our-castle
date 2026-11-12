@@ -15,6 +15,7 @@ It is planning only. It buys nothing, moves no money, reserves no price or stock
 1. **Listings for each item still to get.** For each line of the saved kit list with something still to get (Need minus Have), an adult chooses **Find listings for …**.
    - Market Town searches only when asked, and the adult adds up to three listings.
    - For each listing the adult enters how many of the item **one listing gives**: their own count, read from the listing. It has no default. It is never inferred from a title or a GTIN, and is recorded as that adult's count, not a catalog fact.
+   - **Draft listings** does the first search for every item that has no listing yet, in one step: one search for each such item, by its name on the list, and the lowest-priced result in stock of each search (a search shows at most three). It adds nothing. The adult still enters each count, which has no default, and then adds the drafted listings together. An item whose search shows nothing usable, or is refused because of the six-searches-a-minute limit, says so and is left for **Find listings for …**.
    - Items the family already has are skipped entirely: no search, no listing, no cost.
 2. **Compare complete kits.** Every complete kit (one listing per item, bought in whole listings) is checked against the family's figures. Up to three different kits that fit are shown, each labelled with what it is best at:
    - **lowest listed total**;
@@ -139,7 +140,7 @@ The smallest change follows the production-replanning example: a $160 kit with a
   - `goal_kits`: the kit a goal was saved from.
 - **Routes**, all adult-only in the fail-closed family policy:
   - `POST /api/kit/listings`, `/listings/remove` and `/listings/refresh`;
-  - `POST /api/kit/compare`, `/prefer` and `/review`: read-only, with no live update;
+  - `POST /api/kit/draft`, `/compare`, `/prefer` and `/review`: read-only, with no live update (`/draft` is the only one of these that searches the catalog);
   - `PUT /api/kit/choice` and `/keep`;
   - `POST /api/kit/adopt`.
 - **Revisions.** Every request carries the kit planner's revision (the list, its listings and the chosen kit) and the family-choices revision (offers, goal, progress, day).
